@@ -1,0 +1,16 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Entornos virtuales
+venv/
+env/
+
+# Capturas de pantalla y debug (según tu README)
+screencaps/
+debug_recorte.png
+assets/ui/960x540
+
+# Configuración personal / Sensible
+# Si en constants.py tienes tokens o IDs, considera moverlos a un .env
+.env
