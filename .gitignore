@@ -6,10 +6,12 @@ __pycache__/
 venv/
 env/
 
-# Capturas de pantalla y debug (según tu README)
+# Capturas de pantalla y debug
 screencaps/
 debug_recorte.png
 assets/ui/960x540
+testing/
+logs/
 
 # Configuración personal / Sensible
 # Si en constants.py tienes tokens o IDs, considera moverlos a un .env

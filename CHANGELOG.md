@@ -6,6 +6,19 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.
 
 ---
 
+## 0.1.2 - 2026-04-05
+
+### Agregado
+- `tools/script.py`: módulo de skip automático de ads usando UIAutomator2.
+  Detecta si el dispositivo está en una ad verificando el package activo.
+  Busca el botón de cierre por árbol de vistas (content-desc y text) con
+  keywords: "close", "skip", "dismiss", "continue".
+  Scoring por posición (preferencia arriba-derecha) para seleccionar el
+  mejor candidato cuando hay múltiples elementos coincidentes.
+  Loop con timeout de 90 segundos y pausa entre intentos.
+
+---
+
 ## 0.1.1 - 2026-04-04
 
 ### Agregado

@@ -9,7 +9,7 @@ load_dotenv()
 # Si no encuentra la variable en el .env, usa el valor por defecto
 DISPOSITIVO_ADB = os.getenv("DISPOSITIVO_ADB", "SERIAL_POR_DEFECTO") # serial USB, no IP
 SCRCPY_SERVER_PATH = os.getenv("SCRCPY_SERVER_PATH", r"ruta\generica\scrcpy-server")
-ADB_PATH           = "adb"                  # o ruta completa si no está en PATH
+ADB_PATH = "adb"                  # o ruta completa si no está en PATH
 
 # ====================
 # Configuración global
@@ -120,23 +120,24 @@ CONTEXTOS_DEFINIDOS = {
         },
         "menus": {
             "world-map": {
-                "imagen":  "assets/ui/world-map-menu-id.png",
-                "region":  (98, 64, 139, 103),
+                "imagen": "assets/ui/world-map-menu-id.png",
+                "region": (0.1777, 0.2672, 0.2201, 0.2925),
                 "botones": {
-                    "ep-01": (119, 84),
-                    "ep-02": (191, 83),
-                    "ep-03": (246, 81),
-                    "ep-04": (317, 85),
-                    "ep-05": (381, 84),
-                    "ep-06": (450, 85),
-                    "ep-07": (512, 84),
-                    "ep-08": (579, 84),
-                    "ep-09": (647, 84),
-                    "ep-10": (714, 85),
-                    "ep-11": (121, 141),
-                    "ep-12": (187, 140),
-                    "ep-13": (250, 145),
-                    "ep-14": (315, 141),
+                    "ep-01": (0.2024, 0.1544),
+                    "ep-02": (0.2526, 0.1569),
+                    "ep-03": (0.3119, 0.1609),
+                    "ep-04": (0.3654, 0.1536),
+                    "ep-05": (0.4174, 0.1503),
+                    "ep-06": (0.476, 0.1503),
+                    "ep-07": (0.5262, 0.152),
+                    "ep-08": (0.5852, 0.1528),
+                    "ep-09": (0.6375, 0.1544),
+                    "ep-10": (0.6932, 0.1528),
+                    "ep-11": (0.198, 0.2541),
+                    "ep-12": (0.2577, 0.2598),
+                    "ep-13": (0.3105, 0.2565),
+                    "ep-14": (0.3599, 0.2549),
+                    "close": (0.7382, 0.2132),
                 },
             }
         },
@@ -274,6 +275,89 @@ CONTEXTOS_DEFINIDOS = {
         "menus":       {},
         "subcontexto": None
     },
+    "stage-elite-chaos": {
+        "imagen": "assets/ui/stage-elite-chaos-id.png",
+        "region": (0.3514, 0.8358, 0.3901, 0.8799),
+        "threshold": 0.85,
+        "menu_rapido_disponible": True,
+        "menu_rapido_tipo": "default",
+        "botones": {
+            "menu-rapido": (0.1921, 0.0613),
+            "back": (0.806, 0.0588),
+            "elite-chest1": (0.5236, 0.8775),
+            "elite-chest2": (0.6154, 0.8799),
+            "elite-chest3": (0.705, 0.8709),
+            "elite-chest4": (0.7924, 0.8775),
+            "claim": (0.4207, 0.9322),
+            "stage-normal": (0.8053, 0.1822),
+            "elite-chaos": (0.7364, 0.1822), # switchs between elite and chaos
+        },
+        "menus":       {},
+        "subcontexto": { # falta tomar el subcontexto de los cofres
+            "tipo": "episodio",
+            "valores": {
+                "elite": {
+                    "imagen": "assets/ui/stage-elite-ep-id.png",
+                    "region": (0.7176, 0.2075, 0.7655, 0.2484),
+                    "botones": {
+                        "01": (0.2117, 0.4158),
+                        "02": (0.3112, 0.4183),
+                        "03": (0.4063, 0.4134),
+                        "04": (0.5018, 0.4232),
+                        "05": (0.5959, 0.4248),
+                        "06": (0.6965, 0.4208),
+                        "07": (0.7858, 0.4118),
+                        "08": (0.1999, 0.6413),
+                        "09": (0.2976, 0.6552),
+                        "10": (0.4023, 0.6324),
+                        "11": (0.5177, 0.652),
+                        "12": (0.5944, 0.6495),
+                        "13": (0.6836, 0.6618),
+                        "14": (0.7876, 0.652),
+                    }
+                },
+                "chaos": {
+                    "imagen": "assets/ui/stage-chaos-ep-id.png",
+                    "region": (0.7238, 0.2075, 0.757, 0.2484),
+                    "botones": {
+                        "15": (0.4624, 0.5564),
+                        "16": (0.597, 0.5564),
+                        "17": (0.7312, 0.5474),
+                    }
+                }
+            }
+        },
+    },
+    "buffs": {
+        "imagen": "assets/ui/buffs-id.png",
+        "region": (0.4753, 0.0384, 0.5247, 0.0825),
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "close": (0.8182, 0.0588),
+            "astrologer-buff": (0.2813, 0.1658),
+            "alchemist-buff": (0.4414, 0.1585),
+            "heaven-or-hell": (0.6014, 0.1683),
+        },
+        "menus": {},
+        "subcontexto": {
+            "tipo": "tab",
+            "valores": {
+                "astrologer-buff-tab": {
+                    "imagen": "assets/ui/astrologer-buff-tab.png",
+                    "region": (0.274, 0.3505, 0.306, 0.393),
+                },
+                "alchemist-buff-tab": {
+                    "imagen": "assets/ui/alchemist-buff-tab.png",
+                    "region": (0.2858, 0.4493, 0.3156, 0.5098),
+                    "botones": {
+                        "free-buff-video": (0.5612, 0.8546),
+                    }                    
+                },
+                #"heaven-or-hell-tab": {}, falta completar
+            }
+        },
+    },
     "survival": {
         "imagen": "assets/ui/survival-id.png",
         "region": (0.1707, 0.2337, 0.2994, 0.2974),
@@ -395,6 +479,61 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_tipo": None,
         "botones": {
             "ok": (0.4959, 0.759),
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "select-boss": {
+        "imagen": "assets/ui/select-boss-id.png",
+        "region": (0.4524, 0.0547, 0.5468, 0.1021),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "available": (0.4974, 0.5449),
+            "close": (0.5033, 0.9379),
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "world-boss": {
+        "imagen": "assets/ui/world-boss-id.png",
+        "region": (0.1667, 0.1315, 0.2544, 0.1789),
+        "threshold": 0.85,
+        "menu_rapido_disponible": True,
+        "menu_rapido_tipo": "default",
+        "botones": {
+            "menu-rapido": (0.194, 0.0564),
+            "back": (0.8156, 0.0564),
+            "start": (0.774, 0.9346),
+            "auto-repeat": (0.7762, 0.8497),
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "world-boss-auto-repeat": {
+        "imagen": "assets/ui/world-boss-auto-repeat-id.png",
+        "region": (0.3282, 0.2737, 0.4133, 0.433),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "close": (0.6895, 0.1675),
+            "auto-repeat": (0.4897, 0.6127),
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "expedition": { # falta completar con los contextos de expedicion completada y en curso
+        "imagen": "assets/ui/expedition-id.png",
+        "region": (0.2747, 0.3611, 0.3215, 0.4011),
+        "threshold": 0.85,
+        "menu_rapido_disponible": True,
+        "menu_rapido_tipo": "default",
+        "botones": {
+            "menu-rapido": (0.1991, 0.0752),
+            "back": (0.8042, 0.0882),
+            "start-expedition": (0.6818, 0.9281),
         },
         "menus":       {},
         "subcontexto": None
@@ -923,7 +1062,7 @@ CONTEXTOS_DEFINIDOS = {
     },
     "socket": {
         "imagen": "assets/ui/socket-id.png",
-        "region": (0.5409, 0.2361, 0.6095, 0.3154),
+        "region": (0.5424, 0.9044, 0.6685, 0.9779),
         "threshold": 0.85,
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
@@ -1106,88 +1245,342 @@ CONTEXTOS_DEFINIDOS = {
         "subcontexto": None
     },
     "craft": {
-        "imagen":                 "assets/ui/craft-id.png",
-        "region":                 (387, 263, 484, 289),
-        "threshold":              0.85,
+        "imagen": "assets/ui/craft-id.png",
+        "region": (0.4233, 0.4869, 0.4993, 0.5278),
+        "threshold": 0.85,
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido":            (104, 33),
-            "back":                   (837, 45),
-            "weapon-hero-craft":      (872, 192),
-            "armor-hero-craft":       (871, 339),
-            "accessories-hero-craft": (873, 475),
+            "menu-rapido": (0.1973, 0.0498),
+            "back": (0.8027, 0.0662),
+            "weapon-hero-craft": (0.823, 0.3562),
+            "armor-hero-craft": (0.8241, 0.6234),
+            "accessories-hero-craft": (0.8249, 0.8954),
         },
         "menus":       {},
         "subcontexto": None,
     },
-    "meteorites": {
-        "imagen":                 "assets/ui/meteorites-id.png",
-        "region":                 (87, 81, 187, 116),
-        "threshold":              0.85,
+    "craft-amount": {
+        "imagen": "assets/ui/craft-amount-id.png",
+        "region": (0.3263, 0.7132, 0.3827, 0.7974),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "cancel": (0.6184, 0.652),
+            "craft": (0.4679, 0.6552),
+            "max-amount": (0.5483, 0.7688),
+            "plus-one-amount": (0.5118, 0.7565),
+            "minus-one-amount": (0.4233, 0.7574),
+            "slot-3": (0.4948, 0.4158),
+            "slot-2": (0.4115, 0.4208),
+            "slot-1": (0.3215, 0.4314),
+            "slot-4": (0.5878, 0.4289),
+            "slot-5": (0.677, 0.4338),
+        },
+        "menus":       {},
+        "subcontexto": {
+            "tipo": "selected",
+            "valores": {
+                "slot-1": {
+                    "imagen": "assets/ui/craft-amount-selected.png",
+                    "region": (0.34, 0.2484, 0.3776, 0.3301),
+                },
+                "slot-2": {
+                    "imagen": "assets/ui/craft-amount-selected.png",
+                    "region": (0.4237, 0.25, 0.4591, 0.3325),
+                },
+                "slot-3": {
+                    "imagen": "assets/ui/craft-amount-selected.png",
+                    "region": (0.5044, 0.2451, 0.545, 0.3391),
+                },
+                "slot-4": {
+                    "imagen": "assets/ui/craft-amount-selected.png",
+                    "region": (0.5859, 0.2451, 0.6316, 0.3448),
+                },
+                "slot-5": {
+                    "imagen": "assets/ui/craft-amount-selected.png",
+                    "region": (0.6711, 0.2402, 0.7161, 0.348),
+                }
+            }
+        },
+    },
+    "craft-amount-exception": {
+        "imagen": "assets/ui/craft-amount-exception-id.png",
+        "region": (0.3625, 0.4346, 0.6361, 0.5114),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "ok": (0.4982, 0.6275),
+        },
+        "menus":       {},
+        "subcontexto": None,
+    },
+    "meteorites": { # no veo una forma consistente de reconocer este contexto porque la barra de titulo puede ser tapada por el chat, uso la de subcontexto
+        "imagen": "assets/ui/meteorites-id.png",
+        "region": (0.7124, 0.2345, 0.8086, 0.2794),
+        "threshold": 0.85,
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido":  (106, 36),
-            "back":         (846, 49),
-            "meteorites":   (140, 100),
-            "combine":      (252, 100),
-            "evolve":       (343, 92),
-            "reforge":      (437, 107),
-            "reroll":       (551, 100),
-            "set-1":        (138, 155),
-            "set-2":        (206, 152),
-            "set-3":        (265, 155),
-            "equipped-all": (627, 138),
-            "bag-slot-00":  (576, 214),
-            "bag-slot-01":  (663, 207),
-            "bag-slot-02":  (748, 213),
-            "bag-slot-03":  (820, 206),
-            "bag-slot-10":  (572, 280),
-            "bag-slot-11":  (662, 279),
-            "bag-slot-12":  (738, 280),
-            "bag-slot-13":  (828, 284),
-            "bag-slot-20":  (585, 362),
-            "bag-slot-21":  (660, 352),
-            "bag-slot-22":  (748, 353),
-            "bag-slot-23":  (822, 361),
-            "bag-slot-30":  (574, 430),
-            "bag-slot-31":  (666, 426),
-            "bag-slot-32":  (740, 428),
-            "bag-slot-33":  (819, 434),
+            "menu-rapido": (0.1932, 0.0792),
+            "back": (0.7994, 0.0752),
+            "meteorites-tab": (0.2124, 0.1822),
+            "combine-tab": (0.2957, 0.1822),
+            "evolve-tab": (0.3802, 0.1846),
+            "bag-slot-01": (0.5874, 0.3791),
+            "bag-slot-02": (0.6497, 0.375),
+            "bag-slot-03": (0.7142, 0.3701),
+            "bag-slot-04": (0.7813, 0.3766),
+            "bag-slot-05": (0.5756, 0.5098),
+            "bag-slot-06": (0.6453, 0.518),
+            "bag-slot-07": (0.7124, 0.5074),
+            "bag-slot-08": (0.7865, 0.5204),
+            "bag-slot-09": (0.5704, 0.652),
+            "bag-slot-10": (0.6464, 0.6552),
+            "bag-slot-11": (0.7176, 0.6552),
+            "bag-slot-12": (0.7865, 0.6389),
+            "bag-slot-13": (0.5808, 0.7794),
+            "bag-slot-14": (0.6471, 0.7949),
+            "bag-slot-15": (0.7098, 0.7802),
+            "bag-slot-16": (0.7847, 0.7958),
+            "next-page": (0.7319, 0.9142),
+            "prev-page": (0.6431, 0.9175),
+
+            
         },
         "menus": {
             "current-meteorite": {
-                "imagen":  "assets/ui/current-meteorite-id.png",
-                "region":  (116, 217, 181, 286),
+                "imagen": "assets/ui/current-meteorite-id.png",
+                "region": (0.2017, 0.4069, 0.2382, 0.491),
                 "botones": {
-                    "equip-unequip":  (141, 173),
-                    "enhance":        (144, 245),
-                    "reforge-evolve": (141, 327),
-                    "reroll-reforge": (142, 401),
+                    "equip-unequip": (0.2161, 0.3178),
+                    "enhance": (0.2227, 0.4477),
+                    "reforge-evolve": (0.2201, 0.6021),
+                    "reroll-reforge": (0.2209, 0.7386),
                 }
             }
         },
         "subcontexto": {
-            "tipo": "meteorite-set",
+            "tipo": "set",
             "valores": {
-                "set-1": {
-                    "imagen":  "assets/ui/set-1-id.png",
-                    "region":  (102, 129, 169, 170),
-                    "botones": {},
+                "1": {
+                    "imagen": "assets/ui/meteorites-set1-id.png",
+                    "region": (0.1822, 0.2296, 0.2161, 0.2974),
                 },
-                "set-2": {
-                    "imagen":  "assets/ui/set-2-id.png",
-                    "region":  (165, 129, 234, 172),
-                    "botones": {},
+                "2": {
+                    "imagen": "assets/ui/meteorites-set2-id.png",
+                    "region": (0.2356, 0.2345, 0.267, 0.2949),
+                }
+            },
+            "tipo": "tab",
+            "valores": {
+                "meteorites": {
+                    "imagen": "assets/ui/meteorites-id.png",
+                    "region": (0.7124, 0.2345, 0.8086, 0.2794),
+                    "botones": {
+                        "set-1": (0.2176, 0.2778),
+                        "set-2": (0.2681, 0.2843),
+                        "set-3": (0.3208, 0.277),
+                        "slot-01": (0.226, 0.3971),
+                        "slot-02": (0.306, 0.4044),
+                        "slot-03": (0.3894, 0.4044),
+                        "slot-04": (0.4712, 0.4142),
+                        "slot-05": (0.2485, 0.6152),
+                        "slot-06": (0.4491, 0.616),
+                        "slot-07": (0.226, 0.8096),
+                        "slot-08": (0.3097, 0.8072),
+                        "slot-09": (0.3905, 0.8096),
+                        "slot-10": (0.4676, 0.8162),
+                        "slot-00": (0.3485, 0.6062),
+                    }
                 },
-                "set-3": {
-                    "imagen":  "assets/ui/set-3-id.png",
-                    "region":  (229, 128, 299, 171),
-                    "botones": {},
+                # completar mas tabs para manejo de stock, de momento sirve para cambios de set
+            },
+            "tipo": "state",
+            "valores": {
+                "slot-empty": {
+                    "imagen": "assets/ui/meteorite-slot-empty.png",
+                    "region": (0.1888, 0.3211, 0.5092, 0.8848),
                 },
+                "flare-empty": {
+                    "imagen": "assets/ui/flare-empty.png",
+                    "region": (0.3274, 0.5801, 0.3698, 0.6348),
+                }
             }
         },
+    },
+    "combine": {
+        "imagen": "assets/ui/combine-id.png",
+        "region": (0.5409, 0.8799, 0.6563, 0.9526),
+        "threshold": 0.85,
+        "menu_rapido_disponible": True,
+        "menu_rapido_tipo": "default",
+        "botones": {
+            "menu-rapido": (0.2013, 0.0743),
+            "back": (0.7917, 0.0866),
+            "fuse": (0.2179, 0.1879),
+            "transmute": (0.3086, 0.1912),
+            "combine-all": (0.6073, 0.9297),
+            "ethereal-transmute": (0.351, 0.9257),
+        },
+        "menus":       {},
+        "subcontexto": {
+            "tipo": "tab",
+            "valores": {
+                "fuse": {
+                    "imagen": "assets/ui/combine-fuse-tab.png",
+                    "region": (0.3459, 0.4069, 0.3931, 0.4592),
+                },
+                "transmute": {
+                    "imagen": "assets/ui/combine-transmute-tab.png",
+                    "region": (0.3632, 0.4069, 0.4668, 0.4616),
+                }
+            }
+        },
+    },
+    "combine-all-higher": {
+        "imagen": "assets/ui/combine-all-higher-id.png",
+        "region": (0.5162, 0.2361, 0.5619, 0.277),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "combine-all": (0.4543, 0.7092),
+            "cancel": (0.5782, 0.7206),
+        },
+        "menus": {},
+        "subcontexto": None
+    },
+    "combine-all-identical": {
+        "imagen": "assets/ui/combine-all-identical-id.png",
+        "region": (0.5111, 0.2345, 0.5704, 0.2745),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "combine-all": (0.4543, 0.7092),
+            "cancel": (0.5782, 0.7206),
+        },
+        "menus": {},
+        "subcontexto": None
+    },
+    "inventory": {
+        "imagen": "assets/ui/inventory-id.png",
+        "region": (0.2507, 0.643, 0.2902, 0.7369),
+        "threshold": 0.85,
+        "menu_rapido_disponible": True,
+        "menu_rapido_tipo": "default",
+        "botones": {
+            "menu-rapido": (0.2006, 0.0776),
+            "back": (0.7917, 0.0792),
+            "auto-equip": (0.6132, 0.9183),
+            "next-page": (0.8042, 0.9158),
+            "prev-page": (0.7124, 0.9158)
+        },
+        "menus": {},
+        "subcontexto": {
+            "tipo": "tab",
+            "valores": {
+                "fuse": {
+                    "imagen": "assets/ui/combine-fuse-tab.png",
+                    "region": (0.3459, 0.4069, 0.3931, 0.4592),
+                },
+                "transmute": {
+                    "imagen": "assets/ui/combine-transmute-tab.png",
+                    "region": (0.3632, 0.4069, 0.4668, 0.4616),
+                }
+            }, # faltan los contextos necesarios para comprar espacio de inventario
+            "tipo": "item-lock",
+            "valores": {
+                "slot1": {
+                    "imagen": "assets/ui/inventory-unlock.png",
+                    "region": (0.5951, 0.3252, 0.6386, 0.4257),
+                    "botones": {
+                        "unlock1": (0.6515, 0.3815),
+                    }
+                },
+                "slot2": {
+                    "imagen": "assets/ui/inventory-unlock.png",
+                    "region": (0.59, 0.4575, 0.6431, 0.5678),
+                    "botones": {
+                        "unlock2": (0.6589, 0.5139),
+                    }
+                },
+                "slot3": {
+                    "imagen": "assets/ui/inventory-unlock.png",
+                    "region": (0.5918, 0.6005, 0.6405, 0.7026),
+                    "botones": {
+                        "unlock3": (0.6523, 0.6585),
+                    }
+                },
+                "slot4": {
+                    "imagen": "assets/ui/inventory-unlock.png",
+                    "region": (0.5878, 0.732, 0.6412, 0.8448),
+                    "botones": {
+                        "unlock4": (0.6667, 0.7908),
+                    }
+                }
+            },
+        },
+    },
+    "awakening": { # notar que cuando pones receive-rewards te manda a ultimate
+        "imagen": "assets/ui/awakening-id.png",
+        "region": (0.2017, 0.1315, 0.3046, 0.1846),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "close": (0.8138, 0.116),
+            "awaken": (0.2541, 0.0752),
+            "super-awaken": (0.3418, 0.0654),
+            "ultimate-awakening": (0.4403, 0.0703),
+            "complete-all": (0.4373, 0.1658),
+            "receive-rewards": (0.6283, 0.259),
+        },
+        "menus": {},
+        "subcontexto": {
+            "tipo": "tab",
+            "valores": {
+                "awaken": {
+                    "imagen": "assets/ui/awaken-tab.png",
+                    "region": (0.7043, 0.1961, 0.7441, 0.2892),
+                },
+                "super-awaken": {
+                    "imagen": "assets/ui/super-awaken-tab.png",
+                    "region": (0.7043, 0.1912, 0.7441, 0.2933),
+                },
+                "ultimate-awakening": {
+                    "imagen": "assets/ui/ultimate-awakening-tab.png",
+                    "region": (0.7058, 0.1928, 0.7456, 0.2982),
+                },
+            },
+            "tipo": "status",
+            "valores": {
+                "done": {
+                    "imagen": "assets/ui/awakening-status-done.png",
+                    "region": (0.5996, 0.3725, 0.6759, 0.4755),
+                },
+                "not-ready": {
+                    "imagen": "assets/ui/awakening-not-ready.png",
+                    "region": (0.3237, 0.2206, 0.4115, 0.259),
+                }
+            },
+        },
+    },
+    "awakening-receive-rewards-alert": {
+        "imagen": "assets/ui/awakening-receive-rewards-alert-id.png",
+        "region": (0.4004, 0.4044, 0.597, 0.4461),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "yes": (0.4355, 0.634),
+            "no": (0.5756, 0.6185),
+        },
+        "menus": {},
+        "subcontexto": None,
     },
     "treasure": {
         "imagen":                 "assets/ui/treasure-id.png",
@@ -1245,30 +1638,31 @@ INTERRUPCIONES_GLOBALES = {
 
 # Estructura unificada del menú rápido: imagen y región para detectar si está abierto,
 # y coordenadas de todos sus botones (base, sin offset).
-MENU_RAPIDO = {
-    "imagen":  "assets/ui/menu-rapido-id.png",
-    "region":  (16, 77, 84, 152),
+MENU_RAPIDO = { #tome el offset al reves, volver a capturar coords en default, no lobby
+    "imagen": "assets/ui/menu-rapido-id.png",
+    "region": (0.0501, 0.152, 0.1021, 0.277),
     "botones": {
-        "lobby":            (125, 121),
-        "mailbox":          (204, 110),
-        "awakening":        (288, 116),
-        "quests":           (366, 123),
-        "inventory":        (132, 178),
-        "skills":           (208, 193),
-        "socket":           (278, 184),
-        "pets":             (360, 178),
-        "meteorites":       (121, 268),
-        "treasure":         (208, 267),
-        "companion":        (289, 267),
-        "craft":            (358, 267),
-        "combine":          (126, 351),
-        "shop":             (204, 347),
-        "trading-center":   (286, 349),
-        "guild":            (351, 346),
-        "select-character": (121, 427),
-        "character-1":      (208, 426),
-        "character-2":      (276, 424),
-        "character-3":      (362, 428),
+        "lobby": (0.0819, 0.2157),
+        "mailbox": (0.1375, 0.2075),
+        "awakening": (0.2069, 0.2116),
+        "quests": (0.2681, 0.2075),
+        "inventory": (0.0767, 0.357),
+        "skills": (0.1368, 0.357),
+        "socket": (0.2098, 0.3497),
+        "pets": (0.267, 0.3497),
+        "meteorites": (0.0789, 0.5049),
+        "treasure": (0.142, 0.5188),
+        "companion": (0.2013, 0.5074),
+        "craft": (0.2625, 0.4951),
+        "combine": (0.08, 0.643),
+        "shop": (0.1405, 0.6291),
+        "trading-center": (0.2098, 0.6291),
+        "guild": (0.2695, 0.6495),
+        "character": (0.0704, 0.7835),
+        "char1": (0.1405, 0.7892),
+        "char2": (0.1947, 0.7884),
+        "char3": (0.2681, 0.7892),
+        "close": (0.0638, 0.0703),
     }
 }
 
