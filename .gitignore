@@ -1,18 +1,25 @@
-# Byte-compiled / optimized / DLL files
+# Carpeta privada para contexto de IAs
+ai-context/
+
+# Archivos generados / temporales
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.so
 
-# Entornos virtuales
-venv/
-env/
-
-# Capturas de pantalla y debug
+# Screencaps y assets grandes
 screencaps/
-debug_recorte.png
 assets/ui/960x540
-testing/
-logs/
+*.png
+*.jpg
+*.jpeg
 
-# Configuración personal / Sensible
-# Si en constants.py tienes tokens o IDs, considera moverlos a un .env
+# Archivos de entorno
 .env
+*.env
+
+# Logs
+logs/
+testing/
+*.log

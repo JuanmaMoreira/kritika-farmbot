@@ -1,5 +1,14 @@
-opencv-python
-pyautogui
-numpy
-Pillow
-mss
+# Requisitos principales del bot Kritika FarmBot
+
+# Visión por computadora y captura
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Procesamiento de video/stream H.264 de scrcpy
+av>=11.0.0
+
+# (Opcional pero recomendado) Para mejor manejo de imágenes
+Pillow>=10.0.0
+
+# Si usás algún wrapper de ADB (si no, se puede quitar)
+# pure-python-adb>=0.3.0
