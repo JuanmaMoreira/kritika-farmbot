@@ -143,6 +143,57 @@ def test_shell_builds_non_interactive_device_command():
     assert_command(runner, ["adb", "-s", "serial", "shell", "wm", "size"])
 
 
+def test_spawn_shell_builds_persistent_device_command_without_running_real_adb():
+    process = object()
+    spawner = Mock(return_value=process)
+    client = AdbClient(
+        r"C:\Program Files\Android SDK\adb.exe",
+        "SERIAL-123",
+        spawner=spawner,
+    )
+
+    result = client.spawn_shell(
+        "CLASSPATH=/data/local/tmp/scrcpy server.jar", "app_process", "/"
+    )
+
+    assert result is process
+    spawner.assert_called_once_with(
+        [
+            r"C:\Program Files\Android SDK\adb.exe",
+            "-s",
+            "SERIAL-123",
+            "shell",
+            "CLASSPATH=/data/local/tmp/scrcpy server.jar",
+            "app_process",
+            "/",
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        shell=False,
+    )
+
+
+def test_spawn_shell_wraps_process_start_failure():
+    client = AdbClient(
+        "missing-adb",
+        "SERIAL",
+        spawner=Mock(side_effect=FileNotFoundError("not found")),
+    )
+
+    with pytest.raises(AdbError, match="Could not spawn ADB") as captured:
+        client.spawn_shell("app_process", "/")
+
+    assert captured.value.command == (
+        "missing-adb",
+        "-s",
+        "SERIAL",
+        "shell",
+        "app_process",
+        "/",
+    )
+
+
 def test_tap_uses_absolute_pixel_coordinates():
     runner = successful_runner()
     client = AdbClient("adb", "serial", runner=runner)

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 Command = tuple[str, ...]
 Runner = Callable[..., subprocess.CompletedProcess[str]]
+Spawner = Callable[..., subprocess.Popen[bytes]]
 
 
 class AdbError(RuntimeError):
@@ -73,11 +74,13 @@ class AdbClient:
         *,
         default_timeout: float = 10.0,
         runner: Runner | None = None,
+        spawner: Spawner | None = None,
     ) -> None:
         self.adb_executable = _non_empty(adb_executable, "adb_executable")
         self.serial = _non_empty(serial, "serial")
         self.default_timeout = _positive_timeout(default_timeout)
         self._runner = subprocess.run if runner is None else runner
+        self._spawner = subprocess.Popen if spawner is None else spawner
 
     @classmethod
     def from_config(
@@ -86,6 +89,7 @@ class AdbClient:
         *,
         default_timeout: float = 10.0,
         runner: Runner | None = None,
+        spawner: Spawner | None = None,
     ) -> "AdbClient":
         """Build a client from only the ADB fields of ``RuntimeConfig``."""
 
@@ -94,6 +98,7 @@ class AdbClient:
             serial=config.device_serial,
             default_timeout=default_timeout,
             runner=runner,
+            spawner=spawner,
         )
 
     def get_state(self, *, timeout: float | None = None) -> str:
@@ -113,6 +118,27 @@ class AdbClient:
             *(_non_empty(arg, "shell argument") for arg in args),
             timeout=timeout,
         )
+
+    def spawn_shell(
+        self, *args: str | os.PathLike[str]
+    ) -> subprocess.Popen[bytes]:
+        """Start a persistent ``adb shell`` process owned by the caller."""
+
+        if not args:
+            raise ValueError("spawn_shell requires at least one command argument")
+        command = self._command(
+            "shell", *(_non_empty(arg, "shell argument") for arg in args)
+        )
+        try:
+            return self._spawner(
+                list(command),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                shell=False,
+            )
+        except OSError as error:
+            raise AdbError(command, reason=f"Could not spawn ADB: {error}") from error
 
     def tap(
         self, x: int, y: int, *, timeout: float | None = None
@@ -197,7 +223,7 @@ class AdbClient:
     def _run(
         self, *args: str, timeout: float | None = None
     ) -> subprocess.CompletedProcess[str]:
-        command = (self.adb_executable, "-s", self.serial, *args)
+        command = self._command(*args)
         effective_timeout = (
             self.default_timeout if timeout is None else _positive_timeout(timeout)
         )
@@ -229,6 +255,9 @@ class AdbClient:
                 stderr=result.stderr,
             )
         return result
+
+    def _command(self, *args: str) -> Command:
+        return self.adb_executable, "-s", self.serial, *args
 
 
 def _non_empty(value: str | os.PathLike[str], name: str) -> str:

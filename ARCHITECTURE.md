@@ -73,6 +73,12 @@ Estos módulos no son todavía consumidos por `constants.py`, `screen.py`, `ads_
 
 Obtiene frames landscape desde scrcpy y expone sus dimensiones reales. No reconoce contextos ni toma decisiones.
 
+La Fase 1C implementó esta responsabilidad en `bot/capture.py`. `ScrcpyFrameSource` recibe un `AdbClient` y el path de `scrcpy-server.jar`, prepara el server y el port forwarding, mantiene el proceso ADB y socket, decodifica H.264 con PyAV y publica el frame BGR más reciente. Su API pública es `start()`, `get_frame()`, `stop()`, `is_running`, `failure` y context manager.
+
+Cada `FrameSnapshot` contiene una copia del ndarray, timestamp monotónico y sequence number. Sus dimensiones se consultan desde el shape de esa imagen; la metadata de scrcpy y `adb wm size` no sustituyen esa fuente de verdad. Un `Event` permite cancelar el receptor y los timeouts de socket evitan bloquear el shutdown indefinidamente. Los fallos del thread se conservan y quedan visibles al owner.
+
+La fuente es dueña del lifecycle de socket, decoder, proceso y forward, incluido cleanup best-effort ante startup parcial. `AdbClient` solo construye el proceso persistente mediante `spawn_shell()` y devuelve su handle. `bot/screen.py` y `tools/asset_capture.py` todavía conservan sus implementaciones legacy; la herramienta podrá consumir `ScrcpyFrameSource` más adelante, pero no fue migrada en esta fase.
+
 ### Perception
 
 Transforma frames en observaciones semánticas. Puede combinar:
@@ -103,7 +109,7 @@ Traduce una intención de acción validada a interacción con el dispositivo. La
 
 Es el límite de infraestructura para taps, swipes y demás comandos del dispositivo. Debe poder sustituirse por un fake en tests normales.
 
-La Fase 1B implementó este límite en `bot/adb.py`. `AdbClient` recibe explícitamente el ejecutable ADB y el serial, y concentra la ejecución en una única primitiva `subprocess` con argumentos separados, timeout y traducción a `AdbError`/`AdbTimeoutError`. Expone únicamente `get_state`, `shell`, input en coordenadas pixel, push y administración de port forwarding.
+La Fase 1B implementó este límite en `bot/adb.py`. `AdbClient` recibe explícitamente el ejecutable ADB y el serial, y concentra la ejecución en primitivas `subprocess` con argumentos separados, timeout y traducción a `AdbError`/`AdbTimeoutError`. Expone `get_state`, `shell`, input en coordenadas pixel, push y administración de port forwarding. La extensión `spawn_shell()` de Fase 1C crea un proceso persistente sin apropiarse de su lifecycle.
 
 `AdbClient` no conoce frames, resolución, coordenadas relativas, percepción ni acciones semánticas. Puede construirse desde los campos ADB de `RuntimeConfig`, pero no retiene configuración de scrcpy o del juego. `bot/screen.py` todavía no fue migrado: sus funciones ADB legacy podrán retirarse únicamente cuando captura y ejecución de acciones consuman las abstracciones 0.2.
 

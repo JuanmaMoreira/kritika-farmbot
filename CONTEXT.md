@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 1B completada
+**Estado:** rediseño híbrido 0.2 — Fase 1C completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -110,6 +110,14 @@ La Fase 1B añadió `bot/adb.py` como límite explícito para comandos físicos 
 - `AdbError` y `AdbTimeoutError` conservan comando, salida y contexto del fallo.
 - Los tests usan un runner inyectado y no requieren que ADB esté instalado ni inician procesos reales.
 
+La Fase 1C añadió `bot/capture.py` como fuente de frames scrcpy independiente:
+
+- `ScrcpyFrameSource` recibe explícitamente un `AdbClient` y el path local de `scrcpy-server.jar`; no lee environment ni configuración global.
+- Administra push, forward, proceso persistente, socket, decoder PyAV, thread receptor, espera acotada del primer frame y cleanup idempotente.
+- `FrameSnapshot` expone una copia BGR del último ndarray junto con timestamp monotónico y sequence; width/height se derivan de `image.shape`.
+- Los fallos parciales de startup limpian únicamente los recursos adquiridos y los errores del receptor quedan observables mediante `failure` y `get_frame()`.
+- `AdbClient.spawn_shell()` construye el proceso ADB persistente, pero el ownership de su lifecycle pertenece a `ScrcpyFrameSource`.
+
 Los archivos de `testing/` siguen siendo scripts manuales ligados a hardware y quedan deliberadamente fuera de la colección automática. `bot/constants.py`, `bot/screen.py` y `bot/ads_manager.py` permanecen sin migrar; AdsManager seguirá usando UIAutomator2 como mecanismo separado.
 
-La arquitectura híbrida completa todavía no está implementada. Captura, lifecycle, ActionExecutor, percepción, modelo semántico y flows 0.2 permanecen como trabajo futuro.
+La arquitectura híbrida completa todavía no está implementada. Faltan la integración del nuevo lifecycle en un composition root, su smoke test opt-in con hardware, ActionExecutor, percepción, modelo semántico y flows 0.2.
