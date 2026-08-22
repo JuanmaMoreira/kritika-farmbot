@@ -4,6 +4,10 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 
 ## Unreleased
 
+### Added
+
+- Se estableció la Fase 1A del núcleo 0.2: baseline automatizado con pytest, configuración de runtime explícita y geometría visual derivada exclusivamente del frame real.
+
 ### Changed
 
 - Se preservó el estado legacy previo al rediseño en el tag `legacy-pre-hybrid`.

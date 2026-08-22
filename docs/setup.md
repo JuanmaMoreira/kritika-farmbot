@@ -19,18 +19,32 @@ Desde la raíz del repositorio, crear y activar un entorno virtual con el mecani
 python -m pip install -r requirements.txt
 ```
 
-Las dependencias preservadas cubren captura/visión legacy, carga de configuración y el AdsManager basado en UIAutomator2. OCR, VLM y frameworks de detección todavía no forman parte del proyecto.
+Las dependencias preservadas cubren captura/visión legacy, carga de configuración, el AdsManager basado en UIAutomator2 y la suite automatizada con pytest. OCR, VLM y frameworks de detección todavía no forman parte del proyecto.
 
 ## Configuración local
 
 Crear un archivo `.env` local —nunca versionarlo— con:
 
 ```dotenv
+ADB_PATH=adb
 DISPOSITIVO_ADB=<serial mostrado por adb devices>
 SCRCPY_SERVER_PATH=<ruta local a scrcpy-server.jar>
+GAME_PACKAGE=com.gamevil.kritikamobile.android.google.global.normal
 ```
 
+`.env.example` contiene la lista vigente de variables soportadas por `bot.config.RuntimeConfig`. La nueva configuración solo lee ese archivo cuando el composition root llama explícitamente a `RuntimeConfig.from_env(dotenv_path=".env")`; también puede construirse directamente sin dotenv. Los consumers legacy todavía no fueron migrados y siguen usando sus mecanismos preservados.
+
 No escribir el serial ni una ruta absoluta dentro del código.
+
+## Tests automatizados
+
+La suite normal no requiere teléfono, ADB ni scrcpy-server:
+
+```bash
+pytest
+```
+
+La configuración de pytest limita la colección a `tests/`. Los scripts bajo `testing/` continúan siendo herramientas manuales ligadas a hardware.
 
 ## Verificación de ADB
 

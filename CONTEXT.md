@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** preparación para el rediseño híbrido 0.2
+**Estado:** rediseño híbrido 0.2 — Fase 1A completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -98,6 +98,12 @@ No se reparará el runtime legacy como paso previo al rediseño. Sus problemas s
 
 ## Tests y estado del rediseño
 
-Los archivos actuales de `testing/` son scripts manuales ligados a hardware; no constituyen una suite automatizada. Los primeros tests sin teléfono forman parte de la Fase 1.
+La Fase 1A estableció los primeros fundamentos 0.2 sin migrar el runtime legacy:
 
-La arquitectura híbrida todavía no está implementada. La Fase 0 solo preserva el legacy, establece fuentes documentales confiables y prepara el repositorio para comenzar el trabajo incremental.
+- `bot/config.py` define una configuración de runtime explícita y construible sin leer `.env`; la carga desde environment o un archivo dotenv ocurre únicamente mediante `RuntimeConfig.from_env()`.
+- `bot/geometry.py` deriva siempre `(width, height)` desde `frame.shape` y convierte puntos y regiones normalizados mediante helpers puros.
+- `pytest` ejecuta la suite normal bajo `tests/` sin teléfono, ADB, scrcpy-server, red ni interacción humana.
+
+Los archivos de `testing/` siguen siendo scripts manuales ligados a hardware y quedan deliberadamente fuera de la colección automática. `bot/constants.py`, `bot/screen.py` y `bot/ads_manager.py` todavía no consumen los fundamentos nuevos; su migración será incremental.
+
+La arquitectura híbrida completa todavía no está implementada. Captura, dispositivo, percepción, modelo semántico y flows 0.2 permanecen como trabajo futuro.

@@ -9,12 +9,10 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 
 ## Fase 1 — Núcleo reutilizable
 
+- [x] 1A — Establecer baseline pytest sin hardware, configuración explícita y geometría derivada del frame real.
 - [ ] Separar captura scrcpy de percepción.
 - [ ] Separar ADB en un executor o adaptador testeable.
-- [ ] Basar geometría y orientación en las dimensiones reales del frame landscape.
 - [ ] Definir lifecycle y cleanup de captura/dispositivo.
-- [ ] Centralizar configuración sin crear otro módulo monolítico.
-- [ ] Crear los primeros tests automatizados sin hardware.
 
 ## Fase 2 — Modelo semántico
 

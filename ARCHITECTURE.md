@@ -58,6 +58,17 @@ ActionExecutor
 Device / ADB
 ```
 
+## Fundamentos implementados en Fase 1A
+
+La primera porción implementada de 0.2 permanece desacoplada del runtime legacy:
+
+- `bot/config.py` contiene `RuntimeConfig`, un objeto inmutable para configuración de host y runtime. Puede construirse explícitamente y solo consulta environment o dotenv cuando se invoca `from_env()`; no inicia infraestructura al importarse.
+- `bot/geometry.py` contiene conversiones puras de puntos y regiones normalizados. Las dimensiones visuales proceden de `frame.shape`, cuyo orden es `(height, width, ...)`.
+- Los puntos representan índices de píxel: usan floor y el extremo normalizado `1` se satura al último índice válido. Las regiones representan límites de slicing con extremo final exclusivo, por lo que la región completa termina en `(width, height)`.
+- `adb shell wm size` puede conservarse como metadata, diagnóstico o validación auxiliar, pero no puede decidir la geometría de un frame capturado.
+
+Estos módulos no son todavía consumidos por `constants.py`, `screen.py`, `ads_manager.py` ni los flows. La suite automatizada vive en `tests/`; `testing/` conserva únicamente herramientas manuales ligadas a hardware.
+
 ### Capture
 
 Obtiene frames landscape desde scrcpy y expone sus dimensiones reales. No reconoce contextos ni toma decisiones.
