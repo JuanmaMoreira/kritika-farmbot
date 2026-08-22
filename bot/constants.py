@@ -55,31 +55,31 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "lobby",
         "botones": {
-            "season-pass": (0.0678, 0.2018),
-            "time-rewards": (0.0619, 0.3162),
-            "menu-rapido": (0.0789, 0.0654),
-            "shop": (0.0793, 0.8815),
-            "black-market": (0.1667, 0.893),
-            "trading-center": (0.2441, 0.893),
-            "buffs": (0.5852, 0.9101),
-            "quests": (0.653, 0.9126),
-            "treasure": (0.722, 0.9167),
-            "enhance": (0.795, 0.9297),
-            "craft": (0.8536, 0.9093),
-            "combine": (0.9237, 0.9191),
-            "meteorites": (0.9296, 0.7753),
-            "pets": (0.8599, 0.7745),
-            "socket": (0.795, 0.777),
-            "skills": (0.7209, 0.7704),
-            "inventory": (0.6479, 0.7884),
-            "awakening": (0.58, 0.7884),
-            "battle": (0.8529, 0.598),
-            "survival": (0.8097, 0.4297),
-            "stage": (0.8138, 0.2876),
-            "companion": (0.6504, 0.6095),
-            "guild": (0.7891, 0.0858),
-            "friends": (0.8374, 0.0784),
-            "mailbox": (0.8886, 0.0694),
+            "season-pass": {"coords": (0.0678, 0.2018), "outcomes": {}, "timeout": 5},
+            "time-rewards": {"coords": (0.0619, 0.3162), "outcomes": {}, "timeout": 5},
+            "menu-rapido": {"coords": (0.0789, 0.0654), "outcomes": {}, "timeout": 5},
+            "shop": {"coords": (0.0793, 0.8815), "outcomes": {}, "timeout": 5},
+            "black-market": {"coords": (0.1667, 0.893), "outcomes": {}, "timeout": 5},
+            "trading-center": {"coords": (0.2441, 0.893), "outcomes": {}, "timeout": 5},
+            "buffs": {"coords": (0.5852, 0.9101), "outcomes": {}, "timeout": 5},
+            "quests": {"coords": (0.653, 0.9126), "outcomes": {}, "timeout": 5},
+            "treasure": {"coords": (0.722, 0.9167), "outcomes": {}, "timeout": 5},
+            "enhance": {"coords": (0.795, 0.9297), "outcomes": {}, "timeout": 5},
+            "craft": {"coords": (0.8536, 0.9093), "outcomes": {}, "timeout": 5},
+            "combine": {"coords": (0.9237, 0.9191), "outcomes": {}, "timeout": 5},
+            "meteorites": {"coords": (0.9296, 0.7753), "outcomes": {}, "timeout": 5},
+            "pets": {"coords": (0.8599, 0.7745), "outcomes": {}, "timeout": 5},
+            "socket": {"coords": (0.795, 0.777), "outcomes": {}, "timeout": 5},
+            "skills": {"coords": (0.7209, 0.7704), "outcomes": {}, "timeout": 5},
+            "inventory": {"coords": (0.6479, 0.7884), "outcomes": {}, "timeout": 5},
+            "awakening": {"coords": (0.58, 0.7884), "outcomes": {}, "timeout": 5},
+            "battle": {"coords": (0.8529, 0.598), "outcomes": {}, "timeout": 5},
+            "survival": {"coords": (0.8097, 0.4297), "outcomes": {}, "timeout": 5},
+            "stage": {"coords": (0.8138, 0.2876), "outcomes": {}, "timeout": 5},
+            "companion": {"coords": (0.6504, 0.6095), "outcomes": {}, "timeout": 5},
+            "guild": {"coords": (0.7891, 0.0858), "outcomes": {}, "timeout": 5},
+            "friends": {"coords": (0.8374, 0.0784), "outcomes": {}, "timeout": 5},
+            "mailbox": {"coords": (0.8886, 0.0694), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None,
@@ -91,8 +91,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "select": (0.6855, 0.9101),
-            "last-character-after-scroll": (0.7754, 0.5964)
+            "select": {"coords": (0.6855, 0.9101), "outcomes": {}, "timeout": 5},
+            "last-character-after-scroll": {"coords": (0.7754, 0.5964), "outcomes": {}, "timeout": 5}
         },
         "menus":       {},
         "subcontexto": None
@@ -104,40 +104,40 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido": (0.198, 0.0694),
-            "back": (0.8009, 0.067),
-            "elite": (0.8035, 0.1789),
-            "menu-world-map": (0.7305, 0.1895),
-            "dispatch": (0.6726, 0.1928),
-            "x4-stamina": (0.8105, 0.9216),
-            "x3-stamina": (0.7629, 0.9142),
-            "x2-stamina": (0.7176, 0.9126),
-            "x1-stamina": (0.6718, 0.9118),
-            "daily-dungeon": (0.5697, 0.9003),
-            "claim": (0.427, 0.933),
-            "prev-ep": (0.0409, 0.54),
-            "next-ep": (0.9838, 0.54)
+            "menu-rapido": {"coords": (0.198, 0.0694), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8009, 0.067), "outcomes": {}, "timeout": 5},
+            "elite": {"coords": (0.8035, 0.1789), "outcomes": {}, "timeout": 5},
+            "menu-world-map": {"coords": (0.7305, 0.1895), "outcomes": {}, "timeout": 5},
+            "dispatch": {"coords": (0.6726, 0.1928), "outcomes": {}, "timeout": 5},
+            "x4-stamina": {"coords": (0.8105, 0.9216), "outcomes": {}, "timeout": 5},
+            "x3-stamina": {"coords": (0.7629, 0.9142), "outcomes": {}, "timeout": 5},
+            "x2-stamina": {"coords": (0.7176, 0.9126), "outcomes": {}, "timeout": 5},
+            "x1-stamina": {"coords": (0.6718, 0.9118), "outcomes": {}, "timeout": 5},
+            "daily-dungeon": {"coords": (0.5697, 0.9003), "outcomes": {}, "timeout": 5},
+            "claim": {"coords": (0.427, 0.933), "outcomes": {}, "timeout": 5},
+            "prev-ep": {"coords": (0.0409, 0.54), "outcomes": {}, "timeout": 5},
+            "next-ep": {"coords": (0.9838, 0.54), "outcomes": {}, "timeout": 5}
         },
         "menus": {
             "world-map": {
                 "imagen": "assets/ui/world-map-menu-id.png",
                 "region": (0.1777, 0.2672, 0.2201, 0.2925),
                 "botones": {
-                    "ep-01": (0.2024, 0.1544),
-                    "ep-02": (0.2526, 0.1569),
-                    "ep-03": (0.3119, 0.1609),
-                    "ep-04": (0.3654, 0.1536),
-                    "ep-05": (0.4174, 0.1503),
-                    "ep-06": (0.476, 0.1503),
-                    "ep-07": (0.5262, 0.152),
-                    "ep-08": (0.5852, 0.1528),
-                    "ep-09": (0.6375, 0.1544),
-                    "ep-10": (0.6932, 0.1528),
-                    "ep-11": (0.198, 0.2541),
-                    "ep-12": (0.2577, 0.2598),
-                    "ep-13": (0.3105, 0.2565),
-                    "ep-14": (0.3599, 0.2549),
-                    "close": (0.7382, 0.2132),
+                    "ep-01": {"coords": (0.2024, 0.1544), "outcomes": {}, "timeout": 5},
+                    "ep-02": {"coords": (0.2526, 0.1569), "outcomes": {}, "timeout": 5},
+                    "ep-03": {"coords": (0.3119, 0.1609), "outcomes": {}, "timeout": 5},
+                    "ep-04": {"coords": (0.3654, 0.1536), "outcomes": {}, "timeout": 5},
+                    "ep-05": {"coords": (0.4174, 0.1503), "outcomes": {}, "timeout": 5},
+                    "ep-06": {"coords": (0.476, 0.1503), "outcomes": {}, "timeout": 5},
+                    "ep-07": {"coords": (0.5262, 0.152), "outcomes": {}, "timeout": 5},
+                    "ep-08": {"coords": (0.5852, 0.1528), "outcomes": {}, "timeout": 5},
+                    "ep-09": {"coords": (0.6375, 0.1544), "outcomes": {}, "timeout": 5},
+                    "ep-10": {"coords": (0.6932, 0.1528), "outcomes": {}, "timeout": 5},
+                    "ep-11": {"coords": (0.198, 0.2541), "outcomes": {}, "timeout": 5},
+                    "ep-12": {"coords": (0.2577, 0.2598), "outcomes": {}, "timeout": 5},
+                    "ep-13": {"coords": (0.3105, 0.2565), "outcomes": {}, "timeout": 5},
+                    "ep-14": {"coords": (0.3599, 0.2549), "outcomes": {}, "timeout": 5},
+                    "close": {"coords": (0.7382, 0.2132), "outcomes": {}, "timeout": 5},
                 },
             }
         },
@@ -148,15 +148,15 @@ CONTEXTOS_DEFINIDOS = {
                     "imagen":  "assets/ui/ep-14-id.png",
                     "region": (0.3009, 0.5335, 0.4152, 0.598),
                     "botones": {
-                        "stage-01": (0.2294, 0.3668),
-                        "stage-02": (0.3411, 0.4346),
-                        "stage-03": (0.444, 0.3685),
-                        "stage-04": (0.5542, 0.4404),
-                        "stage-05": (0.6541, 0.3709),
-                        "stage-06": (0.7625, 0.4632),
-                        "stage-07": (0.7592, 0.7386),
-                        "stage-08": (0.6622, 0.6528),
-                        "stage-09": (0.556, 0.75)
+                        "stage-01": {"coords": (0.2294, 0.3668), "outcomes": {}, "timeout": 5},
+                        "stage-02": {"coords": (0.3411, 0.4346), "outcomes": {}, "timeout": 5},
+                        "stage-03": {"coords": (0.444, 0.3685), "outcomes": {}, "timeout": 5},
+                        "stage-04": {"coords": (0.5542, 0.4404), "outcomes": {}, "timeout": 5},
+                        "stage-05": {"coords": (0.6541, 0.3709), "outcomes": {}, "timeout": 5},
+                        "stage-06": {"coords": (0.7625, 0.4632), "outcomes": {}, "timeout": 5},
+                        "stage-07": {"coords": (0.7592, 0.7386), "outcomes": {}, "timeout": 5},
+                        "stage-08": {"coords": (0.6622, 0.6528), "outcomes": {}, "timeout": 5},
+                        "stage-09": {"coords": (0.556, 0.75), "outcomes": {}, "timeout": 5}
                     }
                 }
             }
@@ -169,21 +169,21 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "x1": (0.4369, 0.1062),
-            "x2": (0.4882, 0.1087),
-            "x3": (0.5365, 0.1062),
-            "x4": (0.5878, 0.1111),
-            "buff-1": (0.5391, 0.5384),
-            "buff-2": (0.6125, 0.5343),
-            "buff-3": (0.6869, 0.5221),
-            "buff-4": (0.7585, 0.5261),
-            "difficulty-1": (0.2345, 0.9126),
-            "difficulty-2": (0.3079, 0.9093),
-            "difficulty-3": (0.3827, 0.8995),
-            "difficulty-4": (0.4513, 0.8938),
-            "get-support": (0.7459, 0.7917),
-            "start": (0.7364, 0.9118),
-            "close": (0.8042, 0.174),
+            "x1": {"coords": (0.4369, 0.1062), "outcomes": {}, "timeout": 5},
+            "x2": {"coords": (0.4882, 0.1087), "outcomes": {}, "timeout": 5},
+            "x3": {"coords": (0.5365, 0.1062), "outcomes": {}, "timeout": 5},
+            "x4": {"coords": (0.5878, 0.1111), "outcomes": {}, "timeout": 5},
+            "buff-1": {"coords": (0.5391, 0.5384), "outcomes": {}, "timeout": 5},
+            "buff-2": {"coords": (0.6125, 0.5343), "outcomes": {}, "timeout": 5},
+            "buff-3": {"coords": (0.6869, 0.5221), "outcomes": {}, "timeout": 5},
+            "buff-4": {"coords": (0.7585, 0.5261), "outcomes": {}, "timeout": 5},
+            "difficulty-1": {"coords": (0.2345, 0.9126), "outcomes": {}, "timeout": 5},
+            "difficulty-2": {"coords": (0.3079, 0.9093), "outcomes": {}, "timeout": 5},
+            "difficulty-3": {"coords": (0.3827, 0.8995), "outcomes": {}, "timeout": 5},
+            "difficulty-4": {"coords": (0.4513, 0.8938), "outcomes": {}, "timeout": 5},
+            "get-support": {"coords": (0.7459, 0.7917), "outcomes": {}, "timeout": 5},
+            "start": {"coords": (0.7364, 0.9118), "outcomes": {}, "timeout": 5},
+            "close": {"coords": (0.8042, 0.174), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -211,9 +211,9 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "start": (0.5737, 0.8913),
-            "auto": (0.4192, 0.8905),
-            "close": (0.6622, 0.098),
+            "start": {"coords": (0.5737, 0.8913), "outcomes": {}, "timeout": 5},
+            "auto": {"coords": (0.4192, 0.8905), "outcomes": {}, "timeout": 5},
+            "close": {"coords": (0.6622, 0.098), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -225,11 +225,11 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "max": (0.3348, 0.7982),
-            "video": (0.3569, 0.8971),
-            "auro-repeat": (0.5527, 0.9052),
-            "auto-continue": (0.7279, 0.902),
-            "close": (0.8326, 0.0474),
+            "max": {"coords": (0.3348, 0.7982), "outcomes": {}, "timeout": 5},
+            "video": {"coords": (0.3569, 0.8971), "outcomes": {}, "timeout": 5},
+            "auro-repeat": {"coords": (0.5527, 0.9052), "outcomes": {}, "timeout": 5},
+            "auto-continue": {"coords": (0.7279, 0.902), "outcomes": {}, "timeout": 5},
+            "close": {"coords": (0.8326, 0.0474), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -249,8 +249,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "fill-all": (0.5988, 0.8472),
-            "close": (0.7397, 0.0842),
+            "fill-all": {"coords": (0.5988, 0.8472), "outcomes": {}, "timeout": 5},
+            "close": {"coords": (0.7397, 0.0842), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -270,10 +270,37 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4974, 0.8611)
+            "ok": {"coords": (0.4974, 0.8611), "outcomes": {}, "timeout": 5}
         },
         "menus":       {},
         "subcontexto": None
+    },
+    "stage-normal-daily-dungeon": {
+        "imagen": "assets/ui/stage-normal-daily-dungeon-id.png",
+        "region": (0.4322, 0.0752, 0.5612, 0.1275),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "buff-1": (0.5221, 0.5547),
+            "buff-2": (0.618, 0.5588),
+            "buff-3": (0.677, 0.5474),
+            "buff-4": (0.7577, 0.5547),
+            "close": (0.8097, 0.1021),
+            "penance": (0.4296, 0.8791),
+            "start": (0.7227, 0.8366),
+        },
+        "menus":       {},
+        "subcontexto": {
+            "tipo": "selected",
+            "valores": {
+                "penance": {
+                    "imagen": "assets/ui/daily-dungeon-penance-selected.png",
+                    "region": (0.3827, 0.8121, 0.4764, 0.8701),
+                },
+                # se puede ampliar confirmacion de buffs seleccionados
+            }
+        },
     },
     "stage-elite-chaos": {
         "imagen": "assets/ui/stage-elite-chaos-id.png",
@@ -282,15 +309,15 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo": "default",
         "botones": {
-            "menu-rapido": (0.1921, 0.0613),
-            "back": (0.806, 0.0588),
-            "elite-chest1": (0.5236, 0.8775),
-            "elite-chest2": (0.6154, 0.8799),
-            "elite-chest3": (0.705, 0.8709),
-            "elite-chest4": (0.7924, 0.8775),
-            "claim": (0.4207, 0.9322),
-            "stage-normal": (0.8053, 0.1822),
-            "elite-chaos": (0.7364, 0.1822), # switchs between elite and chaos
+            "menu-rapido": {"coords": (0.1921, 0.0613), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.806, 0.0588), "outcomes": {}, "timeout": 5},
+            "elite-chest1": {"coords": (0.5236, 0.8775), "outcomes": {}, "timeout": 5},
+            "elite-chest2": {"coords": (0.6154, 0.8799), "outcomes": {}, "timeout": 5},
+            "elite-chest3": {"coords": (0.705, 0.8709), "outcomes": {}, "timeout": 5},
+            "elite-chest4": {"coords": (0.7924, 0.8775), "outcomes": {}, "timeout": 5},
+            "claim": {"coords": (0.4207, 0.9322), "outcomes": {}, "timeout": 5},
+            "stage-normal": {"coords": (0.8053, 0.1822), "outcomes": {}, "timeout": 5},
+            "elite-chaos": {"coords": (0.7364, 0.1822), "outcomes": {}, "timeout": 5}, # switchs between elite and chaos
         },
         "menus":       {},
         "subcontexto": { # falta tomar el subcontexto de los cofres
@@ -300,33 +327,231 @@ CONTEXTOS_DEFINIDOS = {
                     "imagen": "assets/ui/stage-elite-ep-id.png",
                     "region": (0.7176, 0.2075, 0.7655, 0.2484),
                     "botones": {
-                        "01": (0.2117, 0.4158),
-                        "02": (0.3112, 0.4183),
-                        "03": (0.4063, 0.4134),
-                        "04": (0.5018, 0.4232),
-                        "05": (0.5959, 0.4248),
-                        "06": (0.6965, 0.4208),
-                        "07": (0.7858, 0.4118),
-                        "08": (0.1999, 0.6413),
-                        "09": (0.2976, 0.6552),
-                        "10": (0.4023, 0.6324),
-                        "11": (0.5177, 0.652),
-                        "12": (0.5944, 0.6495),
-                        "13": (0.6836, 0.6618),
-                        "14": (0.7876, 0.652),
+                        "01": {"coords": (0.2117, 0.4158), "outcomes": {}, "timeout": 5},
+                        "02": {"coords": (0.3112, 0.4183), "outcomes": {}, "timeout": 5},
+                        "03": {"coords": (0.4063, 0.4134), "outcomes": {}, "timeout": 5},
+                        "04": {"coords": (0.5018, 0.4232), "outcomes": {}, "timeout": 5},
+                        "05": {"coords": (0.5959, 0.4248), "outcomes": {}, "timeout": 5},
+                        "06": {"coords": (0.6965, 0.4208), "outcomes": {}, "timeout": 5},
+                        "07": {"coords": (0.7858, 0.4118), "outcomes": {}, "timeout": 5},
+                        "08": {"coords": (0.1999, 0.6413), "outcomes": {}, "timeout": 5},
+                        "09": {"coords": (0.2976, 0.6552), "outcomes": {}, "timeout": 5},
+                        "10": {"coords": (0.4023, 0.6324), "outcomes": {}, "timeout": 5},
+                        "11": {"coords": (0.5177, 0.652), "outcomes": {}, "timeout": 5},
+                        "12": {"coords": (0.5944, 0.6495), "outcomes": {}, "timeout": 5},
+                        "13": {"coords": (0.6836, 0.6618), "outcomes": {}, "timeout": 5},
+                        "14": {"coords": (0.7876, 0.652), "outcomes": {}, "timeout": 5},
                     }
                 },
                 "chaos": {
                     "imagen": "assets/ui/stage-chaos-ep-id.png",
                     "region": (0.7238, 0.2075, 0.757, 0.2484),
                     "botones": {
-                        "15": (0.4624, 0.5564),
-                        "16": (0.597, 0.5564),
-                        "17": (0.7312, 0.5474),
+                        "15": {"coords": (0.4624, 0.5564), "outcomes": {}, "timeout": 5},
+                        "16": {"coords": (0.597, 0.5564), "outcomes": {}, "timeout": 5},
+                        "17": {"coords": (0.7312, 0.5474), "outcomes": {}, "timeout": 5},
                     }
+                }
+            },
+            "tipo": "chest",
+            "valores": {
+                "elite-bronze-chest": { # falta el asset de bronze elite chest
+                    "region": (0.4956, 0.8047, 0.8333, 0.8848),
+                },
+                "elite-silver-chest": {
+                    "imagen": "assets/ui/elite-silver-chest.png",
+                    "region": (0.4956, 0.8047, 0.8333, 0.8848),
+                },
+                "elite-gold-chest": {
+                    "imagen": "assets/ui/elite-gold-chest.png",
+                    "region": (0.4956, 0.8047, 0.8333, 0.8848),
+                },
+                "elite-platinum-chest": {
+                    "imagen": "assets/ui/elite-platinum-chest.png",
+                    "region": (0.4956, 0.8047, 0.8333, 0.8848),
+                },
+                "elite-diamond-chest": {
+                    "imagen": "assets/ui/elite-diamond-chest.png",
+                    "region": (0.4956, 0.8047, 0.8333, 0.8848),
+                }
+            },
+            "tipo": "status",
+            "valores": {
+                "ready-to-open": {
+                    "imagen": "assets/ui/elite-ready-to-open.png",
+                    "region": (0.4838, 0.9257, 0.8385, 0.9771),
+                },
+                "open-with-gold": {
+                    "imagen": "assets/ui/elite-open-with-gold.png",
+                    "region": (0.4819, 0.9248, 0.778, 0.973),
+                },
+                "open-with-karats": {
+                    "imagen": "assets/ui/elite-open-with-karats.png",
+                    "region": (0.4819, 0.9248, 0.778, 0.973),
                 }
             }
         },
+    },
+    "stage-elite-chaos-selected": {
+        "imagen": "assets/ui/stage-elite-chaos-selected-id.png",
+        "region": (0.1914, 0.2402, 0.2168, 0.3113),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "close": (0.8009, 0.2802),
+            "buff-1": (0.5265, 0.4502),
+            "buff-2": (0.5937, 0.4526),
+            "buff-3": (0.6674, 0.4412),
+            "buff-4": (0.7544, 0.4567),
+            "difficulty-1": (0.2371, 0.8619),
+            "difficulty-2": (0.3053, 0.8905),
+            "difficulty-3": (0.3724, 0.8636),
+            "difficulty-4": (0.4458, 0.866),
+            "start": (0.7286, 0.8791),
+            "x2-start": (0.7098, 0.7778),
+            "get-support": (0.743, 0.6814),
+        },
+        "menus":       {},
+        "subcontexto": {
+            "tipo": "mao-support",
+            "valores": {
+                "purchased": {
+                    "imagen": "assets/ui/mao-purchased-id.png",
+                    "region": (0.6515, 0.6299, 0.6906, 0.6838),
+                },
+                "not-purchased": {
+                    "imagen": "assets/ui/mao-not-purchased-id.png",
+                    "region": (0.6515, 0.6299, 0.6906, 0.6838),
+                },
+                "activated": {
+                    "imagen": "assets/ui/mao-activated.png",
+                    "region": (0.5313, 0.634, 0.6095, 0.6863),
+                }
+            }
+        },
+
+    },
+    "stage-elite-chaos-selected-start": {
+        "imagen": "assets/ui/stage-elite-chaos-selected-start-id.png",
+        "region": (0.4543, 0.4542, 0.6073, 0.4935),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "close": (0.6615, 0.2132),
+            "start": (0.5682, 0.6748),
+            "auto-repeat": (0.4318, 0.6789),
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "stage-elite-chaos-in-progress": {
+        "imagen": "assets/ui/stage-elite-chaos-in-progress-id.png",
+        "region": (0.8573, 0.0359, 0.8979, 0.0752),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "auto-play-toggle": (0.8783, 0.0588),
+            "pause": (0.9406, 0.0564),
+            "auto-repeat-toggle": (0.5041, 0.7516),
+            "EX": (0.6751, 0.8685),
+        },
+        "menus":       {},
+        "subcontexto": {
+            "tipo": "toggle",
+            "valores": {
+                "auto-repeat-off": {
+                    "imagen": "assets/ui/auto-repeat-toggle-off.png",
+                    "region": (0.4336, 0.7173, 0.5656, 0.777),
+                },
+                "auto-repeat-on": {
+                    "imagen": "assets/ui/auto-repeat-toggle-on.png",
+                    "region": (0.4432, 0.7222, 0.556, 0.7704),
+                },
+                "auto-play-off": {
+                    "imagen": "assets/ui/auto-play-off.png",
+                    "region": (0.8429, 0.018, 0.9115, 0.0915),
+                    "threshold": 0.90,
+                }
+            }
+        },
+    },
+    "stage-elite-chaos-battle-ended": {
+        "imagen": "assets/ui/stage-elite-chaos-battle-ended-id.png",
+        "region": (0.4373, 0.8252, 0.5619, 0.8766),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "tap": (0.4735, 0.848)
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "stage-elite-chaos-auto-ended": {
+        "imagen": "assets/ui/stage-elite-chaos-auto-ended-id.png",
+        "region": (0.3514, 0.4363, 0.6486, 0.5049),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "ok": (0.5033, 0.6299),
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "stage-elite-chaos-slot-full": {
+        "imagen": "assets/ui/stage-elite-chaos-slot-full-id.png",
+        "region": (0.3625, 0.4224, 0.6386, 0.5302),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "yes": (0.4329, 0.6266), # proceed anyway
+            "no": (0.5682, 0.6275),  # cancel
+        },
+        "menus":       {},
+        "subcontexto": None
+    },
+    "stage-elite-chest-rush": {
+        "imagen": "assets/ui/stage-elite-chest-rush-id.png",
+        "region": (0.3673, 0.7525, 0.4576, 0.8047),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "yes": (0.4329, 0.6675), # use currency
+            "no": (0.5697, 0.6708),
+        },
+        "menus":       {},
+        "subcontexto": {
+            "tipo": "currency",
+            "valores": {
+                "gold": {
+                    "imagen": "assets/ui/rush-with-gold.png",
+                    "region": (0.4322, 0.3685, 0.5605, 0.4069),
+                },
+                "karats": {
+                    "imagen": "assets/ui/rush-with-karats.png",
+                    "region": (0.4218, 0.3709, 0.5299, 0.4069),
+                }
+            },
+        },
+    },
+    "stage-paused": {
+        "imagen": "assets/ui/paused-id.png",
+        "region": (0.4679, 0.2198, 0.5332, 0.268),
+        "threshold": 0.85,
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "yes": (0.4344, 0.5319), # quit
+            "no": (0.5605, 0.5343),  # close
+        },
+        "menus":       {},
+        "subcontexto": None
     },
     "buffs": {
         "imagen": "assets/ui/buffs-id.png",
@@ -334,10 +559,10 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.8182, 0.0588),
-            "astrologer-buff": (0.2813, 0.1658),
-            "alchemist-buff": (0.4414, 0.1585),
-            "heaven-or-hell": (0.6014, 0.1683),
+            "close": {"coords": (0.8182, 0.0588), "outcomes": {}, "timeout": 5},
+            "astrologer-buff": {"coords": (0.2813, 0.1658), "outcomes": {}, "timeout": 5},
+            "alchemist-buff": {"coords": (0.4414, 0.1585), "outcomes": {}, "timeout": 5},
+            "heaven-or-hell": {"coords": (0.6014, 0.1683), "outcomes": {}, "timeout": 5},
         },
         "menus": {},
         "subcontexto": {
@@ -351,7 +576,7 @@ CONTEXTOS_DEFINIDOS = {
                     "imagen": "assets/ui/alchemist-buff-tab.png",
                     "region": (0.2858, 0.4493, 0.3156, 0.5098),
                     "botones": {
-                        "free-buff-video": (0.5612, 0.8546),
+                        "free-buff-video": {"coords": (0.5612, 0.8546), "outcomes": {}, "timeout": 5},
                     }                    
                 },
                 #"heaven-or-hell-tab": {}, falta completar
@@ -365,15 +590,15 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido": (0.1906, 0.0711),
-            "back": (0.8053, 0.0866),
-            "monster-wave": (0.2389, 0.3995),
-            "companion-battle": (0.4115, 0.4118),
-            "world-boss": (0.3514, 0.7843),
-            "tot": (0.5708, 0.4542),
-            "tower-of-proof": (0.7423, 0.4142),
-            "labyrinth": (0.5763, 0.8039),
-            "expedition": (0.7345, 0.7958)
+            "menu-rapido": {"coords": (0.1906, 0.0711), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8053, 0.0866), "outcomes": {}, "timeout": 5},
+            "monster-wave": {"coords": (0.2389, 0.3995), "outcomes": {}, "timeout": 5},
+            "companion-battle": {"coords": (0.4115, 0.4118), "outcomes": {}, "timeout": 5},
+            "world-boss": {"coords": (0.3514, 0.7843), "outcomes": {}, "timeout": 5},
+            "tot": {"coords": (0.5708, 0.4542), "outcomes": {}, "timeout": 5},
+            "tower-of-proof": {"coords": (0.7423, 0.4142), "outcomes": {}, "timeout": 5},
+            "labyrinth": {"coords": (0.5763, 0.8039), "outcomes": {}, "timeout": 5},
+            "expedition": {"coords": (0.7345, 0.7958), "outcomes": {}, "timeout": 5}
         },
         "menus":       {},
         "subcontexto": None
@@ -385,19 +610,19 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido": (0.1785, 0.0523),
-            "back": (0.8079, 0.0547),
-            "penance-after-scroll": (0.2625, 0.8791),
-            "buff-1": (0.5572, 0.3186),
-            "buff-2": (0.6268, 0.3113),
-            "buff-3": (0.7117, 0.3301),
-            "buff-4": (0.7806, 0.3121),
-            "skip": (0.7636, 0.7092),
-            "start": (0.7651, 0.8734),
-            "max-sapphires": (0.7898, 0.6021),
-            "x3-sapphires": (0.7423, 0.6046),
-            "x2-sapphires": (0.6903, 0.5907),
-            "x1-sapphires": (0.6405, 0.6005),
+            "menu-rapido": {"coords": (0.1785, 0.0523), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8079, 0.0547), "outcomes": {}, "timeout": 5},
+            "penance-after-scroll": {"coords": (0.2625, 0.8791), "outcomes": {}, "timeout": 5},
+            "buff-1": {"coords": (0.5572, 0.3186), "outcomes": {}, "timeout": 5},
+            "buff-2": {"coords": (0.6268, 0.3113), "outcomes": {}, "timeout": 5},
+            "buff-3": {"coords": (0.7117, 0.3301), "outcomes": {}, "timeout": 5},
+            "buff-4": {"coords": (0.7806, 0.3121), "outcomes": {}, "timeout": 5},
+            "skip": {"coords": (0.7636, 0.7092), "outcomes": {}, "timeout": 5},
+            "start": {"coords": (0.7651, 0.8734), "outcomes": {}, "timeout": 5},
+            "max-sapphires": {"coords": (0.7898, 0.6021), "outcomes": {}, "timeout": 5},
+            "x3-sapphires": {"coords": (0.7423, 0.6046), "outcomes": {}, "timeout": 5},
+            "x2-sapphires": {"coords": (0.6903, 0.5907), "outcomes": {}, "timeout": 5},
+            "x1-sapphires": {"coords": (0.6405, 0.6005), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -417,7 +642,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.5018, 0.8121),
+            "ok": {"coords": (0.5018, 0.8121), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -429,8 +654,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "yes": (0.4381, 0.6324),
-            "no": (0.58, 0.6209),
+            "yes": {"coords": (0.4381, 0.6324), "outcomes": {}, "timeout": 5},
+            "no": {"coords": (0.58, 0.6209), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": { # COMPLETAR ASSETS
@@ -466,7 +691,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.5015, 0.6585)
+            "ok": {"coords": (0.5015, 0.6585), "outcomes": {}, "timeout": 5}
         },
         "menus":       {},
         "subcontexto": None
@@ -478,7 +703,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4959, 0.759),
+            "ok": {"coords": (0.4959, 0.759), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -490,8 +715,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "available": (0.4974, 0.5449),
-            "close": (0.5033, 0.9379),
+            "available": {"coords": (0.4974, 0.5449), "outcomes": {}, "timeout": 5},
+            "close": {"coords": (0.5033, 0.9379), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -503,10 +728,10 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo": "default",
         "botones": {
-            "menu-rapido": (0.194, 0.0564),
-            "back": (0.8156, 0.0564),
-            "start": (0.774, 0.9346),
-            "auto-repeat": (0.7762, 0.8497),
+            "menu-rapido": {"coords": (0.194, 0.0564), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8156, 0.0564), "outcomes": {}, "timeout": 5},
+            "start": {"coords": (0.774, 0.9346), "outcomes": {}, "timeout": 5},
+            "auto-repeat": {"coords": (0.7762, 0.8497), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -518,8 +743,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.6895, 0.1675),
-            "auto-repeat": (0.4897, 0.6127),
+            "close": {"coords": (0.6895, 0.1675), "outcomes": {}, "timeout": 5},
+            "auto-repeat": {"coords": (0.4897, 0.6127), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -531,9 +756,9 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo": "default",
         "botones": {
-            "menu-rapido": (0.1991, 0.0752),
-            "back": (0.8042, 0.0882),
-            "start-expedition": (0.6818, 0.9281),
+            "menu-rapido": {"coords": (0.1991, 0.0752), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8042, 0.0882), "outcomes": {}, "timeout": 5},
+            "start-expedition": {"coords": (0.6818, 0.9281), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -545,22 +770,22 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "buy-item-01": (0.4491, 0.3415),
-            "buy-item-02": (0.4506, 0.4698),
-            "buy-item-03": (0.4524, 0.5948),
-            "buy-item-04": (0.4539, 0.7337),
-            "buy-item-05": (0.4454, 0.8725),
-            "buy-item-06": (0.7592, 0.3415),
-            "buy-item-07": (0.757, 0.4706),
-            "buy-item-08": (0.7507, 0.6095),
-            "buy-item-09": (0.7592, 0.7377),
-            "buy-item-10": (0.7592, 0.8717),
-            "refresh": (0.5723, 0.2157),
-            "close": (0.8097, 0.1324),
+            "buy-item-01": {"coords": (0.4491, 0.3415), "outcomes": {}, "timeout": 5},
+            "buy-item-02": {"coords": (0.4506, 0.4698), "outcomes": {}, "timeout": 5},
+            "buy-item-03": {"coords": (0.4524, 0.5948), "outcomes": {}, "timeout": 5},
+            "buy-item-04": {"coords": (0.4539, 0.7337), "outcomes": {}, "timeout": 5},
+            "buy-item-05": {"coords": (0.4454, 0.8725), "outcomes": {}, "timeout": 5},
+            "buy-item-06": {"coords": (0.7592, 0.3415), "outcomes": {}, "timeout": 5},
+            "buy-item-07": {"coords": (0.757, 0.4706), "outcomes": {}, "timeout": 5},
+            "buy-item-08": {"coords": (0.7507, 0.6095), "outcomes": {}, "timeout": 5},
+            "buy-item-09": {"coords": (0.7592, 0.7377), "outcomes": {}, "timeout": 5},
+            "buy-item-10": {"coords": (0.7592, 0.8717), "outcomes": {}, "timeout": 5},
+            "refresh": {"coords": (0.5723, 0.2157), "outcomes": {}, "timeout": 5},
+            "close": {"coords": (0.8097, 0.1324), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
-            "tipo": "sold-by",
+            "tipo": "currency",
             "valores": {
                 "col1": {
                     "imagen": "assets/ui/gold-coin-bm.png",
@@ -580,8 +805,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "yes": (0.4347, 0.634),
-            "no": (0.569, 0.6307),
+            "yes": {"coords": (0.4347, 0.634), "outcomes": {}, "timeout": 5},
+            "no": {"coords": (0.569, 0.6307), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -593,10 +818,10 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "race": (0.2201, 0.2018),
-            "growth": (0.3127, 0.2222),
-            "menu-rapido": (0.2024, 0.0621),
-            "back": (0.8009, 0.0842),
+            "race": {"coords": (0.2201, 0.2018), "outcomes": {}, "timeout": 5},
+            "growth": {"coords": (0.3127, 0.2222), "outcomes": {}, "timeout": 5},
+            "menu-rapido": {"coords": (0.2024, 0.0621), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8009, 0.0842), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -606,7 +831,7 @@ CONTEXTOS_DEFINIDOS = {
                     "imagen": "assets/ui/season-pass-race-id.png",
                     "region": (0.3156, 0.4918, 0.3835, 0.576),
                     "botones":   {
-                        "claim-all": (0.3451, 0.6536),
+                        "claim-all": {"coords": (0.3451, 0.6536), "outcomes": {}, "timeout": 5},
                     },
                 }
             }
@@ -619,8 +844,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "yes": (0.4336, 0.6242),
-            "no": (0.569, 0.6258),
+            "yes": {"coords": (0.4336, 0.6242), "outcomes": {}, "timeout": 5},
+            "no": {"coords": (0.569, 0.6258), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -632,13 +857,13 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.8208, 0.1021),
-            "reward-01": (0.285, 0.4755),
-            "reward-02": (0.5044, 0.4706),
-            "reward-03": (0.7058, 0.4706),
-            "reward-04": (0.2902, 0.7745),
-            "reward-05": (0.5026, 0.7639),
-            "reward-06": (0.715, 0.7614),
+            "close": {"coords": (0.8208, 0.1021), "outcomes": {}, "timeout": 5},
+            "reward-01": {"coords": (0.285, 0.4755), "outcomes": {}, "timeout": 5},
+            "reward-02": {"coords": (0.5044, 0.4706), "outcomes": {}, "timeout": 5},
+            "reward-03": {"coords": (0.7058, 0.4706), "outcomes": {}, "timeout": 5},
+            "reward-04": {"coords": (0.2902, 0.7745), "outcomes": {}, "timeout": 5},
+            "reward-05": {"coords": (0.5026, 0.7639), "outcomes": {}, "timeout": 5},
+            "reward-06": {"coords": (0.715, 0.7614), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -658,13 +883,13 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "arena": (0.2847, 0.424),
-            "league-match": (0.4908, 0.3685),
-            "invasion": (0.2872, 0.7426),
-            "ranker-break": (0.4779, 0.7288),
-            "melee": (0.7286, 0.7165),
-            "back": (0.8013, 0.0743),
-            "menu-rapido": (0.205, 0.0564),
+            "arena": {"coords": (0.2847, 0.424), "outcomes": {}, "timeout": 5},
+            "league-match": {"coords": (0.4908, 0.3685), "outcomes": {}, "timeout": 5},
+            "invasion": {"coords": (0.2872, 0.7426), "outcomes": {}, "timeout": 5},
+            "ranker-break": {"coords": (0.4779, 0.7288), "outcomes": {}, "timeout": 5},
+            "melee": {"coords": (0.7286, 0.7165), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8013, 0.0743), "outcomes": {}, "timeout": 5},
+            "menu-rapido": {"coords": (0.205, 0.0564), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -676,12 +901,12 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido": (0.1914, 0.0678),
-            "back": (0.8001, 0.0858),
-            "beginner": (0.2806, 0.6479),
-            "intermediate": (0.483, 0.5727),
-            "expert": (0.7459, 0.585),
-            "refresh": (0.7688, 0.9461),
+            "menu-rapido": {"coords": (0.1914, 0.0678), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8001, 0.0858), "outcomes": {}, "timeout": 5},
+            "beginner": {"coords": (0.2806, 0.6479), "outcomes": {}, "timeout": 5},
+            "intermediate": {"coords": (0.483, 0.5727), "outcomes": {}, "timeout": 5},
+            "expert": {"coords": (0.7459, 0.585), "outcomes": {}, "timeout": 5},
+            "refresh": {"coords": (0.7688, 0.9461), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -693,17 +918,17 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "x2": (0.6615, 0.7312),
-            "x3": (0.7076, 0.7312),
-            "x5": (0.743, 0.7361),
-            "x8": (0.7902, 0.7304),
-            "buff-1": (0.5509, 0.3758),
-            "buff-2": (0.6763, 0.3619),
-            "buff-3": (0.7681, 0.3603),
-            "menu-rapido": (0.194, 0.0703),
-            "back": (0.7968, 0.0645),
-            "start": (0.7677, 0.9534),
-            "auto-repeat": (0.7603, 0.8521),
+            "x2": {"coords": (0.6615, 0.7312), "outcomes": {}, "timeout": 5},
+            "x3": {"coords": (0.7076, 0.7312), "outcomes": {}, "timeout": 5},
+            "x5": {"coords": (0.743, 0.7361), "outcomes": {}, "timeout": 5},
+            "x8": {"coords": (0.7902, 0.7304), "outcomes": {}, "timeout": 5},
+            "buff-1": {"coords": (0.5509, 0.3758), "outcomes": {}, "timeout": 5},
+            "buff-2": {"coords": (0.6763, 0.3619), "outcomes": {}, "timeout": 5},
+            "buff-3": {"coords": (0.7681, 0.3603), "outcomes": {}, "timeout": 5},
+            "menu-rapido": {"coords": (0.194, 0.0703), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.7968, 0.0645), "outcomes": {}, "timeout": 5},
+            "start": {"coords": (0.7677, 0.9534), "outcomes": {}, "timeout": 5},
+            "auto-repeat": {"coords": (0.7603, 0.8521), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -735,9 +960,9 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.6847, 0.1021),
-            "auto-repeat": (0.5052, 0.8799),
-            "upon-defeat": (0.6608, 0.7721),
+            "close": {"coords": (0.6847, 0.1021), "outcomes": {}, "timeout": 5},
+            "auto-repeat": {"coords": (0.5052, 0.8799), "outcomes": {}, "timeout": 5},
+            "upon-defeat": {"coords": (0.6608, 0.7721), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -757,7 +982,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "tap": (0.4875, 0.8889),
+            "tap": {"coords": (0.4875, 0.8889), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -769,7 +994,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4934, 0.6291),
+            "ok": {"coords": (0.4934, 0.6291), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -781,19 +1006,19 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "pause": (0.8182, 0.183),
-            "auto-repeat": (0.5018, 0.7525),
+            "pause": {"coords": (0.8182, 0.183), "outcomes": {}, "timeout": 5},
+            "auto-repeat": {"coords": (0.5018, 0.7525), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
             "tipo": "toggle",
             "valores": {
                 "auto-repeat-off": {
-                    "imagen": "assets/ui/arena-auto-repeat-toggle-off.png",
+                    "imagen": "assets/ui/auto-repeat-toggle-off.png",
                     "region": (0.4336, 0.7173, 0.5656, 0.777),
                 },
                 "auto-repeat-on": {
-                    "imagen": "assets/ui/arena-auto-repeat-toggle-on.png",
+                    "imagen": "assets/ui/auto-repeat-toggle-on.png",
                     "region": (0.4432, 0.7222, 0.556, 0.7704),
                 }
             }
@@ -806,7 +1031,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4941, 0.7288),
+            "ok": {"coords": (0.4941, 0.7288), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -818,7 +1043,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4993, 0.6683),
+            "ok": {"coords": (0.4993, 0.6683), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -830,18 +1055,18 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.8197, 0.1675),
-            "account-mail": (0.2618, 0.2786),
-            "character-mail": (0.382, 0.2778),
+            "close": {"coords": (0.8197, 0.1675), "outcomes": {}, "timeout": 5},
+            "account-mail": {"coords": (0.2618, 0.2786), "outcomes": {}, "timeout": 5},
+            "character-mail": {"coords": (0.382, 0.2778), "outcomes": {}, "timeout": 5},
             #"striker-rewards": (0.5077, 0.2884), # no real use cases
-            "friends": (0.6235, 0.2827),
-            "claim-all": (0.4764, 0.3546),
-            "delete-read": (0.2898, 0.357),
-            "claim-pos1": (0.7493, 0.4575),
-            "claim-pos2": (0.7485, 0.576),
-            "claim-pos3": (0.7474, 0.7002),
-            "claim-pos4": (0.7485, 0.8121),
-            "claim-bottom-after-scroll": (0.7482, 0.8636),
+            "friends": {"coords": (0.6235, 0.2827), "outcomes": {}, "timeout": 5},
+            "claim-all": {"coords": (0.4764, 0.3546), "outcomes": {}, "timeout": 5},
+            "delete-read": {"coords": (0.2898, 0.357), "outcomes": {}, "timeout": 5},
+            "claim-pos1": {"coords": (0.7493, 0.4575), "outcomes": {}, "timeout": 5},
+            "claim-pos2": {"coords": (0.7485, 0.576), "outcomes": {}, "timeout": 5},
+            "claim-pos3": {"coords": (0.7474, 0.7002), "outcomes": {}, "timeout": 5},
+            "claim-pos4": {"coords": (0.7485, 0.8121), "outcomes": {}, "timeout": 5},
+            "claim-bottom-after-scroll": {"coords": (0.7482, 0.8636), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -884,18 +1109,18 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.8127, 0.107),
-            "send-res-to-all": (0.7662, 0.8889),
-            "delete": (0.5597, 0.8954),
-            "list": (0.2364, 0.2083),
-            "recommended": (0.3418, 0.2181),
-            "pending": (0.4458, 0.2165),
-            "page-down": (0.3879, 0.924),
-            "page-up": (0.2935, 0.9232),
-            "slot-1": (0.4473, 0.3636),
-            "slot-2": (0.4458, 0.5082),
-            "slot-3": (0.4458, 0.6454),
-            "slot-4": (0.448, 0.8031),
+            "close": {"coords": (0.8127, 0.107), "outcomes": {}, "timeout": 5},
+            "send-res-to-all": {"coords": (0.7662, 0.8889), "outcomes": {}, "timeout": 5},
+            "delete": {"coords": (0.5597, 0.8954), "outcomes": {}, "timeout": 5},
+            "list": {"coords": (0.2364, 0.2083), "outcomes": {}, "timeout": 5},
+            "recommended": {"coords": (0.3418, 0.2181), "outcomes": {}, "timeout": 5},
+            "pending": {"coords": (0.4458, 0.2165), "outcomes": {}, "timeout": 5},
+            "page-down": {"coords": (0.3879, 0.924), "outcomes": {}, "timeout": 5},
+            "page-up": {"coords": (0.2935, 0.9232), "outcomes": {}, "timeout": 5},
+            "slot-1": {"coords": (0.4473, 0.3636), "outcomes": {}, "timeout": 5},
+            "slot-2": {"coords": (0.4458, 0.5082), "outcomes": {}, "timeout": 5},
+            "slot-3": {"coords": (0.4458, 0.6454), "outcomes": {}, "timeout": 5},
+            "slot-4": {"coords": (0.448, 0.8031), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -923,8 +1148,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "yes": (0.4347, 0.6364),
-            "no": (0.5737, 0.6283),
+            "yes": {"coords": (0.4347, 0.6364), "outcomes": {}, "timeout": 5},
+            "no": {"coords": (0.5737, 0.6283), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -936,7 +1161,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.5015, 0.6283),
+            "ok": {"coords": (0.5015, 0.6283), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -948,7 +1173,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4967, 0.6422),
+            "ok": {"coords": (0.4967, 0.6422), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -960,9 +1185,9 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.8256, 0.0948),
-            "claim-all": (0.6973, 0.1364),
-            "claim-karat": (0.6921, 0.3292),
+            "close": {"coords": (0.8256, 0.0948), "outcomes": {}, "timeout": 5},
+            "claim-all": {"coords": (0.6973, 0.1364), "outcomes": {}, "timeout": 5},
+            "claim-karat": {"coords": (0.6921, 0.3292), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -982,8 +1207,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "yes": (0.4395, 0.6332),
-            "no": (0.5697, 0.6291),
+            "yes": {"coords": (0.4395, 0.6332), "outcomes": {}, "timeout": 5},
+            "no": {"coords": (0.5697, 0.6291), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -995,13 +1220,13 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "back":           (851, 32),
-            "menu-rapido":    (134, 41),
-            "physical-tower": (189, 130),
-            "magical-tower":  (366, 134),
-            "socket":         (810, 313),
-            "start":          (806, 522),
-            "auto-repeat":    (808, 480),
+            "back":           {"coords": (851, 32), "outcomes": {}, "timeout": 5},
+            "menu-rapido":    {"coords": (134, 41), "outcomes": {}, "timeout": 5},
+            "physical-tower": {"coords": (189, 130), "outcomes": {}, "timeout": 5},
+            "magical-tower":  {"coords": (366, 134), "outcomes": {}, "timeout": 5},
+            "socket":         {"coords": (810, 313), "outcomes": {}, "timeout": 5},
+            "start":          {"coords": (806, 522), "outcomes": {}, "timeout": 5},
+            "auto-repeat":    {"coords": (808, 480), "outcomes": {}, "timeout": 5},
         },
         "menus": {},
         "subcontexto": {
@@ -1029,9 +1254,9 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo":       None,
         "botones": {
-            "auto-repeat": (562, 399),
-            "auto-continue": (743, 388),
-            "close": (854, 83),
+            "auto-repeat": {"coords": (562, 399), "outcomes": {}, "timeout": 5},
+            "auto-continue": {"coords": (743, 388), "outcomes": {}, "timeout": 5},
+            "close": {"coords": (854, 83), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1043,7 +1268,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo":       None,
         "botones": {
-            "ok": (486, 335)
+            "ok": {"coords": (486, 335), "outcomes": {}, "timeout": 5}
         },
         "menus":       {},
         "subcontexto": None
@@ -1055,7 +1280,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo":       None,
         "botones": {
-            "ok": (477, 338),
+            "ok": {"coords": (477, 338), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1067,30 +1292,30 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido": (0.1999, 0.0743),
-            "back": (0.8009, 0.0768),
-            "socket": (0.1987, 0.1904),
-            "equipment-home": (0.3131, 0.1838),
-            "enhance-gem-absorption": (0.4277, 0.1855),
-            "enhance-all": (0.6206, 0.9534),
-            "next-page": (0.7987, 0.9461),
-            "prev-page": (0.7043, 0.942),
-            "bag-slot-01": (0.5808, 0.402),
-            "bag-slot-02": (0.6504, 0.4109),
-            "bag-slot-03": (0.7124, 0.406),
-            "bag-slot-04": (0.7858, 0.3995),
-            "bag-slot-05": (0.5848, 0.5408),
-            "bag-slot-06": (0.6486, 0.5498),
-            "bag-slot-07": (0.7187, 0.54),
-            "bag-slot-08": (0.7876, 0.5425),
-            "bag-slot-09": (0.5826, 0.6781),
-            "bag-slot-10": (0.6512, 0.6748),
-            "bag-slot-11": (0.7201, 0.6895),
-            "bag-slot-12": (0.7788, 0.6944),
-            "bag-slot-13": (0.5808, 0.817),
-            "bag-slot-14": (0.6538, 0.8186),
-            "bag-slot-15": (0.7153, 0.8219),
-            "bag-slot-16": (0.7847, 0.8211),
+            "menu-rapido": {"coords": (0.1999, 0.0743), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8009, 0.0768), "outcomes": {}, "timeout": 5},
+            "socket": {"coords": (0.1987, 0.1904), "outcomes": {}, "timeout": 5},
+            "equipment-home": {"coords": (0.3131, 0.1838), "outcomes": {}, "timeout": 5},
+            "enhance-gem-absorption": {"coords": (0.4277, 0.1855), "outcomes": {}, "timeout": 5},
+            "enhance-all": {"coords": (0.6206, 0.9534), "outcomes": {}, "timeout": 5},
+            "next-page": {"coords": (0.7987, 0.9461), "outcomes": {}, "timeout": 5},
+            "prev-page": {"coords": (0.7043, 0.942), "outcomes": {}, "timeout": 5},
+            "bag-slot-01": {"coords": (0.5808, 0.402), "outcomes": {}, "timeout": 5},
+            "bag-slot-02": {"coords": (0.6504, 0.4109), "outcomes": {}, "timeout": 5},
+            "bag-slot-03": {"coords": (0.7124, 0.406), "outcomes": {}, "timeout": 5},
+            "bag-slot-04": {"coords": (0.7858, 0.3995), "outcomes": {}, "timeout": 5},
+            "bag-slot-05": {"coords": (0.5848, 0.5408), "outcomes": {}, "timeout": 5},
+            "bag-slot-06": {"coords": (0.6486, 0.5498), "outcomes": {}, "timeout": 5},
+            "bag-slot-07": {"coords": (0.7187, 0.54), "outcomes": {}, "timeout": 5},
+            "bag-slot-08": {"coords": (0.7876, 0.5425), "outcomes": {}, "timeout": 5},
+            "bag-slot-09": {"coords": (0.5826, 0.6781), "outcomes": {}, "timeout": 5},
+            "bag-slot-10": {"coords": (0.6512, 0.6748), "outcomes": {}, "timeout": 5},
+            "bag-slot-11": {"coords": (0.7201, 0.6895), "outcomes": {}, "timeout": 5},
+            "bag-slot-12": {"coords": (0.7788, 0.6944), "outcomes": {}, "timeout": 5},
+            "bag-slot-13": {"coords": (0.5808, 0.817), "outcomes": {}, "timeout": 5},
+            "bag-slot-14": {"coords": (0.6538, 0.8186), "outcomes": {}, "timeout": 5},
+            "bag-slot-15": {"coords": (0.7153, 0.8219), "outcomes": {}, "timeout": 5},
+            "bag-slot-16": {"coords": (0.7847, 0.8211), "outcomes": {}, "timeout": 5},
         },
         "menus": {},
         "subcontexto": {
@@ -1114,8 +1339,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.7482, 0.1601),
-            "gold-enhance": (0.3875, 0.8382),
+            "close": {"coords": (0.7482, 0.1601), "outcomes": {}, "timeout": 5},
+            "gold-enhance": {"coords": (0.3875, 0.8382), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1127,7 +1352,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4934, 0.634),
+            "ok": {"coords": (0.4934, 0.634), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1139,9 +1364,9 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "sell-bulk": (0.4004, 0.6332),
-            "sell": (0.4967, 0.6258),
-            "cancel": (0.5985, 0.6364),
+            "sell-bulk": {"coords": (0.4004, 0.6332), "outcomes": {}, "timeout": 5},
+            "sell": {"coords": (0.4967, 0.6258), "outcomes": {}, "timeout": 5},
+            "cancel": {"coords": (0.5985, 0.6364), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1153,18 +1378,18 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.7813, 0.1511),
-            "general": (0.2924, 0.2418),
+            "close": {"coords": (0.7813, 0.1511), "outcomes": {}, "timeout": 5},
+            "general": {"coords": (0.2924, 0.2418), "outcomes": {}, "timeout": 5},
             #"pets": (0.3861, 0.2484),           # no real use cases
-            "avatar-and-keys": (0.4753, 0.25),
-            "currency": (0.5815, 0.2418),
+            "avatar-and-keys": {"coords": (0.4753, 0.25), "outcomes": {}, "timeout": 5},
+            "currency": {"coords": (0.5815, 0.2418), "outcomes": {}, "timeout": 5},
             #"special-currency": (0.6881, 0.25), # no real use cases
-            "events": (0.1873, 0.2786),
+            "events": {"coords": (0.1873, 0.2786), "outcomes": {}, "timeout": 5},
             #"premium-coins": (0.1869, 0.3856),  # no real use cases
-            "trade-slot-1": (0.7091, 0.4297),
-            "trade-slot-2": (0.7076, 0.5727),
-            "trade-slot-3": (0.7065, 0.7214),
-            "trade-slot-4": (0.7098, 0.8824),
+            "trade-slot-1": {"coords": (0.7091, 0.4297), "outcomes": {}, "timeout": 5},
+            "trade-slot-2": {"coords": (0.7076, 0.5727), "outcomes": {}, "timeout": 5},
+            "trade-slot-3": {"coords": (0.7065, 0.7214), "outcomes": {}, "timeout": 5},
+            "trade-slot-4": {"coords": (0.7098, 0.8824), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -1199,7 +1424,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.5026, 0.6307),
+            "ok": {"coords": (0.5026, 0.6307), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1211,11 +1436,11 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "no": (0.3599, 0.7778),
-            "trade": (0.5026, 0.7778),
-            "max-available-trades": (0.7043, 0.8137),
-            "plus-one-available-trade": (0.6685, 0.8056),
-            "minus-one-available-trade": (0.5848, 0.8007),
+            "no": {"coords": (0.3599, 0.7778), "outcomes": {}, "timeout": 5},
+            "trade": {"coords": (0.5026, 0.7778), "outcomes": {}, "timeout": 5},
+            "max-available-trades": {"coords": (0.7043, 0.8137), "outcomes": {}, "timeout": 5},
+            "plus-one-available-trade": {"coords": (0.6685, 0.8056), "outcomes": {}, "timeout": 5},
+            "minus-one-available-trade": {"coords": (0.5848, 0.8007), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1227,7 +1452,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.5044, 0.6258),
+            "ok": {"coords": (0.5044, 0.6258), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1239,7 +1464,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.5007, 0.6299),
+            "ok": {"coords": (0.5007, 0.6299), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None
@@ -1251,11 +1476,11 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido": (0.1973, 0.0498),
-            "back": (0.8027, 0.0662),
-            "weapon-hero-craft": (0.823, 0.3562),
-            "armor-hero-craft": (0.8241, 0.6234),
-            "accessories-hero-craft": (0.8249, 0.8954),
+            "menu-rapido": {"coords": (0.1973, 0.0498), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.8027, 0.0662), "outcomes": {}, "timeout": 5},
+            "weapon-hero-craft": {"coords": (0.823, 0.3562), "outcomes": {}, "timeout": 5},
+            "armor-hero-craft": {"coords": (0.8241, 0.6234), "outcomes": {}, "timeout": 5},
+            "accessories-hero-craft": {"coords": (0.8249, 0.8954), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None,
@@ -1267,16 +1492,16 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "cancel": (0.6184, 0.652),
-            "craft": (0.4679, 0.6552),
-            "max-amount": (0.5483, 0.7688),
-            "plus-one-amount": (0.5118, 0.7565),
-            "minus-one-amount": (0.4233, 0.7574),
-            "slot-3": (0.4948, 0.4158),
-            "slot-2": (0.4115, 0.4208),
-            "slot-1": (0.3215, 0.4314),
-            "slot-4": (0.5878, 0.4289),
-            "slot-5": (0.677, 0.4338),
+            "cancel": {"coords": (0.6184, 0.652), "outcomes": {}, "timeout": 5},
+            "craft": {"coords": (0.4679, 0.6552), "outcomes": {}, "timeout": 5},
+            "max-amount": {"coords": (0.5483, 0.7688), "outcomes": {}, "timeout": 5},
+            "plus-one-amount": {"coords": (0.5118, 0.7565), "outcomes": {}, "timeout": 5},
+            "minus-one-amount": {"coords": (0.4233, 0.7574), "outcomes": {}, "timeout": 5},
+            "slot-3": {"coords": (0.4948, 0.4158), "outcomes": {}, "timeout": 5},
+            "slot-2": {"coords": (0.4115, 0.4208), "outcomes": {}, "timeout": 5},
+            "slot-1": {"coords": (0.3215, 0.4314), "outcomes": {}, "timeout": 5},
+            "slot-4": {"coords": (0.5878, 0.4289), "outcomes": {}, "timeout": 5},
+            "slot-5": {"coords": (0.677, 0.4338), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -1312,7 +1537,7 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "ok": (0.4982, 0.6275),
+            "ok": {"coords": (0.4982, 0.6275), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": None,
@@ -1324,29 +1549,29 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo":       "default",
         "botones": {
-            "menu-rapido": (0.1932, 0.0792),
-            "back": (0.7994, 0.0752),
-            "meteorites-tab": (0.2124, 0.1822),
-            "combine-tab": (0.2957, 0.1822),
-            "evolve-tab": (0.3802, 0.1846),
-            "bag-slot-01": (0.5874, 0.3791),
-            "bag-slot-02": (0.6497, 0.375),
-            "bag-slot-03": (0.7142, 0.3701),
-            "bag-slot-04": (0.7813, 0.3766),
-            "bag-slot-05": (0.5756, 0.5098),
-            "bag-slot-06": (0.6453, 0.518),
-            "bag-slot-07": (0.7124, 0.5074),
-            "bag-slot-08": (0.7865, 0.5204),
-            "bag-slot-09": (0.5704, 0.652),
-            "bag-slot-10": (0.6464, 0.6552),
-            "bag-slot-11": (0.7176, 0.6552),
-            "bag-slot-12": (0.7865, 0.6389),
-            "bag-slot-13": (0.5808, 0.7794),
-            "bag-slot-14": (0.6471, 0.7949),
-            "bag-slot-15": (0.7098, 0.7802),
-            "bag-slot-16": (0.7847, 0.7958),
-            "next-page": (0.7319, 0.9142),
-            "prev-page": (0.6431, 0.9175),
+            "menu-rapido": {"coords": (0.1932, 0.0792), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.7994, 0.0752), "outcomes": {}, "timeout": 5},
+            "meteorites-tab": {"coords": (0.2124, 0.1822), "outcomes": {}, "timeout": 5},
+            "combine-tab": {"coords": (0.2957, 0.1822), "outcomes": {}, "timeout": 5},
+            "evolve-tab": {"coords": (0.3802, 0.1846), "outcomes": {}, "timeout": 5},
+            "bag-slot-01": {"coords": (0.5874, 0.3791), "outcomes": {}, "timeout": 5},
+            "bag-slot-02": {"coords": (0.6497, 0.375), "outcomes": {}, "timeout": 5},
+            "bag-slot-03": {"coords": (0.7142, 0.3701), "outcomes": {}, "timeout": 5},
+            "bag-slot-04": {"coords": (0.7813, 0.3766), "outcomes": {}, "timeout": 5},
+            "bag-slot-05": {"coords": (0.5756, 0.5098), "outcomes": {}, "timeout": 5},
+            "bag-slot-06": {"coords": (0.6453, 0.518), "outcomes": {}, "timeout": 5},
+            "bag-slot-07": {"coords": (0.7124, 0.5074), "outcomes": {}, "timeout": 5},
+            "bag-slot-08": {"coords": (0.7865, 0.5204), "outcomes": {}, "timeout": 5},
+            "bag-slot-09": {"coords": (0.5704, 0.652), "outcomes": {}, "timeout": 5},
+            "bag-slot-10": {"coords": (0.6464, 0.6552), "outcomes": {}, "timeout": 5},
+            "bag-slot-11": {"coords": (0.7176, 0.6552), "outcomes": {}, "timeout": 5},
+            "bag-slot-12": {"coords": (0.7865, 0.6389), "outcomes": {}, "timeout": 5},
+            "bag-slot-13": {"coords": (0.5808, 0.7794), "outcomes": {}, "timeout": 5},
+            "bag-slot-14": {"coords": (0.6471, 0.7949), "outcomes": {}, "timeout": 5},
+            "bag-slot-15": {"coords": (0.7098, 0.7802), "outcomes": {}, "timeout": 5},
+            "bag-slot-16": {"coords": (0.7847, 0.7958), "outcomes": {}, "timeout": 5},
+            "next-page": {"coords": (0.7319, 0.9142), "outcomes": {}, "timeout": 5},
+            "prev-page": {"coords": (0.6431, 0.9175), "outcomes": {}, "timeout": 5},
 
             
         },
@@ -1355,10 +1580,10 @@ CONTEXTOS_DEFINIDOS = {
                 "imagen": "assets/ui/current-meteorite-id.png",
                 "region": (0.2017, 0.4069, 0.2382, 0.491),
                 "botones": {
-                    "equip-unequip": (0.2161, 0.3178),
-                    "enhance": (0.2227, 0.4477),
-                    "reforge-evolve": (0.2201, 0.6021),
-                    "reroll-reforge": (0.2209, 0.7386),
+                    "equip-unequip": {"coords": (0.2161, 0.3178), "outcomes": {}, "timeout": 5},
+                    "enhance": {"coords": (0.2227, 0.4477), "outcomes": {}, "timeout": 5},
+                    "reforge-evolve": {"coords": (0.2201, 0.6021), "outcomes": {}, "timeout": 5},
+                    "reroll-reforge": {"coords": (0.2209, 0.7386), "outcomes": {}, "timeout": 5},
                 }
             }
         },
@@ -1380,20 +1605,20 @@ CONTEXTOS_DEFINIDOS = {
                     "imagen": "assets/ui/meteorites-id.png",
                     "region": (0.7124, 0.2345, 0.8086, 0.2794),
                     "botones": {
-                        "set-1": (0.2176, 0.2778),
-                        "set-2": (0.2681, 0.2843),
-                        "set-3": (0.3208, 0.277),
-                        "slot-01": (0.226, 0.3971),
-                        "slot-02": (0.306, 0.4044),
-                        "slot-03": (0.3894, 0.4044),
-                        "slot-04": (0.4712, 0.4142),
-                        "slot-05": (0.2485, 0.6152),
-                        "slot-06": (0.4491, 0.616),
-                        "slot-07": (0.226, 0.8096),
-                        "slot-08": (0.3097, 0.8072),
-                        "slot-09": (0.3905, 0.8096),
-                        "slot-10": (0.4676, 0.8162),
-                        "slot-00": (0.3485, 0.6062),
+                        "set-1": {"coords": (0.2176, 0.2778), "outcomes": {}, "timeout": 5},
+                        "set-2": {"coords": (0.2681, 0.2843), "outcomes": {}, "timeout": 5},
+                        "set-3": {"coords": (0.3208, 0.277), "outcomes": {}, "timeout": 5},
+                        "slot-01": {"coords": (0.226, 0.3971), "outcomes": {}, "timeout": 5},
+                        "slot-02": {"coords": (0.306, 0.4044), "outcomes": {}, "timeout": 5},
+                        "slot-03": {"coords": (0.3894, 0.4044), "outcomes": {}, "timeout": 5},
+                        "slot-04": {"coords": (0.4712, 0.4142), "outcomes": {}, "timeout": 5},
+                        "slot-05": {"coords": (0.2485, 0.6152), "outcomes": {}, "timeout": 5},
+                        "slot-06": {"coords": (0.4491, 0.616), "outcomes": {}, "timeout": 5},
+                        "slot-07": {"coords": (0.226, 0.8096), "outcomes": {}, "timeout": 5},
+                        "slot-08": {"coords": (0.3097, 0.8072), "outcomes": {}, "timeout": 5},
+                        "slot-09": {"coords": (0.3905, 0.8096), "outcomes": {}, "timeout": 5},
+                        "slot-10": {"coords": (0.4676, 0.8162), "outcomes": {}, "timeout": 5},
+                        "slot-00": {"coords": (0.3485, 0.6062), "outcomes": {}, "timeout": 5},
                     }
                 },
                 # completar mas tabs para manejo de stock, de momento sirve para cambios de set
@@ -1418,12 +1643,12 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo": "default",
         "botones": {
-            "menu-rapido": (0.2013, 0.0743),
-            "back": (0.7917, 0.0866),
-            "fuse": (0.2179, 0.1879),
-            "transmute": (0.3086, 0.1912),
-            "combine-all": (0.6073, 0.9297),
-            "ethereal-transmute": (0.351, 0.9257),
+            "menu-rapido": {"coords": (0.2013, 0.0743), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.7917, 0.0866), "outcomes": {}, "timeout": 5},
+            "fuse": {"coords": (0.2179, 0.1879), "outcomes": {}, "timeout": 5},
+            "transmute": {"coords": (0.3086, 0.1912), "outcomes": {}, "timeout": 5},
+            "combine-all": {"coords": (0.6073, 0.9297), "outcomes": {}, "timeout": 5},
+            "ethereal-transmute": {"coords": (0.351, 0.9257), "outcomes": {}, "timeout": 5},
         },
         "menus":       {},
         "subcontexto": {
@@ -1447,8 +1672,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "combine-all": (0.4543, 0.7092),
-            "cancel": (0.5782, 0.7206),
+            "combine-all": {"coords": (0.4543, 0.7092), "outcomes": {}, "timeout": 5},
+            "cancel": {"coords": (0.5782, 0.7206), "outcomes": {}, "timeout": 5},
         },
         "menus": {},
         "subcontexto": None
@@ -1460,8 +1685,8 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "combine-all": (0.4543, 0.7092),
-            "cancel": (0.5782, 0.7206),
+            "combine-all": {"coords": (0.4543, 0.7092), "outcomes": {}, "timeout": 5},
+            "cancel": {"coords": (0.5782, 0.7206), "outcomes": {}, "timeout": 5},
         },
         "menus": {},
         "subcontexto": None
@@ -1473,11 +1698,11 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": True,
         "menu_rapido_tipo": "default",
         "botones": {
-            "menu-rapido": (0.2006, 0.0776),
-            "back": (0.7917, 0.0792),
-            "auto-equip": (0.6132, 0.9183),
-            "next-page": (0.8042, 0.9158),
-            "prev-page": (0.7124, 0.9158)
+            "menu-rapido": {"coords": (0.2006, 0.0776), "outcomes": {}, "timeout": 5},
+            "back": {"coords": (0.7917, 0.0792), "outcomes": {}, "timeout": 5},
+            "auto-equip": {"coords": (0.6132, 0.9183), "outcomes": {}, "timeout": 5},
+            "next-page": {"coords": (0.8042, 0.9158), "outcomes": {}, "timeout": 5},
+            "prev-page": {"coords": (0.7124, 0.9158), "outcomes": {}, "timeout": 5}
         },
         "menus": {},
         "subcontexto": {
@@ -1498,28 +1723,28 @@ CONTEXTOS_DEFINIDOS = {
                     "imagen": "assets/ui/inventory-unlock.png",
                     "region": (0.5951, 0.3252, 0.6386, 0.4257),
                     "botones": {
-                        "unlock1": (0.6515, 0.3815),
+                        "unlock1": {"coords": (0.6515, 0.3815), "outcomes": {}, "timeout": 5},
                     }
                 },
                 "slot2": {
                     "imagen": "assets/ui/inventory-unlock.png",
                     "region": (0.59, 0.4575, 0.6431, 0.5678),
                     "botones": {
-                        "unlock2": (0.6589, 0.5139),
+                        "unlock2": {"coords": (0.6589, 0.5139), "outcomes": {}, "timeout": 5},
                     }
                 },
                 "slot3": {
                     "imagen": "assets/ui/inventory-unlock.png",
                     "region": (0.5918, 0.6005, 0.6405, 0.7026),
                     "botones": {
-                        "unlock3": (0.6523, 0.6585),
+                        "unlock3": {"coords": (0.6523, 0.6585), "outcomes": {}, "timeout": 5},
                     }
                 },
                 "slot4": {
                     "imagen": "assets/ui/inventory-unlock.png",
                     "region": (0.5878, 0.732, 0.6412, 0.8448),
                     "botones": {
-                        "unlock4": (0.6667, 0.7908),
+                        "unlock4": {"coords": (0.6667, 0.7908), "outcomes": {}, "timeout": 5},
                     }
                 }
             },
@@ -1532,12 +1757,12 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "close": (0.8138, 0.116),
-            "awaken": (0.2541, 0.0752),
-            "super-awaken": (0.3418, 0.0654),
-            "ultimate-awakening": (0.4403, 0.0703),
-            "complete-all": (0.4373, 0.1658),
-            "receive-rewards": (0.6283, 0.259),
+            "close": {"coords": (0.8138, 0.116), "outcomes": {}, "timeout": 5},
+            "awaken": {"coords": (0.2541, 0.0752), "outcomes": {}, "timeout": 5},
+            "super-awaken": {"coords": (0.3418, 0.0654), "outcomes": {}, "timeout": 5},
+            "ultimate-awakening": {"coords": (0.4403, 0.0703), "outcomes": {}, "timeout": 5},
+            "complete-all": {"coords": (0.4373, 0.1658), "outcomes": {}, "timeout": 5},
+            "receive-rewards": {"coords": (0.6283, 0.259), "outcomes": {}, "timeout": 5},
         },
         "menus": {},
         "subcontexto": {
@@ -1576,37 +1801,76 @@ CONTEXTOS_DEFINIDOS = {
         "menu_rapido_disponible": False,
         "menu_rapido_tipo": None,
         "botones": {
-            "yes": (0.4355, 0.634),
-            "no": (0.5756, 0.6185),
+            "yes": {"coords": (0.4355, 0.634), "outcomes": {}, "timeout": 5},
+            "no": {"coords": (0.5756, 0.6185), "outcomes": {}, "timeout": 5},
         },
         "menus": {},
         "subcontexto": None,
     },
     "treasure": {
-        "imagen":                 "assets/ui/treasure-id.png",
-        "region":                 (365, 150, 480, 302),
-        "threshold":              0.85,
+        "imagen": "assets/ui/treasure-id.png",
+        "region": (0.4355, 0.6863, 0.4805, 0.7835),
+        "threshold": 0.85,
         "menu_rapido_disponible": True,
-        "menu_rapido_tipo":       "default",
+        "menu_rapido_tipo": "default",
         "botones": {
-            "menu-rapido":    (109, 42),
-            "back":           (836, 45),
-            "bronze-chest":   (422, 242),
-            "silver-chest":   (559, 236),
-            "gold-chest":     (680, 234),
-            "platinum-chest": (805, 260),
+            "menu-rapido": (0.1958, 0.0752),
+            "back": (0.8042, 0.0801),
+            "bronze-chest": (0.4465, 0.3137),
+            "silver-chest": (0.5553, 0.3342),
+            "gold-chest": (0.6574, 0.3325),
+            "platinum-chest": (0.7644, 0.3513),
+            "gem-bronze-chest": (0.4524, 0.7132),
+            "gem-silver-chest": (0.552, 0.7239),
+            "gem-gold-chest": (0.6589, 0.7402),
+            "gem-opal-chest": (0.7644, 0.7288),
         },
         "menus": {
             "gold-chest-menu": {
-                "imagen":  "assets/ui/gold-chest-menu-id.png",
-                "region":  (670, 222, 762, 313),
+                "imagen": "assets/ui/trasure-menu-opened.png", # mismo para todos los chest
+                "region": (0.1855, 0.2002, 0.2909, 0.241),     # mismo para todos los chest
                 "botones": {
-                    "open-1":  (634, 260),
-                    "open-10": (714, 264),
+                    "open-1": (0.6206, 0.482),
+                    "open-10-or-max": (0.6965, 0.4837),
+                    "close-menu": (0.6667, 0.3513),
                 }
+            },
+            "platinum-chest-menu": {
+                "imagen": "assets/ui/trasure-menu-opened.png", # mismo para todos los chest
+                "region": (0.1855, 0.2002, 0.2909, 0.241),     # mismo para todos los chest
+                "botones": {
+                    "open-1": (0.7541, 0.4951),
+                    "open-10-or-max": (0.8282, 0.4959),
+                    "close-menu": (0.7618, 0.3611),
+                },
+                # completar demas menus
             }
         },
         "subcontexto": None,
+    },
+    "opening-chest-animation": {
+        "imagen": "assets/ui/opening-chest-animation-id.png", # creo que solo sirve para gold y platinum
+        "region": (0.1744, 0.7933, 0.2124, 0.9069),
+        "menu_rapido_disponible": False,
+        "menu_rapido_tipo": None,
+        "botones": {
+            "open-1": (0.2703, 0.8252),
+            "open-10-or-max": (0.3352, 0.8366),
+            "tap": (0.8632, 0.7802), # cancel animation
+        },
+        "menus": {},
+        "subcontexto": {
+            "tipo": "currency",
+            "valores": {
+                "gold-key": {
+                    # completar para todas las llaves?
+                },
+                "karats": { # probablemente siempre alcance solo con este asset, es la condicion de corte
+                    "imagen": "assets/ui/open-with-karat.png",
+                    "region": (0.319, 0.7925, 0.3488, 0.8342),
+                }
+            },
+        },
     },
 }
 
@@ -1642,27 +1906,27 @@ MENU_RAPIDO = { #tome el offset al reves, volver a capturar coords en default, n
     "imagen": "assets/ui/menu-rapido-id.png",
     "region": (0.0501, 0.152, 0.1021, 0.277),
     "botones": {
-        "lobby": (0.0819, 0.2157),
-        "mailbox": (0.1375, 0.2075),
-        "awakening": (0.2069, 0.2116),
-        "quests": (0.2681, 0.2075),
-        "inventory": (0.0767, 0.357),
-        "skills": (0.1368, 0.357),
-        "socket": (0.2098, 0.3497),
-        "pets": (0.267, 0.3497),
-        "meteorites": (0.0789, 0.5049),
-        "treasure": (0.142, 0.5188),
-        "companion": (0.2013, 0.5074),
-        "craft": (0.2625, 0.4951),
-        "combine": (0.08, 0.643),
-        "shop": (0.1405, 0.6291),
-        "trading-center": (0.2098, 0.6291),
-        "guild": (0.2695, 0.6495),
-        "character": (0.0704, 0.7835),
-        "char1": (0.1405, 0.7892),
-        "char2": (0.1947, 0.7884),
-        "char3": (0.2681, 0.7892),
-        "close": (0.0638, 0.0703),
+        "lobby": {"coords": (0.0819, 0.2157), "outcomes": {}, "timeout": 5},
+        "mailbox": {"coords": (0.1375, 0.2075), "outcomes": {}, "timeout": 5},
+        "awakening": {"coords": (0.2069, 0.2116), "outcomes": {}, "timeout": 5},
+        "quests": {"coords": (0.2681, 0.2075), "outcomes": {}, "timeout": 5},
+        "inventory": {"coords": (0.0767, 0.357), "outcomes": {}, "timeout": 5},
+        "skills": {"coords": (0.1368, 0.357), "outcomes": {}, "timeout": 5},
+        "socket": {"coords": (0.2098, 0.3497), "outcomes": {}, "timeout": 5},
+        "pets": {"coords": (0.267, 0.3497), "outcomes": {}, "timeout": 5},
+        "meteorites": {"coords": (0.0789, 0.5049), "outcomes": {}, "timeout": 5},
+        "treasure": {"coords": (0.142, 0.5188), "outcomes": {}, "timeout": 5},
+        "companion": {"coords": (0.2013, 0.5074), "outcomes": {}, "timeout": 5},
+        "craft": {"coords": (0.2625, 0.4951), "outcomes": {}, "timeout": 5},
+        "combine": {"coords": (0.08, 0.643), "outcomes": {}, "timeout": 5},
+        "shop": {"coords": (0.1405, 0.6291), "outcomes": {}, "timeout": 5},
+        "trading-center": {"coords": (0.2098, 0.6291), "outcomes": {}, "timeout": 5},
+        "guild": {"coords": (0.2695, 0.6495), "outcomes": {}, "timeout": 5},
+        "character": {"coords": (0.0704, 0.7835), "outcomes": {}, "timeout": 5},
+        "char1": {"coords": (0.1405, 0.7892), "outcomes": {}, "timeout": 5},
+        "char2": {"coords": (0.1947, 0.7884), "outcomes": {}, "timeout": 5},
+        "char3": {"coords": (0.2681, 0.7892), "outcomes": {}, "timeout": 5},
+        "close": {"coords": (0.0638, 0.0703), "outcomes": {}, "timeout": 5},
     }
 }
 

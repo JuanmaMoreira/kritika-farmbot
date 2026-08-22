@@ -1,25 +1,45 @@
-# Carpeta privada para contexto de IAs
+# Contexto legacy local (se retira durante Fase 0B)
 ai-context/
 
-# Archivos generados / temporales
+# Python: caches y entornos locales
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
 
-# Screencaps y assets grandes
-screencaps/
-assets/ui/960x540
-*.png
-*.jpg
-*.jpeg
-
-# Archivos de entorno
+# Configuracion local
 .env
-*.env
+.env.*
+!.env.example
 
-# Logs
+# Capturas, datasets y salidas de runtime
+screencaps/
 logs/
-testing/
 *.log
+outputs/
+artifacts/
+
+# Capturas de debugging generadas por scripts legacy
+/debug_recorte.png
+/test_frame.png
+
+# Assets historicos conservados localmente, fuera del runtime activo
+/assets/ui/960x540/
+
+# Temporales y backups reproducibles
+backup/
+*.bak
+*.tmp
+
+# Script one-shot de la migracion legacy (se archivara en docs/legacy/)
+/migrate_botones.py
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db

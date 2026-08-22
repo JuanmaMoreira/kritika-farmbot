@@ -51,7 +51,7 @@ kritika-farmbot/
 - **constants.py** es la única fuente de verdad.
 - Todas las coordenadas y regiones **relativas** (0.0–1.0) para que funcione en cualquier resolución.
 - Usar clase `Boton` (con `coords`, `outcomes` y `timeout`) y atributo `prioridad` en cada `Contexto`.
-- Outcomes posibles: `"ok"`, `"retry"`, `"abort"`.
+- Outcomes posibles de presionar un `Boton`: `"ok"`, `"retry"`, `"abort"`.
 - Los contextos se evalúan en orden de prioridad (mayor primero) para manejar popups.
 - Nunca hardcodear coordenadas absolutas ni paths absolutos.
 - Todo debe ser idempotente y resistente a popups inesperados.
