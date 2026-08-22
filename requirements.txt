@@ -1,14 +1,10 @@
-# Requisitos principales del bot Kritika FarmBot
-
-# Visión por computadora y captura
+# Captura y visión legacy preservada
 opencv-python>=4.8.0
 numpy>=1.24.0
-
-# Procesamiento de video/stream H.264 de scrcpy
 av>=11.0.0
 
-# (Opcional pero recomendado) Para mejor manejo de imágenes
-Pillow>=10.0.0
+# Configuración local
+python-dotenv
 
-# Si usás algún wrapper de ADB (si no, se puede quitar)
-# pure-python-adb>=0.3.0
+# Subsistema independiente de anuncios
+uiautomator2

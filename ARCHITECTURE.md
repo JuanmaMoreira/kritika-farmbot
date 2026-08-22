@@ -1,41 +1,111 @@
-# Arquitectura - Kritika FarmBot
+# Arquitectura — Kritika FarmBot
 
-## Visión general
+Este documento distingue el sistema legacy que existe en el repositorio de la arquitectura objetivo 0.2. La segunda sección expresa responsabilidades y límites acordados; no implica que esas capas ya estén implementadas.
 
-El bot está dividido en capas bien definidas para mantenerlo mantenible a medida que crece.
+## Arquitectura legacy
 
-### Capas principales (de abajo hacia arriba)
+La implementación preservada sigue aproximadamente este flujo:
 
-| Capa              | Archivo                | Responsabilidad |
-|-------------------|------------------------|---------------|
-| **Constants**     | `bot/constants.py`     | Fuente única de verdad. Contextos, botones, regiones relativas, prioridades y outcomes. |
-| **Screen**        | `bot/screen.py`        | Captura de pantalla (scrcpy), template matching con OpenCV y detección básica. |
-| **Context**       | `bot/context.py`       | Detecta el contexto actual del juego, subcontextos y maneja prioridades de popups. |
-| **Actions**       | `bot/actions.py`       | Acciones atómicas (click en botones, clicks en menú, etc.). |
-| **Flows**         | `bot/flows.py`         | Flujos de alto nivel y procesos específicos dentro de contextos. |
-| **Ads**           | `bot/ads-manager.py`   | Manejo independiente de anuncios usando uiautomator2. |
-| **Main**          | `main.py`              | Orquestación general y loop principal. |
+```text
+main.py
+  → flow TOT
+    → actions y matching directo
+      → estado global de context.py
+        → catálogo de constants.py
+          → templates y coordenadas
+      → screen.py
+        → scrcpy / OpenCV / ADB
+```
 
-## Principios clave
+Responsabilidades reales:
 
-- **Coordenadas relativas** (0.0 - 1.0) en todo el proyecto.
-- **Prioridad de contextos**: Los contextos se evalúan de mayor a menor prioridad para manejar popups inesperados.
-- **Clase Boton**: Cada botón tiene `coords`, `outcomes` y `timeout`.
-- **Separación clara**: `ads-manager.py` está aislado porque usa una tecnología diferente (uiautomator2).
-- El bot debe ser **idempotente** y resistente a interrupciones.
+- `bot/constants.py` mezcla configuración de host, resolución, taxonomía, templates, regiones, botones, offsets y políticas aún incompletas.
+- `bot/screen.py` implementa a la vez captura scrcpy, almacenamiento del frame, percepción por templates y comandos ADB.
+- `bot/context.py` captura un frame y recorre templates hasta encontrar el primer contexto coincidente.
+- `bot/actions.py` resuelve botones mediante estado global y coordenadas del catálogo.
+- `bot/flows.py` contiene lógica TOT, percepción específica, regiones, thresholds y acciones físicas.
+- `bot/ads_manager.py` es un programa standalone basado en UIAutomator2.
+- `main.py` no contiene un loop general: conecta el dispositivo e intenta ejecutar exclusivamente TOT.
 
-## Decisiones técnicas importantes
+Problemas estructurales confirmados:
 
-- Uso de scrcpy en vez de ADB screenshots → latencia mucho más baja (~4ms).
-- Template matching en vez de OCR pesado (por velocidad y precisión en UI del juego).
-- `constants.py` es sagrado: cualquier cambio de UI debe actualizarse ahí primero.
+- captura, percepción e input están acoplados;
+- el contexto depende directamente de templates;
+- actions depende de globals y coordenadas;
+- flows contiene percepción y ADB directo;
+- la geometría no usa de forma confiable las dimensiones landscape del frame;
+- prioridad y outcomes están modelados pero no configurados efectivamente;
+- el runtime legacy no es importable en su estado preservado;
+- no existe una suite automatizada.
 
-## Cómo extender el bot (recordatorio interno)
+El uso de scrcpy, OpenCV o ADB no es por sí mismo legacy. Lo legacy es el acoplamiento que obliga a representar cada estado y transición mediante templates y coordenadas mantenidos manualmente.
 
-1. Agregar nuevo contexto → `constants.py`
-2. Capturar assets necesarios → carpeta `assets/ui/`
-3. Actualizar detección en `context.py` si es necesario
-4. Agregar acciones o flows según corresponda
+## Arquitectura objetivo 0.2
 
----
-Última actualización: 2026-04-05
+```text
+Capture
+  ↓
+Perception
+  ↓
+Semantic Observations
+  ↓
+ContextResolver
+  ↓
+Flows / Decision
+  ↓
+ActionExecutor
+  ↓
+Device / ADB
+```
+
+### Capture
+
+Obtiene frames landscape desde scrcpy y expone sus dimensiones reales. No reconoce contextos ni toma decisiones.
+
+### Perception
+
+Transforma frames en observaciones semánticas. Puede combinar:
+
+- detectores locales y OpenCV para elementos conocidos;
+- OCR para valores dinámicos;
+- un fallback VLM para estados desconocidos.
+
+El fallback VLM debe permanecer detrás de un límite provider-agnostic. Ninguna capa superior debe depender de un proveedor, API o modelo específico.
+
+### Semantic Observations
+
+Representan evidencia sobre la UI —elementos, valores, estados candidatos y confianza— sin codificar decisiones del flow ni comandos físicos.
+
+### ContextResolver
+
+Consume observaciones y determina el estado semántico vigente, incluidos subestados, prioridades e interrupciones. No captura frames ni ejecuta acciones.
+
+### Flows / Decision
+
+Contienen intención y reglas de negocio deterministas. Solicitan acciones semánticas y reaccionan a estados resueltos; no hacen template matching ni llaman a ADB.
+
+### ActionExecutor
+
+Traduce una intención de acción validada a interacción con el dispositivo. La resolución geométrica debe usar el frame landscape real y coordenadas normalizadas en `[0,1]` cuando corresponda.
+
+### Device / ADB
+
+Es el límite de infraestructura para taps, swipes y demás comandos del dispositivo. Debe poder sustituirse por un fake en tests normales.
+
+## AdsManager
+
+Los anuncios pertenecen a aplicaciones o packages externos y se inspeccionan mediante UIAutomator2:
+
+```text
+external ad detected
+  ↓
+AdsManager / UIAutomator2
+  ↓
+return to game
+```
+
+AdsManager es una interrupción externa separada de Perception y ContextResolver. Su resultado relevante para el bot principal es recuperar el control y volver al juego.
+
+## Estrategia de migración
+
+La migración será incremental. Se extraerán primero captura, dispositivo y contratos testeables; después se incorporarán el modelo semántico y casos de percepción concretos. Los templates y flows legacy se reutilizarán únicamente cuando aporten evidencia o conocimiento de negocio verificable.

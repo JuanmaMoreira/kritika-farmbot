@@ -1,19 +1,53 @@
-# ROADMAP - Kritika FarmBot
+# Roadmap — Kritika FarmBot 0.2
 
-## Prioridad Alta (próximas 1-2 semanas)
-- [ ] Terminar de capturar **todos** los assets de contextos faltantes y completar `constants.py`
-- [ ] Integrar completamente la lógica de **prioridad** y clase `Boton` a toda la estructura de `constants.py`
+El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño. La prioridad inmediata es establecer un núcleo testeable; no completar el catálogo legacy de templates y coordenadas.
 
-## Prioridad Media
-- [ ] Armar **procesos específicos** (o "specific_flows") que funcionen dentro de un contexto principal:
-  - El proceso asume que ya estamos en ese contexto (el caller debe garantizarlo antes).
-  - Ejemplos:
-    - En contexto `friends` → mandar solicitud a todos los recomendados
-    - En contexto `black-market` → comprar todos los objetos que se vendan por oro
-  - Nota: No quiero mezclar esto con los `flows.py` grandes. Prefiero mantener `flows.py` para flujos completos de alto nivel y usar otro nombre (process / specific_process / subflow) para estos encapsulados.
-- [ ] Implementar e integrar una función que permita **leer números y texto en pantalla** (OCR ligero o template matching de dígitos) para:
-  - Leer stamina disponible de personaje
-  - Otros valores dinámicos (oro, gemas, etc.)
+## Fase 0 — Baseline y documentación
 
-## Prioridad Baja / Ideas futuras
-- [ ] Hacer que el bot genere un registro (`.csv` o similar) por personaje con recursos importantes (stamina, oro, items clave, etc.) para poder consultarlos sin entrar al juego ni interrumpir el bot.
+- [x] 0A — Auditoría read-only del repositorio.
+- [x] 0B — Preservación legacy, limpieza segura y reorganización documental.
+
+## Fase 1 — Núcleo reutilizable
+
+- [ ] Separar captura scrcpy de percepción.
+- [ ] Separar ADB en un executor o adaptador testeable.
+- [ ] Basar geometría y orientación en las dimensiones reales del frame landscape.
+- [ ] Definir lifecycle y cleanup de captura/dispositivo.
+- [ ] Centralizar configuración sin crear otro módulo monolítico.
+- [ ] Crear los primeros tests automatizados sin hardware.
+
+## Fase 2 — Modelo semántico
+
+- [ ] Definir la representación de `Observation`.
+- [ ] Definir la representación semántica de contexto y subestado.
+- [ ] Construir el `ContextResolver`.
+- [ ] Extraer la taxonomía útil de `bot/constants.py`.
+- [ ] Definir prioridades e interrupciones semánticas.
+
+## Fase 3 — Percepción local
+
+- [ ] Seleccionar un primer caso de uso real y acotado.
+- [ ] Implementar solo los detectores requeridos por ese caso.
+- [ ] Reutilizar OpenCV y templates donde aporten valor medible.
+- [ ] Evaluar un detector visual entrenado cuando exista dataset suficiente.
+- [ ] Establecer pipeline y manifest de dataset.
+
+## Fase 4 — OCR
+
+- [ ] Leer stamina cuando un flow lo necesite.
+- [ ] Leer monedas y recursos relevantes.
+- [ ] Incorporar otros valores dinámicos de forma incremental.
+
+## Fase 5 — VLM fallback
+
+- [ ] Definir una interfaz provider-agnostic.
+- [ ] Detectar y escalar estados desconocidos.
+- [ ] Analizar visualmente casos no cubiertos por percepción local.
+- [ ] Guardar casos útiles para incorporarlos después a detectores locales.
+
+## Fase 6 — Flows
+
+- [ ] Migrar lógica de negocio de forma incremental.
+- [ ] Mantener los flows separados de percepción y ADB directo.
+- [ ] Seleccionar el primer flow según valor y facilidad de validación.
+- [ ] Usar TOT como conocimiento legacy cuando sea útil, sin asumir que será el primer flow reconstruido.
