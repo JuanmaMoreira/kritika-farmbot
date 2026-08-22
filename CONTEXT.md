@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 1A completada
+**Estado:** rediseño híbrido 0.2 — Fase 1B completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -47,7 +47,6 @@ La implementación existente contiene:
 - No hay outcomes reales configurados.
 - Faltan templates activos utilizados por TOT; solo existen variantes históricas `960x540`.
 - No hay loop global de percepción, resolución y decisión.
-- No hay tests automatizados ni baseline sin hardware.
 
 No se reparará el runtime legacy como paso previo al rediseño. Sus problemas se abordarán únicamente cuando una fase futura extraiga una pieza reutilizable o migre un caso de uso.
 
@@ -96,7 +95,7 @@ No se reparará el runtime legacy como paso previo al rediseño. Sus problemas s
 - Las capturas son un dataset legacy potencialmente valioso. Permanecen intactas e ignoradas por Git; todavía no tienen manifest ni labels formales.
 - El catálogo monolítico de `bot/constants.py` se conserva por su conocimiento histórico, pero no será el modelo de configuración de 0.2.
 
-## Tests y estado del rediseño
+## Núcleo 0.2 implementado y tests
 
 La Fase 1A estableció los primeros fundamentos 0.2 sin migrar el runtime legacy:
 
@@ -104,6 +103,13 @@ La Fase 1A estableció los primeros fundamentos 0.2 sin migrar el runtime legacy
 - `bot/geometry.py` deriva siempre `(width, height)` desde `frame.shape` y convierte puntos y regiones normalizados mediante helpers puros.
 - `pytest` ejecuta la suite normal bajo `tests/` sin teléfono, ADB, scrcpy-server, red ni interacción humana.
 
-Los archivos de `testing/` siguen siendo scripts manuales ligados a hardware y quedan deliberadamente fuera de la colección automática. `bot/constants.py`, `bot/screen.py` y `bot/ads_manager.py` todavía no consumen los fundamentos nuevos; su migración será incremental.
+La Fase 1B añadió `bot/adb.py` como límite explícito para comandos físicos Android:
 
-La arquitectura híbrida completa todavía no está implementada. Captura, dispositivo, percepción, modelo semántico y flows 0.2 permanecen como trabajo futuro.
+- `AdbClient` recibe ejecutable, serial y timeout; puede construirse desde los campos ADB de `RuntimeConfig` sin retener el resto de la configuración.
+- `get_state`, `shell`, `tap`, `swipe`, `push`, `forward` y `remove_forward` pasan por una única primitiva segura basada en `subprocess` y argumentos separados.
+- `AdbError` y `AdbTimeoutError` conservan comando, salida y contexto del fallo.
+- Los tests usan un runner inyectado y no requieren que ADB esté instalado ni inician procesos reales.
+
+Los archivos de `testing/` siguen siendo scripts manuales ligados a hardware y quedan deliberadamente fuera de la colección automática. `bot/constants.py`, `bot/screen.py` y `bot/ads_manager.py` permanecen sin migrar; AdsManager seguirá usando UIAutomator2 como mecanismo separado.
+
+La arquitectura híbrida completa todavía no está implementada. Captura, lifecycle, ActionExecutor, percepción, modelo semántico y flows 0.2 permanecen como trabajo futuro.

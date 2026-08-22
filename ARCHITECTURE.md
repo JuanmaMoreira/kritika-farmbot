@@ -103,6 +103,10 @@ Traduce una intención de acción validada a interacción con el dispositivo. La
 
 Es el límite de infraestructura para taps, swipes y demás comandos del dispositivo. Debe poder sustituirse por un fake en tests normales.
 
+La Fase 1B implementó este límite en `bot/adb.py`. `AdbClient` recibe explícitamente el ejecutable ADB y el serial, y concentra la ejecución en una única primitiva `subprocess` con argumentos separados, timeout y traducción a `AdbError`/`AdbTimeoutError`. Expone únicamente `get_state`, `shell`, input en coordenadas pixel, push y administración de port forwarding.
+
+`AdbClient` no conoce frames, resolución, coordenadas relativas, percepción ni acciones semánticas. Puede construirse desde los campos ADB de `RuntimeConfig`, pero no retiene configuración de scrcpy o del juego. `bot/screen.py` todavía no fue migrado: sus funciones ADB legacy podrán retirarse únicamente cuando captura y ejecución de acciones consuman las abstracciones 0.2.
+
 ## AdsManager
 
 Los anuncios pertenecen a aplicaciones o packages externos y se inspeccionan mediante UIAutomator2:
