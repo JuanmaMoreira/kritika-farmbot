@@ -120,7 +120,9 @@ class AdbClient:
         )
 
     def spawn_shell(
-        self, *args: str | os.PathLike[str]
+        self,
+        *args: str | os.PathLike[str],
+        capture_output: bool = False,
     ) -> subprocess.Popen[bytes]:
         """Start a persistent ``adb shell`` process owned by the caller."""
 
@@ -133,7 +135,7 @@ class AdbClient:
             return self._spawner(
                 list(command),
                 stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
+                stdout=(subprocess.PIPE if capture_output else subprocess.DEVNULL),
                 stderr=subprocess.DEVNULL,
                 shell=False,
             )

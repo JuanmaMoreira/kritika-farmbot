@@ -101,6 +101,8 @@ class ScrcpyFrameSource:
         scrcpy_server_path: str | os.PathLike[str],
         *,
         local_port: int = 27183,
+        video_bit_rate: int = 2_000_000,
+        max_fps: int | None = None,
         connect_timeout: float = 10.0,
         first_frame_timeout: float = 10.0,
         receive_timeout: float = 0.25,
@@ -115,6 +117,10 @@ class ScrcpyFrameSource:
         self.adb = adb
         self.scrcpy_server_path = _non_empty_path(scrcpy_server_path)
         self.local_port = _port(local_port)
+        self.video_bit_rate = _positive_integer(video_bit_rate, "video_bit_rate")
+        self.max_fps = (
+            None if max_fps is None else _positive_integer(max_fps, "max_fps")
+        )
         self.connect_timeout = _positive_duration(connect_timeout, "connect_timeout")
         self.first_frame_timeout = _positive_duration(
             first_frame_timeout, "first_frame_timeout"
@@ -251,18 +257,21 @@ class ScrcpyFrameSource:
         return False
 
     def _server_arguments(self) -> tuple[str, ...]:
-        return (
+        arguments = (
             f"CLASSPATH={self.REMOTE_SERVER_PATH}",
             "app_process",
             "/",
             "com.genymobile.scrcpy.Server",
             self.SCRCPY_VERSION,
             "tunnel_forward=true",
-            "video_bit_rate=2000000",
+            f"video_bit_rate={self.video_bit_rate}",
             "max_size=0",
             "audio=false",
             "control=false",
         )
+        if self.max_fps is not None:
+            arguments += (f"max_fps={self.max_fps}",)
+        return arguments
 
     def _new_socket(self) -> socket.socket:
         return socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -431,6 +440,12 @@ def _port(value: object) -> int:
     if not 1 <= port <= 65535:
         raise ValueError("local_port must be an integer from 1 to 65535")
     return port
+
+
+def _positive_integer(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, Integral) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return int(value)
 
 
 def _positive_duration(value: object, name: str) -> float:

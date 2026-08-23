@@ -211,6 +211,18 @@ def test_start_prepares_scrcpy_and_produces_first_frame():
     source.stop()
 
 
+def test_capture_can_bound_stream_rate_and_raise_bitrate_for_live_tooling():
+    source = ScrcpyFrameSource(
+        fake_adb(),
+        "server.jar",
+        video_bit_rate=8_000_000,
+        max_fps=30,
+    )
+
+    assert "video_bit_rate=8000000" in source._server_arguments()
+    assert "max_fps=30" in source._server_arguments()
+
+
 def test_scrcpy_334_config_packet_is_prepended_to_next_media_packet():
     frame = np.full((4, 8, 3), 7, dtype=np.uint8)
     config_flag = ScrcpyFrameSource.CONFIG_PACKET_FLAG

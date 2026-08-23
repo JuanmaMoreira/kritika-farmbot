@@ -18,6 +18,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se completó la Fase 3A con `PerceptionEngine`, detectores OpenCV de templates precargados y calibración empirical-gap provisional para los dos landmarks validados.
 - Se completó la Fase 3B con adquisición dirigida de 30 screenshots etiquetados humanamente, un candidate validado para Lobby y reevaluación offline de Character Select y Battle Mode Select sin ampliar detectores productivos.
 - Se completó la Fase 3C promoviendo Lobby y Character Select a Perception productiva con assets curados, calibración reproducible sobre 57 labels y regresión end-to-end sin falsos positivos ni ambigüedades; Battle Mode Select permanece diferido.
+- Se completó la Fase 3E con Perception Workbench v1: ground truth humano persistente, captura activa/deduplicada de errores, observación read-only de taps/swipes físicos, asociación before/after, sesiones raw reproducibles y validación live de los falsos negativos de Black Market y Purchase Confirmation sin recalibrarlos.
 
 ### Changed
 

@@ -174,6 +174,22 @@ def test_spawn_shell_builds_persistent_device_command_without_running_real_adb()
     )
 
 
+def test_spawn_shell_can_pipe_stdout_for_owned_observers():
+    process = object()
+    spawner = Mock(return_value=process)
+    client = AdbClient("adb", "SERIAL", spawner=spawner)
+
+    assert client.spawn_shell("getevent", "-lt", capture_output=True) is process
+
+    spawner.assert_called_once_with(
+        ["adb", "-s", "SERIAL", "shell", "getevent", "-lt"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        shell=False,
+    )
+
+
 def test_spawn_shell_wraps_process_start_failure():
     client = AdbClient(
         "missing-adb",

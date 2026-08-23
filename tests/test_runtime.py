@@ -55,6 +55,15 @@ def test_build_frame_source_reuses_explicit_adb_client_without_operations():
     spawner.assert_not_called()
 
 
+def test_build_frame_source_accepts_explicit_stream_quality_limits():
+    source = build_frame_source(
+        runtime_config(), video_bit_rate=8_000_000, max_fps=30
+    )
+
+    assert source.video_bit_rate == 8_000_000
+    assert source.max_fps == 30
+
+
 def test_runtime_and_tools_import_without_external_side_effects(tmp_path):
     repository_root = Path(__file__).resolve().parents[1]
     environment = os.environ.copy()

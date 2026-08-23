@@ -227,6 +227,58 @@ La herramienta mantiene fuera de los contratos productivos dos responsabilidades
 
 La primera corrida real cubrió el pipeline completo con frames `2712×1224`. Lobby, Character Select, reentrada a Lobby y un contexto unsupported se comportaron conforme al diseño stateless. Black Market y Purchase Confirmation no alcanzaron sus calibraciones offline en la apariencia live, aunque el crop del prompt sí mostró un aumento raw al abrir el popup. Esto es una discrepancia de evidencia entre dataset y hardware, no una razón arquitectónica para introducir temporalidad o bajar thresholds: se requieren capturas current-season human-confirmed y reevaluación offline antes de modificar specs productivas.
 
+## Perception Workbench — tooling humano de desarrollo
+
+Fase 3E añade una composición paralela de enseñanza y mantenimiento, deliberadamente fuera del runtime de gameplay:
+
+```text
+ScrcpyFrameSource → PerceptionEngine → ContextResolver
+          │                    │               │
+          └────────────────────┴───────────────┴→ Perception Workbench UI
+
+Android touchscreen → HumanInputObserver ─────────→ Perception Workbench UI
+```
+
+`bot/human_input.py` implementa exclusivamente la dirección `HUMAN → system observation`. Descubre mediante `adb shell getevent -pl` un dispositivo que exponga `ABS_MT_POSITION_X` y `ABS_MT_POSITION_Y`, conserva sus rangos inclusivos reales y posee un proceso persistente `getevent -lt` creado por `AdbClient.spawn_shell(capture_output=True)`. No conoce gameplay, no ejecuta input y no constituye un `ActionExecutor` alternativo. La selección es determinista por capacidades táctiles, área del sensor y path; el path concreto nunca se hardcodea ni se persiste como identidad.
+
+Los timestamps impresos por `getevent` pertenecen al `CLOCK_MONOTONIC` del teléfono, mientras `FrameSnapshot` usa el monotónico del host; no son comparables aunque ambos sean monotónicos. `HumanInputObserver` reestampa cada evento al recibirlo con el reloj host y sólo ese valor se usa para asociación con frames, duración y UI. El parser v1 reconstruye contacto down, movimiento y up; una tolerancia relativa configura la frontera tap/swipe. Multitouch e interacciones incompletas se preservan como `UnknownGesture`, sin inventar semántica de elemento.
+
+Las coordenadas humanas persistidas son relativas a display y pertenecen a `[0,1]`. Primero se normalizan desde `axis min/max`; luego se aplica la rotación Android encontrada en `dumpsys input`: `0 → (x,y)`, `90° → (y,1-x)`, `180° → (1-x,1-y)`, `270° → (1-y,x)`. Esta política sigue la transformación documentada por [AOSP para touch devices](https://source.android.com/docs/core/interaction/input/touch-devices) y el formato/timestamp de [AOSP getevent](https://source.android.com/docs/core/interaction/input/getevent). Sólo después se proyecta el punto relativo al frame usando `frame.shape`; `adb wm size` no participa. El overlay temporal de tap/swipe se dibuja sobre una copia de UI y nunca sobre la imagen guardada.
+
+`tools/perception_workbench.py` compone explícitamente `RuntimeConfig`, `AdbClient`, `ScrcpyFrameSource`, `build_default_perception()`, `build_default_resolver()` y `HumanInputObserver`. La UI OpenCV deriva dinámicamente base contexts y overlays de las reglas del resolver. El ground truth humano permanece activo hasta ser cambiado, está marcado `human_confirmed` y nunca se completa a partir de una prediction.
+
+La evidencia se selecciona por mismatch, `AMBIGUOUS`, input humano, guardado manual o modo representative. Un fingerprint grayscale `32×32`, cooldown de 2 s, diferencia media mínima de 3 niveles, refresh máximo de 8 s y límite de 12 ejemplos automáticos por key reducen near-duplicates sin clustering. Un ring buffer de 24 frames analizados asocia el frame más cercano anterior al inicio del gesto y un frame posterior al fin con delay nominal de 0,5 s; al cerrar, una interacción pendiente usa el último frame disponible y conserva las secuencias, sin inferir una transición semántica.
+
+La primera sesión humana de 3E se abortó por preview degradada y lag extremo. La auditoría demostró que los PNG originales ya contenían macroblocking antes de render: un mismo ndarray BGR `2712×1224` evaluado por `tools.smoke_perception.analyze_snapshot()` y el path Workbench produjo raw scores exactamente iguales y conservó su hash. El defecto no provenía de resize, overlay ni composición. La combinación de stream `2 Mbps` sin límite de FPS, render/copia repetidos aunque no hubiera frame nuevo y PNG full-frame síncrono añadía presión suficiente para degradar/atrasar el stream y bloquear UI. Esa sesión `20260823T054558_979538Z-46e40344` es diagnóstica y no curable/promovible.
+
+Workbench usa ahora scrcpy a `8 Mbps / 30 fps`, analiza sólo el snapshot más reciente y acepta gaps de sequence como descarte intencional de frames intermedios. Perception recibe siempre `FrameSnapshot.image` original; la UI copia primero y sólo la copia se dibuja/redimensiona a `1356×612`, exactamente la mitad de `2712×1224` y con el mismo aspect ratio. El canvas se reconstruye únicamente ante un análisis/evento/cambio visible. Un único evidence writer con queue acotada de 16 realiza PNG/JSONL fuera del loop; si se satura, registra `evidence.skipped` en vez de formar backlog ilimitado. La UI muestra source sequence, frame age, perception, UI/display, evidence-save y profundidad de queue. `--compare-once` captura un frame y prueba igualdad de raw scores/hash entre los paths 3D y Workbench antes de un smoke.
+
+Cada sesión raw vive bajo `artifacts/workbench/<session-id>/` —ya ignorado por Git— con `events.jsonl`, `frames/` y `summary.json`. Los eventos comparten `schema_version`, `session_id`, `event_type`, timestamp UTC y payload extensible; los eventos humanos agregan timestamp monotónico, coordenadas normalizadas y raw diagnostics. No se persisten serial ADB, paths absolutos ni identidad de usuario/dispositivo. Los manifests versionados de `datasets/` siguen siendo la única fuente curated; promover evidencia raw será trabajo posterior.
+
+El smoke final de 3E confirmó preview prácticamente live, igualdad de raw scores con el path 3D, ground truth base/overlay editable, deduplicación acotada, writer sin backlog y cleanup completo. Los marcadores de taps en sectores diversos y de un swipe coincidieron visualmente con las acciones físicas según validación humana; todas las interacciones conservaron frames before/after. Black Market y Purchase Confirmation quedaron capturados como falsos negativos actuales sin recalibrar detectores. La primera sesión degradada permanece exclusivamente diagnóstica y ninguna sesión raw se promovió automáticamente.
+
+El Workbench es una herramienta humana de desarrollo y enseñanza. El producto final continúa siendo un runtime automatizado unattended; ninguno de los estados persistentes, hotkeys o decisiones del Workbench pertenece por defecto a ese producto.
+
+## Dirección del producto final — Session Orchestrator
+
+El objetivo no es un agente general que elija libremente qué jugar. La dirección acordada es un orquestador configurable:
+
+```text
+User Control Panel
+  → SessionPlan
+    → SessionRunner
+      → Characters
+        → Selected Flows
+```
+
+El usuario seleccionará previamente flows como `query_resources_type_1`, `clean_friends`, `farm_tot`, `farm_elite` o `farm_arena`. En Kritika la mayoría son `PER_CHARACTER`, pero el modelo futuro deberá exigir scopes explícitos y no suponer que todo flow comparte ese alcance.
+
+Un top-level flow declarará prerequisites en lugar de invocar recursivamente otros flows de forma arbitraria. El patrón previsto es `check → bounded support operation → recheck → continue/skip/fail`. Operaciones como `acquire_sapphires`, `buy_stamina` o `empty_inventory` podrán ser mini-flows internos, pero no se confundirán con los flows principales seleccionables. `RequirementRunner`, `SessionPlan` y `SessionRunner` todavía no están implementados.
+
+Las sesiones de producto deberán correr unattended durante horas. El diseño posterior necesita timeouts, recovery, logging, resultados explícitos, aislamiento de fallos, cleanup y política para continuar con el siguiente flow o personaje.
+
+También se preserva una distinción futura: los runtime facts (`stamina`, inventario, attempts) sirven para decisiones inmediatas y no exigen persistencia; los informational snapshots de currencies/resources se actualizan mediante flows explícitos de consulta y no constituyen una réplica autoritativa, porque el usuario también juega manualmente. Fase 3E no implementa OCR ni almacenamiento de esos valores.
+
 ### Flows / Decision
 
 Contienen intención y reglas de negocio deterministas. Solicitan acciones semánticas y reaccionan a estados resueltos; no hacen template matching ni llaman a ADB.
