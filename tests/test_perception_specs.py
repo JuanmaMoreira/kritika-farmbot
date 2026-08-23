@@ -1,8 +1,17 @@
 from dataclasses import FrozenInstanceError
+import hashlib
+from pathlib import Path
 
+import cv2
+import numpy as np
 import pytest
 
-from bot.perception.specs import LinearGapCalibration
+from bot.perception.specs import (
+    CHARACTER_SELECT_HEADER_SPEC,
+    DEFAULT_LOCAL_CV_SPECS,
+    LOBBY_TRADING_CENTER_LABEL_SPEC,
+    LinearGapCalibration,
+)
 
 
 def test_linear_gap_calibration_is_immutable_and_normalizes_anchors():
@@ -56,3 +65,55 @@ def test_linear_gap_calibration_rejects_invalid_scores(score):
 
     with pytest.raises(ValueError, match="raw_match_score"):
         calibration.confidence(score)
+
+
+def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
+    assert LOBBY_TRADING_CENTER_LABEL_SPEC.asset_path.as_posix() == (
+        "assets/ui/landmarks/lobby-trading-center-label.png"
+    )
+    assert LOBBY_TRADING_CENTER_LABEL_SPEC.region == (
+        0.19095870206489673,
+        0.905032679738562,
+        0.29761061946902656,
+        0.9822222222222222,
+    )
+    assert CHARACTER_SELECT_HEADER_SPEC.asset_path.as_posix() == (
+        "assets/ui/landmarks/character-select-header.png"
+    )
+    assert CHARACTER_SELECT_HEADER_SPEC.region == (
+        0.40297935103244836,
+        0.02676470588235294,
+        0.5852212389380531,
+        0.11212418300653594,
+    )
+    assert all(
+        spec.calibration.negative_anchor
+        < spec.calibration.positive_anchor
+        for spec in DEFAULT_LOCAL_CV_SPECS
+    )
+
+
+@pytest.mark.parametrize(
+    ("spec", "dimensions", "sha256"),
+    (
+        (
+            LOBBY_TRADING_CENTER_LABEL_SPEC,
+            (235, 70),
+            "483ec9fa2d5bd07e8bb2fc8e8188e9ccc0b916c453e0a4818b9428dab801b360",
+        ),
+        (
+            CHARACTER_SELECT_HEADER_SPEC,
+            (440, 80),
+            "e16be1dc88a74f9f4511d5c0058f7249e635dcd2bca864c1f206f567b2b61e93",
+        ),
+    ),
+)
+def test_promoted_assets_are_exact_evaluated_candidates(spec, dimensions, sha256):
+    repository_root = Path(__file__).resolve().parents[1]
+    asset = repository_root / spec.asset_path
+    payload = asset.read_bytes()
+    image = cv2.imdecode(np.frombuffer(payload, dtype="uint8"), cv2.IMREAD_COLOR)
+
+    assert image is not None
+    assert (image.shape[1], image.shape[0]) == dimensions
+    assert hashlib.sha256(payload).hexdigest() == sha256

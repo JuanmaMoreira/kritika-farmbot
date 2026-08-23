@@ -8,10 +8,12 @@ import pytest
 
 from bot.catalog import (
     BASE_CONTEXT_RULES,
-    LANDMARK_GOLD_CURRENCY_ICON,
+    LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     OVERLAY_RULES,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
+    SCREEN_CHARACTER_SELECT,
     SCREEN_LOBBY,
     SEMANTIC_CONFIDENCE_THRESHOLD,
     SEMANTIC_OBSERVATION_NAMES,
@@ -198,20 +200,28 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 3
+    assert len(BASE_CONTEXT_RULES) == 4
     assert len(OVERLAY_RULES) == 1
     assert len(SEMANTIC_OBSERVATION_NAMES) == 5
+    assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 
-def test_global_gold_icon_does_not_resolve_lobby():
-    assert LANDMARK_GOLD_CURRENCY_ICON in SEMANTIC_OBSERVATION_NAMES
-    assert SCREEN_LOBBY not in {rule.name for rule in BASE_CONTEXT_RULES}
-
-    state = build_default_resolver().resolve(
-        batch(LANDMARK_GOLD_CURRENCY_ICON)
+def test_lobby_requires_only_the_trading_center_label():
+    lobby_rule = next(
+        rule for rule in BASE_CONTEXT_RULES if rule.name == SCREEN_LOBBY
     )
 
-    assert state.status is ResolutionStatus.UNKNOWN
+    assert lobby_rule.requires == (LANDMARK_LOBBY_TRADING_CENTER_LABEL,)
+
+
+def test_character_select_keeps_its_single_header_requirement():
+    character_rule = next(
+        rule
+        for rule in BASE_CONTEXT_RULES
+        if rule.name == SCREEN_CHARACTER_SELECT
+    )
+
+    assert character_rule.requires == (LANDMARK_CHARACTER_SELECT_HEADER,)
 
 
 def test_default_resolver_builder_does_not_create_a_singleton():

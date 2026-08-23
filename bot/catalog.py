@@ -12,7 +12,9 @@ SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
 POPUP_PURCHASE_CONFIRMATION = "popup.purchase_confirmation"
 
-LANDMARK_GOLD_CURRENCY_ICON = "landmark.gold_currency_icon"
+LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
+    "landmark.lobby_trading_center_label"
+)
 LANDMARK_CHARACTER_SELECT_HEADER = "landmark.character_select_header"
 LANDMARK_MONSTER_WAVE_ENTRY_TITLE = "landmark.monster_wave_entry_title"
 LANDMARK_BLACK_MARKET_TITLE = "landmark.black_market_title"
@@ -23,7 +25,7 @@ LANDMARK_PURCHASE_CONFIRMATION_PROMPT = (
 SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
-    LANDMARK_GOLD_CURRENCY_ICON,
+    LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
 )
@@ -37,6 +39,11 @@ BASE_CONTEXT_RULES = (
     ContextRule(
         name=SCREEN_CHARACTER_SELECT,
         requires=(LANDMARK_CHARACTER_SELECT_HEADER,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_LOBBY,
+        requires=(LANDMARK_LOBBY_TRADING_CENTER_LABEL,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(

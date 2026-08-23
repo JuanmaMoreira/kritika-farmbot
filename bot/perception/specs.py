@@ -9,6 +9,8 @@ from pathlib import Path
 
 from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
+    LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
 )
 from bot.geometry import RelativeRegion, normalize_relative_region
@@ -100,7 +102,51 @@ PURCHASE_CONFIRMATION_PROMPT_SPEC = LocalCvSpec(
     ),
 )
 
+# Curated byte-for-byte from the Phase 3B.1 candidate generated from
+# screencaps/semantic/lobby/20260823T025455_304538Z.png. The 235x70 template
+# and search region were recalibrated over all 57 confirmed human labels.
+# It is validated against the current corpus, not a controlled multi-season
+# dataset. A season change requires new positives and repeated evaluation;
+# no broader-strip or gold-anchor fallback is implied.
+LOBBY_TRADING_CENTER_LABEL_SPEC = LocalCvSpec(
+    name=LANDMARK_LOBBY_TRADING_CENTER_LABEL,
+    asset_path=Path(
+        "assets/ui/landmarks/lobby-trading-center-label.png"
+    ),
+    region=(
+        0.19095870206489673,
+        0.905032679738562,
+        0.29761061946902656,
+        0.9822222222222222,
+    ),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.4657268226146698,
+        positive_anchor=0.7198567986488342,
+    ),
+)
+
+# Curated byte-for-byte from the Phase 3B candidate generated from
+# screencaps/semantic/character_select/20260823T025343_820522Z.png. This
+# 440x80 current rendering replaces the overlapping legacy template. Its
+# template-based calibration remains reproducibly updateable as labels grow.
+CHARACTER_SELECT_HEADER_SPEC = LocalCvSpec(
+    name=LANDMARK_CHARACTER_SELECT_HEADER,
+    asset_path=Path("assets/ui/landmarks/character-select-header.png"),
+    region=(
+        0.40297935103244836,
+        0.02676470588235294,
+        0.5852212389380531,
+        0.11212418300653594,
+    ),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.2443815916776657,
+        positive_anchor=0.43373382091522217,
+    ),
+)
+
 DEFAULT_LOCAL_CV_SPECS = (
+    LOBBY_TRADING_CENTER_LABEL_SPEC,
+    CHARACTER_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
 )

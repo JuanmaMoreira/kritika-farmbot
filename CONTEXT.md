@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 3B.1 completada
+**Estado:** rediseño híbrido 0.2 — Fase 3C completada
 **Última actualización:** 2026-08-23
 
 ## Objetivo
@@ -207,6 +207,19 @@ La Fase 3B.1 reabrió únicamente la elección del landmark de Lobby mediante an
 - Para 3C se recomienda curar `landmark.lobby_trading_center_label` como única señal de Lobby, no el ancla de oro ni una conjunción obligatoria. A los mínimos positivos observados, `Trading Center` ya separa `11/11` positivos de `46/46` negativos; añadir oro no mejora ese resultado y agrega otra condición de fallo. `landmark.lobby_commerce_pair` queda como alternativa experimental, no como requirement simultáneo.
 - La evaluación valida separación sólo en el dataset actual. Aunque los frames exhiben fondos visualmente distintos, no constituyen una campaña multi-season controlada. La menor sensibilidad estacional de un rótulo GUI aislado frente a retratos, decoración y fondo es una expectativa por diseño, no evidencia empírica multi-season.
 
+La Fase 3C promovió exactamente Lobby y Character Select a Perception productiva, sin incorporar Battle Mode Select:
+
+- Los PNG experimentales aprobados se copiaron byte por byte a `assets/ui/landmarks/lobby-trading-center-label.png` (`235×70`) y `assets/ui/landmarks/character-select-header.png` (`440×80`). Sus fuentes son, respectivamente, `screencaps/semantic/lobby/20260823T025455_304538Z.png` y `screencaps/semantic/character_select/20260823T025343_820522Z.png`; producción no depende de `artifacts/`.
+- `build_default_perception()` construye exactamente cuatro detectores: `landmark.lobby_trading_center_label`, `landmark.character_select_header`, `landmark.black_market_title` y `landmark.purchase_confirmation_prompt`. No construye detectores para el oro, Monster Wave ni otros landmarks legacy.
+- La calibración reproducida sobre los 57 frames confirmados combinados fijó Lobby en `0.4657268226146698 → 0.7198567986488342` (11 positivos, 46 negativos, gap `0.25412997603416443`) y Character Select en `0.2443815916776657 → 0.43373382091522217` (12/45, gap `0.18935222923755646`).
+- La reevaluación de Black Market y Purchase Confirmation mantuvo sin cambios sus anchors de 3A: `0.2230203002691269 → 0.997641384601593` y `0.48758167028427124 → 0.9959162473678589`. Las 30 capturas dirigidas no introdujeron extremos nuevos ni falsos positivos.
+- `bot/catalog.py` restauró `screen.lobby` requiriendo únicamente `landmark.lobby_trading_center_label` con confidence `0.80`. `screen.character_select` conserva como única requirement su header. El oro se retiró del vocabulary productivo; su historia permanece en tooling y documentación 2D/3B.1.
+- La evaluación end-to-end `FrameSnapshot → PerceptionEngine → ObservationBatch → ContextResolver → ResolvedState` produjo 57/57 resultados esperados, cero ambigüedades y cero resoluciones incorrectas: Lobby 11/11, Character Select 12/12 y Black Market 6/6 resueltos; Battle Mode Select 11/11 y los otros 17 frames permanecieron `UNKNOWN` como corresponde. Los tres overlays Purchase se conservaron, incluidos dos sobre Black Market y uno sobre base `UNKNOWN`.
+- La suite normal contiene 308 tests hardware-free y valida composición exacta, hashes/dimensiones de los assets curados, regions, calibraciones, comportamiento sintético, catálogo e import safety.
+- Los negativos críticos que comparten el shell de Lobby —Trading Center abierto, Item Trade, Quests y Black Market— no emitieron el landmark de Lobby con confidence positiva. No se añadió oro, conjunción ni fallback a una franja comercial más amplia.
+- Lobby está validado sólo contra el corpus actual. Su menor superficie reduce riesgo esperado por diseño, pero no demuestra robustez multi-season. Ante un cambio de season deben adquirirse nuevos positivos humanos y repetirse evaluación/calibración.
+- Battle Mode Select continúa `PROMISING` y sin detector productivo; su regla semántica se conserva para una promoción futura basada en evidencia. OCR, VLM, ActionExecutor, gameplay y acciones físicas siguen deferred.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La suite normal contiene 300 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. Fase 3C podrá curar y calibrar `landmark.lobby_trading_center_label` y el candidate actual de `landmark.character_select_header`; `landmark.lobby_commerce_pair` permanece como alternativa offline y Battle Mode Select necesita evidencia más diversa o una señal con separación más amplia antes de entrar a Perception productiva.
+La suite normal permanece hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente validación de hardware deberá limitarse a conectar `ScrcpyFrameSource → PerceptionEngine → ContextResolver`, observar resultados y cleanup, sin gameplay ni acciones. `landmark.lobby_commerce_pair` permanece como alternativa offline y Battle Mode Select necesita evidencia más diversa o una señal con separación más amplia antes de entrar a Perception productiva.

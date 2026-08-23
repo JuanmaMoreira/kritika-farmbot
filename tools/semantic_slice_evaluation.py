@@ -15,7 +15,6 @@ import cv2
 from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
-    LANDMARK_GOLD_CURRENCY_ICON,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     POPUP_PURCHASE_CONFIRMATION,
@@ -26,6 +25,8 @@ from bot.catalog import (
 )
 from bot.geometry import RelativeRegion, frame_dimensions
 from bot.screen import template_match_score
+
+LANDMARK_GOLD_CURRENCY_ICON = "landmark.gold_currency_icon"
 
 MANIFEST_VERSION = 1
 EVALUATION_VERSION = 1

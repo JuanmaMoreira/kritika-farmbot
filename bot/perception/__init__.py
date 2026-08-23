@@ -8,7 +8,9 @@ from .engine import PerceptionDetector, PerceptionEngine
 from .local_cv import LocalCvDetection, LocalCvDetector
 from .specs import (
     BLACK_MARKET_TITLE_SPEC,
+    CHARACTER_SELECT_HEADER_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
+    LOBBY_TRADING_CENTER_LABEL_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     LinearGapCalibration,
     LocalCvSpec,
@@ -18,7 +20,7 @@ from .specs import (
 def build_default_perception(
     asset_root: str | Path | None = None,
 ) -> PerceptionEngine:
-    """Build a fresh engine containing only the two Phase 3A detectors."""
+    """Build a fresh engine containing the four approved Phase 3C detectors."""
 
     root = (
         Path(asset_root)
@@ -35,9 +37,11 @@ def build_default_perception(
 
 __all__ = (
     "BLACK_MARKET_TITLE_SPEC",
+    "CHARACTER_SELECT_HEADER_SPEC",
     "DEFAULT_LOCAL_CV_SPECS",
     "PURCHASE_CONFIRMATION_PROMPT_SPEC",
     "LinearGapCalibration",
+    "LOBBY_TRADING_CENTER_LABEL_SPEC",
     "LocalCvDetection",
     "LocalCvDetector",
     "LocalCvSpec",

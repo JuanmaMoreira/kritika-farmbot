@@ -10,6 +10,9 @@ import pytest
 
 from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
+    LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_LOBBY_TRADING_CENTER_LABEL,
+    LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
@@ -20,8 +23,10 @@ from bot.perception import build_default_perception
 from bot.perception.engine import PerceptionEngine
 from bot.perception.local_cv import LocalCvDetector
 from bot.perception.specs import (
+    CHARACTER_SELECT_HEADER_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
     LinearGapCalibration,
+    LOBBY_TRADING_CENTER_LABEL_SPEC,
     LocalCvSpec,
 )
 from bot.catalog import build_default_resolver
@@ -175,7 +180,7 @@ def test_perception_module_import_does_not_load_assets(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_default_perception_contains_only_the_two_validated_specs(monkeypatch):
+def test_default_perception_contains_exactly_the_four_validated_specs(monkeypatch):
     created = []
 
     class StubDetector:
@@ -196,11 +201,42 @@ def test_default_perception_contains_only_the_two_validated_specs(monkeypatch):
 
     assert engine is not second
     assert tuple(detector.spec for detector in engine.detectors) == DEFAULT_LOCAL_CV_SPECS
-    assert len(created) == 4
+    assert len(created) == 8
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
+        LANDMARK_LOBBY_TRADING_CENTER_LABEL,
+        LANDMARK_CHARACTER_SELECT_HEADER,
         LANDMARK_BLACK_MARKET_TITLE,
         LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     )
+    assert LANDMARK_MONSTER_WAVE_ENTRY_TITLE not in {
+        spec.name for spec in DEFAULT_LOCAL_CV_SPECS
+    }
+
+
+@pytest.mark.parametrize(
+    "production_spec",
+    (LOBBY_TRADING_CENTER_LABEL_SPEC, CHARACTER_SELECT_HEADER_SPEC),
+)
+def test_promoted_detector_emits_only_for_its_curated_candidate(production_spec):
+    repository_root = Path(__file__).resolve().parents[1]
+    template = cv2.imread(
+        str(repository_root / production_spec.asset_path),
+        cv2.IMREAD_COLOR,
+    )
+    assert template is not None
+    detector = LocalCvDetector(production_spec, asset_root=repository_root)
+    frame = np.zeros((1224, 2712, 3), dtype=np.uint8)
+    height, width = template.shape[:2]
+    x1 = int(production_spec.region[0] * frame.shape[1])
+    y1 = int(production_spec.region[1] * frame.shape[0])
+    frame[y1 : y1 + height, x1 : x1 + width] = template
+
+    observation = detector.detect(frame)[0]
+
+    assert observation.name == production_spec.name
+    assert observation.source is ObservationSource.LOCAL_CV
+    assert observation.confidence == 1.0
+    assert detector.detect(np.zeros_like(frame)) == ()
 
 
 def build_synthetic_pipeline(tmp_path):

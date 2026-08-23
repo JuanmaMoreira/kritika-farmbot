@@ -94,14 +94,18 @@ El backend actual es `LocalCvDetector`. Cada instancia representa un único land
 
 `LocalCvDetection` mantiene separados `raw_match_score` y `semantic_confidence`. `LinearGapCalibration` mapea linealmente el máximo negativo confirmado a `0` y el mínimo positivo confirmado a `1`, con clamp fuera del intervalo. Esa confidence sólo expresa posición en el gap empírico de la muestra 2D y no es una probabilidad. El detector omite evidence con confidence `0`; no aplica el threshold semántico `0.80`, que sigue siendo policy exclusiva del `ContextResolver`.
 
-Las specs productivas contienen exclusivamente:
+Desde Fase 3C, las specs productivas contienen exclusivamente:
 
 | Observation | Asset | Region validada | Gap empírico provisional |
 |---|---|---|---|
+| `landmark.lobby_trading_center_label` | `assets/ui/landmarks/lobby-trading-center-label.png` | `(0.19095870206489673, 0.905032679738562, 0.29761061946902656, 0.9822222222222222)` | `0.4657268226146698 → 0.7198567986488342` |
+| `landmark.character_select_header` | `assets/ui/landmarks/character-select-header.png` | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | `0.2443815916776657 → 0.43373382091522217` |
 | `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.997641384601593` |
 | `landmark.purchase_confirmation_prompt` | `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.48758167028427124 → 0.9959162473678589` |
 
-No existen todavía detectores productivos para Lobby, Character Select, Battle Mode Select ni otros estados. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
+Los dos assets promovidos son copias exactas de los candidates evaluados bajo `artifacts/`; esos artifacts no son dependencias runtime. El detector de Lobby consume únicamente el rótulo `Trading Center`: no usa oro, una conjunción ni fallback a la franja amplia. Su separación está validada contra el corpus actual, no contra un conjunto controlado multi-season; un cambio de season exige nuevos positives humanos y recalibración. Character Select usa el rendering actual validado y no el asset legacy con overlap.
+
+No existe todavía detector productivo para Battle Mode Select ni otros estados. Su `ContextRule` permanece disponible, de modo que sin otra señal productiva esos frames resuelven `UNKNOWN`. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
 
 ### Semantic Observations
 
@@ -144,12 +148,12 @@ La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState`
 
 La Fase 2C añadió `bot/catalog.py` como configuración semántica productiva separada del motor genérico. Su API pública es `BASE_CONTEXT_RULES`, `OVERLAY_RULES`, `SEMANTIC_OBSERVATION_NAMES` y `build_default_resolver()`. No importa `constants.py`, assets ni capas de percepción.
 
-Después de la validación 2D, el slice contiene tres reglas base, un overlay y una señal histórica no consumida:
+Después de la promoción 3C, el catálogo productivo contiene cuatro reglas base y un overlay. El oro dejó de formar parte del vocabulary productivo; su referencia se conserva sólo como trazabilidad histórica en tooling y documentación:
 
 | Resultado semántico | Tipo | Requirement | Referencia legacy | Región legacy | Threshold legacy |
 |---|---|---|---|---|---|
-| — | señal no consumida | `landmark.gold_currency_icon` | `lobby` / `assets/ui/lobby-id.png` | `(0.2039, 0.0302, 0.2434, 0.0899)` | `0.85` |
-| `screen.character_select` | base | `landmark.character_select_header` | `select-character` / `assets/ui/select-character-id.png` | `(0.3971, 0.0417, 0.6036, 0.134)` | `0.85` |
+| `screen.lobby` | base | `landmark.lobby_trading_center_label` | candidate 3B.1 curado | `(0.19095870206489673, 0.905032679738562, 0.29761061946902656, 0.9822222222222222)` | — |
+| `screen.character_select` | base | `landmark.character_select_header` | candidate 3B curado | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | — |
 | `screen.battle_mode_select` | base | `landmark.monster_wave_entry_title` | `survival` / `assets/ui/survival-id.png` | `(0.1707, 0.2337, 0.2994, 0.2974)` | `0.85` |
 | `screen.black_market` | base | `landmark.black_market_title` | `black-market` / `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.85` |
 | `popup.purchase_confirmation` | overlay | `landmark.purchase_confirmation_prompt` | `black-market-purchase-confirmation` / `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.85` |
@@ -158,9 +162,9 @@ Esta tabla es trazabilidad histórica, no configuración runtime. Los landmarks 
 
 Todas las `ContextRule` usan `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80`. Es una policy uniforme y provisional sobre confidence reportada, distinta del threshold de matching legacy de la tabla. La evaluación 2D no definió ninguna conversión desde score OpenCV a esa confidence.
 
-Las cuatro rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. El overlay de confirmación coexiste con `screen.black_market` y no reemplaza la base.
+Las cinco rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. El overlay de confirmación coexiste con `screen.black_market` y no reemplaza la base.
 
-La regla de `screen.lobby` introducida inicialmente en 2C fue retirada: inspección visual confirmó que `lobby-id.png` contiene un icono de moneda, no un header, y la muestra humana encontró scores cercanos a `1.0` en Black Market y otros contextos. Fase 3B.1 aclaró que se trata de una señal posicional real del shell de Lobby, pero ese shell permanece visible bajo modales y Black Market; por tanto no puede resolver por sí solo el contexto base definido por la taxonomía actual. `survival-id.png` contiene “Monster Wave” dentro de “Select Battle Mode”, por lo que tanto el landmark como su resultado se corrigieron. El prompt “Purchase?” también aparece en Guild Shop; su semántica de overlay ahora es independiente de Black Market.
+La regla de `screen.lobby` introducida inicialmente en 2C fue retirada hasta 3C: inspección visual confirmó que `lobby-id.png` contiene un icono de moneda, no un header, y la muestra humana encontró scores cercanos a `1.0` en Black Market y otros contextos. Fase 3B.1 aclaró que se trata de una señal posicional real del shell de Lobby, pero ese shell permanece visible bajo modales y Black Market; por tanto no puede resolver por sí solo el contexto base definido por la taxonomía actual. Fase 3C restauró la regla con el rótulo `Trading Center`, que sí separa el corpus confirmado. `survival-id.png` contiene “Monster Wave” dentro de “Select Battle Mode”, por lo que tanto el landmark como su resultado se corrigieron. El prompt “Purchase?” también aparece en Guild Shop; su semántica de overlay ahora es independiente de Black Market.
 
 TOT no se incorporó: aunque `flow_tot()` consume `lobby → survival → tot`, los assets `tot-id.png` y sus subcontextos físicos/mágicos no están entre los assets runtime activos y la entrada conserva coordenadas pixel legacy. `bag-full-alert` tampoco se incorporó porque su comentario legacy cuestiona si representa siempre el mismo tipo de inventario lleno. No se inventaron señales para cubrir esos huecos.
 
@@ -212,6 +216,8 @@ Los matches positivos del oro ocuparon `x=565` y `y=49` o `61`. El sobre mínimo
 Para 3C, la señal primaria recomendada es `landmark.lobby_trading_center_label`: es el crop validado de menor superficie que excluye retratos y conserva un gap fuerte. `landmark.lobby_commerce_pair` queda como alternativa experimental por su gap algo mayor, no como segundo requirement. Exigir simultáneamente `landmark.lobby_currency_anchor` no reduce errores en el dataset frente al rótulo comercial solo y agrega un punto de fallo; el oro puede conservarse como evidencia diagnóstica del shell subyacente, no como regla de `screen.lobby`.
 
 Estos estados VALIDATED describen únicamente la separación en el corpus actual. Sus fondos visualmente diferentes no forman una campaña multi-season controlada. La robustez estacional asignada en la tabla es una expectativa de diseño basada en qué píxeles consume cada crop, no una validación empírica entre temporadas.
+
+Fase 3C amplió el evaluator productivo existente, sin duplicarlo, para fusionar y deduplicar los dos manifests humanos. La corrida sobre 57 frames confirmó los cuatro gaps productivos y produjo 57/57 estados esperados, cero ambigüedades y cero resoluciones incorrectas. Lobby obtuvo 11/11 y Character Select 12/12; Black Market conservó 6/6 y los tres Purchase overlays conservaron 3/3. Battle Mode Select quedó 11/11 `UNKNOWN` deliberadamente y los otros 17 contextos también permanecieron `UNKNOWN`. Los anchors 3A no cambiaron porque las capturas nuevas no añadieron extremos.
 
 ### Flows / Decision
 
