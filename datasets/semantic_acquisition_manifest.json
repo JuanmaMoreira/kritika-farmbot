@@ -1,0 +1,425 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025708_293226Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:08.293226+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4345,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": null
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025709_482302Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:09.482302+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4417,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.00021105664200149477
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025710_350038Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:10.350038+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4469,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.00010552832100074738
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025711_913679Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:11.913679+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4562,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 5.1062092097708955e-05
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025712_631010Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:12.631010+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4605,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 6.638072227360681e-05
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025713_536365Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:13.536365+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4659,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 8.169934881152585e-05
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025714_319360Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:14.319360+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4707,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 9.020969446282834e-05
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025715_119330Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:15.119330+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4755,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 8.510348561685532e-05
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025715_899141Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:15.899141+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4800,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 7.829520473023877e-05
+      }
+    },
+    {
+      "path": "screencaps/semantic/battle_mode_select/20260823T025716_783619Z.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:57:16.783619+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 4855,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.000813589314930141
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025343_820522Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:53:43.820522+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 5820,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": null
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025347_542015Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:53:47.542015+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 6046,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.04398999363183975
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025350_756818Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:53:50.756818+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 6235,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.03344056382775307
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025353_012101Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:53:53.012101+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 6369,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.024531930685043335
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025354_923610Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:53:54.923610+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 6482,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.026737812906503677
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025356_797086Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:53:56.797086+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 6594,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.046289488673210144
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025358_418296Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:53:58.418296+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 6690,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.04437465965747833
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025400_922432Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:54:00.922432+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 6832,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.04446657374501228
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025403_830038Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:54:03.830038+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 7006,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.04377893730998039
+      }
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025408_339094Z.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:54:08.339094+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 7274,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.03802764043211937
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025455_304538Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:54:55.304538+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 489,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": null
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025457_320447Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:54:57.320447+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 612,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.037683822214603424
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025458_432864Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:54:58.432864+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 677,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.025561682879924774
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025459_633611Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:54:59.633611+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 748,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.03154275566339493
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025500_439677Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:55:00.439677+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 796,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.01885042153298855
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025501_453571Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:55:01.453571+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 857,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.021616285666823387
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025503_280356Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:55:03.280356+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 965,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.03373502194881439
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025504_000879Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:55:04.000879+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 1009,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.03006025403738022
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025505_126628Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:55:05.126628+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 1080,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.01705814339220524
+      }
+    },
+    {
+      "path": "screencaps/semantic/lobby/20260823T025506_657809Z.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "captured_at_utc": "2026-08-23T02:55:06.657809+00:00",
+        "width": 2712,
+        "height": 1224,
+        "source_sequence": 1169,
+        "capture_method": "human_keyboard",
+        "previous_label_difference": 0.03278696909546852
+      }
+    }
+  ]
+}

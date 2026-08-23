@@ -6,6 +6,7 @@ import argparse
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
+from typing import Iterable
 
 import cv2
 
@@ -56,19 +57,31 @@ class ProductionPerceptionReport:
 
 def evaluate_production_perception(
     repository_root: str | Path,
-    manifest_path: str | Path = "datasets/semantic_slice_manifest.json",
+    manifest_path: str | Path | Iterable[str | Path] = (
+        "datasets/semantic_slice_manifest.json"
+    ),
 ) -> ProductionPerceptionReport:
     """Run production detectors and resolver over every confirmed manifest frame."""
 
     repository_root = Path(repository_root).resolve()
-    manifest_path = Path(manifest_path)
-    if not manifest_path.is_absolute():
-        manifest_path = repository_root / manifest_path
-    entries = tuple(
-        entry
-        for entry in load_manifest(manifest_path)
-        if entry.review_status == CONFIRMED
+    manifest_paths = (
+        (manifest_path,)
+        if isinstance(manifest_path, (str, Path))
+        else tuple(manifest_path)
     )
+    indexed: dict[str, ManifestEntry] = {}
+    for item in manifest_paths:
+        path = Path(item)
+        if not path.is_absolute():
+            path = repository_root / path
+        for entry in load_manifest(path):
+            if entry.review_status != CONFIRMED:
+                continue
+            existing = indexed.get(entry.path)
+            if existing is not None and existing != entry:
+                raise ValueError(f"conflicting human labels for {entry.path}")
+            indexed[entry.path] = entry
+    entries = tuple(indexed[path] for path in sorted(indexed))
     engine = build_default_perception(repository_root)
     resolver = build_default_resolver()
 
@@ -230,16 +243,15 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=".")
-    parser.add_argument(
-        "--manifest", default="datasets/semantic_slice_manifest.json"
-    )
+    parser.add_argument("--manifest", action="append")
     parser.add_argument(
         "--output", default="artifacts/semantic_slice/phase3a-production.json"
     )
     arguments = parser.parse_args(argv)
 
     report = evaluate_production_perception(
-        arguments.repo_root, arguments.manifest
+        arguments.repo_root,
+        arguments.manifest or ("datasets/semantic_slice_manifest.json",),
     )
     output_path = Path(arguments.output)
     if not output_path.is_absolute():

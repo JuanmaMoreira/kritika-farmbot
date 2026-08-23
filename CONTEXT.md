@@ -1,7 +1,7 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 3A completada
-**Última actualización:** 2026-08-22
+**Estado:** rediseño híbrido 0.2 — Fase 3B completada
+**Última actualización:** 2026-08-23
 
 ## Objetivo
 
@@ -188,6 +188,16 @@ La Fase 3A implementó la primera porción productiva de Perception local:
 - `build_default_perception()` crea una instancia nueva con sólo esos dos detectores y realiza IO únicamente durante esa construcción. Character Select y Battle Mode Select siguen `PROMISING`; Lobby permanece sin detector; OCR y VLM todavía no existen.
 - La evaluación productiva sobre las 27 capturas confirmadas obtuvo 6/6 TP para Black Market y 3/3 TP para Purchase, sin FP ni FN. El resolver produjo 27/27 resultados esperados, incluidos dos casos Black Market + overlay y un caso base `UNKNOWN` + Purchase overlay; no hubo `AMBIGUOUS`.
 
+La Fase 3B añadió adquisición dirigida y reevaluó las señales pendientes sin ampliar Perception productiva:
+
+- `tools/capture_semantic_dataset.py` consume exclusivamente `RuntimeConfig → build_frame_source() → ScrcpyFrameSource`, exige selección humana por teclado antes de guardar y nunca consulta templates, Perception ni ContextResolver para etiquetar. Guarda screenshots PNG completos bajo `screencaps/semantic/`, informa similitud temporal y mantiene lifecycle mediante context manager.
+- `datasets/semantic_acquisition_manifest.json` versiona 30 labels humanos nuevos: 10 `screen.lobby`, 10 `screen.character_select` y 10 `screen.battle_mode_select`, todos `confirmed` y `2712×1224`. Sus paths son relativos y la metadata sólo conserva fecha UTC, resolución, sequence y diferencia visual; no contiene seriales, device IDs ni paths absolutos.
+- Lobby quedó investigado contra 11 positivos totales y 46 negativos confirmados. El candidate interpretable formado por los rótulos `Shop / Black Market / Trading Center` quedó **VALIDATED**: positivos `0.7178/0.9862/1.0000` min/median/max, máximo negativo `0.4514`, gap `0.2664` y cero errores en el operating point diagnóstico. Permanece bajo `artifacts/` y no es asset ni detector productivo.
+- El asset legacy de `landmark.character_select_header` pasó a **NEEDS_REWORK** (`12/45`, mínimo positivo `0.4343`, máximo negativo `0.4921`). Un crop experimental con el rendering actual del mismo header quedó **VALIDATED** (`12/45`, mínimo positivo `0.4337`, máximo negativo `0.2444`, gap `0.1894`), por lo que la semántica sigue siendo correcta pero el asset productivo futuro deberá curarse en 3C.
+- El asset legacy de `landmark.monster_wave_entry_title` pasó a **NEEDS_REWORK** (`11/46`, mínimo positivo `0.3480`, máximo negativo `0.4000`). Un crop actual quedó **PROMISING**: cero errores diagnósticos pero gap pequeño `0.0278`. “Monster Wave” estuvo visible en las 10 capturas nuevas de Battle Mode Select; nueve comparaciones consecutivas quedaron bajo el aviso de near-duplicate porque esa sesión cubrió una UI casi estática, limitación que impide promoverlo todavía.
+- La regresión productiva combinada sobre 57 labels confirmó 6/6 Black Market y 3/3 Purchase, cero FP, cero FN, 57/57 resoluciones correctas y cero ambigüedades. `build_default_perception()`, las calibraciones productivas y `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80` no cambiaron.
+- No se añadieron OCR, VLM, ActionExecutor, acciones Android ni gameplay. Al terminar hardware no quedaron procesos de captura ni forwards ADB activos.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La suite normal contiene 284 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La próxima ampliación de percepción debe adquirir evidencia adicional, encontrar un landmark real de Lobby y aumentar positivos confirmados de Character Select y Battle Mode Select antes de promover nuevos detectores.
+La suite normal contiene 300 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. Fase 3C podrá curar y promover los candidates validados de Lobby y Character Select; Battle Mode Select necesita evidencia más diversa o una señal con separación más amplia antes de entrar a Perception productiva.

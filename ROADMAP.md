@@ -25,11 +25,11 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 ## Fase 3 — Percepción local
 
 - [x] 3A — Implementar el pipeline productivo `FrameSnapshot → PerceptionEngine → ObservationBatch` para Black Market y Purchase Confirmation, con templates precargados y calibración empirical-gap provisional.
-- [ ] Adquirir más evidencia antes de promover Character Select y Battle Mode Select.
-- [ ] Encontrar y validar un landmark real de Lobby.
+- [x] 3B — Adquirir 30 screenshots con ground truth humano, validar un landmark real de Lobby y reevaluar Character Select y Battle Mode Select sin ampliar Perception productiva.
+- [ ] 3C — Curar assets y calibración productiva para los candidates validados de Lobby y Character Select; mantener Battle Mode Select fuera hasta ampliar diversidad o separación.
 - [ ] Reutilizar OpenCV y templates donde aporten valor medible.
 - [ ] Evaluar un detector visual entrenado cuando exista dataset suficiente.
-- [ ] Ampliar el manifest de dataset con nuevos positivos confirmados.
+- [x] Ampliar el manifest de dataset con nuevos positivos confirmados.
 
 ## Fase 4 — OCR
 

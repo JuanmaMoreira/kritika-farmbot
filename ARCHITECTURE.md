@@ -172,6 +172,28 @@ La corrida histórica cubrió 173 PNG `2712×1224`, 865 mediciones compatibles y
 
 Fase 3A reprodujo los scores de los dos landmarks validados sobre las 173 capturas para fijar sus anchors provisionales y añadió `tools/production_perception_evaluation.py`. Esta segunda evaluación ejecuta el pipeline productivo sobre las 27 entradas confirmadas y luego pasa cada batch por `build_default_resolver()`. Obtuvo 6 TP de Black Market y 3 TP de Purchase Confirmation, cero FP, cero FN, 27/27 resoluciones esperadas y cero estados ambiguos. Incluyó dos casos `screen.black_market` + overlay y un caso `UNKNOWN` + overlay, confirmando que el prompt de compra permanece genérico.
 
+### Adquisición dirigida y candidates de Fase 3B
+
+`tools/capture_semantic_dataset.py` extiende adquisición sin crear otra implementación de scrcpy o ADB. El composition root permanece `RuntimeConfig → build_frame_source() → ScrcpyFrameSource`; el usuario selecciona explícitamente una de las tres labels y `SPACE` guarda el `FrameSnapshot.image` completo como PNG. La similitud entre capturas consecutivas de la misma label es únicamente diagnóstica y nunca decide el ground truth.
+
+Las 30 capturas nuevas viven bajo `screencaps/semantic/` e ignoradas por Git. `datasets/semantic_acquisition_manifest.json` usa el mismo núcleo versionado del manifest 2D (`path`, `base_context`, `overlays`, `review_status`) y agrega metadata de adquisición no sensible. `tools/semantic_candidate_evaluation.py` fusiona manifests humanos, rechaza conflictos, permite crops experimentales interpretables y evalúa únicamente `raw_match_score`; sus thresholds de clasificación son policy offline explícita, no calibration productiva.
+
+La evaluación combinada cubrió 57 frames confirmados: 27 históricos y 30 nuevos. Los artefactos de candidate permanecen bajo `artifacts/` y no se incorporaron a `assets/ui/`, `bot/perception/specs.py` ni `build_default_perception()`.
+
+| Señal evaluada | Positivos / negativos | Positivo min/median/max | Máximo negativo | Gap | Estado 3B |
+|---|---:|---:|---:|---:|---|
+| Asset legacy Character Select | 12 / 45 | `0.4343 / 0.4413 / 1.0000` | `0.4921` | `-0.0578` | NEEDS_REWORK |
+| Candidate actual Character Select | 12 / 45 | `0.4337 / 0.9899 / 1.0000` | `0.2444` | `0.1894` | VALIDATED |
+| Asset legacy Monster Wave | 11 / 46 | `0.3480 / 0.3486 / 1.0000` | `0.4000` | `-0.0520` | NEEDS_REWORK |
+| Candidate actual Monster Wave | 11 / 46 | `0.3817 / 0.9997 / 1.0000` | `0.3538` | `0.0278` | PROMISING |
+| Candidate Lobby: `Shop / Black Market / Trading Center` | 11 / 46 | `0.7178 / 0.9862 / 1.0000` | `0.4514` | `0.2664` | VALIDATED |
+
+El candidate elegido para Lobby usa los tres rótulos comerciales de la esquina inferior izquierda. Se prefirió al crop más amplio de la misma franja —que obtuvo un gap mayor pero incorporaba más personajes y animación— por ser visualmente más acotado e interpretable. La columna `Stage / Survival / Battle` también separó la muestra, mientras `Time Rewards` quedó `NEEDS_REWORK` por solapamiento. La señal monetaria global continúa descartada.
+
+Los diez nuevos frames Battle Mode Select conservaron visible `Monster Wave`, pero nueve diferencias consecutivas cayeron bajo el aviso de near-duplicate; esto demuestra estabilidad en una UI estática, no diversidad suficiente de variantes. Por eso el candidate actualizado no se promueve pese a no producir errores en el operating point diagnóstico.
+
+La regresión de los dos detectores productivos existentes sobre los 57 labels mantuvo 6/6 Black Market y 3/3 Purchase, cero FP/FN y 57/57 resoluciones correctas. Fase 3B no definió confidence, anchors ni thresholds de ContextRule para los candidates.
+
 ### Flows / Decision
 
 Contienen intención y reglas de negocio deterministas. Solicitan acciones semánticas y reaccionan a estados resueltos; no hacen template matching ni llaman a ADB.
@@ -202,6 +224,8 @@ Las herramientas activas quedan delimitadas así:
 - `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;
 - `tools/review_semantic_slice.py`: revisión humana local del subconjunto seleccionado.
 - `tools/production_perception_evaluation.py`: evaluación offline de observations calibradas y estados resueltos sobre el manifest confirmado.
+- `tools/capture_semantic_dataset.py`: adquisición dirigida de screenshots completos con labels humanas explícitas.
+- `tools/semantic_candidate_evaluation.py`: selección y evaluación offline de candidates experimentales mediante raw scores.
 
 `tools/debug_context.py` y `testing/` fueron retirados porque duplicaban captura, dependían del modelo de contexto legacy o contenían IDs/acciones manuales cubiertas por herramientas vigentes. No se migró percepción ni gameplay.
 

@@ -16,6 +16,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se completó la Fase 2C con un catálogo productivo mínimo corregido a tres pantallas, un popup y cinco landmarks semánticos, desacoplado de assets y percepción.
 - Se completó la Fase 2D con evaluación reproducible sobre 173 capturas y ground truth confirmado para 27, validando Black Market y Purchase Confirmation y corrigiendo señales semánticas engañosas.
 - Se completó la Fase 3A con `PerceptionEngine`, detectores OpenCV de templates precargados y calibración empirical-gap provisional para los dos landmarks validados.
+- Se completó la Fase 3B con adquisición dirigida de 30 screenshots etiquetados humanamente, un candidate validado para Lobby y reevaluación offline de Character Select y Battle Mode Select sin ampliar detectores productivos.
 
 ### Changed
 
