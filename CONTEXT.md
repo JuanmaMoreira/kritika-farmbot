@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 2B completada
+**Estado:** rediseño híbrido 0.2 — Fase 2C completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -156,6 +156,15 @@ La Fase 2B implementó resolución semántica determinista y explicable sobre un
 - `matching_base_rules()` y `matching_overlay_rules()` permiten inspeccionar qué regla coincidió y qué observación concreta satisfizo cada requirement sin incorporar esa traza a `ResolvedState`.
 - El resolver no conserva contexto anterior, no implementa temporalidad y deja `subcontext=None`.
 
+La Fase 2C añadió el primer catálogo semántico productivo y deliberadamente mínimo:
+
+- `bot/catalog.py` publica cuatro contextos base (`screen.lobby`, `screen.character_select`, `screen.survival`, `screen.black_market`) y un overlay (`popup.black_market_purchase_confirmation`).
+- El vocabulario de percepción consta sólo de cinco landmarks: `landmark.lobby_header`, `landmark.character_select_header`, `landmark.survival_title`, `landmark.black_market_title` y `landmark.black_market_purchase_dialog`.
+- `BASE_CONTEXT_RULES`, `OVERLAY_RULES` y `build_default_resolver()` forman la API del catálogo. Cada llamada al builder crea un resolver nuevo; no existe singleton ni estado global.
+- Todas las reglas usan provisionalmente confidence semántica `0.80`. Ese valor no copia el threshold OpenCV legacy `0.85`, no está calibrado y deberá validarse contra datos históricos en 2D/3.
+- Los nombres y reglas no contienen assets, regiones, coordenadas, templates ni tecnología de detector. El mapping legacy se conserva únicamente en `ARCHITECTURE.md` como trazabilidad para la futura percepción.
+- Tower of Tribulations quedó fuera pese a ser consumido por el flow legacy: sus templates principales referenciados no forman parte de los assets runtime activos y su entrada todavía mezcla geometría absoluta y subcontextos. `bag-full-alert` también quedó fuera porque el propio catálogo legacy duda de su semántica.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La suite normal contiene 209 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es Fase 2C: extraer un catálogo semántico mínimo y verificable desde el conocimiento legacy, sin incorporar aún percepción real, ActionExecutor ni migración de flows.
+La suite normal contiene 231 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es validar en 2D si assets y screencaps históricos pueden producir los cinco landmarks del catálogo sin cambiar todavía sus reglas ni incorporar gameplay.

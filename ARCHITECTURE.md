@@ -133,6 +133,28 @@ La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState`
 
 `ResolutionStatus.UNKNOWN` es first-class: la imposibilidad de resolver el contexto base no es una excepción y aun puede coexistir con overlays conocidos. La policy de subcontexto permanece pendiente y el resolver de 2B produce siempre `subcontext=None`. Tampoco implementa hysteresis, debounce, historial, transiciones ni voting entre frames.
 
+### Catálogo semántico mínimo
+
+La Fase 2C añadió `bot/catalog.py` como configuración semántica productiva separada del motor genérico. Su API pública es `BASE_CONTEXT_RULES`, `OVERLAY_RULES`, `SEMANTIC_OBSERVATION_NAMES` y `build_default_resolver()`. No importa `constants.py`, assets ni capas de percepción.
+
+El primer slice contiene cuatro bases y un overlay:
+
+| Resultado semántico | Tipo | Requirement | Referencia legacy | Región legacy | Threshold legacy |
+|---|---|---|---|---|---|
+| `screen.lobby` | base | `landmark.lobby_header` | `lobby` / `assets/ui/lobby-id.png` | `(0.2039, 0.0302, 0.2434, 0.0899)` | `0.85` |
+| `screen.character_select` | base | `landmark.character_select_header` | `select-character` / `assets/ui/select-character-id.png` | `(0.3971, 0.0417, 0.6036, 0.134)` | `0.85` |
+| `screen.survival` | base | `landmark.survival_title` | `survival` / `assets/ui/survival-id.png` | `(0.1707, 0.2337, 0.2994, 0.2974)` | `0.85` |
+| `screen.black_market` | base | `landmark.black_market_title` | `black-market` / `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.85` |
+| `popup.black_market_purchase_confirmation` | overlay | `landmark.black_market_purchase_dialog` | `black-market-purchase-confirmation` / `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.85` |
+
+Esta tabla es trazabilidad histórica, no configuración runtime. Los landmarks describen señales visibles; no prescriben template matching y podrían provenir de cualquier backend futuro.
+
+Todas las `ContextRule` usan `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80`. Es una policy uniforme y provisional sobre confidence reportada, distinta del threshold de matching legacy de la tabla. No existe calibración visual hasta validar assets y screencaps en 2D/3.
+
+Las cinco rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. El overlay de confirmación coexiste con `screen.black_market` y no reemplaza la base.
+
+TOT no se incorporó: aunque `flow_tot()` consume `lobby → survival → tot`, los assets `tot-id.png` y sus subcontextos físicos/mágicos no están entre los assets runtime activos y la entrada conserva coordenadas pixel legacy. `bag-full-alert` tampoco se incorporó porque su comentario legacy cuestiona si representa siempre el mismo tipo de inventario lleno. No se inventaron señales para cubrir esos huecos.
+
 ### Flows / Decision
 
 Contienen intención y reglas de negocio deterministas. Solicitan acciones semánticas y reaccionan a estados resueltos; no hacen template matching ni llaman a ADB.

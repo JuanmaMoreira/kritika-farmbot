@@ -13,6 +13,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se cerró la Fase 1 retirando captura/input duplicados de `bot/screen.py` y migrando las herramientas reutilizables al composition root 0.2.
 - Se completó la Fase 2A con contratos inmutables para observaciones semánticas, batches por frame y estados resueltos que distinguen contexto base, overlays, estado desconocido y ambigüedad.
 - Se completó la Fase 2B con un `ContextResolver` determinista e inyectable que explica evidencia seleccionada, expone conflictos base y resuelve overlays sin first-match, fusión de confidence ni estado temporal.
+- Se completó la Fase 2C con un catálogo productivo mínimo de cuatro pantallas, un popup y cinco landmarks semánticos, desacoplado de assets y percepción.
 
 ### Changed
 
