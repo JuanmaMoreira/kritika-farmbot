@@ -219,6 +219,14 @@ Estos estados VALIDATED describen únicamente la separación en el corpus actual
 
 Fase 3C amplió el evaluator productivo existente, sin duplicarlo, para fusionar y deduplicar los dos manifests humanos. La corrida sobre 57 frames confirmó los cuatro gaps productivos y produjo 57/57 estados esperados, cero ambigüedades y cero resoluciones incorrectas. Lobby obtuvo 11/11 y Character Select 12/12; Black Market conservó 6/6 y los tres Purchase overlays conservaron 3/3. Battle Mode Select quedó 11/11 `UNKNOWN` deliberadamente y los otros 17 contextos también permanecieron `UNKNOWN`. Los anchors 3A no cambiaron porque las capturas nuevas no añadieron extremos.
 
+### Diagnóstico live de Fase 3D
+
+`tools/smoke_perception.py` es un composition root diagnóstico manual, no un runtime general. Construye explícitamente configuración, ADB, captura, los cuatro detectores productivos y el resolver; el loop consume únicamente snapshots con sequence nuevo, a aproximadamente 3 análisis por segundo, y conserva siempre el frame más reciente sin backlog. Su lifecycle pertenece al context manager de `ScrcpyFrameSource` también ante `Ctrl+C`, error o cierre normal.
+
+La herramienta mantiene fuera de los contratos productivos dos responsabilidades puramente diagnósticas: consulta `LocalCvDetector.measure()` después de ejecutar el pipeline real para mostrar raw OpenCV score, y acumula latencia/confidence/rachas por una etapa marcada manualmente. No modifica `Observation`, no etiqueta ground truth, no retiene contexto previo y no aplica hysteresis, debounce, voting ni scheduler. El usuario sigue siendo responsable de la navegación y la herramienta no contiene comandos Android de input.
+
+La primera corrida real cubrió el pipeline completo con frames `2712×1224`. Lobby, Character Select, reentrada a Lobby y un contexto unsupported se comportaron conforme al diseño stateless. Black Market y Purchase Confirmation no alcanzaron sus calibraciones offline en la apariencia live, aunque el crop del prompt sí mostró un aumento raw al abrir el popup. Esto es una discrepancia de evidencia entre dataset y hardware, no una razón arquitectónica para introducir temporalidad o bajar thresholds: se requieren capturas current-season human-confirmed y reevaluación offline antes de modificar specs productivas.
+
 ### Flows / Decision
 
 Contienen intención y reglas de negocio deterministas. Solicitan acciones semánticas y reaccionan a estados resueltos; no hacen template matching ni llaman a ADB.
@@ -244,6 +252,7 @@ Los consumers legacy `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.
 Las herramientas activas quedan delimitadas así:
 
 - `tools/smoke_capture.py`: diagnóstico opt-in sin escritura de frames ni input físico;
+- `tools/smoke_perception.py`: diagnóstico end-to-end manual de captura, observations y resolución, con métricas stateless y sin acciones;
 - `tools/screencap_batch.py`: adquisición interactiva de capturas mediante `ScrcpyFrameSource`;
 - `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2;
 - `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;

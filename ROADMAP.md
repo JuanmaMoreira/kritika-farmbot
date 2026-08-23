@@ -28,6 +28,7 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 - [x] 3B — Adquirir 30 screenshots con ground truth humano, validar un landmark real de Lobby y reevaluar Character Select y Battle Mode Select sin ampliar Perception productiva.
 - [x] 3B.1 — Reevaluar offline Lobby ante variación estacional esperada: auditar el ancla de oro posicional, aislar rótulos comerciales y elegir una señal mínima sin cambiar Perception productiva.
 - [x] 3C — Curar assets y calibración productiva para `landmark.lobby_trading_center_label` y el candidate actual de `landmark.character_select_header`; conservar `landmark.lobby_commerce_pair` como alternativa offline y mantener Battle Mode Select fuera hasta ampliar diversidad o separación.
+- [ ] 3D — Completar el smoke end-to-end en hardware real. La primera corrida validó Lobby, Character Select, reentrada, `UNKNOWN`, latencia y cleanup, pero Black Market y Purchase Confirmation fallaron con scores live inferiores a la calibración offline; adquirir evidencia current-season confirmada, diagnosticar sin bajar thresholds arbitrariamente y repetir la sesión completa.
 - [ ] Reutilizar OpenCV y templates donde aporten valor medible.
 - [ ] Evaluar un detector visual entrenado cuando exista dataset suficiente.
 - [x] Ampliar el manifest de dataset con nuevos positivos confirmados.

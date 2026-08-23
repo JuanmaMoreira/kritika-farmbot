@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 3C completada
+**Estado:** rediseño híbrido 0.2 — Fase 3D validada parcialmente en hardware
 **Última actualización:** 2026-08-23
 
 ## Objetivo
@@ -219,6 +219,18 @@ La Fase 3C promovió exactamente Lobby y Character Select a Perception productiv
 - Los negativos críticos que comparten el shell de Lobby —Trading Center abierto, Item Trade, Quests y Black Market— no emitieron el landmark de Lobby con confidence positiva. No se añadió oro, conjunción ni fallback a una franja comercial más amplia.
 - Lobby está validado sólo contra el corpus actual. Su menor superficie reduce riesgo esperado por diseño, pero no demuestra robustez multi-season. Ante un cambio de season deben adquirirse nuevos positivos humanos y repetirse evaluación/calibración.
 - Battle Mode Select continúa `PROMISING` y sin detector productivo; su regla semántica se conserva para una promoción futura basada en evidencia. OCR, VLM, ActionExecutor, gameplay y acciones físicas siguen deferred.
+
+La primera corrida de Fase 3D validó parcialmente el pipeline completo en hardware real, pero no permite cerrar la fase:
+
+- `tools/smoke_perception.py` compone explícitamente `RuntimeConfig → AdbClient → ScrcpyFrameSource → PerceptionEngine → ObservationBatch → ContextResolver → ResolvedState`. Es manual/opt-in, import-safe, procesa siempre un sequence nuevo a frecuencia acotada, muestra cambios más heartbeat, raw scores diagnósticos separados de `Observation`, latencias y rachas stateless por etapa. No contiene scheduler, estado previo, acciones ni input Android.
+- La sesión live del 2026-08-23 confirmó ADB `device`, scrcpy-server 3.3.4, frames BGR `2712×1224`, 1061 análisis en 355.92 s y sequence `1 → 21015`. Lobby se resolvió con confidence `1.0` en la apariencia de la season actual y Character Select con confidence `1.0`; ambos permanecieron estables durante decenas de análisis consecutivos. La reentrada a Lobby también funcionó. Esta evidencia es únicamente **live validation on current season**, no validación multi-season.
+- Las transiciones manuales exhibieron `UNKNOWN` sin excepciones, como admite el resolver stateless. La pantalla unsupported ensayada permaneció `UNKNOWN` durante los 37 análisis de su ventana marcada y no produjo un falso contexto base.
+- En la pantalla marcada manualmente como Black Market, el detector productivo no resolvió la base: `landmark.black_market_title` permaneció aproximadamente en raw `0.398–0.403`, semantic confidence `0.226–0.233`, muy por debajo de `0.80`. Lobby quedó en confidence `0`, pero Character Select emitió evidence subthreshold aproximada `0.14–0.16`; no hubo resolución falsa ni `AMBIGUOUS`.
+- Con Purchase Confirmation visible, el raw del prompt subió aproximadamente de `0.14` a `0.419–0.421`, pero no alcanzó su anchor negativo offline `0.48758167028427124`; semantic confidence permaneció `0` y el overlay no se emitió. La base ya era `UNKNOWN`, por lo que no pudo demostrarse `screen.black_market + popup.purchase_confirmation` live.
+- La latencia de sesión fue: perception `5.954/10.621/10.769/27.397 ms` min/median/mean/max, resolver `0.041/0.058/0.069/2.079 ms` y snapshot-to-state `15/31/29.217/109 ms`. Las mediciones raw diagnósticas duplican matching después de resolver y no están incluidas en la latencia productiva reportada.
+- El cierre por `q` completó context manager, receiver, socket y proceso; `source.is_running` quedó falso, `adb forward --list` confirmó que el forward fue retirado y no quedó proceso `scrcpy` local. No se guardaron screenshots ni se enviaron taps, swipes o keyevents.
+- La evidencia offline de 57/57 sigue siendo reproducible, pero no cubre la apariencia live fallida. Antes de recalibrar deben adquirirse frames completos, actuales y human-confirmed de Black Market y Purchase Confirmation, inspeccionarse crops/posición/rendering y repetirse la matriz contra todos los negativos. No se ajustaron thresholds ni se añadió temporalidad durante 3D.
+- La suite normal contiene ahora 313 tests hardware-free. Fase 3D y Fase 3 permanecen abiertas hasta explicar y corregir con evidencia los dos fallos live y repetir exitosamente el smoke completo.
 
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
