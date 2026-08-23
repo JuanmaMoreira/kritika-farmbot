@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 3B completada
+**Estado:** rediseño híbrido 0.2 — Fase 3B.1 completada
 **Última actualización:** 2026-08-23
 
 ## Objetivo
@@ -160,7 +160,7 @@ La Fase 2C añadió el primer catálogo semántico productivo y deliberadamente 
 
 - `bot/catalog.py` publica tres reglas base (`screen.character_select`, `screen.battle_mode_select`, `screen.black_market`) y un overlay (`popup.purchase_confirmation`).
 - El vocabulario evaluado consta de `landmark.gold_currency_icon`, `landmark.character_select_header`, `landmark.monster_wave_entry_title`, `landmark.black_market_title` y `landmark.purchase_confirmation_prompt`.
-- `landmark.gold_currency_icon` conserva el fragmento histórico con un nombre correcto, pero ninguna regla lo consume: el asset no es un header ni distingue lobby. Por la misma razón se retiró la regla base de `screen.lobby` hasta contar con otra señal.
+- `landmark.gold_currency_icon` conserva el fragmento histórico con un nombre correcto, pero ninguna regla lo consume: el asset no es un header y permanece visible en la misma posición cuando Black Market u otros modales conservan debajo el shell de Lobby. Por esa razón no distingue por sí solo el contexto base actual y se retiró la regla de `screen.lobby` hasta contar con otra señal.
 - `BASE_CONTEXT_RULES`, `OVERLAY_RULES` y `build_default_resolver()` forman la API del catálogo. Cada llamada al builder crea un resolver nuevo; no existe singleton ni estado global.
 - Todas las reglas usan provisionalmente confidence semántica `0.80`. Ese valor no copia el threshold OpenCV legacy `0.85`; 2D midió raw scores deliberadamente sin calibrar esa confidence, tarea que permanece para Fase 3.
 - Los nombres y reglas no contienen assets, regiones, coordenadas, templates ni tecnología de detector. El mapping legacy se conserva únicamente en `ARCHITECTURE.md` como trazabilidad para la futura percepción.
@@ -174,7 +174,7 @@ La Fase 2D validó este slice de forma offline sin crear Perception productiva:
 - Se revisaron humanamente 27 capturas: 27 `confirmed`, cero `unsure` y cero `skipped`; incluyen 6 Black Market, 2 Character Select, 1 Battle Mode Select, 1 Lobby, 17 contextos fuera del slice y 3 prompts de compra.
 - `landmark.black_market_title` quedó **VALIDATED** (6 positivos, 21 negativos; mínimo positivo `0.9976`, máximo negativo `0.2230`). `landmark.purchase_confirmation_prompt` quedó **VALIDATED** (3/24; `0.9959` frente a `0.4876`) y también apareció en Guild Shop, por lo que dejó de estar acoplado semánticamente a Black Market.
 - `landmark.character_select_header` quedó **PROMISING** (2/25; `0.9929` frente a `0.4921`) y `landmark.monster_wave_entry_title` **PROMISING** (1/26; `1.0000` frente a `0.4000`) por muestra positiva pequeña.
-- `landmark.gold_currency_icon` quedó **NEEDS_REWORK** como señal de lobby: obtuvo hasta `0.9882` en negativos y scores alrededor de `0.985` en Black Market. El nombre anterior `landmark.lobby_header` describía incorrectamente un icono global.
+- `landmark.gold_currency_icon` quedó **NEEDS_REWORK** como señal exclusiva de lobby: obtuvo hasta `0.9882` en negativos y scores alrededor de `0.985` en Black Market. El nombre anterior `landmark.lobby_header` describía incorrectamente el contenido visible; Fase 3B.1 revisó por separado su valor posicional.
 - En las dos capturas Black Market + confirmación, ambos landmarks permanecieron detectables simultáneamente con scores crudos cercanos a `1.0`, respaldando el modelo base + overlay para ese caso histórico.
 
 La Fase 3A implementó la primera porción productiva de Perception local:
@@ -198,6 +198,15 @@ La Fase 3B añadió adquisición dirigida y reevaluó las señales pendientes si
 - La regresión productiva combinada sobre 57 labels confirmó 6/6 Black Market y 3/3 Purchase, cero FP, cero FN, 57/57 resoluciones correctas y cero ambigüedades. `build_default_perception()`, las calibraciones productivas y `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80` no cambiaron.
 - No se añadieron OCR, VLM, ActionExecutor, acciones Android ni gameplay. Al terminar hardware no quedaron procesos de captura ni forwards ADB activos.
 
+La Fase 3B.1 reabrió únicamente la elección del landmark de Lobby mediante análisis offline:
+
+- `assets/ui/lobby-id.png` es un template `51×47` del icono de oro. Su región legacy normalizada `(0.2039, 0.0302, 0.2434, 0.0899)` corresponde correctamente a `(552, 36, 660, 110)` sobre un frame landscape `2712×1224`. Sin embargo, el runtime preservado en `legacy-pre-hybrid` escalaba esa región con `adb wm size` en orden portrait `(1224, 2712)`, produciendo `(249, 81, 297, 243)`; la intención geométrica era posicional, pero su aplicación histórica estaba afectada por la orientación que 0.2 ya corrige mediante `frame.shape`.
+- Aplicada con la geometría landscape actual sobre los 57 labels, el ancla de oro obtuvo positivos `0.9686/0.9721/1.0000`, máximo negativo `0.9882` y gap `-0.0196`. Los positivos se localizaron en `x=565`, con `y=49` en el frame histórico y `y=61` en los diez nuevos. Un sobre ajustado objetivamente a esas posiciones, `(565, 49, 616, 108)`, conservó el mismo solapamiento y gap `-0.0196`.
+- La inspección de los negativos más altos mostró Quests, Trading Center y diálogos de Item Trade sobre el shell de Lobby, además de Black Market, todos con el icono en `(565, 49)`. El resultado corrige la explicación previa: no son principalmente coincidencias del mismo icono desplazado, sino persistencia real del ancla de Lobby bajo estados que el manifest clasifica como `unknown` o `screen.black_market`. Por ello puede describir el shell subyacente, pero no resolver por sí sola `screen.lobby` con la taxonomía vigente.
+- Se aislaron crops experimentales sin retratos. `Trading Center` solo quedó **VALIDATED** (`11/46`, positivos `0.7199/0.9826/1.0000`, máximo negativo `0.4657`, gap `0.2541`). El par `Black Market + Trading Center` también quedó **VALIDATED** y obtuvo el mayor gap estrecho (`0.2874`), aunque con menor mínimo positivo (`0.6503`) y mayor superficie. Los rótulos individuales `Shop` y `Black Market` se solaparon con negativos y quedaron **NEEDS_REWORK**.
+- Para 3C se recomienda curar `landmark.lobby_trading_center_label` como única señal de Lobby, no el ancla de oro ni una conjunción obligatoria. A los mínimos positivos observados, `Trading Center` ya separa `11/11` positivos de `46/46` negativos; añadir oro no mejora ese resultado y agrega otra condición de fallo. `landmark.lobby_commerce_pair` queda como alternativa experimental, no como requirement simultáneo.
+- La evaluación valida separación sólo en el dataset actual. Aunque los frames exhiben fondos visualmente distintos, no constituyen una campaña multi-season controlada. La menor sensibilidad estacional de un rótulo GUI aislado frente a retratos, decoración y fondo es una expectativa por diseño, no evidencia empírica multi-season.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La suite normal contiene 300 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. Fase 3C podrá curar y promover los candidates validados de Lobby y Character Select; Battle Mode Select necesita evidencia más diversa o una señal con separación más amplia antes de entrar a Perception productiva.
+La suite normal contiene 300 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. Fase 3C podrá curar y calibrar `landmark.lobby_trading_center_label` y el candidate actual de `landmark.character_select_header`; `landmark.lobby_commerce_pair` permanece como alternativa offline y Battle Mode Select necesita evidencia más diversa o una señal con separación más amplia antes de entrar a Perception productiva.

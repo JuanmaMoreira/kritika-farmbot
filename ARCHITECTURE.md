@@ -160,7 +160,7 @@ Todas las `ContextRule` usan `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80`. Es una poli
 
 Las cuatro rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. El overlay de confirmación coexiste con `screen.black_market` y no reemplaza la base.
 
-La regla de `screen.lobby` introducida inicialmente en 2C fue retirada: inspección visual confirmó que `lobby-id.png` contiene un icono de moneda global, no un header de lobby, y la muestra humana encontró scores cercanos a `1.0` en Black Market y otros contextos. El fragmento se renombró para expresar lo visible, pero no puede resolver un contexto base. `survival-id.png` contiene “Monster Wave” dentro de “Select Battle Mode”, por lo que tanto el landmark como su resultado se corrigieron. El prompt “Purchase?” también aparece en Guild Shop; su semántica de overlay ahora es independiente de Black Market.
+La regla de `screen.lobby` introducida inicialmente en 2C fue retirada: inspección visual confirmó que `lobby-id.png` contiene un icono de moneda, no un header, y la muestra humana encontró scores cercanos a `1.0` en Black Market y otros contextos. Fase 3B.1 aclaró que se trata de una señal posicional real del shell de Lobby, pero ese shell permanece visible bajo modales y Black Market; por tanto no puede resolver por sí solo el contexto base definido por la taxonomía actual. `survival-id.png` contiene “Monster Wave” dentro de “Select Battle Mode”, por lo que tanto el landmark como su resultado se corrigieron. El prompt “Purchase?” también aparece en Guild Shop; su semántica de overlay ahora es independiente de Black Market.
 
 TOT no se incorporó: aunque `flow_tot()` consume `lobby → survival → tot`, los assets `tot-id.png` y sus subcontextos físicos/mágicos no están entre los assets runtime activos y la entrada conserva coordenadas pixel legacy. `bag-full-alert` tampoco se incorporó porque su comentario legacy cuestiona si representa siempre el mismo tipo de inventario lleno. No se inventaron señales para cubrir esos huecos.
 
@@ -168,7 +168,7 @@ TOT no se incorporó: aunque `flow_tot()` consume `lobby → survival → tot`, 
 
 La Fase 2D añadió tooling de evaluación, no una capa Perception. `template_match_score()` en `bot/screen.py` recibe un frame explícito, un template y una region opcional, y devuelve el máximo crudo de `TM_CCOEFF_NORMED`. `tools/semantic_slice_evaluation.py` usa esa primitiva para inventario, matriz completa, selección determinista y estadísticas; `tools/review_semantic_slice.py` solamente facilita labels humanos. Los resultados completos viven bajo `artifacts/`, ignorado por Git, y el manifest pequeño conserva paths relativos sin imágenes.
 
-La corrida histórica cubrió 173 PNG `2712×1224`, 865 mediciones compatibles y 27 frames confirmados manualmente. Todas las regions eran relativas y se convirtieron mediante `bot.geometry`; no hubo fallback full-frame ni scaling. Los assets a tamaño nativo produjeron separación fuerte para Black Market y confirmación de compra, evidencia prometedora pero escasa para Character Select y Monster Wave, y una colisión estructural para el icono de moneda. Estas mediciones caracterizan únicamente el dataset histórico y no establecen thresholds productivos ni semantic confidence.
+La corrida histórica cubrió 173 PNG `2712×1224`, 865 mediciones compatibles y 27 frames confirmados manualmente. Todas las regions eran relativas y se convirtieron mediante `bot.geometry`; no hubo fallback full-frame ni scaling. Los assets a tamaño nativo produjeron separación fuerte para Black Market y confirmación de compra, evidencia prometedora pero escasa para Character Select y Monster Wave, y solapamiento semántico para el icono de moneda bajo estados superpuestos al shell de Lobby. Estas mediciones caracterizan únicamente el dataset histórico y no establecen thresholds productivos ni semantic confidence.
 
 Fase 3A reprodujo los scores de los dos landmarks validados sobre las 173 capturas para fijar sus anchors provisionales y añadió `tools/production_perception_evaluation.py`. Esta segunda evaluación ejecuta el pipeline productivo sobre las 27 entradas confirmadas y luego pasa cada batch por `build_default_resolver()`. Obtuvo 6 TP de Black Market y 3 TP de Purchase Confirmation, cero FP, cero FN, 27/27 resoluciones esperadas y cero estados ambiguos. Incluyó dos casos `screen.black_market` + overlay y un caso `UNKNOWN` + overlay, confirmando que el prompt de compra permanece genérico.
 
@@ -188,11 +188,30 @@ La evaluación combinada cubrió 57 frames confirmados: 27 históricos y 30 nuev
 | Candidate actual Monster Wave | 11 / 46 | `0.3817 / 0.9997 / 1.0000` | `0.3538` | `0.0278` | PROMISING |
 | Candidate Lobby: `Shop / Black Market / Trading Center` | 11 / 46 | `0.7178 / 0.9862 / 1.0000` | `0.4514` | `0.2664` | VALIDATED |
 
-El candidate elegido para Lobby usa los tres rótulos comerciales de la esquina inferior izquierda. Se prefirió al crop más amplio de la misma franja —que obtuvo un gap mayor pero incorporaba más personajes y animación— por ser visualmente más acotado e interpretable. La columna `Stage / Survival / Battle` también separó la muestra, mientras `Time Rewards` quedó `NEEDS_REWORK` por solapamiento. La señal monetaria global continúa descartada.
+El candidate elegido inicialmente para Lobby usa los tres rótulos comerciales de la esquina inferior izquierda. Se prefirió al crop más amplio de la misma franja —que obtuvo un gap mayor pero incorporaba más personajes y animación— por ser visualmente más acotado e interpretable. La columna `Stage / Survival / Battle` también separó la muestra, mientras `Time Rewards` quedó `NEEDS_REWORK` por solapamiento. Fase 3B.1 volvió a reducir la señal para limitar su exposición a retratos y fondo.
 
 Los diez nuevos frames Battle Mode Select conservaron visible `Monster Wave`, pero nueve diferencias consecutivas cayeron bajo el aviso de near-duplicate; esto demuestra estabilidad en una UI estática, no diversidad suficiente de variantes. Por eso el candidate actualizado no se promueve pese a no producir errores en el operating point diagnóstico.
 
 La regresión de los dos detectores productivos existentes sobre los 57 labels mantuvo 6/6 Black Market y 3/3 Purchase, cero FP/FN y 57/57 resoluciones correctas. Fase 3B no definió confidence, anchors ni thresholds de ContextRule para los candidates.
+
+### Reevaluación de Lobby de Fase 3B.1
+
+La reevaluación fue exclusivamente offline y reutilizó los mismos 57 labels confirmados. `lobby-id.png` mide `51×47`. La región normalizada legacy equivale a `(552, 36, 660, 110)` sobre los frames landscape; el código de `legacy-pre-hybrid`, en cambio, la escalaba con el orden portrait reportado por `adb wm size`, de modo que su crop efectivo era `(249, 81, 297, 243)`. La arquitectura 0.2 conserva la intención correcta al derivar dimensiones de `frame.shape`.
+
+Los matches positivos del oro ocuparon `x=565` y `y=49` o `61`. El sobre mínimo que incluye esos matches, `(565, 49, 616, 108)`, es el único ajuste de región ensayado porque deriva directamente de las posiciones confirmadas; no produjo separación. Los negativos más altos conservaron el icono exactamente en `(565, 49)` dentro de Quests, Trading Center, Item Trade y Black Market superpuestos al Lobby.
+
+| Señal Lobby reevaluada | Positivos / negativos | Positivo min/median/max | Máximo negativo | Gap | Riesgo estacional esperado |
+|---|---:|---:|---:|---:|---|
+| Franja comercial amplia 3B | 11 / 46 | `0.7124 / 0.9787 / 1.0000` | `0.2274` | `0.4851` | Alto: incluye retratos, animación y fondo |
+| Tres rótulos comerciales 3B | 11 / 46 | `0.7178 / 0.9862 / 1.0000` | `0.4514` | `0.2664` | Medio: todavía conserva partes de retratos y fondo |
+| `Trading Center` aislado | 11 / 46 | `0.7199 / 0.9826 / 1.0000` | `0.4657` | `0.2541` | Bajo-medio por diseño: rótulo y backing GUI |
+| `Black Market + Trading Center` aislados | 11 / 46 | `0.6503 / 0.9833 / 1.0000` | `0.3629` | `0.2874` | Bajo-medio, pero abarca dos rótulos y más superficie |
+| Oro en región legacy landscape | 11 / 46 | `0.9686 / 0.9721 / 1.0000` | `0.9882` | `-0.0196` | Bajo visualmente, pero no es exclusivo del contexto base |
+| Oro en sobre posicional ajustado | 11 / 46 | `0.9686 / 0.9721 / 1.0000` | `0.9882` | `-0.0196` | Igual que el anterior; el ajuste no elimina el solapamiento |
+
+Para 3C, la señal primaria recomendada es `landmark.lobby_trading_center_label`: es el crop validado de menor superficie que excluye retratos y conserva un gap fuerte. `landmark.lobby_commerce_pair` queda como alternativa experimental por su gap algo mayor, no como segundo requirement. Exigir simultáneamente `landmark.lobby_currency_anchor` no reduce errores en el dataset frente al rótulo comercial solo y agrega un punto de fallo; el oro puede conservarse como evidencia diagnóstica del shell subyacente, no como regla de `screen.lobby`.
+
+Estos estados VALIDATED describen únicamente la separación en el corpus actual. Sus fondos visualmente diferentes no forman una campaña multi-season controlada. La robustez estacional asignada en la tabla es una expectativa de diseño basada en qué píxeles consume cada crop, no una validación empírica entre temporadas.
 
 ### Flows / Decision
 

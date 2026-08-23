@@ -26,7 +26,8 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 
 - [x] 3A — Implementar el pipeline productivo `FrameSnapshot → PerceptionEngine → ObservationBatch` para Black Market y Purchase Confirmation, con templates precargados y calibración empirical-gap provisional.
 - [x] 3B — Adquirir 30 screenshots con ground truth humano, validar un landmark real de Lobby y reevaluar Character Select y Battle Mode Select sin ampliar Perception productiva.
-- [ ] 3C — Curar assets y calibración productiva para los candidates validados de Lobby y Character Select; mantener Battle Mode Select fuera hasta ampliar diversidad o separación.
+- [x] 3B.1 — Reevaluar offline Lobby ante variación estacional esperada: auditar el ancla de oro posicional, aislar rótulos comerciales y elegir una señal mínima sin cambiar Perception productiva.
+- [ ] 3C — Curar assets y calibración productiva para `landmark.lobby_trading_center_label` y el candidate actual de `landmark.character_select_header`; conservar `landmark.lobby_commerce_pair` como alternativa offline y mantener Battle Mode Select fuera hasta ampliar diversidad o separación.
 - [ ] Reutilizar OpenCV y templates donde aporten valor medible.
 - [ ] Evaluar un detector visual entrenado cuando exista dataset suficiente.
 - [x] Ampliar el manifest de dataset con nuevos positivos confirmados.
