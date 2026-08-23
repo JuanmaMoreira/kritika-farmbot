@@ -21,15 +21,15 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 - [x] 2B — Construir un `ContextResolver` determinista, explicable e independiente del catálogo.
 - [x] 2C — Extraer un primer catálogo semántico mínimo desde el conocimiento legacy.
 - [x] 2D — Validar el catálogo mínimo contra assets y screencaps históricos.
-- [ ] Definir prioridades e interrupciones semánticas.
 
 ## Fase 3 — Percepción local
 
-- [ ] Seleccionar un primer caso de uso real y acotado.
-- [ ] Implementar solo los detectores requeridos por ese caso.
+- [x] 3A — Implementar el pipeline productivo `FrameSnapshot → PerceptionEngine → ObservationBatch` para Black Market y Purchase Confirmation, con templates precargados y calibración empirical-gap provisional.
+- [ ] Adquirir más evidencia antes de promover Character Select y Battle Mode Select.
+- [ ] Encontrar y validar un landmark real de Lobby.
 - [ ] Reutilizar OpenCV y templates donde aporten valor medible.
 - [ ] Evaluar un detector visual entrenado cuando exista dataset suficiente.
-- [ ] Establecer pipeline y manifest de dataset.
+- [ ] Ampliar el manifest de dataset con nuevos positivos confirmados.
 
 ## Fase 4 — OCR
 
@@ -47,6 +47,7 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 ## Fase 6 — Flows
 
 - [ ] Migrar lógica de negocio de forma incremental.
+- [ ] Definir prioridades e interrupciones semánticas cuando un flow real las necesite.
 - [ ] Mantener los flows separados de percepción y ADB directo.
 - [ ] Seleccionar el primer flow según valor y facilidad de validación.
 - [ ] Usar TOT como conocimiento legacy cuando sea útil, sin asumir que será el primer flow reconstruido.

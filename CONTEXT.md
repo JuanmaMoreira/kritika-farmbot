@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 2D completada
+**Estado:** rediseño híbrido 0.2 — Fase 3A completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -177,6 +177,17 @@ La Fase 2D validó este slice de forma offline sin crear Perception productiva:
 - `landmark.gold_currency_icon` quedó **NEEDS_REWORK** como señal de lobby: obtuvo hasta `0.9882` en negativos y scores alrededor de `0.985` en Black Market. El nombre anterior `landmark.lobby_header` describía incorrectamente un icono global.
 - En las dos capturas Black Market + confirmación, ambos landmarks permanecieron detectables simultáneamente con scores crudos cercanos a `1.0`, respaldando el modelo base + overlay para ese caso histórico.
 
+La Fase 3A implementó la primera porción productiva de Perception local:
+
+- `bot/perception/engine.py` define un contrato pequeño de detector y un `PerceptionEngine` inmutable. El engine recibe detectores explícitos, agrega sus observations en orden determinista y devuelve un `ObservationBatch` con el `sequence` y `timestamp` exactos del `FrameSnapshot`; no conserva contexto, historial ni estado de gameplay.
+- `bot/perception/local_cv.py` implementa matching OpenCV a tamaño nativo para un landmark por detector. Cada template se carga y valida una sola vez durante la construcción, queda precargado en grayscale y se reutiliza en todos los frames. La búsqueda convierte la region normalizada mediante `bot.geometry` y reutiliza `template_match_score()` sin leer el PNG por frame.
+- `bot/perception/specs.py` contiene únicamente las specs productivas de `landmark.black_market_title` y `landmark.purchase_confirmation_prompt`, con los mismos assets y regions verificados en 2D. `bot/catalog.py` continúa sin conocer paths, templates ni OpenCV.
+- `LinearGapCalibration` transforma el score crudo mediante interpolación lineal entre el máximo negativo confirmado y el mínimo positivo confirmado, clamped a `[0,1]`. La confidence resultante expresa posición en el gap empírico; no es una probabilidad ni una calibración estadística final.
+- Los anchors reproducidos sobre 173 screencaps y el manifest de 27 labels son `0.2230203002691269 → 0.997641384601593` para Black Market y `0.48758167028427124 → 0.9959162473678589` para Purchase Confirmation. Son provisionales porque sólo existen seis y tres positivos confirmados respectivamente.
+- El detector no emite una observation cuando la confidence calibrada es `0`; para valores mayores emite presencia con `ObservationSource.LOCAL_CV`, `value=None` y sin region semántica. El threshold de resolución `0.80` permanece exclusivamente en `ContextRule`.
+- `build_default_perception()` crea una instancia nueva con sólo esos dos detectores y realiza IO únicamente durante esa construcción. Character Select y Battle Mode Select siguen `PROMISING`; Lobby permanece sin detector; OCR y VLM todavía no existen.
+- La evaluación productiva sobre las 27 capturas confirmadas obtuvo 6/6 TP para Black Market y 3/3 TP para Purchase, sin FP ni FN. El resolver produjo 27/27 resultados esperados, incluidos dos casos Black Market + overlay y un caso base `UNKNOWN` + Purchase overlay; no hubo `AMBIGUOUS`.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La suite normal contiene 247 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es definir prioridades e interrupciones semánticas antes de comenzar Perception local en Fase 3.
+La suite normal contiene 284 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La próxima ampliación de percepción debe adquirir evidencia adicional, encontrar un landmark real de Lobby y aumentar positivos confirmados de Character Select y Battle Mode Select antes de promover nuevos detectores.

@@ -75,6 +75,18 @@ def test_template_match_score_returns_none_when_template_does_not_fit(tmp_path):
     assert screen.template_match_score(frame, path) is None
 
 
+def test_template_match_score_accepts_a_preloaded_grayscale_template(tmp_path):
+    rng = np.random.default_rng(131)
+    template = rng.integers(0, 256, size=(8, 10, 3), dtype=np.uint8)
+    frame = np.zeros((80, 120, 3), dtype=np.uint8)
+    frame[30:38, 50:60] = template
+    grayscale = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+
+    score = screen.template_match_score(frame, grayscale)
+
+    assert score == pytest.approx(1.0, abs=1e-3)
+
+
 def test_screen_no_longer_exposes_capture_or_input_infrastructure():
     retired_symbols = (
         "ScrcpyStream",

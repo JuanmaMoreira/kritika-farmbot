@@ -88,13 +88,20 @@ La fuente es dueña del lifecycle de socket, decoder, proceso y forward, incluid
 
 ### Perception
 
-Transforma frames en observaciones semánticas. Puede combinar:
+La Fase 3A implementó la primera porción productiva de esta capa bajo `bot/perception/`. `PerceptionEngine` recibe una tupla explícita de detectores que cumplen `detect(frame)`, los ejecuta en orden y agrega cero, una o varias observations por detector. Su salida termina en `ObservationBatch`: preserva la identidad del `FrameSnapshot` y no invoca al resolver ni conserva contexto, historial o estado temporal.
 
-- detectores locales y OpenCV para elementos conocidos;
-- OCR para valores dinámicos;
-- un fallback VLM para estados desconocidos.
+El backend actual es `LocalCvDetector`. Cada instancia representa un único landmark, carga y valida su PNG durante construcción y conserva una copia grayscale preparada para todos los frames posteriores. Importar el package no abre assets y `build_default_perception()` crea una composición nueva, no un singleton. El matching a tamaño nativo reutiliza `bot.screen.template_match_score()` con el template precargado; la region normalizada se convierte desde las dimensiones reales del ndarray mediante `bot.geometry`. Un template incompatible con el crop del frame produce un error explícito y no dispara scaling implícito.
 
-El fallback VLM debe permanecer detrás de un límite provider-agnostic. Ninguna capa superior debe depender de un proveedor, API o modelo específico.
+`LocalCvDetection` mantiene separados `raw_match_score` y `semantic_confidence`. `LinearGapCalibration` mapea linealmente el máximo negativo confirmado a `0` y el mínimo positivo confirmado a `1`, con clamp fuera del intervalo. Esa confidence sólo expresa posición en el gap empírico de la muestra 2D y no es una probabilidad. El detector omite evidence con confidence `0`; no aplica el threshold semántico `0.80`, que sigue siendo policy exclusiva del `ContextResolver`.
+
+Las specs productivas contienen exclusivamente:
+
+| Observation | Asset | Region validada | Gap empírico provisional |
+|---|---|---|---|
+| `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.997641384601593` |
+| `landmark.purchase_confirmation_prompt` | `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.48758167028427124 → 0.9959162473678589` |
+
+No existen todavía detectores productivos para Lobby, Character Select, Battle Mode Select ni otros estados. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
 
 ### Semantic Observations
 
@@ -163,6 +170,8 @@ La Fase 2D añadió tooling de evaluación, no una capa Perception. `template_ma
 
 La corrida histórica cubrió 173 PNG `2712×1224`, 865 mediciones compatibles y 27 frames confirmados manualmente. Todas las regions eran relativas y se convirtieron mediante `bot.geometry`; no hubo fallback full-frame ni scaling. Los assets a tamaño nativo produjeron separación fuerte para Black Market y confirmación de compra, evidencia prometedora pero escasa para Character Select y Monster Wave, y una colisión estructural para el icono de moneda. Estas mediciones caracterizan únicamente el dataset histórico y no establecen thresholds productivos ni semantic confidence.
 
+Fase 3A reprodujo los scores de los dos landmarks validados sobre las 173 capturas para fijar sus anchors provisionales y añadió `tools/production_perception_evaluation.py`. Esta segunda evaluación ejecuta el pipeline productivo sobre las 27 entradas confirmadas y luego pasa cada batch por `build_default_resolver()`. Obtuvo 6 TP de Black Market y 3 TP de Purchase Confirmation, cero FP, cero FN, 27/27 resoluciones esperadas y cero estados ambiguos. Incluyó dos casos `screen.black_market` + overlay y un caso `UNKNOWN` + overlay, confirmando que el prompt de compra permanece genérico.
+
 ### Flows / Decision
 
 Contienen intención y reglas de negocio deterministas. Solicitan acciones semánticas y reaccionan a estados resueltos; no hacen template matching ni llaman a ADB.
@@ -181,7 +190,7 @@ La Fase 1B implementó este límite en `bot/adb.py`. `AdbClient` recibe explíci
 
 ## Cierre del núcleo reutilizable — Fase 1E
 
-`bot/screen.py` permanece con nombre legacy solo como módulo transicional de visión. Expone `template_match_score()`, `find_image_on_screen()` y `find_all_on_screen()`, recibe el ndarray explícitamente, calcula regiones normalizadas desde `frame.shape` y no consulta globals, dispositivo ni configuración. La política de escalado/selección de templates queda deliberadamente para Perception en Fase 3.
+`bot/screen.py` permanece con nombre legacy solo como módulo transicional de visión. Expone `template_match_score()`, `find_image_on_screen()` y `find_all_on_screen()`, recibe el ndarray explícitamente, calcula regiones normalizadas desde `frame.shape` y no consulta globals, dispositivo ni configuración. `template_match_score()` acepta además un template grayscale precargado para que Perception reutilice la misma primitiva sin IO por frame. Fase 3A conserva deliberadamente el tamaño nativo validado; scaling seguirá requiriendo evidencia runtime antes de diseñarse.
 
 Los consumers legacy `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` conservan imports de captura/input ya retirados. No se añadieron shims: no forman parte del runtime activo y repararlos implicaría migrar resolución semántica, ejecución de acciones y flows fuera del alcance de Fase 1. El tag `legacy-pre-hybrid` conserva su implementación anterior.
 
@@ -192,6 +201,7 @@ Las herramientas activas quedan delimitadas así:
 - `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2;
 - `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;
 - `tools/review_semantic_slice.py`: revisión humana local del subconjunto seleccionado.
+- `tools/production_perception_evaluation.py`: evaluación offline de observations calibradas y estados resueltos sobre el manifest confirmado.
 
 `tools/debug_context.py` y `testing/` fueron retirados porque duplicaban captura, dependían del modelo de contexto legacy o contenían IDs/acciones manuales cubiertas por herramientas vigentes. No se migró percepción ni gameplay.
 

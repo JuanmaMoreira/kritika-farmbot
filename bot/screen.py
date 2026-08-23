@@ -19,7 +19,7 @@ from bot.geometry import frame_dimensions, relative_region_to_pixels
 
 def template_match_score(
     screenshot_img: np.ndarray,
-    template_path: str | os.PathLike[str],
+    template_path: str | os.PathLike[str] | np.ndarray,
     region: tuple[float, float, float, float] | None = None,
 ) -> float | None:
     """Return the best raw ``TM_CCOEFF_NORMED`` score for an explicit frame.
@@ -123,7 +123,7 @@ def find_all_on_screen(
 
 def _prepare_match(
     screenshot_img: np.ndarray,
-    template_path: str | os.PathLike[str],
+    template_path: str | os.PathLike[str] | np.ndarray,
     region: tuple[float, float, float, float] | None,
 ) -> tuple[np.ndarray, np.ndarray, int, int]:
     if not isinstance(screenshot_img, np.ndarray) or screenshot_img.ndim != 3:
@@ -131,15 +131,27 @@ def _prepare_match(
     width, height = frame_dimensions(screenshot_img)
 
     screenshot_gray = cv2.cvtColor(screenshot_img, cv2.COLOR_BGR2GRAY)
-    template = cv2.imread(os.fspath(template_path), cv2.IMREAD_GRAYSCALE)
-    if template is None:
-        raise FileNotFoundError(f"Template image not found: {template_path}")
+    template = _load_template(template_path)
 
     if region is None:
         return screenshot_gray, template, 0, 0
 
     x1, y1, x2, y2 = relative_region_to_pixels(region, width, height)
     return screenshot_gray[y1:y2, x1:x2], template, x1, y1
+
+
+def _load_template(
+    template: str | os.PathLike[str] | np.ndarray,
+) -> np.ndarray:
+    if isinstance(template, np.ndarray):
+        if template.ndim != 2 or template.size == 0:
+            raise ValueError("preloaded template must be a non-empty grayscale image")
+        return template
+
+    loaded = cv2.imread(os.fspath(template), cv2.IMREAD_GRAYSCALE)
+    if loaded is None:
+        raise FileNotFoundError(f"Template image not found: {template}")
+    return loaded
 
 
 def _template_fits(search: np.ndarray, template: np.ndarray) -> bool:
