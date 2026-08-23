@@ -11,6 +11,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se extrajo en Fase 1C una fuente de frames scrcpy con lifecycle explícito, snapshots BGR versionados y cleanup testeable ante fallos parciales.
 - Se integró y validó en Fase 1D el stack `RuntimeConfig → AdbClient → ScrcpyFrameSource` contra hardware real con scrcpy-server 3.3.4.
 - Se cerró la Fase 1 retirando captura/input duplicados de `bot/screen.py` y migrando las herramientas reutilizables al composition root 0.2.
+- Se completó la Fase 2A con contratos inmutables para observaciones semánticas, batches por frame y estados resueltos que distinguen contexto base, overlays, estado desconocido y ambigüedad.
 
 ### Changed
 

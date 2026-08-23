@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 1 completada
+**Estado:** rediseño híbrido 0.2 — Fase 2A completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -135,6 +135,16 @@ La Fase 1E cerró el núcleo reutilizable y retiró infraestructura duplicada:
 - `tools/debug_context.py` se retiró porque mezclaba ADB directo con matching del modelo legacy. Los tres scripts de `testing/` también se retiraron: duplicaban el smoke de captura o dependían de UIAutomator2, IDs hardcodeados e interacción manual.
 - `.tools/` es una ubicación local deliberada para binarios de ADB/scrcpy; permanece ignorada y no se versiona.
 
+La Fase 2A definió los contratos semánticos sin implementar percepción ni resolución:
+
+- `bot/observations.py` define `Observation`, evidencia inmutable identificada mediante nombres namespaced, confianza normalizada, una categoría `ObservationSource`, un valor escalar opcional y una región relativa opcional.
+- `ObservationSource` distingue `LOCAL_CV`, `OCR`, `VLM` y `SYSTEM` sin exponer proveedores, modelos ni detectores concretos.
+- `ObservationBatch` agrupa una tupla inmutable de observaciones para un único `sequence` y `timestamp`; no conserva el ndarray y permite múltiples observaciones con el mismo nombre. Sus helpers `find()` y `best()` sólo buscan evidencia y no fusionan fuentes.
+- `bot/state.py` define `ResolvedState` y `ResolutionStatus` (`RESOLVED`, `UNKNOWN`, `AMBIGUOUS`) como salida inmutable del futuro resolver. El estado separa contexto base, subcontexto opcional, overlays y candidatos base conflictivos.
+- `UNKNOWN` es un resultado normal y puede coexistir con overlays conocidos aunque el contexto subyacente no haya podido resolverse. `AMBIGUOUS` conserva al menos dos candidatos semánticos sin seleccionar uno.
+- La ubicación semántica reutiliza `RelativeRegion` de `bot/geometry.py`; `normalize_relative_region()` valida límites relativos en `[0,1]` y área positiva sin introducir geometría pixel en el contrato.
+- Los contratos no importan NumPy, OpenCV, PyAV, ADB, configuración runtime ni módulos legacy.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es Fase 2: modelo de observaciones, estado semántico y `ContextResolver`; después vendrán percepción, ActionExecutor y migración incremental de flows.
+La suite normal contiene 171 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es construir `ObservationBatch → ContextResolver → ResolvedState` sin incorporar aún percepción real, ActionExecutor ni migración de flows.

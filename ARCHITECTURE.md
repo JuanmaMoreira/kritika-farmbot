@@ -98,11 +98,28 @@ El fallback VLM debe permanecer detrás de un límite provider-agnostic. Ninguna
 
 ### Semantic Observations
 
-Representan evidencia sobre la UI —elementos, valores, estados candidatos y confianza— sin codificar decisiones del flow ni comandos físicos.
+La Fase 2A implementó esta frontera mediante contratos inmutables y puramente estructurales:
+
+- `Observation` representa un hecho semántico con nombre namespaced, confianza normalizada, categoría de origen, valor escalar opcional y una `RelativeRegion` opcional.
+- `ObservationSource` expresa categorías extensibles (`LOCAL_CV`, `OCR`, `VLM`, `SYSTEM`), no proveedores, modelos, templates ni motores concretos.
+- `ObservationValue` se limita a `bool`, `int`, `float`, `str` o `None`; frames, crops y objetos de detector no atraviesan esta frontera.
+- `ObservationBatch` asocia una colección ordenada de evidencia con el `sequence` y `timestamp` de un único frame lógico, pero no retiene el ndarray.
+- Un batch preserva observaciones repetidas e independientes. `find(name)` devuelve todas y `best(name)` ofrece sólo una conveniencia por confianza reportada; no constituye una política de fusión.
+
+Las ubicaciones permanecen normalizadas en `[0,1]` y con área positiva. `bot/geometry.py` expone `normalize_relative_region()` para compartir esa validación sin convertirlas todavía en targets de acción ni coordenadas pixel.
 
 ### ContextResolver
 
-Consume observaciones y determina el estado semántico vigente, incluidos subestados, prioridades e interrupciones. No captura frames ni ejecuta acciones.
+Consumirá observaciones y determinará el estado semántico vigente, incluidos subestados, prioridades e interrupciones. No capturará frames ni ejecutará acciones. El resolver y sus políticas todavía no están implementados.
+
+La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState` conserva la identidad `sequence`/`timestamp` del batch y separa:
+
+- `base_context`, que sólo está seleccionado para un resultado `RESOLVED`;
+- un `subcontext` opcional y explícito, sin jerarquías arbitrariamente profundas;
+- cero o más `overlays`, independientes del contexto base;
+- `base_candidates` conflictivos para un resultado `AMBIGUOUS`.
+
+`ResolutionStatus.UNKNOWN` es first-class: la imposibilidad de resolver el contexto base no es una excepción y aun puede coexistir con overlays conocidos. `AMBIGUOUS` exige candidatos semánticos alternativos, pero el contrato no decide umbrales, prioridades ni reglas de conflicto.
 
 ### Flows / Decision
 

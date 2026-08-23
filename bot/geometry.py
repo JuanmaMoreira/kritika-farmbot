@@ -60,13 +60,19 @@ def relative_region_to_pixels(
 
     width = _dimension(width, "width")
     height = _dimension(height, "height")
-    x1, y1, x2, y2 = _region(region)
+    x1, y1, x2, y2 = normalize_relative_region(region)
     return (
         math.floor(x1 * width),
         math.floor(y1 * height),
         math.floor(x2 * width),
         math.floor(y2 * height),
     )
+
+
+def normalize_relative_region(region: Sequence[Real]) -> RelativeRegion:
+    """Validate and return a normalized immutable relative region."""
+
+    return _region(region)
 
 
 def _dimension(value: object, name: str) -> int:
