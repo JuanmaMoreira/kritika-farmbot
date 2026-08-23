@@ -9,6 +9,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se estableció la Fase 1A del núcleo 0.2: baseline automatizado con pytest, configuración de runtime explícita y geometría visual derivada exclusivamente del frame real.
 - Se añadió en Fase 1B un adaptador ADB explícito, testeable sin hardware y desacoplado de geometría, percepción y lógica de negocio.
 - Se extrajo en Fase 1C una fuente de frames scrcpy con lifecycle explícito, snapshots BGR versionados y cleanup testeable ante fallos parciales.
+- Se integró y validó en Fase 1D el stack `RuntimeConfig → AdbClient → ScrcpyFrameSource` contra hardware real con scrcpy-server 3.3.4.
 
 ### Changed
 

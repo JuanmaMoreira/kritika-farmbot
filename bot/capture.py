@@ -90,7 +90,9 @@ class ScrcpyFrameSource:
     REMOTE_SERVER_PATH = "/data/local/tmp/scrcpy-server.jar"
     SCRCPY_SOCKET = "localabstract:scrcpy"
     SCRCPY_VERSION = "3.3.4"
-    MAX_PTS = 1 << 62
+    CONFIG_PACKET_FLAG = 1 << 63
+    KEY_FRAME_PACKET_FLAG = 1 << 62
+    PACKET_PTS_MASK = KEY_FRAME_PACKET_FLAG - 1
     METADATA_SIZE = 1 + 64 + 4 + 4 + 4
 
     def __init__(
@@ -135,6 +137,7 @@ class ScrcpyFrameSource:
         self._failure: CaptureError | None = None
         self._snapshot: FrameSnapshot | None = None
         self._sequence = 0
+        self._pending_config_packet: bytes | None = None
         self._forward_active = False
         self._process: subprocess.Popen[bytes] | None = None
         self._socket: socket.socket | None = None
@@ -160,6 +163,7 @@ class ScrcpyFrameSource:
             self._starting = True
             self._failure = None
             self._snapshot = None
+            self._pending_config_packet = None
             self._stop_event.clear()
             self._frame_event.clear()
 
@@ -199,8 +203,10 @@ class ScrcpyFrameSource:
             if self._snapshot is None:
                 raise CaptureError("Capture receiver stopped before producing a frame")
             return self
-        except Exception as error:
+        except BaseException as error:
             self._cleanup(suppress_errors=True)
+            if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                raise
             if isinstance(error, CaptureError):
                 raise
             raise CaptureError(f"Could not start scrcpy capture: {error}") from error
@@ -273,10 +279,16 @@ class ScrcpyFrameSource:
         try:
             while not self._stop_event.is_set():
                 header = self._recv_exact(12)
-                pts = struct.unpack(">Q", header[:8])[0]
+                pts_flags = struct.unpack(">Q", header[:8])[0]
                 payload_size = struct.unpack(">I", header[8:])[0]
                 payload = self._recv_exact(payload_size)
-                decoded_pts = None if pts >= self.MAX_PTS else pts
+                if pts_flags & self.CONFIG_PACKET_FLAG:
+                    self._pending_config_packet = payload
+                    continue
+                if self._pending_config_packet is not None:
+                    payload = self._pending_config_packet + payload
+                    self._pending_config_packet = None
+                decoded_pts = pts_flags & self.PACKET_PTS_MASK
                 if self._decoder is None:
                     raise CaptureError("Capture decoder is not initialized")
                 for image in self._decoder.decode(payload, decoded_pts):
@@ -385,6 +397,7 @@ class ScrcpyFrameSource:
             self._process = None
             self._decoder = None
             self._forward_active = False
+            self._pending_config_packet = None
 
         if errors and not suppress_errors:
             raise CaptureError(f"Capture cleanup failed: {errors[0]}") from errors[0]

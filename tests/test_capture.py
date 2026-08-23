@@ -76,8 +76,10 @@ class FakeDecoder:
         self.frames = frames or {}
         self.failure_payload = failure_payload
         self.closed = False
+        self.calls = []
 
     def decode(self, payload, pts):
+        self.calls.append((payload, pts))
         if payload == self.failure_payload:
             raise RuntimeError("decoder exploded")
         image = self.frames.get(payload)
@@ -209,6 +211,25 @@ def test_start_prepares_scrcpy_and_produces_first_frame():
     source.stop()
 
 
+def test_scrcpy_334_config_packet_is_prepended_to_next_media_packet():
+    frame = np.full((4, 8, 3), 7, dtype=np.uint8)
+    config_flag = ScrcpyFrameSource.CONFIG_PACKET_FLAG
+    key_frame_flag = ScrcpyFrameSource.KEY_FRAME_PACKET_FLAG
+    fake_socket = FakeSocket(
+        metadata()
+        + packet(b"sps-pps", pts=config_flag)
+        + packet(b"key-frame", pts=key_frame_flag | 123)
+    )
+    decoder = FakeDecoder({b"sps-ppskey-frame": frame})
+    source = make_source(fake_adb(), fake_socket, decoder)
+
+    source.start()
+
+    assert decoder.calls == [(b"sps-ppskey-frame", 123)]
+    np.testing.assert_array_equal(source.get_frame().image, frame)
+    source.stop()
+
+
 def test_get_frame_before_first_frame_is_explicit_error():
     source = make_source(fake_adb(), FakeSocket(), FakeDecoder())
 
@@ -336,6 +357,26 @@ def test_cleanup_failure_does_not_hide_original_start_failure():
         source.start()
 
     assert captured.value.__cause__ is start_error
+    adb.remove_forward.assert_called_once_with("tcp:27183")
+
+
+def test_keyboard_interrupt_during_start_cleans_up_and_propagates():
+    process = FakeProcess()
+    adb = fake_adb(process)
+    socket_factory = Mock(side_effect=KeyboardInterrupt)
+    source = ScrcpyFrameSource(
+        adb,
+        "server.jar",
+        startup_delay=0,
+        socket_factory=socket_factory,
+        decoder_factory=Mock(),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        source.start()
+
+    assert process.terminated
+    assert process.waited
     adb.remove_forward.assert_called_once_with("tcp:27183")
 
 

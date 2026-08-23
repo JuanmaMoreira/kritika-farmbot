@@ -69,6 +69,14 @@ La primera porción implementada de 0.2 permanece desacoplada del runtime legacy
 
 Estos módulos no son todavía consumidos por `constants.py`, `screen.py`, `ads_manager.py` ni los flows. La suite automatizada vive en `tests/`; `testing/` conserva únicamente herramientas manuales ligadas a hardware.
 
+## Composition root y validación real
+
+La Fase 1D añadió `bot/runtime.py` como composition root mínimo. `build_adb_client(config)` y `build_frame_source(config, adb_client=...)` ensamblan el núcleo 0.2 de forma explícita y no ejecutan operaciones externas. La carga de environment/dotenv continúa siendo responsabilidad del caller.
+
+`tools/smoke_capture.py` es una entrada diagnóstica separada de pytest y del runtime legacy. Carga configuración solo dentro de `main()`, comprueba ADB, recibe cinco snapshots distintos y valida ndarray BGR `uint8`, shape, landscape, sequence y timestamps. Usa el context manager de captura y verifica después que el forward utilizado fue retirado.
+
+La validación física con scrcpy-server 3.3.4 confirmó el stack completo con frames `(1224, 2712, 3)`. También cerró una diferencia respecto de la extracción legacy: en H.264, los packets de configuración SPS/PPS se retienen y se anteponen al siguiente media packet antes de enviarlo a PyAV.
+
 ### Capture
 
 Obtiene frames landscape desde scrcpy y expone sus dimensiones reales. No reconoce contextos ni toma decisiones.

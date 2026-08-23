@@ -220,6 +220,12 @@ class AdbClient:
             timeout=timeout,
         )
 
+    def list_forwards(self, *, timeout: float | None = None) -> tuple[str, ...]:
+        """Return active ADB forwarding rules for lifecycle diagnostics."""
+
+        result = self._run("forward", "--list", timeout=timeout)
+        return tuple(line.strip() for line in result.stdout.splitlines() if line.strip())
+
     def _run(
         self, *args: str, timeout: float | None = None
     ) -> subprocess.CompletedProcess[str]:

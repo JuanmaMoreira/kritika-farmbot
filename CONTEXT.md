@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 1C completada
+**Estado:** rediseño híbrido 0.2 — Fase 1D completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -118,6 +118,15 @@ La Fase 1C añadió `bot/capture.py` como fuente de frames scrcpy independiente:
 - Los fallos parciales de startup limpian únicamente los recursos adquiridos y los errores del receptor quedan observables mediante `failure` y `get_frame()`.
 - `AdbClient.spawn_shell()` construye el proceso ADB persistente, pero el ownership de su lifecycle pertenece a `ScrcpyFrameSource`.
 
+La Fase 1D integró el núcleo técnico y lo validó contra hardware real:
+
+- `bot/runtime.py` ensambla transparentemente `RuntimeConfig → AdbClient → ScrcpyFrameSource` sin globals ni operaciones externas durante la construcción.
+- `tools/smoke_capture.py` es un diagnóstico manual opt-in que valida ADB, múltiples frames y cleanup sin enviar input al dispositivo.
+- El smoke real confirmó ADB state `device`, scrcpy-server 3.3.4 y cinco snapshots con sequence `1 → 5`.
+- El primer frame llegó en aproximadamente 2.4 s; los frames fueron BGR `uint8` con shape `(1224, 2712, 3)`, es decir width `2712` y height `1224` derivados del ndarray.
+- Shutdown completó y una consulta posterior de forwards confirmó que `tcp:27183` fue retirado.
+- La validación real detectó y corrigió un detalle de protocolo 3.3.4: los packets H.264 de configuración SPS/PPS se guardan y anteponen al siguiente media packet antes de decodificar.
+
 Los archivos de `testing/` siguen siendo scripts manuales ligados a hardware y quedan deliberadamente fuera de la colección automática. `bot/constants.py`, `bot/screen.py` y `bot/ads_manager.py` permanecen sin migrar; AdsManager seguirá usando UIAutomator2 como mecanismo separado.
 
-La arquitectura híbrida completa todavía no está implementada. Faltan la integración del nuevo lifecycle en un composition root, su smoke test opt-in con hardware, ActionExecutor, percepción, modelo semántico y flows 0.2.
+La arquitectura híbrida completa todavía no está implementada. Faltan retirar la infraestructura duplicada de captura/ADB legacy, migrar tools reutilizables, ActionExecutor, percepción, modelo semántico y flows 0.2.

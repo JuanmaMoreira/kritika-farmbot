@@ -282,6 +282,22 @@ def test_remove_forward_uses_local_endpoint():
     )
 
 
+def test_list_forwards_returns_nonempty_diagnostic_lines():
+    runner = successful_runner(
+        "SERIAL tcp:27183 localabstract:scrcpy\n\n"
+        "OTHER tcp:1234 localabstract:other\n"
+    )
+    client = AdbClient("adb", "serial", runner=runner)
+
+    assert client.list_forwards() == (
+        "SERIAL tcp:27183 localabstract:scrcpy",
+        "OTHER tcp:1234 localabstract:other",
+    )
+    assert_command(
+        runner, ["adb", "-s", "serial", "forward", "--list"]
+    )
+
+
 def test_nonzero_return_code_becomes_adb_error_with_process_context():
     runner = Mock(
         return_value=subprocess.CompletedProcess(

@@ -7,7 +7,7 @@ Este documento conserva únicamente los pasos vigentes para preparar el entorno 
 - Python 3.10 o superior.
 - Dispositivo Android físico con la interfaz del juego en landscape.
 - Depuración USB habilitada.
-- `adb` disponible en `PATH`.
+- `adb` disponible en `PATH` o configurado mediante `ADB_PATH`.
 - Drivers ADB correspondientes al dispositivo.
 - `scrcpy-server.jar` compatible con el cliente legacy preservado; el código actual declara protocolo 3.3.4.
 
@@ -46,6 +46,16 @@ pytest
 
 La configuración de pytest limita la colección a `tests/`. Los scripts bajo `testing/` continúan siendo herramientas manuales ligadas a hardware.
 
+## Smoke test de captura 0.2
+
+Con el dispositivo configurado y conectado, la captura real puede validarse deliberadamente mediante:
+
+```bash
+python tools/smoke_capture.py
+```
+
+La herramienta comprueba ADB, inicia scrcpy-server 3.3.4, valida cinco frames BGR landscape y verifica el cleanup del forward al salir. No guarda imágenes, no ejecuta gameplay y no envía taps ni swipes. No forma parte de `pytest` y puede interrumpirse con Ctrl+C; el context manager mantiene el cleanup.
+
 ## Verificación de ADB
 
 Conectar el teléfono por USB, aceptar la autorización de depuración y comprobar:
@@ -58,6 +68,4 @@ El serial configurado debe aparecer con estado `device`. Las pruebas que interac
 
 ## Estado de ejecución
 
-No existe todavía un comando de ejecución fiable para el bot completo. Las herramientas legacy en `tools/` y los scripts de `testing/` pueden abrir ventanas, escribir capturas o interactuar con el dispositivo; deben ejecutarse solo de forma deliberada.
-
-El procedimiento de ejecución se documentará cuando la Fase 1 establezca un baseline importable y testeable.
+No existe todavía un comando de ejecución fiable para el bot completo. `tools/smoke_capture.py` valida únicamente transporte y captura 0.2. Las demás herramientas legacy en `tools/` y los scripts de `testing/` pueden abrir ventanas, escribir capturas o interactuar con el dispositivo; deben ejecutarse solo de forma deliberada.

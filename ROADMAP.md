@@ -12,7 +12,8 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 - [x] 1A — Establecer baseline pytest sin hardware, configuración explícita y geometría derivada del frame real.
 - [x] 1B — Separar ADB en un adaptador explícito y testeable sin hardware.
 - [x] 1C — Extraer `ScrcpyFrameSource` con lifecycle y cleanup de captura testeables sin hardware.
-- [ ] 1D — Integrar configuración/lifecycle y preparar un smoke test real opt-in.
+- [x] 1D — Integrar configuración/lifecycle y validar captura real mediante smoke test opt-in.
+- [ ] 1E — Retirar infraestructura duplicada de `screen.py` y migrar tools reutilizables al núcleo 0.2.
 
 ## Fase 2 — Modelo semántico
 
