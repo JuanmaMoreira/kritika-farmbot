@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import cv2
 import numpy as np
+import pytest
 
 import bot.screen as screen
 from tools.asset_capture import capturar_desde_dispositivo
@@ -50,6 +51,28 @@ def test_template_larger_than_search_region_is_a_clean_no_match(tmp_path):
 
     assert screen.find_image_on_screen(frame, path) is None
     assert screen.find_all_on_screen(frame, path) == []
+
+
+def test_template_match_score_returns_raw_best_score_for_explicit_region(tmp_path):
+    rng = np.random.default_rng(101)
+    template = rng.integers(0, 256, size=(8, 10, 3), dtype=np.uint8)
+    frame = np.zeros((80, 120, 3), dtype=np.uint8)
+    frame[30:38, 50:60] = template
+    path = write_template(tmp_path, template)
+
+    score = screen.template_match_score(
+        frame, path, region=(0.4, 0.25, 0.7, 0.6)
+    )
+
+    assert score == pytest.approx(1.0, abs=1e-3)
+
+
+def test_template_match_score_returns_none_when_template_does_not_fit(tmp_path):
+    template = np.zeros((20, 20, 3), dtype=np.uint8)
+    frame = np.zeros((10, 10, 3), dtype=np.uint8)
+    path = write_template(tmp_path, template)
+
+    assert screen.template_match_score(frame, path) is None
 
 
 def test_screen_no_longer_exposes_capture_or_input_infrastructure():

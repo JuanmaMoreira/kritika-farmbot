@@ -137,23 +137,31 @@ La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState`
 
 La Fase 2C añadió `bot/catalog.py` como configuración semántica productiva separada del motor genérico. Su API pública es `BASE_CONTEXT_RULES`, `OVERLAY_RULES`, `SEMANTIC_OBSERVATION_NAMES` y `build_default_resolver()`. No importa `constants.py`, assets ni capas de percepción.
 
-El primer slice contiene cuatro bases y un overlay:
+Después de la validación 2D, el slice contiene tres reglas base, un overlay y una señal histórica no consumida:
 
 | Resultado semántico | Tipo | Requirement | Referencia legacy | Región legacy | Threshold legacy |
 |---|---|---|---|---|---|
-| `screen.lobby` | base | `landmark.lobby_header` | `lobby` / `assets/ui/lobby-id.png` | `(0.2039, 0.0302, 0.2434, 0.0899)` | `0.85` |
+| — | señal no consumida | `landmark.gold_currency_icon` | `lobby` / `assets/ui/lobby-id.png` | `(0.2039, 0.0302, 0.2434, 0.0899)` | `0.85` |
 | `screen.character_select` | base | `landmark.character_select_header` | `select-character` / `assets/ui/select-character-id.png` | `(0.3971, 0.0417, 0.6036, 0.134)` | `0.85` |
-| `screen.survival` | base | `landmark.survival_title` | `survival` / `assets/ui/survival-id.png` | `(0.1707, 0.2337, 0.2994, 0.2974)` | `0.85` |
+| `screen.battle_mode_select` | base | `landmark.monster_wave_entry_title` | `survival` / `assets/ui/survival-id.png` | `(0.1707, 0.2337, 0.2994, 0.2974)` | `0.85` |
 | `screen.black_market` | base | `landmark.black_market_title` | `black-market` / `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.85` |
-| `popup.black_market_purchase_confirmation` | overlay | `landmark.black_market_purchase_dialog` | `black-market-purchase-confirmation` / `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.85` |
+| `popup.purchase_confirmation` | overlay | `landmark.purchase_confirmation_prompt` | `black-market-purchase-confirmation` / `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.85` |
 
 Esta tabla es trazabilidad histórica, no configuración runtime. Los landmarks describen señales visibles; no prescriben template matching y podrían provenir de cualquier backend futuro.
 
-Todas las `ContextRule` usan `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80`. Es una policy uniforme y provisional sobre confidence reportada, distinta del threshold de matching legacy de la tabla. No existe calibración visual hasta validar assets y screencaps en 2D/3.
+Todas las `ContextRule` usan `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80`. Es una policy uniforme y provisional sobre confidence reportada, distinta del threshold de matching legacy de la tabla. La evaluación 2D no definió ninguna conversión desde score OpenCV a esa confidence.
 
-Las cinco rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. El overlay de confirmación coexiste con `screen.black_market` y no reemplaza la base.
+Las cuatro rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. El overlay de confirmación coexiste con `screen.black_market` y no reemplaza la base.
+
+La regla de `screen.lobby` introducida inicialmente en 2C fue retirada: inspección visual confirmó que `lobby-id.png` contiene un icono de moneda global, no un header de lobby, y la muestra humana encontró scores cercanos a `1.0` en Black Market y otros contextos. El fragmento se renombró para expresar lo visible, pero no puede resolver un contexto base. `survival-id.png` contiene “Monster Wave” dentro de “Select Battle Mode”, por lo que tanto el landmark como su resultado se corrigieron. El prompt “Purchase?” también aparece en Guild Shop; su semántica de overlay ahora es independiente de Black Market.
 
 TOT no se incorporó: aunque `flow_tot()` consume `lobby → survival → tot`, los assets `tot-id.png` y sus subcontextos físicos/mágicos no están entre los assets runtime activos y la entrada conserva coordenadas pixel legacy. `bag-full-alert` tampoco se incorporó porque su comentario legacy cuestiona si representa siempre el mismo tipo de inventario lleno. No se inventaron señales para cubrir esos huecos.
+
+### Validación offline del slice
+
+La Fase 2D añadió tooling de evaluación, no una capa Perception. `template_match_score()` en `bot/screen.py` recibe un frame explícito, un template y una region opcional, y devuelve el máximo crudo de `TM_CCOEFF_NORMED`. `tools/semantic_slice_evaluation.py` usa esa primitiva para inventario, matriz completa, selección determinista y estadísticas; `tools/review_semantic_slice.py` solamente facilita labels humanos. Los resultados completos viven bajo `artifacts/`, ignorado por Git, y el manifest pequeño conserva paths relativos sin imágenes.
+
+La corrida histórica cubrió 173 PNG `2712×1224`, 865 mediciones compatibles y 27 frames confirmados manualmente. Todas las regions eran relativas y se convirtieron mediante `bot.geometry`; no hubo fallback full-frame ni scaling. Los assets a tamaño nativo produjeron separación fuerte para Black Market y confirmación de compra, evidencia prometedora pero escasa para Character Select y Monster Wave, y una colisión estructural para el icono de moneda. Estas mediciones caracterizan únicamente el dataset histórico y no establecen thresholds productivos ni semantic confidence.
 
 ### Flows / Decision
 
@@ -173,7 +181,7 @@ La Fase 1B implementó este límite en `bot/adb.py`. `AdbClient` recibe explíci
 
 ## Cierre del núcleo reutilizable — Fase 1E
 
-`bot/screen.py` permanece con nombre legacy solo como módulo transicional de visión. Expone `find_image_on_screen()` y `find_all_on_screen()`, recibe el ndarray explícitamente, calcula regiones normalizadas desde `frame.shape` y no consulta globals, dispositivo ni configuración. La política de escalado/selección de templates queda deliberadamente para Perception en Fase 2/3.
+`bot/screen.py` permanece con nombre legacy solo como módulo transicional de visión. Expone `template_match_score()`, `find_image_on_screen()` y `find_all_on_screen()`, recibe el ndarray explícitamente, calcula regiones normalizadas desde `frame.shape` y no consulta globals, dispositivo ni configuración. La política de escalado/selección de templates queda deliberadamente para Perception en Fase 3.
 
 Los consumers legacy `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` conservan imports de captura/input ya retirados. No se añadieron shims: no forman parte del runtime activo y repararlos implicaría migrar resolución semántica, ejecución de acciones y flows fuera del alcance de Fase 1. El tag `legacy-pre-hybrid` conserva su implementación anterior.
 
@@ -181,7 +189,9 @@ Las herramientas activas quedan delimitadas así:
 
 - `tools/smoke_capture.py`: diagnóstico opt-in sin escritura de frames ni input físico;
 - `tools/screencap_batch.py`: adquisición interactiva de capturas mediante `ScrcpyFrameSource`;
-- `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2.
+- `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2;
+- `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;
+- `tools/review_semantic_slice.py`: revisión humana local del subconjunto seleccionado.
 
 `tools/debug_context.py` y `testing/` fueron retirados porque duplicaban captura, dependían del modelo de contexto legacy o contenían IDs/acciones manuales cubiertas por herramientas vigentes. No se migró percepción ni gameplay.
 

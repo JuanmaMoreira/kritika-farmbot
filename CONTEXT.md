@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 2C completada
+**Estado:** rediseño híbrido 0.2 — Fase 2D completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -92,7 +92,7 @@ No se reparará el runtime legacy como paso previo al rediseño. Sus problemas s
 - Los assets runtime activos bajo `assets/ui/` están disponibles para versionado selectivo.
 - Los 28 assets de `assets/ui/960x540/` se conservan localmente como referencia y material histórico, pero no son assets runtime activos ni se versionan en el repositorio normal.
 - Existen 173 capturas landscape en `screencaps/`, aproximadamente 527 MiB en total.
-- Las capturas son un dataset legacy potencialmente valioso. Permanecen intactas e ignoradas por Git; todavía no tienen manifest ni labels formales.
+- Las capturas son un dataset legacy potencialmente valioso. Permanecen intactas e ignoradas por Git; `datasets/semantic_slice_manifest.json` versiona labels humanos para un subconjunto de 27 imágenes sin copiar los frames.
 - El catálogo monolítico de `bot/constants.py` se conserva por su conocimiento histórico, pero no será el modelo de configuración de 0.2.
 
 ## Núcleo 0.2 implementado y tests
@@ -156,15 +156,27 @@ La Fase 2B implementó resolución semántica determinista y explicable sobre un
 - `matching_base_rules()` y `matching_overlay_rules()` permiten inspeccionar qué regla coincidió y qué observación concreta satisfizo cada requirement sin incorporar esa traza a `ResolvedState`.
 - El resolver no conserva contexto anterior, no implementa temporalidad y deja `subcontext=None`.
 
-La Fase 2C añadió el primer catálogo semántico productivo y deliberadamente mínimo:
+La Fase 2C añadió el primer catálogo semántico productivo y deliberadamente mínimo. La validación posterior de 2D corrigió parte de su semántica inicial:
 
-- `bot/catalog.py` publica cuatro contextos base (`screen.lobby`, `screen.character_select`, `screen.survival`, `screen.black_market`) y un overlay (`popup.black_market_purchase_confirmation`).
-- El vocabulario de percepción consta sólo de cinco landmarks: `landmark.lobby_header`, `landmark.character_select_header`, `landmark.survival_title`, `landmark.black_market_title` y `landmark.black_market_purchase_dialog`.
+- `bot/catalog.py` publica tres reglas base (`screen.character_select`, `screen.battle_mode_select`, `screen.black_market`) y un overlay (`popup.purchase_confirmation`).
+- El vocabulario evaluado consta de `landmark.gold_currency_icon`, `landmark.character_select_header`, `landmark.monster_wave_entry_title`, `landmark.black_market_title` y `landmark.purchase_confirmation_prompt`.
+- `landmark.gold_currency_icon` conserva el fragmento histórico con un nombre correcto, pero ninguna regla lo consume: el asset no es un header ni distingue lobby. Por la misma razón se retiró la regla base de `screen.lobby` hasta contar con otra señal.
 - `BASE_CONTEXT_RULES`, `OVERLAY_RULES` y `build_default_resolver()` forman la API del catálogo. Cada llamada al builder crea un resolver nuevo; no existe singleton ni estado global.
-- Todas las reglas usan provisionalmente confidence semántica `0.80`. Ese valor no copia el threshold OpenCV legacy `0.85`, no está calibrado y deberá validarse contra datos históricos en 2D/3.
+- Todas las reglas usan provisionalmente confidence semántica `0.80`. Ese valor no copia el threshold OpenCV legacy `0.85`; 2D midió raw scores deliberadamente sin calibrar esa confidence, tarea que permanece para Fase 3.
 - Los nombres y reglas no contienen assets, regiones, coordenadas, templates ni tecnología de detector. El mapping legacy se conserva únicamente en `ARCHITECTURE.md` como trazabilidad para la futura percepción.
 - Tower of Tribulations quedó fuera pese a ser consumido por el flow legacy: sus templates principales referenciados no forman parte de los assets runtime activos y su entrada todavía mezcla geometría absoluta y subcontextos. `bag-full-alert` también quedó fuera porque el propio catálogo legacy duda de su semántica.
 
+La Fase 2D validó este slice de forma offline sin crear Perception productiva:
+
+- `bot/screen.py` expone `template_match_score()`, una primitiva pura que devuelve el máximo `TM_CCOEFF_NORMED` crudo sobre frame, template y region explícitos. Ese valor sigue siendo `raw_match_score`; no se transforma en `Observation.confidence` ni se compara con el threshold semántico `0.80`.
+- `tools/semantic_slice_evaluation.py` descubre el dataset, ejecuta la matriz completa screenshot × landmark, selecciona un subconjunto determinista y resume ground truth. `tools/review_semantic_slice.py` permite revisar ese subconjunto mediante OpenCV sin introducir frameworks nuevos.
+- La ejecución real descubrió 173 PNG legibles, todos `2712×1224`, y produjo 865/865 mediciones compatibles. Las cinco regions legacy ya estaban normalizadas, funcionaron sin fallback full-frame y los assets coincidieron a tamaño nativo.
+- Se revisaron humanamente 27 capturas: 27 `confirmed`, cero `unsure` y cero `skipped`; incluyen 6 Black Market, 2 Character Select, 1 Battle Mode Select, 1 Lobby, 17 contextos fuera del slice y 3 prompts de compra.
+- `landmark.black_market_title` quedó **VALIDATED** (6 positivos, 21 negativos; mínimo positivo `0.9976`, máximo negativo `0.2230`). `landmark.purchase_confirmation_prompt` quedó **VALIDATED** (3/24; `0.9959` frente a `0.4876`) y también apareció en Guild Shop, por lo que dejó de estar acoplado semánticamente a Black Market.
+- `landmark.character_select_header` quedó **PROMISING** (2/25; `0.9929` frente a `0.4921`) y `landmark.monster_wave_entry_title` **PROMISING** (1/26; `1.0000` frente a `0.4000`) por muestra positiva pequeña.
+- `landmark.gold_currency_icon` quedó **NEEDS_REWORK** como señal de lobby: obtuvo hasta `0.9882` en negativos y scores alrededor de `0.985` en Black Market. El nombre anterior `landmark.lobby_header` describía incorrectamente un icono global.
+- En las dos capturas Black Market + confirmación, ambos landmarks permanecieron detectables simultáneamente con scores crudos cercanos a `1.0`, respaldando el modelo base + overlay para ese caso histórico.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La suite normal contiene 231 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es validar en 2D si assets y screencaps históricos pueden producir los cinco landmarks del catálogo sin cambiar todavía sus reglas ni incorporar gameplay.
+La suite normal contiene 247 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es definir prioridades e interrupciones semánticas antes de comenzar Perception local en Fase 3.

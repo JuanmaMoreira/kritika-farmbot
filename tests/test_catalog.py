@@ -8,9 +8,11 @@ import pytest
 
 from bot.catalog import (
     BASE_CONTEXT_RULES,
+    LANDMARK_GOLD_CURRENCY_ICON,
     OVERLAY_RULES,
-    POPUP_BLACK_MARKET_PURCHASE_CONFIRMATION,
+    POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
+    SCREEN_LOBBY,
     SEMANTIC_CONFIDENCE_THRESHOLD,
     SEMANTIC_OBSERVATION_NAMES,
     build_default_resolver,
@@ -106,7 +108,7 @@ def test_catalog_resolves_black_market_with_its_purchase_overlay():
 
     assert state.status is ResolutionStatus.RESOLVED
     assert state.base_context == SCREEN_BLACK_MARKET
-    assert state.overlays == (POPUP_BLACK_MARKET_PURCHASE_CONFIRMATION,)
+    assert state.overlays == (POPUP_PURCHASE_CONFIRMATION,)
 
 
 def test_catalog_returns_unknown_for_insufficient_evidence():
@@ -196,9 +198,20 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 4
+    assert len(BASE_CONTEXT_RULES) == 3
     assert len(OVERLAY_RULES) == 1
     assert len(SEMANTIC_OBSERVATION_NAMES) == 5
+
+
+def test_global_gold_icon_does_not_resolve_lobby():
+    assert LANDMARK_GOLD_CURRENCY_ICON in SEMANTIC_OBSERVATION_NAMES
+    assert SCREEN_LOBBY not in {rule.name for rule in BASE_CONTEXT_RULES}
+
+    state = build_default_resolver().resolve(
+        batch(LANDMARK_GOLD_CURRENCY_ICON)
+    )
+
+    assert state.status is ResolutionStatus.UNKNOWN
 
 
 def test_default_resolver_builder_does_not_create_a_singleton():

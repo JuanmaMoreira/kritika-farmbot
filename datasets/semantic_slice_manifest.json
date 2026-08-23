@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "screencaps/batch/20260402_171606_055486.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/20260402_171630_748687.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/20260402_171657_061261.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/20260402_171658_720294.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/20260402_171815_328461.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/20260402_171848_124617.png",
+      "base_context": "unknown",
+      "overlays": [
+        "popup.purchase_confirmation"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164344_278612.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164355_981563.png",
+      "base_context": "screen.character_select",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164402_024447.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164645_594697.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164649_594063.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164928_086696.png",
+      "base_context": "screen.black_market",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164932_116901.png",
+      "base_context": "screen.black_market",
+      "overlays": [
+        "popup.purchase_confirmation"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164944_649947.png",
+      "base_context": "screen.black_market",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164954_978157.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_165853_374964.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170012_359578.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170058_821164.png",
+      "base_context": "screen.black_market",
+      "overlays": [
+        "popup.purchase_confirmation"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170101_208277.png",
+      "base_context": "screen.black_market",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170106_642733.png",
+      "base_context": "screen.black_market",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170203_164694.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170242_807002.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170423_826673.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170524_833829.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170636_226480.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170918_868932.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_171530_969057.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed"
+    }
+  ]
+}

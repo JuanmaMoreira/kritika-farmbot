@@ -17,6 +17,28 @@ import numpy as np
 from bot.geometry import frame_dimensions, relative_region_to_pixels
 
 
+def template_match_score(
+    screenshot_img: np.ndarray,
+    template_path: str | os.PathLike[str],
+    region: tuple[float, float, float, float] | None = None,
+) -> float | None:
+    """Return the best raw ``TM_CCOEFF_NORMED`` score for an explicit frame.
+
+    The value is an OpenCV measurement, not semantic confidence. ``None``
+    means the template cannot fit in the selected search area.
+    """
+
+    search, template, _, _ = _prepare_match(
+        screenshot_img, template_path, region
+    )
+    if not _template_fits(search, template):
+        return None
+
+    score_map = cv2.matchTemplate(search, template, cv2.TM_CCOEFF_NORMED)
+    _, max_score, _, _ = cv2.minMaxLoc(score_map)
+    return float(max_score)
+
+
 def find_image_on_screen(
     screenshot_img: np.ndarray,
     template_path: str | os.PathLike[str],
@@ -27,7 +49,7 @@ def find_image_on_screen(
 
     ``region`` uses normalized frame coordinates. Templates are matched at
     their stored size; selecting and scaling visual assets is a perception
-    concern intentionally deferred to Phase 2.
+    concern intentionally deferred to the perception phase.
     """
 
     search, template, offset_x, offset_y = _prepare_match(

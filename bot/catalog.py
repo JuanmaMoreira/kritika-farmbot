@@ -8,26 +8,24 @@ SEMANTIC_CONFIDENCE_THRESHOLD = 0.80
 
 SCREEN_LOBBY = "screen.lobby"
 SCREEN_CHARACTER_SELECT = "screen.character_select"
-SCREEN_SURVIVAL = "screen.survival"
+SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
-POPUP_BLACK_MARKET_PURCHASE_CONFIRMATION = (
-    "popup.black_market_purchase_confirmation"
-)
+POPUP_PURCHASE_CONFIRMATION = "popup.purchase_confirmation"
 
-LANDMARK_LOBBY_HEADER = "landmark.lobby_header"
+LANDMARK_GOLD_CURRENCY_ICON = "landmark.gold_currency_icon"
 LANDMARK_CHARACTER_SELECT_HEADER = "landmark.character_select_header"
-LANDMARK_SURVIVAL_TITLE = "landmark.survival_title"
+LANDMARK_MONSTER_WAVE_ENTRY_TITLE = "landmark.monster_wave_entry_title"
 LANDMARK_BLACK_MARKET_TITLE = "landmark.black_market_title"
-LANDMARK_BLACK_MARKET_PURCHASE_DIALOG = (
-    "landmark.black_market_purchase_dialog"
+LANDMARK_PURCHASE_CONFIRMATION_PROMPT = (
+    "landmark.purchase_confirmation_prompt"
 )
 
 SEMANTIC_OBSERVATION_NAMES = (
-    LANDMARK_BLACK_MARKET_PURCHASE_DIALOG,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
-    LANDMARK_LOBBY_HEADER,
-    LANDMARK_SURVIVAL_TITLE,
+    LANDMARK_GOLD_CURRENCY_ICON,
+    LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
+    LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
 )
 
 BASE_CONTEXT_RULES = (
@@ -42,21 +40,16 @@ BASE_CONTEXT_RULES = (
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(
-        name=SCREEN_LOBBY,
-        requires=(LANDMARK_LOBBY_HEADER,),
-        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
-    ),
-    ContextRule(
-        name=SCREEN_SURVIVAL,
-        requires=(LANDMARK_SURVIVAL_TITLE,),
+        name=SCREEN_BATTLE_MODE_SELECT,
+        requires=(LANDMARK_MONSTER_WAVE_ENTRY_TITLE,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
 )
 
 OVERLAY_RULES = (
     ContextRule(
-        name=POPUP_BLACK_MARKET_PURCHASE_CONFIRMATION,
-        requires=(LANDMARK_BLACK_MARKET_PURCHASE_DIALOG,),
+        name=POPUP_PURCHASE_CONFIRMATION,
+        requires=(LANDMARK_PURCHASE_CONFIRMATION_PROMPT,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
 )

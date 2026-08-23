@@ -20,7 +20,7 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 - [x] 2A — Definir `Observation`, `ObservationBatch`, `ResolvedState` y sus validaciones estructurales.
 - [x] 2B — Construir un `ContextResolver` determinista, explicable e independiente del catálogo.
 - [x] 2C — Extraer un primer catálogo semántico mínimo desde el conocimiento legacy.
-- [ ] 2D — Validar el catálogo mínimo contra assets y screencaps históricos.
+- [x] 2D — Validar el catálogo mínimo contra assets y screencaps históricos.
 - [ ] Definir prioridades e interrupciones semánticas.
 
 ## Fase 3 — Percepción local
