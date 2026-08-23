@@ -2,7 +2,7 @@
 #
 # Herramienta para capturar assets, regiones de búsqueda y coordenadas de botones.
 # Todas las coordenadas y regiones se imprimen en formato RELATIVO (0.0-1.0)
-# respecto a la resolución de la imagen procesada (RESOLUCION_BASE).
+# respecto a las dimensiones del frame o imagen procesada.
 #
 # Uso:
 #   python tools/asset_capture.py                    # modo dispositivo: captura desde el celu
@@ -23,25 +23,23 @@
 #   R  → siguiente imagen (modo carpeta) o nuevo screencap (modo dispositivo)
 #   Q  → salir
 
-import cv2
-import subprocess
-import socket
-import struct
+import argparse
 import os
 import sys
-import time
-import av
+from pathlib import Path
+
+import cv2
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from bot.constants import DISPOSITIVO_ADB, SCRCPY_SERVER_PATH, RESOLUCION_BASE
+from bot.adb import AdbError
+from bot.capture import CaptureError, ScrcpyFrameSource
+from bot.config import RuntimeConfig
+from bot.runtime import build_frame_source
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR    = os.path.join(_PROJECT_ROOT, "assets", "ui")
 WINDOW_NAME   = "Asset Capture  |  [S] Saltar paso  [R] Siguiente  [Q] Salir"
-
-PUERTO  = 27183
-MAX_PTS = 1 << 62
 
 # Resolución de la imagen que se está procesando.
 # En modo dispositivo se detecta automáticamente.
@@ -84,80 +82,10 @@ def _a_relativo_region(x1, y1, x2, y2):
 # Captura — modo dispositivo
 # ---------------------------------------------------------------------------
 
-def _recvall(sock, n):
-    data = b""
-    while len(data) < n:
-        chunk = sock.recv(n - len(data))
-        if not chunk:
-            raise RuntimeError("Socket cerrado por el server.")
-        data += chunk
-    return data
+def capturar_desde_dispositivo(source: ScrcpyFrameSource):
+    """Read one explicit snapshot from an already-owned 0.2 frame source."""
 
-
-def capturar_desde_dispositivo():
-    subprocess.run(
-        ["adb", "-s", DISPOSITIVO_ADB, "push",
-         SCRCPY_SERVER_PATH, "/data/local/tmp/scrcpy-server.jar"],
-        capture_output=True
-    )
-    subprocess.run(
-        ["adb", "-s", DISPOSITIVO_ADB, "forward",
-         f"tcp:{PUERTO}", "localabstract:scrcpy"],
-        capture_output=True
-    )
-    proc = subprocess.Popen(
-        ["adb", "-s", DISPOSITIVO_ADB, "shell",
-         "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
-         "app_process", "/",
-         "com.genymobile.scrcpy.Server",
-         "3.3.4",
-         "tunnel_forward=true",
-         "video_bit_rate=2000000",
-         "max_size=0",
-         "audio=false",
-         "control=false"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    time.sleep(2)
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(10)
-    sock.connect(("127.0.0.1", PUERTO))
-
-    _recvall(sock, 1)   # dummy
-    _recvall(sock, 64)  # device name
-    _recvall(sock, 4)   # codec
-    _recvall(sock, 4)   # width
-    _recvall(sock, 4)   # height
-
-    codec  = av.CodecContext.create("h264", "r")
-    imagen = None
-
-    for _ in range(50):
-        header  = _recvall(sock, 12)
-        pts     = struct.unpack(">Q", header[0:8])[0]
-        size    = struct.unpack(">I", header[8:12])[0]
-        if pts >= MAX_PTS:
-            pts = None
-        payload = _recvall(sock, size)
-        packet  = av.Packet(payload)
-        if pts is not None:
-            packet.pts = pts
-        try:
-            for frame in codec.decode(packet):
-                imagen = frame.to_ndarray(format="bgr24")
-                break
-        except Exception:
-            pass
-        if imagen is not None:
-            break
-
-    sock.close()
-    proc.terminate()
-
-    if imagen is None:
-        raise RuntimeError("No se obtuvo ningún frame.")
-    return imagen
+    return source.get_frame().image
 
 
 # ---------------------------------------------------------------------------
@@ -358,39 +286,34 @@ def procesar_imagen(imagen):
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
-    print("=== Asset Capture Tool ===")
-    print(f"Assets se guardarán en: {ASSETS_DIR}/")
-    print(f"Resolución base: {RESOLUCION_BASE[0]}x{RESOLUCION_BASE[1]}")
-    print(f"Coordenadas de salida: RELATIVAS (0.0-1.0)\n")
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Capture visual assets from a folder or the 0.2 frame source."
+    )
+    parser.add_argument(
+        "folder",
+        nargs="?",
+        help="optional folder of PNG/JPEG screenshots; omit for device mode",
+    )
+    parser.add_argument(
+        "--dotenv",
+        type=Path,
+        default=Path(_PROJECT_ROOT) / ".env",
+        help="dotenv file to load explicitly in device mode (default: project .env)",
+    )
+    return parser.parse_args(argv)
 
-    modo_carpeta = len(sys.argv) > 1
-    imagenes     = []
-    idx          = 0
 
-    if modo_carpeta:
-        carpeta = sys.argv[1]
-        try:
-            imagenes = cargar_imagenes_carpeta(carpeta)
-        except RuntimeError as e:
-            print(f"[ERROR] {e}")
-            sys.exit(1)
-        print(f"[CARPETA] {len(imagenes)} imagen(es) encontrada(s) en: {carpeta}\n")
-    else:
-        resultado = subprocess.run(
-            ["adb", "devices"], capture_output=True, text=True
-        )
-        if DISPOSITIVO_ADB not in resultado.stdout:
-            print(f"[ERROR] Dispositivo '{DISPOSITIVO_ADB}' no encontrado.")
-            sys.exit(1)
-        print(f"[ADB] Dispositivo encontrado: {DISPOSITIVO_ADB}\n")
+def _run_capture_loop(imagenes, source=None):
+    modo_carpeta = source is None
+    idx = 0
 
     while True:
         if modo_carpeta:
             if idx >= len(imagenes):
                 print("No hay más imágenes en la carpeta.")
                 break
-            ruta   = imagenes[idx]
+            ruta = imagenes[idx]
             imagen = cv2.imread(ruta)
             if imagen is None:
                 print(f"[!] No se pudo leer: {ruta}, saltando.")
@@ -399,19 +322,49 @@ def main():
             print(f"[{idx + 1}/{len(imagenes)}] {os.path.basename(ruta)}")
             idx += 1
         else:
-            print("Tomando screencap...")
-            try:
-                imagen = capturar_desde_dispositivo()
-            except RuntimeError as e:
-                print(f"[ERROR] {e}")
-                sys.exit(1)
+            print("Tomando frame del runtime 0.2...")
+            imagen = capturar_desde_dispositivo(source)
 
-        continuar = procesar_imagen(imagen)
-        if not continuar:
+        if not procesar_imagen(imagen):
             break
 
-    cv2.destroyAllWindows()
+
+def main(argv=None):
+    args = parse_args(argv)
+    print("=== Asset Capture Tool ===")
+    print(f"Assets se guardarán en: {ASSETS_DIR}/")
+    print("Coordenadas de salida: RELATIVAS al frame (0.0-1.0)\n")
+
+    if args.folder:
+        try:
+            imagenes = cargar_imagenes_carpeta(args.folder)
+        except RuntimeError as e:
+            print(f"[ERROR] {e}")
+            return 1
+        print(
+            f"[CARPETA] {len(imagenes)} imagen(es) encontrada(s) en: "
+            f"{args.folder}\n"
+        )
+        _run_capture_loop(imagenes)
+        cv2.destroyAllWindows()
+        return 0
+
+    try:
+        config = RuntimeConfig.from_env(dotenv_path=args.dotenv)
+        source = build_frame_source(config)
+        print("Conectando mediante el runtime 0.2...\n")
+        with source:
+            _run_capture_loop([], source)
+    except KeyboardInterrupt:
+        print("Captura interrumpida; recursos liberados.", file=sys.stderr)
+        return 130
+    except (AdbError, CaptureError, ValueError, OSError) as error:
+        print(f"[ERROR] {error}", file=sys.stderr)
+        return 1
+    finally:
+        cv2.destroyAllWindows()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

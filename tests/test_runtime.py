@@ -55,7 +55,7 @@ def test_build_frame_source_reuses_explicit_adb_client_without_operations():
     spawner.assert_not_called()
 
 
-def test_runtime_and_smoke_import_without_external_side_effects(tmp_path):
+def test_runtime_and_tools_import_without_external_side_effects(tmp_path):
     repository_root = Path(__file__).resolve().parents[1]
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join(
@@ -66,7 +66,11 @@ def test_runtime_and_smoke_import_without_external_side_effects(tmp_path):
         [
             sys.executable,
             "-c",
-            "import bot.runtime; import tools.smoke_capture",
+            (
+                "import bot.runtime; import bot.screen; "
+                "import tools.smoke_capture; import tools.screencap_batch; "
+                "import tools.asset_capture"
+            ),
         ],
         cwd=tmp_path,
         env=environment,

@@ -1,4 +1,4 @@
-# Captura y visión legacy preservada
+# Captura 0.2 y visión OpenCV
 opencv-python>=4.8.0
 numpy>=1.24.0
 av>=11.0.0

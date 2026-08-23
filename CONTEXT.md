@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 1D completada
+**Estado:** rediseño híbrido 0.2 — Fase 1 completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -127,6 +127,14 @@ La Fase 1D integró el núcleo técnico y lo validó contra hardware real:
 - Shutdown completó y una consulta posterior de forwards confirmó que `tcp:27183` fue retirado.
 - La validación real detectó y corrigió un detalle de protocolo 3.3.4: los packets H.264 de configuración SPS/PPS se guardan y anteponen al siguiente media packet antes de decodificar.
 
-Los archivos de `testing/` siguen siendo scripts manuales ligados a hardware y quedan deliberadamente fuera de la colección automática. `bot/constants.py`, `bot/screen.py` y `bot/ads_manager.py` permanecen sin migrar; AdsManager seguirá usando UIAutomator2 como mecanismo separado.
+La Fase 1E cerró el núcleo reutilizable y retiró infraestructura duplicada:
 
-La arquitectura híbrida completa todavía no está implementada. Faltan retirar la infraestructura duplicada de captura/ADB legacy, migrar tools reutilizables, ActionExecutor, percepción, modelo semántico y flows 0.2.
+- `bot/screen.py` quedó reducido a `find_image_on_screen()` y `find_all_on_screen()`, helpers OpenCV transicionales que reciben el frame explícitamente y calculan regiones desde sus dimensiones reales.
+- `bot/capture.py` es la única implementación activa del protocolo scrcpy y `bot/adb.py` el único límite activo de procesos ADB.
+- `tools/screencap_batch.py` y `tools/asset_capture.py` consumen `RuntimeConfig → build_frame_source()`, mantienen lifecycle explícito y son import-safe.
+- `tools/debug_context.py` se retiró porque mezclaba ADB directo con matching del modelo legacy. Los tres scripts de `testing/` también se retiraron: duplicaban el smoke de captura o dependían de UIAutomator2, IDs hardcodeados e interacción manual.
+- `.tools/` es una ubicación local deliberada para binarios de ADB/scrcpy; permanece ignorada y no se versiona.
+
+El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
+
+La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es Fase 2: modelo de observaciones, estado semántico y `ContextResolver`; después vendrán percepción, ActionExecutor y migración incremental de flows.

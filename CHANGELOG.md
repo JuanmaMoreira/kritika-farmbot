@@ -10,6 +10,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se añadió en Fase 1B un adaptador ADB explícito, testeable sin hardware y desacoplado de geometría, percepción y lógica de negocio.
 - Se extrajo en Fase 1C una fuente de frames scrcpy con lifecycle explícito, snapshots BGR versionados y cleanup testeable ante fallos parciales.
 - Se integró y validó en Fase 1D el stack `RuntimeConfig → AdbClient → ScrcpyFrameSource` contra hardware real con scrcpy-server 3.3.4.
+- Se cerró la Fase 1 retirando captura/input duplicados de `bot/screen.py` y migrando las herramientas reutilizables al composition root 0.2.
 
 ### Changed
 
@@ -17,6 +18,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se estableció la dirección arquitectónica híbrida 0.2: captura, percepción, observaciones semánticas, resolución de contexto, flows y ejecución de acciones como responsabilidades separadas.
 - Se reorganizó la documentación activa alrededor de `AGENTS.md`, `CONTEXT.md`, `ARCHITECTURE.md` y `ROADMAP.md`.
 - Los assets runtime dejaron de quedar ocultos por una regla global para imágenes.
+- `bot/screen.py` quedó como módulo transicional de matching OpenCV puro; los scripts manuales redundantes de `testing/` y el debugger de contextos legacy fueron retirados.
 
 ### Preserved
 

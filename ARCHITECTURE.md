@@ -13,14 +13,13 @@ main.py
       → estado global de context.py
         → catálogo de constants.py
           → templates y coordenadas
-      → screen.py
-        → scrcpy / OpenCV / ADB
+      → antigua API de screen.py (retirada)
 ```
 
 Responsabilidades reales:
 
 - `bot/constants.py` mezcla configuración de host, resolución, taxonomía, templates, regiones, botones, offsets y políticas aún incompletas.
-- `bot/screen.py` implementa a la vez captura scrcpy, almacenamiento del frame, percepción por templates y comandos ADB.
+- `bot/screen.py` implementaba a la vez captura scrcpy, almacenamiento del frame, percepción por templates y comandos ADB. Desde Fase 1E conserva solamente matching OpenCV puro y transicional sobre un frame explícito.
 - `bot/context.py` captura un frame y recorre templates hasta encontrar el primer contexto coincidente.
 - `bot/actions.py` resuelve botones mediante estado global y coordenadas del catálogo.
 - `bot/flows.py` contiene lógica TOT, percepción específica, regiones, thresholds y acciones físicas.
@@ -32,11 +31,11 @@ Problemas estructurales confirmados:
 - captura, percepción e input están acoplados;
 - el contexto depende directamente de templates;
 - actions depende de globals y coordenadas;
-- flows contiene percepción y ADB directo;
+- flows contiene percepción y dependencias directas de la API de input retirada;
 - la geometría no usa de forma confiable las dimensiones landscape del frame;
 - prioridad y outcomes están modelados pero no configurados efectivamente;
 - el runtime legacy no es importable en su estado preservado;
-- no existe una suite automatizada.
+- el entry point y sus módulos legacy ya no importan porque siguen solicitando esa API retirada.
 
 El uso de scrcpy, OpenCV o ADB no es por sí mismo legacy. Lo legacy es el acoplamiento que obliga a representar cada estado y transición mediante templates y coordenadas mantenidos manualmente.
 
@@ -67,7 +66,7 @@ La primera porción implementada de 0.2 permanece desacoplada del runtime legacy
 - Los puntos representan índices de píxel: usan floor y el extremo normalizado `1` se satura al último índice válido. Las regiones representan límites de slicing con extremo final exclusivo, por lo que la región completa termina en `(width, height)`.
 - `adb shell wm size` puede conservarse como metadata, diagnóstico o validación auxiliar, pero no puede decidir la geometría de un frame capturado.
 
-Estos módulos no son todavía consumidos por `constants.py`, `screen.py`, `ads_manager.py` ni los flows. La suite automatizada vive en `tests/`; `testing/` conserva únicamente herramientas manuales ligadas a hardware.
+Estos módulos son consumidos por el núcleo 0.2, las herramientas de captura y los helpers visuales transicionales. `constants.py`, `ads_manager.py` y los flows todavía no migraron. La suite automatizada vive exclusivamente en `tests/`; el antiguo directorio `testing/` fue retirado en Fase 1E.
 
 ## Composition root y validación real
 
@@ -85,7 +84,7 @@ La Fase 1C implementó esta responsabilidad en `bot/capture.py`. `ScrcpyFrameSou
 
 Cada `FrameSnapshot` contiene una copia del ndarray, timestamp monotónico y sequence number. Sus dimensiones se consultan desde el shape de esa imagen; la metadata de scrcpy y `adb wm size` no sustituyen esa fuente de verdad. Un `Event` permite cancelar el receptor y los timeouts de socket evitan bloquear el shutdown indefinidamente. Los fallos del thread se conservan y quedan visibles al owner.
 
-La fuente es dueña del lifecycle de socket, decoder, proceso y forward, incluido cleanup best-effort ante startup parcial. `AdbClient` solo construye el proceso persistente mediante `spawn_shell()` y devuelve su handle. `bot/screen.py` y `tools/asset_capture.py` todavía conservan sus implementaciones legacy; la herramienta podrá consumir `ScrcpyFrameSource` más adelante, pero no fue migrada en esta fase.
+La fuente es dueña del lifecycle de socket, decoder, proceso y forward, incluido cleanup best-effort ante startup parcial. `AdbClient` solo construye el proceso persistente mediante `spawn_shell()` y devuelve su handle. Desde Fase 1E es la única implementación activa del protocolo scrcpy: `tools/asset_capture.py` y `tools/screencap_batch.py` la construyen mediante el composition root y no abren sockets, procesos ADB ni decoders propios.
 
 ### Perception
 
@@ -119,7 +118,21 @@ Es el límite de infraestructura para taps, swipes y demás comandos del disposi
 
 La Fase 1B implementó este límite en `bot/adb.py`. `AdbClient` recibe explícitamente el ejecutable ADB y el serial, y concentra la ejecución en primitivas `subprocess` con argumentos separados, timeout y traducción a `AdbError`/`AdbTimeoutError`. Expone `get_state`, `shell`, input en coordenadas pixel, push y administración de port forwarding. La extensión `spawn_shell()` de Fase 1C crea un proceso persistente sin apropiarse de su lifecycle.
 
-`AdbClient` no conoce frames, resolución, coordenadas relativas, percepción ni acciones semánticas. Puede construirse desde los campos ADB de `RuntimeConfig`, pero no retiene configuración de scrcpy o del juego. `bot/screen.py` todavía no fue migrado: sus funciones ADB legacy podrán retirarse únicamente cuando captura y ejecución de acciones consuman las abstracciones 0.2.
+`AdbClient` no conoce frames, resolución, coordenadas relativas, percepción ni acciones semánticas. Puede construirse desde los campos ADB de `RuntimeConfig`, pero no retiene configuración de scrcpy o del juego. Desde Fase 1E es el único límite activo de procesos ADB; `bot/screen.py` ya no captura, conecta ni ejecuta taps o swipes.
+
+## Cierre del núcleo reutilizable — Fase 1E
+
+`bot/screen.py` permanece con nombre legacy solo como módulo transicional de visión. Expone `find_image_on_screen()` y `find_all_on_screen()`, recibe el ndarray explícitamente, calcula regiones normalizadas desde `frame.shape` y no consulta globals, dispositivo ni configuración. La política de escalado/selección de templates queda deliberadamente para Perception en Fase 2/3.
+
+Los consumers legacy `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` conservan imports de captura/input ya retirados. No se añadieron shims: no forman parte del runtime activo y repararlos implicaría migrar resolución semántica, ejecución de acciones y flows fuera del alcance de Fase 1. El tag `legacy-pre-hybrid` conserva su implementación anterior.
+
+Las herramientas activas quedan delimitadas así:
+
+- `tools/smoke_capture.py`: diagnóstico opt-in sin escritura de frames ni input físico;
+- `tools/screencap_batch.py`: adquisición interactiva de capturas mediante `ScrcpyFrameSource`;
+- `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2.
+
+`tools/debug_context.py` y `testing/` fueron retirados porque duplicaban captura, dependían del modelo de contexto legacy o contenían IDs/acciones manuales cubiertas por herramientas vigentes. No se migró percepción ni gameplay.
 
 ## AdsManager
 

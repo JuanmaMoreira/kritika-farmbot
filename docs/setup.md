@@ -9,7 +9,7 @@ Este documento conserva únicamente los pasos vigentes para preparar el entorno 
 - Depuración USB habilitada.
 - `adb` disponible en `PATH` o configurado mediante `ADB_PATH`.
 - Drivers ADB correspondientes al dispositivo.
-- `scrcpy-server.jar` compatible con el cliente legacy preservado; el código actual declara protocolo 3.3.4.
+- `scrcpy-server.jar` compatible con `ScrcpyFrameSource`; el código actual declara protocolo 3.3.4.
 
 ## Entorno Python
 
@@ -19,7 +19,7 @@ Desde la raíz del repositorio, crear y activar un entorno virtual con el mecani
 python -m pip install -r requirements.txt
 ```
 
-Las dependencias preservadas cubren captura/visión legacy, carga de configuración, el AdsManager basado en UIAutomator2 y la suite automatizada con pytest. OCR, VLM y frameworks de detección todavía no forman parte del proyecto.
+Las dependencias cubren captura/visión, carga de configuración, el AdsManager basado en UIAutomator2 y la suite automatizada con pytest. OCR, VLM y frameworks de detección todavía no forman parte del proyecto.
 
 ## Configuración local
 
@@ -32,9 +32,11 @@ SCRCPY_SERVER_PATH=<ruta local a scrcpy-server.jar>
 GAME_PACKAGE=com.gamevil.kritikamobile.android.google.global.normal
 ```
 
-`.env.example` contiene la lista vigente de variables soportadas por `bot.config.RuntimeConfig`. La nueva configuración solo lee ese archivo cuando el composition root llama explícitamente a `RuntimeConfig.from_env(dotenv_path=".env")`; también puede construirse directamente sin dotenv. Los consumers legacy todavía no fueron migrados y siguen usando sus mecanismos preservados.
+`.env.example` contiene la lista vigente de variables soportadas por `bot.config.RuntimeConfig`. La configuración solo lee ese archivo cuando un composition root llama explícitamente a `RuntimeConfig.from_env(dotenv_path=".env")`; también puede construirse directamente sin dotenv. Las herramientas de captura 0.2 usan este mecanismo. Los consumers legacy del bot completo no fueron migrados y ya no tienen un mecanismo de captura/input funcional.
 
 No escribir el serial ni una ruta absoluta dentro del código.
+
+El directorio local `.tools/` puede contener la distribución de scrcpy y su ADB asociado. Es una decisión deliberada para tooling de desarrollo, permanece ignorado por Git y nunca debe versionarse.
 
 ## Tests automatizados
 
@@ -44,7 +46,7 @@ La suite normal no requiere teléfono, ADB ni scrcpy-server:
 pytest
 ```
 
-La configuración de pytest limita la colección a `tests/`. Los scripts bajo `testing/` continúan siendo herramientas manuales ligadas a hardware.
+La configuración de pytest limita la colección a `tests/`. El antiguo directorio manual `testing/` fue retirado; las pruebas físicas son herramientas opt-in explícitas bajo `tools/`.
 
 ## Smoke test de captura 0.2
 
@@ -66,6 +68,10 @@ adb devices
 
 El serial configurado debe aparecer con estado `device`. Las pruebas que interactúen con el teléfono son opt-in y no deben formar parte de la suite normal sin hardware.
 
+## Herramientas de adquisición
+
+`python tools/screencap_batch.py` muestra el stream 0.2 y guarda únicamente los frames elegidos con SPACE. `python tools/asset_capture.py` cura templates, regiones y puntos desde el dispositivo o una carpeta de capturas. Ambas cargan `.env` dentro de `main()`, usan `ScrcpyFrameSource` y pueden abrir ventanas/escribir artefactos, por lo que su uso es deliberado.
+
 ## Estado de ejecución
 
-No existe todavía un comando de ejecución fiable para el bot completo. `tools/smoke_capture.py` valida únicamente transporte y captura 0.2. Las demás herramientas legacy en `tools/` y los scripts de `testing/` pueden abrir ventanas, escribir capturas o interactuar con el dispositivo; deben ejecutarse solo de forma deliberada.
+No existe todavía un comando de ejecución fiable para el bot completo. `tools/smoke_capture.py` valida únicamente transporte y captura 0.2. El entry point y los módulos legacy de contexto, acciones y flows conservan imports de la antigua API de `bot.screen`; se reconstruirán sobre contratos semánticos en fases futuras.
