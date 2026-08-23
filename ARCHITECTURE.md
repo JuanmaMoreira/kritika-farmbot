@@ -110,7 +110,19 @@ Las ubicaciones permanecen normalizadas en `[0,1]` y con área positiva. `bot/ge
 
 ### ContextResolver
 
-Consumirá observaciones y determinará el estado semántico vigente, incluidos subestados, prioridades e interrupciones. No capturará frames ni ejecutará acciones. El resolver y sus políticas todavía no están implementados.
+La Fase 2B implementó `bot/resolver.py` como motor puro para transformar un `ObservationBatch` en `ResolvedState`. Se construye con tuplas explícitas de `ContextRule` para contextos base y overlays; no contiene catálogo de Kritika, imports legacy, percepción, IO ni estado temporal.
+
+Una `ContextRule` declara un nombre de resultado, requirements semánticos únicos y un threshold común. Para cada requirement, `match_rule()` consulta la observación de mayor confidence de ese nombre. La fuente y región permanecen disponibles en la evidencia, pero no alteran el resultado. Las confidences no se suman, promedian, votan ni ponderan entre fuentes no calibradas.
+
+Una regla sólo coincide si todos sus requirements alcanzan el threshold inclusivo. El `RuleMatch` diagnóstico conserva la regla y exactamente una observación seleccionada por requirement; su confidence es el mínimo conservador de esas evidencias y no una probabilidad estadística.
+
+La resolución base aplica estas reglas sin first-match ni prioridades:
+
+- cero candidatos producen `UNKNOWN`;
+- un candidato produce `RESOLVED`;
+- varios candidatos distintos producen `AMBIGUOUS`, aun si sus confidences difieren.
+
+Reglas, candidatos y overlays se normalizan por nombre para que el orden de inyección no decida semántica. Los overlays se evalúan independientemente y todos los que coinciden se conservan, incluso con base `UNKNOWN` o `AMBIGUOUS`; no existe ambigüedad ni prioridad propia de overlays en esta fase.
 
 La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState` conserva la identidad `sequence`/`timestamp` del batch y separa:
 
@@ -119,7 +131,7 @@ La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState`
 - cero o más `overlays`, independientes del contexto base;
 - `base_candidates` conflictivos para un resultado `AMBIGUOUS`.
 
-`ResolutionStatus.UNKNOWN` es first-class: la imposibilidad de resolver el contexto base no es una excepción y aun puede coexistir con overlays conocidos. `AMBIGUOUS` exige candidatos semánticos alternativos, pero el contrato no decide umbrales, prioridades ni reglas de conflicto.
+`ResolutionStatus.UNKNOWN` es first-class: la imposibilidad de resolver el contexto base no es una excepción y aun puede coexistir con overlays conocidos. La policy de subcontexto permanece pendiente y el resolver de 2B produce siempre `subcontext=None`. Tampoco implementa hysteresis, debounce, historial, transiciones ni voting entre frames.
 
 ### Flows / Decision
 

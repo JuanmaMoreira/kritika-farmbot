@@ -12,6 +12,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se integró y validó en Fase 1D el stack `RuntimeConfig → AdbClient → ScrcpyFrameSource` contra hardware real con scrcpy-server 3.3.4.
 - Se cerró la Fase 1 retirando captura/input duplicados de `bot/screen.py` y migrando las herramientas reutilizables al composition root 0.2.
 - Se completó la Fase 2A con contratos inmutables para observaciones semánticas, batches por frame y estados resueltos que distinguen contexto base, overlays, estado desconocido y ambigüedad.
+- Se completó la Fase 2B con un `ContextResolver` determinista e inyectable que explica evidencia seleccionada, expone conflictos base y resuelve overlays sin first-match, fusión de confidence ni estado temporal.
 
 ### Changed
 

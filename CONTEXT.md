@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 2A completada
+**Estado:** rediseño híbrido 0.2 — Fase 2B completada
 **Última actualización:** 2026-08-22
 
 ## Objetivo
@@ -145,6 +145,17 @@ La Fase 2A definió los contratos semánticos sin implementar percepción ni res
 - La ubicación semántica reutiliza `RelativeRegion` de `bot/geometry.py`; `normalize_relative_region()` valida límites relativos en `[0,1]` y área positiva sin introducir geometría pixel en el contrato.
 - Los contratos no importan NumPy, OpenCV, PyAV, ADB, configuración runtime ni módulos legacy.
 
+La Fase 2B implementó resolución semántica determinista y explicable sobre un único batch:
+
+- `bot/resolver.py` define `ContextRule`, `RuleMatch`, `match_rule()` y un `ContextResolver` inmutable construido con reglas base y overlay inyectadas explícitamente.
+- Cada regla exige una colección no vacía de nombres semánticos únicos y aplica el mismo threshold inclusivo a cada requirement.
+- Para cada requirement se selecciona únicamente la observación de mayor confidence. Las confidences no se suman, promedian ni ponderan por `ObservationSource`; las regiones tampoco alteran el matching.
+- Una regla coincide sólo cuando todos sus requirements satisfacen el threshold. `RuleMatch.confidence` es la confidence mínima entre las evidencias seleccionadas y sirve únicamente para diagnóstico, no como probabilidad calibrada.
+- Cero contextos base producen `UNKNOWN`, uno produce `RESOLVED` y dos o más producen `AMBIGUOUS`. Nunca se desempata por orden ni por mayor confidence.
+- Los overlays se resuelven independientemente del contexto base, pueden coexistir y se retornan ordenados por nombre. No generan una ambigüedad separada ni expresan prioridad de atención.
+- `matching_base_rules()` y `matching_overlay_rules()` permiten inspeccionar qué regla coincidió y qué observación concreta satisfizo cada requirement sin incorporar esa traza a `ResolvedState`.
+- El resolver no conserva contexto anterior, no implementa temporalidad y deja `subcontext=None`.
+
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 
-La suite normal contiene 171 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es construir `ObservationBatch → ContextResolver → ResolvedState` sin incorporar aún percepción real, ActionExecutor ni migración de flows.
+La suite normal contiene 209 tests hardware-free. La arquitectura híbrida completa todavía no está implementada. La siguiente frontera es Fase 2C: extraer un catálogo semántico mínimo y verificable desde el conocimiento legacy, sin incorporar aún percepción real, ActionExecutor ni migración de flows.

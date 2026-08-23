@@ -38,7 +38,9 @@ class Observation:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "name", validate_semantic_name(self.name))
-        object.__setattr__(self, "confidence", _confidence(self.confidence))
+        object.__setattr__(
+            self, "confidence", normalize_confidence(self.confidence)
+        )
         if not isinstance(self.source, ObservationSource):
             raise ValueError("source must be an ObservationSource")
         _validate_value(self.value)
@@ -87,7 +89,9 @@ def validate_semantic_name(name: object) -> str:
     return name
 
 
-def _confidence(value: object) -> float:
+def normalize_confidence(value: object) -> float:
+    """Validate and return a finite confidence normalized to ``[0, 1]``."""
+
     if isinstance(value, bool) or not isinstance(value, Real):
         raise ValueError("confidence must be a real number in [0, 1]")
     result = float(value)

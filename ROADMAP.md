@@ -18,7 +18,7 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 ## Fase 2 — Modelo semántico
 
 - [x] 2A — Definir `Observation`, `ObservationBatch`, `ResolvedState` y sus validaciones estructurales.
-- [ ] Construir el `ContextResolver`.
+- [x] 2B — Construir un `ContextResolver` determinista, explicable e independiente del catálogo.
 - [ ] Extraer la taxonomía útil de `bot/constants.py`.
 - [ ] Definir prioridades e interrupciones semánticas.
 
