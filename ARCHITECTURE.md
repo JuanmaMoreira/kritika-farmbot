@@ -278,6 +278,10 @@ El evaluator fusiona el manifest histórico, acquisition y Workbench, deduplica 
 
 La variante múltiple de `LocalCvDetector` no es ensemble semántico ni source weighting: son renderings nativos, explícitos y curados del mismo landmark dentro de un único detector. La calibration se calcula sobre el máximo raw que ese detector realmente producirá. Este mecanismo se incorporó sólo para `landmark.purchase_confirmation_prompt`; Black Market mantuvo su asset/crop original y cambió únicamente su calibration.
 
+### Revalidación live post-repair
+
+Fase 3G revalidó en hardware real el mismo pipeline stateless `ScrcpyFrameSource → PerceptionEngine → ObservationBatch → ContextResolver → ResolvedState`. Lobby, Character Select, reentrada, Black Market, Black Market + Purchase Confirmation y `UNKNOWN + Purchase Confirmation` resolvieron conforme al contrato; Battle Mode Select permaneció `UNKNOWN`. La comparación sobre un único `FrameSnapshot` conservó el ndarray/hash y produjo los mismos raw scores en los paths 3D y Workbench. La sesión cerró 3D con cleanup completo y sin input Android, pero sólo valida la apariencia current-season observada: no cambia límites, thresholds, catálogo, temporalidad ni demuestra robustez multi-season.
+
 ## Dirección del producto final — Session Orchestrator
 
 El objetivo no es un agente general que elija libremente qué jugar. La dirección acordada es un orquestador configurable:
