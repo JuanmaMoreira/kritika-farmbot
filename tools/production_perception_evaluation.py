@@ -46,6 +46,7 @@ DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
 PROMOTABLE_WORKBENCH_STATUS = "raw_unreviewed"
 WORKBENCH_SOURCE = "workbench"
+SUPPORTED_WORKBENCH_EVENT_SCHEMAS = frozenset({"1.0", "2.0"})
 
 
 @dataclass(frozen=True)
@@ -221,6 +222,9 @@ def materialize_workbench_evidence(
     artifacts_root = _inside_repository(repository_root, artifacts_root)
     records = load_workbench_evidence_manifest(manifest_path)
     pending_copies: list[tuple[Path, Path]] = []
+    production_resolver = build_default_resolver()
+    production_bases = {rule.name for rule in production_resolver.base_rules}
+    production_overlays = {rule.name for rule in production_resolver.overlay_rules}
 
     for record in records:
         metadata = record.metadata
@@ -264,6 +268,8 @@ def materialize_workbench_evidence(
                 "evidence.frame event"
             )
         event = matching_events[0]
+        if event.get("schema_version") not in SUPPORTED_WORKBENCH_EVENT_SCHEMAS:
+            raise ValueError("unsupported Workbench evidence event schema_version")
         if event.get("session_id") != metadata.session_id:
             raise ValueError("Workbench event session_id does not match selection")
         payload = event["payload"]
@@ -279,6 +285,14 @@ def materialize_workbench_evidence(
             or tuple(sorted(human.get("overlays", ()))) != record.entry.overlays
         ):
             raise ValueError("curated labels contradict Workbench human ground truth")
+        if event_base != "unknown" and event_base not in production_bases:
+            raise ValueError(
+                "Workbench candidate base is not promotable by the Phase 3F policy"
+            )
+        if not set(record.entry.overlays).issubset(production_overlays):
+            raise ValueError(
+                "Workbench candidate overlay is not promotable by the Phase 3F policy"
+            )
         if event.get("timestamp") != metadata.event_timestamp_utc:
             raise ValueError("curated timestamp contradicts Workbench event")
         if payload.get("reason") != metadata.evidence_reason:

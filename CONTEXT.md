@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fases 3D y 3G completadas; repair 3F revalidado live sobre la season actual
+**Estado:** rediseño híbrido 0.2 — Fase 3H.1 implementada y validada mediante smoke Workbench read-only
 **Última actualización:** 2026-08-25
 
 ## Objetivo
@@ -277,6 +277,17 @@ La Fase 3G revalidó el repair 3F en hardware real y cerró el smoke pendiente d
 - No se observó ningún `AMBIGUOUS`. La latencia global fue perception `7.296/12.195/12.388/53.201 ms`, resolver `0.039/0.060/0.067/0.953 ms` y snapshot-to-state `0/32/32.769/157 ms`, en orden min/median/mean/max. El matching raw diagnóstico duplicado permanece fuera de la latencia productiva.
 - El cierre por `q` dejó `source_stopped=True` y `forward_removed=True`; receiver, socket y proceso persistente se liberaron. La verificación externa encontró cero forwards, cero procesos scrcpy/Python del smoke y ningún ADB persistente de captura; sólo permaneció el daemon ADB normal del host. No se usó `HumanInputObserver`, no se escribió evidencia y los scripts no enviaron taps, swipes ni keyevents.
 - Esta corrida demuestra generalización live sobre la apariencia current-season observada; no constituye una campaña de robustez multi-season. No se modificaron assets, crops, regions, calibrations, threshold, catálogo, resolver ni temporalidad.
+
+La Fase 3H.1 extendió Perception Workbench para adquisición semántica abierta y evidencia observacional de transiciones, sin ampliar el runtime productivo:
+
+- `bot/acquisition_vocabulary.py` define un vocabulario humano explícito. Fusiona labels productivos inyectados con un seed candidate mínimo (`screen.guild_shop`, `screen.inventory`, `popup.bag_full_alert`) y conserva su origen `production`/`candidate`. `bot/catalog.py` no lo importa y `ContextResolver` no ve los candidates.
+- La UI muestra procedencia, conserva `UNKNOWN`, usa dígitos como shortcuts y `J/K` para recorrer cualquier cantidad de bases; `[/]` recorre overlays. `P` es el único toggle de overlay y se retiró la compatibilidad ambigua `O`; `U` limpia base y overlays para declarar un período `UNSET`.
+- Candidate bases y overlays pueden ser GT `human_confirmed`, producir mismatch/representative/manual evidence aunque la prediction sea `UNKNOWN`, y no generan ContextRule, OverlayRule, detector, asset ni spec.
+- El envelope raw pasa a `schema_version=2.0`/`workbench_version=2`. Cada gesto obtiene `interaction_id`, conserva GT/frame previos y un frame posterior marcado exclusivamente como observación temporal; predictions y ese primer frame no rellenan semántica posterior.
+- `T` emite `human.transition_confirmed` sólo cuando existen un gesto pendiente, GT humano confirmado y frame vigente. Ese evento vincula por `interaction_id` el `after_ground_truth` y el frame de confirmación. Si no se pulsa `T`, no existe destino semántico; una confirmación tampoco se convierte en regla de navegación ni prueba causalidad.
+- El parser del Workbench admite envelopes `1.0` y `2.0`. El promotor 3F sigue seleccionando sólo `evidence.frame`, acepta ambas versiones y rechaza bases/overlays que no pertenezcan al catálogo productivo; los nuevos eventos y candidates no amplían promoción.
+- Las sesiones continúan bajo `artifacts/workbench/`, con paths relativos y sin serial/device/user IDs ni paths absolutos. El writer acotado, deduplicación, representative mode, asociación temporal, captura no masiva y manifests curated permanecen separados.
+- La suite hardware-free no ejecuta ADB. El smoke opt-in `20260825T185040_032589Z-95f6cd26` validó visualmente Lobby, candidate Guild Shop con prediction `UNKNOWN`, período `UNSET`, dos taps raw sin GT posterior inferido, confirmación explícita del segundo tap como `screen.guild_shop`, swipe con confirmación `screen.guild_shop → screen.guild_shop`, frames full-resolution y paths relativos. Registró 35 evidence events/31 PNG únicos, queue máxima 3, cero drops/failure y cleanup completo de observer, scrcpy y forward. La sesión permanece `raw_unreviewed` bajo `artifacts/` y no se promovió.
 
 La dirección de producto quedó cerrada documentalmente: el runtime final será un Session Orchestrator configurable (`User Control Panel → SessionPlan → SessionRunner → Characters → Selected Flows`), no un agente general. Los flows serán predominantemente `PER_CHARACTER` pero con scope explícito. Sus prerequisites solicitarán support operations acotadas y revalidarán condiciones en lugar de formar llamadas recursivas arbitrarias. El producto unattended deberá aislar fallos, recuperar, registrar outcomes, limpiar y continuar cuando corresponda. Runtime facts inmediatos y informational snapshots consultados explícitamente serán conceptos distintos; ninguno se implementó en 3E ni 3F.
 

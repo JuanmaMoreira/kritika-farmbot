@@ -1,4 +1,4 @@
-"""Human-in-the-loop Perception Workbench v1.
+"""Human-in-the-loop Perception Workbench v2.
 
 This is a local development/teaching tool, not gameplay runtime. Importing the
 module is inert: environment loading, asset IO, ADB, threads, session folders,
@@ -25,6 +25,10 @@ from typing import Iterable
 
 import numpy as np
 
+from bot.acquisition_vocabulary import (
+    AcquisitionVocabulary,
+    build_acquisition_vocabulary,
+)
 from bot.adb import AdbClient, AdbError
 from bot.capture import CaptureError, FrameSnapshot, ScrcpyFrameSource
 from bot.catalog import build_default_resolver
@@ -47,9 +51,10 @@ from tools.smoke_perception import FrameAnalysis, analyze_snapshot
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ARTIFACTS_ROOT = PROJECT_ROOT / "artifacts" / "workbench"
-SCHEMA_VERSION = "1.0"
-WORKBENCH_VERSION = "1"
-WINDOW_NAME = "Perception Workbench v1"
+SCHEMA_VERSION = "2.0"
+SUPPORTED_SCHEMA_VERSIONS = frozenset({"1.0", SCHEMA_VERSION})
+WORKBENCH_VERSION = "2"
+WINDOW_NAME = "Perception Workbench v2"
 UNKNOWN_LABEL = "UNKNOWN"
 UNSET_LABEL = "UNSET"
 OVERLAY_TOGGLE_KEY = "P"
@@ -57,6 +62,7 @@ WORKBENCH_VIDEO_BIT_RATE = 8_000_000
 WORKBENCH_CAPTURE_FPS = 30
 PREVIEW_WIDTH = 1356
 PREVIEW_HEIGHT = 612
+WORKBENCH_WINDOW_HEIGHT = 980
 
 
 class Correctness(str, Enum):
@@ -80,7 +86,7 @@ class GroundTruthState:
         return GroundTruthState(True, label, self.overlays)
 
     def clear(self) -> "GroundTruthState":
-        return GroundTruthState(False, None, self.overlays)
+        return GroundTruthState()
 
     def toggle_overlay(self, label: str) -> "GroundTruthState":
         label = validate_semantic_name(label)
@@ -143,6 +149,20 @@ def event_record(
         "timestamp": timestamp,
         "payload": payload,
     }
+
+
+def parse_event_record(record: object) -> dict[str, object]:
+    """Validate the common envelope while accepting Workbench v1 sessions."""
+
+    if not isinstance(record, dict):
+        raise ValueError("Workbench event must be an object")
+    if record.get("schema_version") not in SUPPORTED_SCHEMA_VERSIONS:
+        raise ValueError("unsupported Workbench event schema_version")
+    if not all(record.get(field) for field in ("session_id", "event_type", "timestamp")):
+        raise ValueError("Workbench event envelope is incomplete")
+    if not isinstance(record.get("payload"), dict):
+        raise ValueError("Workbench event payload must be an object")
+    return record
 
 
 def frame_fingerprint(frame: np.ndarray, *, sample_size: int = 32) -> np.ndarray:
@@ -519,9 +539,17 @@ class SessionStore:
 
 @dataclass
 class PendingInteraction:
+    interaction_id: str
     gesture: HumanGesture
     before: WorkbenchFrame | None
     ready_at: float
+
+
+@dataclass(frozen=True)
+class ObservedInteraction:
+    """Identity of the latest raw gesture still lacking semantic after GT."""
+
+    interaction_id: str
 
 
 def analyze_frame(
@@ -593,6 +621,7 @@ def _interaction_payload(
     before_path = store.save_frame(before, reason="interaction.before") if before else None
     after_path = store.save_frame(after, reason="interaction.after") if after else None
     common: dict[str, object] = {
+        "interaction_id": pending.interaction_id,
         "monotonic_timestamp": gesture.timestamp,
         "started_at": gesture.started_at,
         "frame_before_sequence": before.snapshot.sequence if before else None,
@@ -600,7 +629,9 @@ def _interaction_payload(
         "frame_before": before_path,
         "frame_after": after_path,
         "predicted_state_before": _state_payload(before.state) if before else None,
+        "predicted_state_after": _state_payload(after.state) if after else None,
         "human_ground_truth_before": before.human.payload() if before else None,
+        "frame_after_role": "temporal_observation_only",
     }
     if isinstance(gesture, HumanTap):
         common.update(
@@ -626,6 +657,34 @@ def _interaction_payload(
         return "human.swipe", common
     common["reason"] = gesture.reason
     return "human.unknown_gesture", common
+
+
+def confirm_transition(
+    interaction: ObservedInteraction,
+    *,
+    human: GroundTruthState,
+    confirmation_frame: WorkbenchFrame,
+    store: SessionStore,
+) -> dict[str, object]:
+    """Explicitly bind human after-GT to an observed gesture and frame.
+
+    Neither the temporal frame stored with the gesture nor its prediction can
+    call this operation.  The Workbench UI invokes it only via the human ``T``
+    confirmation hotkey.
+    """
+
+    if not human.base_confirmed:
+        raise ValueError("after ground truth must be explicitly human-confirmed")
+    confirmed = replace(confirmation_frame, human=human)
+    frame_path = store.save_frame(confirmed, reason="transition.confirmed_after")
+    return {
+        "interaction_id": interaction.interaction_id,
+        "confirmation_method": "human_hotkey",
+        "after_ground_truth": human.payload(),
+        "confirmation_frame": frame_path,
+        "confirmation_frame_sequence": confirmation_frame.snapshot.sequence,
+        "confirmation_monotonic_timestamp": confirmation_frame.snapshot.timestamp,
+    }
 
 
 def _touch_marker(
@@ -683,6 +742,8 @@ def render_ui(
     base_mapping: tuple[str | None, ...],
     overlay_names: tuple[str, ...],
     selected_overlay: int,
+    label_origins: dict[str, str],
+    pending_transition_count: int,
     metrics: LiveMetrics,
     evidence_save_ms: float,
     writer_queue_depth: int,
@@ -703,7 +764,11 @@ def render_ui(
     )
     panel_width = 540
     canvas = np.zeros(
-        (max(display.shape[0], 880), display.shape[1] + panel_width, 3),
+        (
+            max(display.shape[0], WORKBENCH_WINDOW_HEIGHT),
+            display.shape[1] + panel_width,
+            3,
+        ),
         dtype=np.uint8,
     )
     canvas[: display.shape[0], : display.shape[1]] = display
@@ -745,15 +810,29 @@ def render_ui(
             f"  {short_name}: raw={reading.raw_match_score:.4f} conf={reading.semantic_confidence:.3f}",
             size=0.43,
         )
-    line("Base labels (persistent human GT)", (255, 255, 255), 0.58)
-    for index, label in enumerate(base_mapping[:10]):
-        line(f"  {index}: {label or UNKNOWN_LABEL}", size=0.46)
-    if len(base_mapping) > 10:
-        line("  J/K: cycle remaining labels", size=0.46)
+    line("Acquisition bases (persistent human GT)", (255, 255, 255), 0.58)
+    selected_base_index = (
+        base_mapping.index(human.base_context)
+        if human.base_confirmed and human.base_context in base_mapping
+        else 0
+    )
+    visible_indices = set(range(min(10, len(base_mapping))))
+    if selected_base_index >= 10:
+        visible_indices.add(selected_base_index)
+    for index in sorted(visible_indices):
+        label = base_mapping[index]
+        origin = label_origins.get(label, "special") if label else "special"
+        marker = ">" if human.base_confirmed and human.base_context == label else " "
+        shortcut = str(index) if index < 10 else "-"
+        line(f"{marker} {shortcut}: {label or UNKNOWN_LABEL} [{origin}]", size=0.43)
+    line("  J/K: cycle all acquisition labels", size=0.46)
     selected = overlay_names[selected_overlay] if overlay_names else "none"
-    line(f"Overlay selected: {selected}", (255, 255, 255), 0.54)
+    selected_origin = label_origins.get(selected, "special")
+    line(f"Overlay selected: {selected} [{selected_origin}]", (255, 255, 255), 0.54)
+    line(f"gestures awaiting explicit after GT: {pending_transition_count}")
     line("[/] select overlay | P toggle overlay | U unset")
-    line("R representative | S manual save | Q quit")
+    line("T confirm GT after latest gesture | R representative")
+    line("S manual save | Q quit")
     if last_gesture is not None:
         line(f"last gesture: {type(last_gesture).__name__}", (100, 255, 255))
     return canvas
@@ -766,8 +845,8 @@ def _key_code(delay_ms: int = 10) -> int:
 
 
 def is_overlay_toggle_key(key: int) -> bool:
-    """Accept unambiguous P and legacy letter O, but never digit zero."""
-    return key in {ord("p"), ord("P"), ord("o"), ord("O")}
+    """Use only unambiguous P; the old O/0 pair is intentionally retired."""
+    return key in {ord("p"), ord("P")}
 
 
 def _forward_present(adb: AdbClient, source: ScrcpyFrameSource) -> bool:
@@ -779,13 +858,23 @@ def _forward_present(adb: AdbClient, source: ScrcpyFrameSource) -> bool:
     )
 
 
-def _print_controls(base_mapping: tuple[str | None, ...], overlays: tuple[str, ...]) -> None:
-    print("Human base label mapping:")
+def _print_controls(
+    base_mapping: tuple[str | None, ...],
+    overlays: tuple[str, ...],
+    vocabulary: AcquisitionVocabulary,
+) -> None:
+    origins = {
+        label.name: label.origin.value
+        for label in (*vocabulary.bases, *vocabulary.overlays)
+    }
+    print("Human acquisition base label mapping:")
     for index, label in enumerate(base_mapping[:10]):
-        print(f"  {index}: {label or UNKNOWN_LABEL}")
+        origin = origins.get(label, "special") if label else "special"
+        print(f"  {index}: {label or UNKNOWN_LABEL} [{origin}]")
     print("Controls: digits/J/K base | [/ ] overlay | P toggle overlay | U unset")
-    print("          R representative | S manual save | Q quit / Ctrl+C")
-    print(f"Known overlays: {list(overlays)}")
+    print("          T confirm GT after latest gesture | R representative")
+    print("          S manual save | Q quit / Ctrl+C")
+    print(f"Acquisition overlays: {[(name, origins[name]) for name in overlays]}")
 
 
 def run_workbench(
@@ -807,18 +896,28 @@ def run_workbench(
         if (spec := getattr(detector, "spec", None)) is not None
     )
     store = SessionStore(artifacts_root, detector_names=detector_names)
+    vocabulary = build_acquisition_vocabulary(
+        production_base_labels=(rule.name for rule in resolver.base_rules),
+        production_overlay_labels=(rule.name for rule in resolver.overlay_rules),
+    )
     base_mapping: tuple[str | None, ...] = (
         None,
-        *(rule.name for rule in resolver.base_rules),
+        *vocabulary.base_names,
     )
-    overlay_names = tuple(rule.name for rule in resolver.overlay_rules)
-    _print_controls(base_mapping, overlay_names)
+    overlay_names = vocabulary.overlay_names
+    label_origins = {
+        label.name: label.origin.value
+        for label in (*vocabulary.bases, *vocabulary.overlays)
+    }
+    _print_controls(base_mapping, overlay_names, vocabulary)
     human = GroundTruthState()
     representative = False
     selected_overlay = 0
     ring = FrameRingBuffer()
     dedup = EvidenceDeduplicator()
     pending: list[PendingInteraction] = []
+    awaiting_confirmation: ObservedInteraction | None = None
+    interaction_sequence = 0
     latest: WorkbenchFrame | None = None
     last_gesture: HumanGesture | None = None
     last_sequence: int | None = None
@@ -828,7 +927,7 @@ def run_workbench(
     exit_reason = "normal"
     frame_shape: list[int] | None = None
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(WINDOW_NAME, PREVIEW_WIDTH + 540, 880)
+    cv2.resizeWindow(WINDOW_NAME, PREVIEW_WIDTH + 540, WORKBENCH_WINDOW_HEIGHT)
     try:
         with source, observer:
             device = observer.device
@@ -841,6 +940,17 @@ def run_workbench(
                     "capture_video_bit_rate": source.video_bit_rate,
                     "capture_max_fps": source.max_fps,
                     "detector_semantic_names": list(detector_names),
+                    "acquisition_vocabulary": {
+                        "bases": [
+                            {"name": label.name, "origin": label.origin.value}
+                            for label in vocabulary.bases
+                        ],
+                        "overlays": [
+                            {"name": label.name, "origin": label.origin.value}
+                            for label in vocabulary.overlays
+                        ],
+                        "unknown_available": True,
+                    },
                     "touch_axis_ranges": {
                         "x": [device.x_axis.minimum, device.x_axis.maximum],
                         "y": [device.y_axis.minimum, device.y_axis.maximum],
@@ -884,7 +994,18 @@ def run_workbench(
                 for gesture in observer.poll():
                     last_gesture = gesture
                     before = ring.before(gesture.started_at)
-                    pending.append(PendingInteraction(gesture, before, gesture.timestamp + after_delay))
+                    if before is not None:
+                        before = replace(before, human=human)
+                    interaction_sequence += 1
+                    interaction_id = f"interaction-{interaction_sequence:06d}"
+                    pending.append(
+                        PendingInteraction(
+                            interaction_id,
+                            gesture,
+                            before,
+                            gesture.timestamp + after_delay,
+                        )
+                    )
                     display_dirty = True
 
                 remaining: list[PendingInteraction] = []
@@ -895,6 +1016,11 @@ def run_workbench(
                         continue
                     event_type, payload = _interaction_payload(interaction, after, store)
                     store.append(event_type, payload)
+                    # Only the newest gesture can be explicitly confirmed.
+                    # Older events remain raw and correctly have no after GT.
+                    awaiting_confirmation = ObservedInteraction(
+                        interaction.interaction_id
+                    )
                 pending = remaining
 
                 if latest is not None and display_dirty:
@@ -916,6 +1042,8 @@ def run_workbench(
                             base_mapping=base_mapping,
                             overlay_names=overlay_names,
                             selected_overlay=selected_overlay,
+                            label_origins=label_origins,
+                            pending_transition_count=int(awaiting_confirmation is not None),
                             metrics=metrics,
                             evidence_save_ms=store.last_save_ms,
                             writer_queue_depth=store.queue_depth,
@@ -957,6 +1085,35 @@ def run_workbench(
                 elif is_overlay_toggle_key(key) and overlay_names:
                     human = human.toggle_overlay(overlay_names[selected_overlay])
                     store.append("human.ground_truth_changed", human.payload())
+                    display_dirty = True
+                elif key in {ord("t"), ord("T")}:
+                    if (
+                        latest is not None
+                        and human.base_confirmed
+                        and awaiting_confirmation is not None
+                    ):
+                        interaction = awaiting_confirmation
+                        awaiting_confirmation = None
+                        store.append(
+                            "human.transition_confirmed",
+                            confirm_transition(
+                                interaction,
+                                human=human,
+                                confirmation_frame=latest,
+                                store=store,
+                            ),
+                        )
+                    else:
+                        store.append(
+                            "human.transition_confirmation_skipped",
+                            {
+                                "cause": (
+                                    "no_human_ground_truth"
+                                    if not human.base_confirmed
+                                    else "no_observed_interaction"
+                                )
+                            },
+                        )
                     display_dirty = True
                 elif key in {ord("r"), ord("R")}:
                     representative = not representative

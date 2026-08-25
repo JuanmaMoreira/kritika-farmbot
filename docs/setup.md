@@ -46,6 +46,12 @@ La suite normal no requiere teléfono, ADB ni scrcpy-server:
 pytest
 ```
 
+En Windows, cuando `python`/`pytest` no estén expuestos en `PATH`, usar el intérprete del entorno local del checkout evita depender de launchers globales:
+
+```powershell
+& '.\.venv\Scripts\python.exe' -m pytest
+```
+
 La configuración de pytest limita la colección a `tests/`. El antiguo directorio manual `testing/` fue retirado; las pruebas físicas son herramientas opt-in explícitas bajo `tools/`.
 
 ## Smoke test de captura 0.2
@@ -71,6 +77,14 @@ El serial configurado debe aparecer con estado `device`. Las pruebas que interac
 ## Herramientas de adquisición
 
 `python tools/screencap_batch.py` muestra el stream 0.2 y guarda únicamente los frames elegidos con SPACE. `python tools/asset_capture.py` cura templates, regiones y puntos desde el dispositivo o una carpeta de capturas. Ambas cargan `.env` dentro de `main()`, usan `ScrcpyFrameSource` y pueden abrir ventanas/escribir artefactos, por lo que su uso es deliberado.
+
+Perception Workbench debe invocarse como módulo desde la raíz para que el package `bot` sea resoluble. En el entorno local Windows:
+
+```powershell
+& '.\.venv\Scripts\python.exe' -m tools.perception_workbench
+```
+
+La herramienta sólo observa input físico mediante `HumanInputObserver`; no envía taps, swipes ni keyevents.
 
 ## Estado de ejecución
 

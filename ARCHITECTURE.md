@@ -245,7 +245,7 @@ Los timestamps impresos por `getevent` pertenecen al `CLOCK_MONOTONIC` del telé
 
 Las coordenadas humanas persistidas son relativas a display y pertenecen a `[0,1]`. Primero se normalizan desde `axis min/max`; luego se aplica la rotación Android encontrada en `dumpsys input`: `0 → (x,y)`, `90° → (y,1-x)`, `180° → (1-x,1-y)`, `270° → (1-y,x)`. Esta política sigue la transformación documentada por [AOSP para touch devices](https://source.android.com/docs/core/interaction/input/touch-devices) y el formato/timestamp de [AOSP getevent](https://source.android.com/docs/core/interaction/input/getevent). Sólo después se proyecta el punto relativo al frame usando `frame.shape`; `adb wm size` no participa. El overlay temporal de tap/swipe se dibuja sobre una copia de UI y nunca sobre la imagen guardada.
 
-`tools/perception_workbench.py` compone explícitamente `RuntimeConfig`, `AdbClient`, `ScrcpyFrameSource`, `build_default_perception()`, `build_default_resolver()` y `HumanInputObserver`. La UI OpenCV deriva dinámicamente base contexts y overlays de las reglas del resolver. El ground truth humano permanece activo hasta ser cambiado, está marcado `human_confirmed` y nunca se completa a partir de una prediction.
+`tools/perception_workbench.py` compone explícitamente `RuntimeConfig`, `AdbClient`, `ScrcpyFrameSource`, `build_default_perception()`, `build_default_resolver()` y `HumanInputObserver`. Desde Fase 3H.1 la UI OpenCV construye sus opciones desde `bot/acquisition_vocabulary.py`: incluye los nombres productivos inyectados desde el resolver y una lista pequeña de candidates de adquisición. El ground truth humano permanece activo hasta ser cambiado, está marcado `human_confirmed` y nunca se completa a partir de una prediction.
 
 La evidencia se selecciona por mismatch, `AMBIGUOUS`, input humano, guardado manual o modo representative. Un fingerprint grayscale `32×32`, cooldown de 2 s, diferencia media mínima de 3 niveles, refresh máximo de 8 s y límite de 12 ejemplos automáticos por key reducen near-duplicates sin clustering. Un ring buffer de 24 frames analizados asocia el frame más cercano anterior al inicio del gesto y un frame posterior al fin con delay nominal de 0,5 s; al cerrar, una interacción pendiente usa el último frame disponible y conserva las secuencias, sin inferir una transición semántica.
 
@@ -258,6 +258,32 @@ Cada sesión raw vive bajo `artifacts/workbench/<session-id>/` —ya ignorado po
 El smoke final de 3E confirmó preview prácticamente live, igualdad de raw scores con el path 3D, ground truth base/overlay editable, deduplicación acotada, writer sin backlog y cleanup completo. Los marcadores de taps en sectores diversos y de un swipe coincidieron visualmente con las acciones físicas según validación humana; todas las interacciones conservaron frames before/after. Black Market y Purchase Confirmation quedaron capturados como falsos negativos actuales sin recalibrar detectores. La primera sesión degradada permanece exclusivamente diagnóstica y ninguna sesión raw se promovió automáticamente.
 
 El Workbench es una herramienta humana de desarrollo y enseñanza. El producto final continúa siendo un runtime automatizado unattended; ninguno de los estados persistentes, hotkeys o decisiones del Workbench pertenece por defecto a ese producto.
+
+### Adquisición semántica abierta y evidencia de transición
+
+Fase 3H.1 establece este límite explícito:
+
+```text
+production semantic catalog          human acquisition vocabulary
+ContextRule / OverlayRule      !=    production labels + candidate labels
+          ↓                                      ↓
+ContextResolver                         Perception Workbench GT
+```
+
+`bot/catalog.py` no importa ni consume `bot/acquisition_vocabulary.py`. El vocabulario de adquisición recibe nombres productivos como datos y agrega únicamente un seed candidate pequeño (`screen.guild_shop`, `screen.inventory`, `popup.bag_full_alert`). La procedencia `production`/`candidate` se muestra en UI y se registra en `session.started`; no crea requirements, detectors, assets, targets ni reglas. `UNKNOWN` permanece como selección humana independiente, y `U` deja base y overlays en estado `UNSET` para hacer observable un período transicional no confirmado.
+
+El envelope Workbench `2.0` añade un `interaction_id` a cada tap/swipe/gesto desconocido. El evento físico conserva GT previo, frame previo y un frame posterior temporal con `frame_after_role=temporal_observation_only`; incluso puede conservar la prediction posterior como diagnóstico, pero nunca contiene `after_ground_truth` por inferencia. La tecla `T` es la única operación UI que emite `human.transition_confirmed`: vincula explícitamente el GT humano actual y el frame vigente de confirmación al gesto pendiente más reciente. Sin esa operación, el gesto permanece sin destino semántico confirmado. Los eventos `1.0` continúan legibles y el promotor 3F acepta evidence frames `1.0`/`2.0` bajo su policy previa.
+
+Esta evidencia sigue siendo raw y observacional:
+
+```text
+before GT humano + gesto físico + frame temporal posterior
+                       + confirmación humana opcional de after GT
+                    !=
+NavigationRule / botón / target / acción productiva
+```
+
+Una confirmación no afirma causalidad, repetibilidad ni seguridad de navegación. Las coordenadas no se aprenden y los datasets curated no se modifican desde el Workbench.
 
 ### Promoción curated y mantenimiento de detectores
 
@@ -272,7 +298,7 @@ raw session ignorada
           → asset/spec/calibration productivos
 ```
 
-`datasets/workbench_evidence_manifest.json` selecciona exactamente frames revisados y conserva sólo paths relativos, `source=workbench`, session id, sequence, timestamp, reason y shape. `tools/production_perception_evaluation.py` materializa esos PNG bajo `screencaps/semantic/workbench/` después de contrastar manifest, summary, evento y bytes fuente. La session debe declarar `curation_status=raw_unreviewed`; estados `diagnostic`, status ausente, `curated=true`, ground truth no humano, labels contradictorios, secuencias duplicadas o paths fuera del repositorio se rechazan antes de copiar. Los raw `events.jsonl`, summaries y frames de sesión nunca se convierten automáticamente en dataset.
+`datasets/workbench_evidence_manifest.json` selecciona exactamente frames revisados y conserva sólo paths relativos, `source=workbench`, session id, sequence, timestamp, reason y shape. `tools/production_perception_evaluation.py` materializa esos PNG bajo `screencaps/semantic/workbench/` después de contrastar manifest, summary, evento y bytes fuente. La session debe declarar `curation_status=raw_unreviewed`; estados `diagnostic`, status ausente, `curated=true`, ground truth no humano, labels fuera del catálogo productivo, labels contradictorios, secuencias duplicadas o paths fuera del repositorio se rechazan antes de copiar. Los raw `events.jsonl`, summaries y frames de sesión nunca se convierten automáticamente en dataset. Esta allowlist preserva el scope 3F: un candidate de adquisición no se vuelve curated por aparecer en un evento `2.0`.
 
 El evaluator fusiona el manifest histórico, acquisition y Workbench, deduplica por path y ejecuta siempre los cuatro detectores productivos más el resolver. Reporta min/median/max positivos, máximo negativo, anchors, gap, FP/FN emitidos y resultados end-to-end. Los manifests siguen siendo utilizables aunque los PNG ignorados no existan en otra checkout; la suite normal prueba parsing y policy con fixtures in-memory/locales y no depende de las sesiones reales.
 

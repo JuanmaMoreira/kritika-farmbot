@@ -129,6 +129,22 @@ def test_workbench_promotion_validates_and_copies_untouched_png(tmp_path):
     assert destination.read_bytes() == source.read_bytes()
 
 
+def test_workbench_promotion_accepts_current_v2_evidence_schema(tmp_path):
+    session, source, manifest_path = _build_workbench_fixture(tmp_path)
+    event_path = session / "events.jsonl"
+    event = json.loads(event_path.read_text(encoding="utf-8"))
+    event["schema_version"] = "2.0"
+    event_path.write_text(json.dumps(event) + "\n", encoding="utf-8")
+
+    records = materialize_workbench_evidence(
+        tmp_path,
+        manifest_path=manifest_path,
+        artifacts_root="artifacts/workbench",
+    )
+
+    assert (tmp_path / records[0].entry.path).read_bytes() == source.read_bytes()
+
+
 @pytest.mark.parametrize("curation_status", ["diagnostic", None])
 def test_workbench_promotion_excludes_non_promotable_sessions(
     tmp_path, curation_status
@@ -158,6 +174,33 @@ def test_workbench_promotion_rejects_label_contradictions(tmp_path):
     event_path.write_text(json.dumps(event) + "\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="contradict"):
+        materialize_workbench_evidence(
+            tmp_path,
+            manifest_path=manifest_path,
+            artifacts_root="artifacts/workbench",
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "candidate", "message"),
+    [
+        ("base_context", "screen.guild_shop", "valid base_context"),
+        ("overlays", ["popup.bag_full_alert"], "unsupported overlay"),
+    ],
+)
+def test_phase3f_promotion_rejects_acquisition_candidates(
+    tmp_path, field, candidate, message
+):
+    session, _, manifest_path = _build_workbench_fixture(tmp_path)
+    event_path = session / "events.jsonl"
+    event = json.loads(event_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    event["payload"]["human_ground_truth"][field] = candidate
+    manifest["entries"][0][field] = candidate
+    event_path.write_text(json.dumps(event) + "\n", encoding="utf-8")
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(ValueError, match=message):
         materialize_workbench_evidence(
             tmp_path,
             manifest_path=manifest_path,

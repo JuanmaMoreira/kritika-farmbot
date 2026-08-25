@@ -32,6 +32,10 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 - [x] 3E — Perception Workbench v1 completado y validado en hardware: igualdad 3D/Workbench, preview limpia/live, ground truth base/overlay, falsos negativos de Black Market y Purchase Confirmation, marcadores tap/swipe alineados, before/after, writer sin backlog y cleanup. La primera sesión degradada permanece diagnóstica/no curada; las sesiones válidas son raw input para 3F. Hay 348 tests hardware-free verdes.
 - [x] 3F — Curar cinco frames human-confirmed de Workbench, reparar Black Market mediante recalibración y Purchase Confirmation mediante variantes nativas del mismo prompt, reevaluar los cuatro detectores sobre 62 labels y proteger la promoción frente a sesiones diagnósticas. El repair offline produjo 62/62 estados esperados y quedó sujeto a la revalidación live completada en 3G.
 - [x] 3G — Repair 3F revalidado live, sin acciones, sobre la season actual: igualdad Workbench/3D, estados base, Black Market, Purchase Confirmation sobre base conocida y `UNKNOWN`, latencia y cleanup completos. La corrida cerró 3D sin introducir gameplay, temporalidad ni nuevos contextos.
+- [x] 3H.1 — Abrir Perception Workbench a candidate semantics mediante un acquisition vocabulary separado y registrar transition evidence observacional con GT posterior exclusivamente confirmado por el humano.
+- [ ] 3H.2 — Ejecutar el semantic census current-season y revisar visualmente la evidencia raw adquirida.
+- [ ] 3H.3 — Curar y promover cobertura semántica prioritaria sin convertir candidates automáticamente en reglas productivas.
+- [ ] Navigation foundation — Diseñar posteriormente el modelo de navegación a partir de evidencia observada y curada; no derivarlo directamente de taps aislados.
 - [ ] Reutilizar OpenCV y templates donde aporten valor medible.
 - [ ] Evaluar un detector visual entrenado cuando exista dataset suficiente.
 - [x] Ampliar el manifest de dataset con nuevos positivos confirmados.

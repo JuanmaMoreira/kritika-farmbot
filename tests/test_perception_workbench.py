@@ -8,8 +8,10 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytest
 
 from bot.capture import FrameSnapshot
+from bot.human_input import HumanTap
 from bot.observations import ObservationBatch
 from bot.perception import LocalCvDetection, PerceptionEngine
 from bot.resolver import ContextResolver
@@ -20,14 +22,20 @@ from tools.perception_workbench import (
     FrameRingBuffer,
     GroundTruthState,
     LiveMetrics,
+    ObservedInteraction,
     OVERLAY_TOGGLE_KEY,
+    PendingInteraction,
     SCHEMA_VERSION,
     SessionStore,
     WorkbenchFrame,
+    WORKBENCH_WINDOW_HEIGHT,
+    _interaction_payload,
     compare_snapshot_paths,
+    confirm_transition,
     evaluate_correctness,
     event_record,
     is_overlay_toggle_key,
+    parse_event_record,
     preview_dimensions,
     render_ui,
 )
@@ -95,12 +103,29 @@ def test_ground_truth_is_persistent_explicit_and_overlay_dynamic():
     assert truth.display_base == "UNKNOWN"
     assert truth.base_confirmed
 
+    truth = truth.clear()
+    assert truth.display_base == "UNSET"
+    assert truth.overlays == frozenset()
+
+
+def test_candidate_labels_can_be_explicit_human_gt_without_prediction():
+    truth = GroundTruthState().select_base("screen.guild_shop")
+    truth = truth.toggle_overlay("popup.bag_full_alert")
+
+    assert truth.payload() == {
+        "source": "human_confirmed",
+        "base_context": "screen.guild_shop",
+        "base_is_unknown": False,
+        "overlays": ["popup.bag_full_alert"],
+    }
+    assert evaluate_correctness(truth, state(ResolutionStatus.UNKNOWN)) is Correctness.MISMATCH
+
 
 def test_overlay_toggle_hotkey_is_not_visually_ambiguous_with_unknown_zero():
     assert OVERLAY_TOGGLE_KEY == "P"
     assert is_overlay_toggle_key(ord("P"))
     assert is_overlay_toggle_key(ord("p"))
-    assert is_overlay_toggle_key(ord("O"))  # Legacy compatibility.
+    assert not is_overlay_toggle_key(ord("O"))
     assert not is_overlay_toggle_key(ord("0"))
 
 
@@ -183,6 +208,73 @@ def test_event_serialization_has_extensible_common_envelope():
     }
 
 
+def test_workbench_v1_event_envelope_remains_parseable():
+    event = {
+        "schema_version": "1.0",
+        "session_id": "legacy-session",
+        "event_type": "evidence.frame",
+        "timestamp": "2026-08-23T00:00:00Z",
+        "payload": {"sequence": 1},
+    }
+
+    assert parse_event_record(event) is event
+
+
+class FakeStore:
+    def save_frame(self, frame, *, reason):
+        return f"frames/{reason}-{frame.snapshot.sequence}.png" if frame else None
+
+
+def test_raw_gesture_keeps_prior_gt_but_never_invents_after_ground_truth():
+    human = GroundTruthState().select_base("screen.lobby")
+    before = workbench_frame(10, 10.0, human)
+    temporal_after = workbench_frame(11, 10.8, human)
+    tap = HumanTap(10.2, 10.1, (0.25, 0.75), (100, 200), 0.1)
+    pending = PendingInteraction("interaction-000001", tap, before, 10.7)
+
+    event_type, payload = _interaction_payload(pending, temporal_after, FakeStore())
+
+    assert event_type == "human.tap"
+    assert payload["interaction_id"] == "interaction-000001"
+    assert payload["human_ground_truth_before"]["base_context"] == "screen.lobby"
+    assert payload["frame_after_role"] == "temporal_observation_only"
+    assert payload["frame_after"].startswith("frames/")
+    assert not Path(payload["frame_after"]).is_absolute()
+    assert "after_ground_truth" not in payload
+
+
+def test_after_ground_truth_exists_only_through_explicit_human_confirmation():
+    after_gt = GroundTruthState().select_base("screen.guild_shop")
+    confirmation_frame = workbench_frame(25, 22.0, GroundTruthState())
+    interaction = ObservedInteraction("interaction-000002")
+
+    payload = confirm_transition(
+        interaction,
+        human=after_gt,
+        confirmation_frame=confirmation_frame,
+        store=FakeStore(),
+    )
+
+    assert payload["confirmation_method"] == "human_hotkey"
+    assert payload["after_ground_truth"] == after_gt.payload()
+    assert payload["after_ground_truth"]["base_context"] == "screen.guild_shop"
+    assert payload["confirmation_frame_sequence"] == 25
+    assert not Path(payload["confirmation_frame"]).is_absolute()
+
+
+def test_transition_confirmation_rejects_unset_after_ground_truth():
+    frame = workbench_frame(1, 1.0)
+    interaction = ObservedInteraction("interaction-000003")
+
+    with pytest.raises(ValueError, match="human-confirmed"):
+        confirm_transition(
+            interaction,
+            human=GroundTruthState(),
+            confirmation_frame=frame,
+            store=FakeStore(),
+        )
+
+
 def test_ring_buffer_associates_nearest_before_and_delayed_after_frames():
     ring = FrameRingBuffer(capacity=3)
     for sequence, timestamp in ((1, 10.0), (2, 10.4), (3, 10.8), (4, 11.2)):
@@ -217,6 +309,8 @@ def test_render_uses_a_copy_and_never_mutates_original_perception_image():
         base_mapping=(None,),
         overlay_names=(),
         selected_overlay=0,
+        label_origins={},
+        pending_transition_count=0,
         metrics=LiveMetrics(),
         evidence_save_ms=0.0,
         writer_queue_depth=0,
@@ -224,6 +318,7 @@ def test_render_uses_a_copy_and_never_mutates_original_perception_image():
 
     np.testing.assert_array_equal(frame.snapshot.image, before)
     assert not np.shares_memory(rendered, frame.snapshot.image)
+    assert rendered.shape[0] == WORKBENCH_WINDOW_HEIGHT
 
 
 class DiagnosticDetector:

@@ -20,6 +20,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se completó la Fase 3C promoviendo Lobby y Character Select a Perception productiva con assets curados, calibración reproducible sobre 57 labels y regresión end-to-end sin falsos positivos ni ambigüedades; Battle Mode Select permanece diferido.
 - Se completó la Fase 3E con Perception Workbench v1: ground truth humano persistente, captura activa/deduplicada de errores, observación read-only de taps/swipes físicos, asociación before/after, sesiones raw reproducibles y validación live de los falsos negativos de Black Market y Purchase Confirmation sin recalibrarlos.
 - Se cerraron las Fases 3D y 3G revalidando en hardware real el repair offline 3F: Black Market y Purchase Confirmation generalizaron al runtime current-season, incluida la composición sobre base conocida y `UNKNOWN`, con igualdad Workbench/3D, latencia operativa y cleanup completo sin input Android.
+- Se completó la Fase 3H.1: Perception Workbench usa un vocabulario humano separado con candidate semantics, períodos `UNSET` y confirmación explícita de GT posterior enlazada a gestos raw; un smoke read-only validó Lobby → Guild Shop y swipe sin cambio de contexto, sin crear navegación, acciones ni reglas productivas.
 
 ### Changed
 
