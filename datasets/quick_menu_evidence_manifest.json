@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "curation": {
+    "phase": "3H.2",
+    "session_id": "20260825T193046_517947Z-76b5e238",
+    "selected_positive_sequences": [2478, 2538, 2599, 2666, 2681, 2726, 2786, 2853, 2921, 2988, 3055, 3116, 3176, 5466, 9221, 9235, 9304, 9364],
+    "selected_negative_sequences": [4557, 8764, 8793, 8824, 8891, 8951, 9011, 9071, 9485, 9546, 9582, 9597, 9643, 9703, 9763],
+    "acquisition_bases": {
+      "screen.lobby": [2478, 2538, 2599, 2666, 2681, 2726, 2786, 2853, 2921, 2988, 3055, 3116, 3176, 4557, 5466],
+      "screen.inventory": [8764, 8793, 8824, 8891, 8951, 9011, 9071, 9221, 9235, 9304, 9364, 9485, 9546, 9582, 9597, 9643, 9703, 9763]
+    },
+    "excluded_stale_or_transitional_sequences": [1998, 2058, 2118, 2178, 2245, 2305, 2365, 2426, 4949, 5316, 5376, 9131, 9205],
+    "excluded_interaction_boundary_events": true,
+    "corrected_closed_menu_sequences": [9485, 9546],
+    "production_mapping": "screen.inventory remains acquisition-only and maps to unknown; menu.quick remains independently confirmed"
+  },
+  "entries": [
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002478.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002538.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002599.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002666.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002681.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002726.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002786.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002853.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002921.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002988.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00003055.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00003116.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00003176.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00005466.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009221.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009235.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009304.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009364.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00004557.png","base_context":"screen.lobby","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00008764.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00008793.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00008824.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00008891.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00008951.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009011.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009071.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009485.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009546.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009582.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009597.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009643.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009703.png","base_context":"unknown","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00009763.png","base_context":"unknown","overlays":[],"review_status":"confirmed"}
+  ]
+}

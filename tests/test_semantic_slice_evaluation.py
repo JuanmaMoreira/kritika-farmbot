@@ -29,6 +29,23 @@ def write_image(path, width, height, value=0):
     assert cv2.imwrite(str(path), image)
 
 
+def test_quick_menu_manifest_preserves_reviewed_selection_and_exclusions():
+    repository_root = Path(__file__).resolve().parents[1]
+    manifest_path = repository_root / "datasets/quick_menu_evidence_manifest.json"
+
+    entries = load_manifest(manifest_path)
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert len(entries) == 33
+    assert sum("menu.quick" in entry.overlays for entry in entries) == 18
+    assert sum(not entry.overlays for entry in entries) == 15
+    assert payload["curation"]["session_id"] == (
+        "20260825T193046_517947Z-76b5e238"
+    )
+    assert payload["curation"]["corrected_closed_menu_sequences"] == [9485, 9546]
+    assert payload["curation"]["excluded_interaction_boundary_events"] is True
+
+
 def measurement(path, landmark, score, threshold=0.85):
     return ScoreMeasurement(
         path=path,

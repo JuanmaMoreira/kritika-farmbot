@@ -12,6 +12,7 @@ from bot.catalog import (
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
+    LANDMARK_QUICK_MENU_LOBBY_TILE,
 )
 from bot.geometry import RelativeRegion, normalize_relative_region
 from bot.observations import validate_semantic_name
@@ -126,6 +127,21 @@ PURCHASE_CONFIRMATION_PROMPT_SPEC = LocalCvSpec(
     ),
 )
 
+# Current-season rendering of the literal "Lobby" tile inside Quick Menu.
+# The horizontal search span covers the two human-confirmed placements over
+# Lobby and Inventory without encoding legacy per-context coordinate offsets.
+# Calibration uses 18 confirmed positives and 77 confirmed negatives from the
+# Phase 3H.2 corpus; it is an empirical gap, not a probability estimate.
+QUICK_MENU_LOBBY_TILE_SPEC = LocalCvSpec(
+    name=LANDMARK_QUICK_MENU_LOBBY_TILE,
+    asset_path=Path("assets/ui/landmarks/quick-menu-lobby-tile.png"),
+    region=(0.02, 0.10, 0.25, 0.32),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.2981472909450531,
+        positive_anchor=0.9826233983039856,
+    ),
+)
+
 # Curated byte-for-byte from the Phase 3B.1 candidate generated from
 # screencaps/semantic/lobby/20260823T025455_304538Z.png. The 235x70 template
 # and search region were recalibrated over all 57 confirmed human labels.
@@ -175,4 +191,5 @@ DEFAULT_LOCAL_CV_SPECS = (
     CHARACTER_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
+    QUICK_MENU_LOBBY_TILE_SPEC,
 )

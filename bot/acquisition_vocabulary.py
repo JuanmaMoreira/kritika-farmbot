@@ -36,8 +36,8 @@ class AcquisitionVocabulary:
     overlays: tuple[AcquisitionLabel, ...]
 
     def __post_init__(self) -> None:
-        _validate_labels(self.bases, prefix="screen.")
-        _validate_labels(self.overlays, prefix="popup.")
+        _validate_labels(self.bases, prefixes=("screen.",))
+        _validate_labels(self.overlays, prefixes=("popup.", "menu."))
 
     @property
     def base_names(self) -> tuple[str, ...]:
@@ -106,10 +106,12 @@ def _merge_labels(
 def _validate_labels(
     labels: tuple[AcquisitionLabel, ...],
     *,
-    prefix: str,
+    prefixes: tuple[str, ...],
 ) -> None:
     names = tuple(label.name for label in labels)
     if len(names) != len(set(names)):
         raise ValueError("acquisition labels must be unique within each kind")
-    if any(not name.startswith(prefix) for name in names):
-        raise ValueError(f"acquisition labels must use the {prefix!r} namespace")
+    if any(not name.startswith(prefixes) for name in names):
+        raise ValueError(
+            f"acquisition labels must use one of the {prefixes!r} namespaces"
+        )

@@ -11,6 +11,7 @@ SCREEN_CHARACTER_SELECT = "screen.character_select"
 SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
 POPUP_PURCHASE_CONFIRMATION = "popup.purchase_confirmation"
+MENU_QUICK = "menu.quick"
 
 LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
     "landmark.lobby_trading_center_label"
@@ -21,6 +22,7 @@ LANDMARK_BLACK_MARKET_TITLE = "landmark.black_market_title"
 LANDMARK_PURCHASE_CONFIRMATION_PROMPT = (
     "landmark.purchase_confirmation_prompt"
 )
+LANDMARK_QUICK_MENU_LOBBY_TILE = "landmark.quick_menu_lobby_tile"
 
 SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_BLACK_MARKET_TITLE,
@@ -28,6 +30,7 @@ SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
+    LANDMARK_QUICK_MENU_LOBBY_TILE,
 )
 
 BASE_CONTEXT_RULES = (
@@ -57,6 +60,11 @@ OVERLAY_RULES = (
     ContextRule(
         name=POPUP_PURCHASE_CONFIRMATION,
         requires=(LANDMARK_PURCHASE_CONFIRMATION_PROMPT,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=MENU_QUICK,
+        requires=(LANDMARK_QUICK_MENU_LOBBY_TILE,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
 )

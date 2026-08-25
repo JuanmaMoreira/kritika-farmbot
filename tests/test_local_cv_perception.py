@@ -14,6 +14,7 @@ from bot.catalog import (
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
+    LANDMARK_QUICK_MENU_LOBBY_TILE,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
 )
@@ -217,7 +218,7 @@ def test_perception_module_import_does_not_load_assets(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_default_perception_contains_exactly_the_four_validated_specs(monkeypatch):
+def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     created = []
 
     class StubDetector:
@@ -238,12 +239,13 @@ def test_default_perception_contains_exactly_the_four_validated_specs(monkeypatc
 
     assert engine is not second
     assert tuple(detector.spec for detector in engine.detectors) == DEFAULT_LOCAL_CV_SPECS
-    assert len(created) == 8
+    assert len(created) == 10
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
         LANDMARK_CHARACTER_SELECT_HEADER,
         LANDMARK_BLACK_MARKET_TITLE,
         LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
+        LANDMARK_QUICK_MENU_LOBBY_TILE,
     )
     assert LANDMARK_MONSTER_WAVE_ENTRY_TITLE not in {
         spec.name for spec in DEFAULT_LOCAL_CV_SPECS

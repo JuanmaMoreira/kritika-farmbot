@@ -13,6 +13,7 @@ from bot.perception.specs import (
     LOBBY_TRADING_CENTER_LABEL_SPEC,
     LinearGapCalibration,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
+    QUICK_MENU_LOBBY_TILE_SPEC,
 )
 
 
@@ -116,6 +117,16 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert PURCHASE_CONFIRMATION_PROMPT_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9959162473678589)
     )
+    assert QUICK_MENU_LOBBY_TILE_SPEC.asset_path.as_posix() == (
+        "assets/ui/landmarks/quick-menu-lobby-tile.png"
+    )
+    assert QUICK_MENU_LOBBY_TILE_SPEC.region == (0.02, 0.10, 0.25, 0.32)
+    assert QUICK_MENU_LOBBY_TILE_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.2981472909450531)
+    )
+    assert QUICK_MENU_LOBBY_TILE_SPEC.calibration.positive_anchor == (
+        pytest.approx(0.9826233983039856)
+    )
     assert all(
         spec.calibration.negative_anchor
         < spec.calibration.positive_anchor
@@ -140,6 +151,11 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             PURCHASE_CONFIRMATION_PROMPT_SPEC,
             (212, 35),
             "02f96359411f6f23a7cb73c9dd5a986cd3afb8f6978fe04fc17aa9ab4d788f1d",
+        ),
+        (
+            QUICK_MENU_LOBBY_TILE_SPEC,
+            (126, 140),
+            "314fdc69d94e252c75c96428ef450bbf6c7044934cdda76872b6ac39378af180",
         ),
     ),
 )

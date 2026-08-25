@@ -19,6 +19,8 @@ from bot.catalog import (
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
+    LANDMARK_QUICK_MENU_LOBBY_TILE,
+    MENU_QUICK,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
@@ -41,6 +43,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/semantic_slice_manifest.json",
     "datasets/semantic_acquisition_manifest.json",
     "datasets/workbench_evidence_manifest.json",
+    "datasets/quick_menu_evidence_manifest.json",
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
@@ -88,6 +91,7 @@ class ResolverMetrics:
     overlays_correct: int
     black_market_correct: int
     purchase_overlay_correct: int
+    quick_menu_overlay_correct: int
     black_market_plus_overlay_correct: int
     unknown_plus_purchase_overlay_correct: int
     by_ground_truth: dict[str, ContextMetrics]
@@ -411,6 +415,7 @@ def evaluate_production_perception(
         "overlays_correct": 0,
         "black_market_correct": 0,
         "purchase_correct": 0,
+        "quick_menu_correct": 0,
         "base_overlay_correct": 0,
         "unknown_overlay_correct": 0,
     }
@@ -473,11 +478,7 @@ def evaluate_production_perception(
             if expected_base is not None
             else ResolutionStatus.UNKNOWN
         )
-        expected_overlays = tuple(
-            overlay
-            for overlay in entry.overlays
-            if overlay == POPUP_PURCHASE_CONFIRMATION
-        )
+        expected_overlays = entry.overlays
         resolution_correct = (
             state.status is expected_status
             and state.base_context == expected_base
@@ -501,6 +502,10 @@ def evaluate_production_perception(
         if POPUP_PURCHASE_CONFIRMATION in entry.overlays:
             resolver_counts["purchase_correct"] += int(
                 POPUP_PURCHASE_CONFIRMATION in state.overlays
+            )
+        if MENU_QUICK in entry.overlays:
+            resolver_counts["quick_menu_correct"] += int(
+                MENU_QUICK in state.overlays
             )
         if (
             entry.base_context == SCREEN_BLACK_MARKET
@@ -596,6 +601,7 @@ def evaluate_production_perception(
             overlays_correct=resolver_counts["overlays_correct"],
             black_market_correct=resolver_counts["black_market_correct"],
             purchase_overlay_correct=resolver_counts["purchase_correct"],
+            quick_menu_overlay_correct=resolver_counts["quick_menu_correct"],
             black_market_plus_overlay_correct=resolver_counts["base_overlay_correct"],
             unknown_plus_purchase_overlay_correct=resolver_counts[
                 "unknown_overlay_correct"
@@ -618,6 +624,8 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return entry.base_context == SCREEN_BLACK_MARKET
     if name == LANDMARK_PURCHASE_CONFIRMATION_PROMPT:
         return POPUP_PURCHASE_CONFIRMATION in entry.overlays
+    if name == LANDMARK_QUICK_MENU_LOBBY_TILE:
+        return MENU_QUICK in entry.overlays
     raise ValueError(f"Unsupported production detector: {name}")
 
 

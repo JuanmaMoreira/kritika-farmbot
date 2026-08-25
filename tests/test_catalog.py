@@ -10,6 +10,8 @@ from bot.catalog import (
     BASE_CONTEXT_RULES,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
+    LANDMARK_QUICK_MENU_LOBBY_TILE,
+    MENU_QUICK,
     OVERLAY_RULES,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
@@ -201,9 +203,15 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
     assert len(BASE_CONTEXT_RULES) == 4
-    assert len(OVERLAY_RULES) == 1
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 5
+    assert len(OVERLAY_RULES) == 2
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 6
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
+
+
+def test_quick_menu_is_an_overlay_with_its_own_landmark():
+    quick_rule = next(rule for rule in OVERLAY_RULES if rule.name == MENU_QUICK)
+
+    assert quick_rule.requires == (LANDMARK_QUICK_MENU_LOBBY_TILE,)
 
 
 def test_lobby_requires_only_the_trading_center_label():

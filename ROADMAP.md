@@ -33,8 +33,8 @@ El roadmap contiene únicamente trabajo futuro y fases completadas del rediseño
 - [x] 3F — Curar cinco frames human-confirmed de Workbench, reparar Black Market mediante recalibración y Purchase Confirmation mediante variantes nativas del mismo prompt, reevaluar los cuatro detectores sobre 62 labels y proteger la promoción frente a sesiones diagnósticas. El repair offline produjo 62/62 estados esperados y quedó sujeto a la revalidación live completada en 3G.
 - [x] 3G — Repair 3F revalidado live, sin acciones, sobre la season actual: igualdad Workbench/3D, estados base, Black Market, Purchase Confirmation sobre base conocida y `UNKNOWN`, latencia y cleanup completos. La corrida cerró 3D sin introducir gameplay, temporalidad ni nuevos contextos.
 - [x] 3H.1 — Abrir Perception Workbench a candidate semantics mediante un acquisition vocabulary separado y registrar transition evidence observacional con GT posterior exclusivamente confirmado por el humano.
-- [ ] 3H.2 — Ejecutar el semantic census current-season y revisar visualmente la evidencia raw adquirida.
-- [ ] 3H.3 — Curar y promover cobertura semántica prioritaria sin convertir candidates automáticamente en reglas productivas.
+- [x] 3H.2 — Auditar las 75 entradas legacy, adquirir/revisar Quick Menu sobre Lobby e Inventory y promover `menu.quick` como overlay global mediante 18 positivos/77 negativos, cerrando la semántica contextual mínima del flow Black Market multi-character.
+- [ ] 3H.3 — Curar y promover próxima cobertura semántica priorizada sólo cuando un flow o recovery concreto la requiera, sin convertir candidates automáticamente en reglas productivas.
 - [ ] Navigation foundation — Diseñar posteriormente el modelo de navegación a partir de evidencia observada y curada; no derivarlo directamente de taps aislados.
 - [ ] Reutilizar OpenCV y templates donde aporten valor medible.
 - [ ] Evaluar un detector visual entrenado cuando exista dataset suficiente.

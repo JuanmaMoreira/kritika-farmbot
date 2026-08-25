@@ -94,7 +94,7 @@ El backend actual es `LocalCvDetector`. Cada instancia representa un único land
 
 `LocalCvDetection` mantiene separados `raw_match_score` y `semantic_confidence`. `LinearGapCalibration` mapea linealmente el máximo negativo confirmado a `0` y el mínimo positivo confirmado a `1`, con clamp fuera del intervalo. Esa confidence sólo expresa posición en el gap empírico de la muestra 2D y no es una probabilidad. El detector omite evidence con confidence `0`; no aplica el threshold semántico `0.80`, que sigue siendo policy exclusiva del `ContextResolver`.
 
-Después del repair 3F, las specs productivas contienen exclusivamente:
+Después de la promoción 3H.2, las specs productivas contienen:
 
 | Observation | Asset | Region validada | Gap empírico provisional |
 |---|---|---|---|
@@ -102,8 +102,16 @@ Después del repair 3F, las specs productivas contienen exclusivamente:
 | `landmark.character_select_header` | `assets/ui/landmarks/character-select-header.png` | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | `0.2749116122722626 → 0.43373382091522217` |
 | `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.3996976613998413` |
 | `landmark.purchase_confirmation_prompt` | asset histórico + `assets/ui/landmarks/purchase-confirmation-prompt-current.png` | `(1235/2712, 590/1224, 1460/2712, 647/1224)` | `0.4875827729701996 → 0.9959162473678589` |
+| `landmark.quick_menu_lobby_tile` | `assets/ui/landmarks/quick-menu-lobby-tile.png` | `(0.02, 0.10, 0.25, 0.32)` | `0.2981472909450531 → 0.9826233983039856` |
 
 Los assets promovidos son copias exactas de crops evaluados; producción no depende de `artifacts/`. El detector de Lobby consume únicamente el rótulo `Trading Center`: no usa oro, una conjunción ni fallback a la franja amplia. Su separación está validada contra el corpus actual, no contra un conjunto controlado multi-season; un cambio de season exige nuevos positives humanos y recalibración. Character Select usa el rendering actual validado y no el asset legacy con overlap. Black Market conserva un solo asset porque el rendering live más ancho aún mantiene gap con el template histórico. Purchase requiere las dos variantes nativas del literal “Purchase?” porque ninguna de ellas sola conserva una separación robusta entre ambas apariencias; la región compartida excluye deliberadamente la confusión genérica “Still proceed?”.
+
+Quick Menu se detecta mediante el tile literal “Lobby” dentro del panel. Su región única
+incluye las posiciones confirmadas sobre Lobby e Inventory y reemplaza la necesidad de
+aplicar offsets de coordenadas por contexto. La regla `menu.quick` vive entre overlays:
+el namespace distingue menú de popup, pero reutiliza la composición ya soportada por
+`ResolvedState`. Si el panel oculta el landmark de la base, `UNKNOWN + menu.quick` es
+un resultado válido y no se intenta reconstruir una base invisible.
 
 No existe todavía detector productivo para Battle Mode Select ni otros estados. Su `ContextRule` permanece disponible, de modo que sin otra señal productiva esos frames resuelven `UNKNOWN`. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
 
@@ -270,7 +278,23 @@ ContextRule / OverlayRule      !=    production labels + candidate labels
 ContextResolver                         Perception Workbench GT
 ```
 
-`bot/catalog.py` no importa ni consume `bot/acquisition_vocabulary.py`. El vocabulario de adquisición recibe nombres productivos como datos y agrega únicamente un seed candidate pequeño (`screen.guild_shop`, `screen.inventory`, `popup.bag_full_alert`). La procedencia `production`/`candidate` se muestra en UI y se registra en `session.started`; no crea requirements, detectors, assets, targets ni reglas. `UNKNOWN` permanece como selección humana independiente, y `U` deja base y overlays en estado `UNSET` para hacer observable un período transicional no confirmado.
+`bot/catalog.py` no importa ni consume `bot/acquisition_vocabulary.py`. El vocabulario de adquisición recibe nombres productivos como datos y agrega únicamente un seed candidate pequeño (`screen.guild_shop`, `screen.inventory`, `popup.bag_full_alert`). Desde 3H.2, `menu.quick` llega desde el catálogo productivo y dejó de pertenecer al seed candidate. La procedencia `production`/`candidate` se muestra en UI y se registra en `session.started`; no crea requirements, detectors, assets, targets ni reglas. `UNKNOWN` permanece como selección humana independiente, y `U` deja base y overlays en estado `UNSET` para hacer observable un período transicional no confirmado.
+
+### Semantic census y Quick Menu
+
+Fase 3H.2 preserva en `docs/semantic_census.md` las 75 entradas top-level legacy
+sin convertirlas en configuración runtime. Quick Menu permanece fuera de ese conteo:
+legacy lo detectaba con identidad visual propia y acomodaba su posición mediante
+offsets `default`/`lobby` compartidos por 18 contextos. 0.2 conserva ese conocimiento
+como una región de búsqueda que admite ambas posiciones observadas, pero descarta los
+valores concretos de botones, targets y causalidad de taps.
+
+La sesión raw `20260825T193046_517947Z-76b5e238` fue revisada visualmente antes de
+crear `datasets/quick_menu_evidence_manifest.json`. El manifest registra 18 positivos,
+15 negativos locales y las exclusiones de GT atrasado/transicional; al fusionarlo con
+los 62 labels previos, el detector se evalúa contra 77 negativos. Los frames sobre
+Inventory conservan ese dato como provenance de adquisición, pero la expectativa
+productiva de base es `unknown` porque `screen.inventory` no fue promovido.
 
 El envelope Workbench `2.0` añade un `interaction_id` a cada tap/swipe/gesto desconocido. El evento físico conserva GT previo, frame previo y un frame posterior temporal con `frame_after_role=temporal_observation_only`; incluso puede conservar la prediction posterior como diagnóstico, pero nunca contiene `after_ground_truth` por inferencia. La tecla `T` es la única operación UI que emite `human.transition_confirmed`: vincula explícitamente el GT humano actual y el frame vigente de confirmación al gesto pendiente más reciente. Sin esa operación, el gesto permanece sin destino semántico confirmado. Los eventos `1.0` continúan legibles y el promotor 3F acepta evidence frames `1.0`/`2.0` bajo su policy previa.
 
@@ -300,7 +324,7 @@ raw session ignorada
 
 `datasets/workbench_evidence_manifest.json` selecciona exactamente frames revisados y conserva sólo paths relativos, `source=workbench`, session id, sequence, timestamp, reason y shape. `tools/production_perception_evaluation.py` materializa esos PNG bajo `screencaps/semantic/workbench/` después de contrastar manifest, summary, evento y bytes fuente. La session debe declarar `curation_status=raw_unreviewed`; estados `diagnostic`, status ausente, `curated=true`, ground truth no humano, labels fuera del catálogo productivo, labels contradictorios, secuencias duplicadas o paths fuera del repositorio se rechazan antes de copiar. Los raw `events.jsonl`, summaries y frames de sesión nunca se convierten automáticamente en dataset. Esta allowlist preserva el scope 3F: un candidate de adquisición no se vuelve curated por aparecer en un evento `2.0`.
 
-El evaluator fusiona el manifest histórico, acquisition y Workbench, deduplica por path y ejecuta siempre los cuatro detectores productivos más el resolver. Reporta min/median/max positivos, máximo negativo, anchors, gap, FP/FN emitidos y resultados end-to-end. Los manifests siguen siendo utilizables aunque los PNG ignorados no existan en otra checkout; la suite normal prueba parsing y policy con fixtures in-memory/locales y no depende de las sesiones reales.
+El evaluator fusiona el manifest histórico, acquisition, Workbench 3F y Quick Menu, deduplica por path y ejecuta siempre los cinco detectores productivos más el resolver. Reporta min/median/max positivos, máximo negativo, anchors, gap, FP/FN emitidos y resultados end-to-end. Los manifests siguen siendo utilizables aunque los PNG ignorados no existan en otra checkout; la suite normal prueba parsing y policy con fixtures in-memory/locales y no depende de las sesiones reales.
 
 La variante múltiple de `LocalCvDetector` no es ensemble semántico ni source weighting: son renderings nativos, explícitos y curados del mismo landmark dentro de un único detector. La calibration se calcula sobre el máximo raw que ese detector realmente producirá. Este mecanismo se incorporó sólo para `landmark.purchase_confirmation_prompt`; Black Market mantuvo su asset/crop original y cambió únicamente su calibration.
 
@@ -358,7 +382,7 @@ Las herramientas activas quedan delimitadas así:
 - `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2;
 - `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;
 - `tools/review_semantic_slice.py`: revisión humana local del subconjunto seleccionado.
-- `tools/production_perception_evaluation.py`: promoción segura de selección Workbench y evaluación offline de observations calibradas/estados resueltos sobre los tres manifests confirmados.
+- `tools/production_perception_evaluation.py`: promoción segura de selección Workbench y evaluación offline de observations calibradas/estados resueltos sobre los cuatro manifests confirmados.
 - `tools/capture_semantic_dataset.py`: adquisición dirigida de screenshots completos con labels humanas explícitas.
 - `tools/semantic_candidate_evaluation.py`: selección y evaluación offline de candidates experimentales mediante raw scores.
 
