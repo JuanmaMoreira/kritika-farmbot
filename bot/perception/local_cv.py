@@ -29,7 +29,7 @@ class LocalCvDetection:
 
 
 class LocalCvDetector:
-    """Detect one configured landmark using one preloaded grayscale template."""
+    """Detect one landmark using preloaded native-size rendering variants."""
 
     def __init__(
         self,
@@ -41,49 +41,67 @@ class LocalCvDetector:
         if not isinstance(spec, LocalCvSpec):
             raise ValueError("spec must be a LocalCvSpec")
         root = Path(asset_root) if asset_root is not None else Path.cwd()
-        asset_path = spec.asset_path
-        if not asset_path.is_absolute():
-            asset_path = root / asset_path
-        asset_path = asset_path.resolve()
-        if not asset_path.is_file():
-            raise FileNotFoundError(f"Local CV template is unavailable: {asset_path}")
-
         loader = template_loader or cv2.imread
-        template = loader(str(asset_path), cv2.IMREAD_GRAYSCALE)
-        if template is None:
-            raise ValueError(f"Local CV template could not be decoded: {asset_path}")
-        if (
-            not isinstance(template, np.ndarray)
-            or template.ndim != 2
-            or template.size == 0
-            or template.dtype != np.uint8
-        ):
-            raise ValueError(
-                f"Local CV template must be a non-empty uint8 grayscale image: {asset_path}"
-            )
+        asset_paths = []
+        templates = []
+        for configured_path in (spec.asset_path, *spec.variant_asset_paths):
+            asset_path = configured_path
+            if not asset_path.is_absolute():
+                asset_path = root / asset_path
+            asset_path = asset_path.resolve()
+            if not asset_path.is_file():
+                raise FileNotFoundError(
+                    f"Local CV template is unavailable: {asset_path}"
+                )
+
+            template = loader(str(asset_path), cv2.IMREAD_GRAYSCALE)
+            if template is None:
+                raise ValueError(
+                    f"Local CV template could not be decoded: {asset_path}"
+                )
+            if (
+                not isinstance(template, np.ndarray)
+                or template.ndim != 2
+                or template.size == 0
+                or template.dtype != np.uint8
+            ):
+                raise ValueError(
+                    "Local CV template must be a non-empty uint8 grayscale "
+                    f"image: {asset_path}"
+                )
+            asset_paths.append(asset_path)
+            templates.append(template.copy())
 
         self.spec = spec
-        self.asset_path = asset_path
-        self._template = template.copy()
+        self.asset_paths = tuple(asset_paths)
+        self.asset_path = self.asset_paths[0]
+        self._templates = tuple(templates)
 
     @property
     def template_shape(self) -> tuple[int, int]:
-        return self._template.shape
+        return self._templates[0].shape
+
+    @property
+    def template_shapes(self) -> tuple[tuple[int, int], ...]:
+        return tuple(template.shape for template in self._templates)
 
     def measure(self, frame: np.ndarray) -> LocalCvDetection:
         """Measure raw evidence and calibrate it without applying resolver policy."""
 
         _validate_frame(frame)
-        raw_score = template_match_score(
-            frame,
-            self._template,
-            region=self.spec.region,
+        raw_scores = tuple(
+            template_match_score(frame, template, region=self.spec.region)
+            for template in self._templates
         )
-        if raw_score is None:
+        compatible_scores = tuple(
+            score for score in raw_scores if score is not None
+        )
+        if not compatible_scores:
             raise ValueError(
-                f"Template {self.template_shape} does not fit search region "
+                f"Template set {self.template_shapes} does not fit search region "
                 f"{self.spec.region} for frame {frame.shape}"
             )
+        raw_score = max(compatible_scores)
         return LocalCvDetection(
             observation_name=self.spec.name,
             raw_match_score=raw_score,

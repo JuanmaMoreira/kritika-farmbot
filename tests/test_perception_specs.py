@@ -7,10 +7,12 @@ import numpy as np
 import pytest
 
 from bot.perception.specs import (
+    BLACK_MARKET_TITLE_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
     LOBBY_TRADING_CENTER_LABEL_SPEC,
     LinearGapCalibration,
+    PURCHASE_CONFIRMATION_PROMPT_SPEC,
 )
 
 
@@ -86,6 +88,34 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
         0.5852212389380531,
         0.11212418300653594,
     )
+    assert CHARACTER_SELECT_HEADER_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.2749116122722626)
+    )
+    assert BLACK_MARKET_TITLE_SPEC.asset_path.as_posix() == (
+        "assets/ui/black-market-id.png"
+    )
+    assert BLACK_MARKET_TITLE_SPEC.variant_asset_paths == ()
+    assert BLACK_MARKET_TITLE_SPEC.calibration.negative_anchor == pytest.approx(
+        0.2230203002691269
+    )
+    assert BLACK_MARKET_TITLE_SPEC.calibration.positive_anchor == pytest.approx(
+        0.3996976613998413
+    )
+    assert PURCHASE_CONFIRMATION_PROMPT_SPEC.variant_asset_paths == (
+        Path("assets/ui/landmarks/purchase-confirmation-prompt-current.png"),
+    )
+    assert PURCHASE_CONFIRMATION_PROMPT_SPEC.region == (
+        1235 / 2712,
+        590 / 1224,
+        1460 / 2712,
+        647 / 1224,
+    )
+    assert PURCHASE_CONFIRMATION_PROMPT_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.4875827729701996)
+    )
+    assert PURCHASE_CONFIRMATION_PROMPT_SPEC.calibration.positive_anchor == (
+        pytest.approx(0.9959162473678589)
+    )
     assert all(
         spec.calibration.negative_anchor
         < spec.calibration.positive_anchor
@@ -106,11 +136,19 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             (440, 80),
             "e16be1dc88a74f9f4511d5c0058f7249e635dcd2bca864c1f206f567b2b61e93",
         ),
+        (
+            PURCHASE_CONFIRMATION_PROMPT_SPEC,
+            (212, 35),
+            "02f96359411f6f23a7cb73c9dd5a986cd3afb8f6978fe04fc17aa9ab4d788f1d",
+        ),
     ),
 )
 def test_promoted_assets_are_exact_evaluated_candidates(spec, dimensions, sha256):
     repository_root = Path(__file__).resolve().parents[1]
-    asset = repository_root / spec.asset_path
+    asset_path = spec.asset_path
+    if spec is PURCHASE_CONFIRMATION_PROMPT_SPEC:
+        asset_path = spec.variant_asset_paths[0]
+    asset = repository_root / asset_path
     payload = asset.read_bytes()
     image = cv2.imdecode(np.frombuffer(payload, dtype="uint8"), cv2.IMREAD_COLOR)
 

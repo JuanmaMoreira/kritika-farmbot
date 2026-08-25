@@ -279,6 +279,8 @@ def test_evidence_png_encoding_runs_off_the_caller_thread(tmp_path, monkeypatch)
     store.finalize(metadata={}, exit_reason="test")
 
     summary = json.loads((store.path / "summary.json").read_text())
+    assert summary["curation_status"] == "raw_unreviewed"
+    assert summary["curated"] is False
     assert summary["unique_frames"] == 1
     assert summary["evidence_writer"]["dropped"] == 0
     assert not store._writer.is_alive()

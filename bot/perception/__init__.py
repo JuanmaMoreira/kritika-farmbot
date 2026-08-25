@@ -20,7 +20,7 @@ from .specs import (
 def build_default_perception(
     asset_root: str | Path | None = None,
 ) -> PerceptionEngine:
-    """Build a fresh engine containing the four approved Phase 3C detectors."""
+    """Build a fresh engine containing the four approved production detectors."""
 
     root = (
         Path(asset_root)

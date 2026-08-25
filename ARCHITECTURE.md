@@ -90,20 +90,20 @@ La fuente es dueña del lifecycle de socket, decoder, proceso y forward, incluid
 
 La Fase 3A implementó la primera porción productiva de esta capa bajo `bot/perception/`. `PerceptionEngine` recibe una tupla explícita de detectores que cumplen `detect(frame)`, los ejecuta en orden y agrega cero, una o varias observations por detector. Su salida termina en `ObservationBatch`: preserva la identidad del `FrameSnapshot` y no invoca al resolver ni conserva contexto, historial o estado temporal.
 
-El backend actual es `LocalCvDetector`. Cada instancia representa un único landmark, carga y valida su PNG durante construcción y conserva una copia grayscale preparada para todos los frames posteriores. Importar el package no abre assets y `build_default_perception()` crea una composición nueva, no un singleton. El matching a tamaño nativo reutiliza `bot.screen.template_match_score()` con el template precargado; la region normalizada se convierte desde las dimensiones reales del ndarray mediante `bot.geometry`. Un template incompatible con el crop del frame produce un error explícito y no dispara scaling implícito.
+El backend actual es `LocalCvDetector`. Cada instancia representa un único landmark y carga durante construcción uno o más PNG que sean variantes human-confirmed del mismo significado visual. Conserva copias grayscale preparadas y reporta el máximo raw entre variantes compatibles; no pondera fuentes, no suma evidence y no genera observations duplicadas. Importar el package no abre assets y `build_default_perception()` crea una composición nueva, no un singleton. El matching a tamaño nativo reutiliza `bot.screen.template_match_score()`; la region normalizada se convierte desde las dimensiones reales del ndarray mediante `bot.geometry`. Si ninguna variante cabe en el crop, el error es explícito; no existe scaling implícito.
 
 `LocalCvDetection` mantiene separados `raw_match_score` y `semantic_confidence`. `LinearGapCalibration` mapea linealmente el máximo negativo confirmado a `0` y el mínimo positivo confirmado a `1`, con clamp fuera del intervalo. Esa confidence sólo expresa posición en el gap empírico de la muestra 2D y no es una probabilidad. El detector omite evidence con confidence `0`; no aplica el threshold semántico `0.80`, que sigue siendo policy exclusiva del `ContextResolver`.
 
-Desde Fase 3C, las specs productivas contienen exclusivamente:
+Después del repair 3F, las specs productivas contienen exclusivamente:
 
 | Observation | Asset | Region validada | Gap empírico provisional |
 |---|---|---|---|
 | `landmark.lobby_trading_center_label` | `assets/ui/landmarks/lobby-trading-center-label.png` | `(0.19095870206489673, 0.905032679738562, 0.29761061946902656, 0.9822222222222222)` | `0.4657268226146698 → 0.7198567986488342` |
-| `landmark.character_select_header` | `assets/ui/landmarks/character-select-header.png` | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | `0.2443815916776657 → 0.43373382091522217` |
-| `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.997641384601593` |
-| `landmark.purchase_confirmation_prompt` | `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.48758167028427124 → 0.9959162473678589` |
+| `landmark.character_select_header` | `assets/ui/landmarks/character-select-header.png` | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | `0.2749116122722626 → 0.43373382091522217` |
+| `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.3996976613998413` |
+| `landmark.purchase_confirmation_prompt` | asset histórico + `assets/ui/landmarks/purchase-confirmation-prompt-current.png` | `(1235/2712, 590/1224, 1460/2712, 647/1224)` | `0.4875827729701996 → 0.9959162473678589` |
 
-Los dos assets promovidos son copias exactas de los candidates evaluados bajo `artifacts/`; esos artifacts no son dependencias runtime. El detector de Lobby consume únicamente el rótulo `Trading Center`: no usa oro, una conjunción ni fallback a la franja amplia. Su separación está validada contra el corpus actual, no contra un conjunto controlado multi-season; un cambio de season exige nuevos positives humanos y recalibración. Character Select usa el rendering actual validado y no el asset legacy con overlap.
+Los assets promovidos son copias exactas de crops evaluados; producción no depende de `artifacts/`. El detector de Lobby consume únicamente el rótulo `Trading Center`: no usa oro, una conjunción ni fallback a la franja amplia. Su separación está validada contra el corpus actual, no contra un conjunto controlado multi-season; un cambio de season exige nuevos positives humanos y recalibración. Character Select usa el rendering actual validado y no el asset legacy con overlap. Black Market conserva un solo asset porque el rendering live más ancho aún mantiene gap con el template histórico. Purchase requiere las dos variantes nativas del literal “Purchase?” porque ninguna de ellas sola conserva una separación robusta entre ambas apariencias; la región compartida excluye deliberadamente la confusión genérica “Still proceed?”.
 
 No existe todavía detector productivo para Battle Mode Select ni otros estados. Su `ContextRule` permanece disponible, de modo que sin otra señal productiva esos frames resuelven `UNKNOWN`. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
 
@@ -259,6 +259,25 @@ El smoke final de 3E confirmó preview prácticamente live, igualdad de raw scor
 
 El Workbench es una herramienta humana de desarrollo y enseñanza. El producto final continúa siendo un runtime automatizado unattended; ninguno de los estados persistentes, hotkeys o decisiones del Workbench pertenece por defecto a ese producto.
 
+### Promoción curated y mantenimiento de detectores
+
+Fase 3F establece el flujo oficial offline desde Workbench hacia Perception:
+
+```text
+raw session ignorada
+  → selección visual humana explícita
+    → manifest versionado con provenance
+      → materialización local de PNG ignorado
+        → evaluación completa
+          → asset/spec/calibration productivos
+```
+
+`datasets/workbench_evidence_manifest.json` selecciona exactamente frames revisados y conserva sólo paths relativos, `source=workbench`, session id, sequence, timestamp, reason y shape. `tools/production_perception_evaluation.py` materializa esos PNG bajo `screencaps/semantic/workbench/` después de contrastar manifest, summary, evento y bytes fuente. La session debe declarar `curation_status=raw_unreviewed`; estados `diagnostic`, status ausente, `curated=true`, ground truth no humano, labels contradictorios, secuencias duplicadas o paths fuera del repositorio se rechazan antes de copiar. Los raw `events.jsonl`, summaries y frames de sesión nunca se convierten automáticamente en dataset.
+
+El evaluator fusiona el manifest histórico, acquisition y Workbench, deduplica por path y ejecuta siempre los cuatro detectores productivos más el resolver. Reporta min/median/max positivos, máximo negativo, anchors, gap, FP/FN emitidos y resultados end-to-end. Los manifests siguen siendo utilizables aunque los PNG ignorados no existan en otra checkout; la suite normal prueba parsing y policy con fixtures in-memory/locales y no depende de las sesiones reales.
+
+La variante múltiple de `LocalCvDetector` no es ensemble semántico ni source weighting: son renderings nativos, explícitos y curados del mismo landmark dentro de un único detector. La calibration se calcula sobre el máximo raw que ese detector realmente producirá. Este mecanismo se incorporó sólo para `landmark.purchase_confirmation_prompt`; Black Market mantuvo su asset/crop original y cambió únicamente su calibration.
+
 ## Dirección del producto final — Session Orchestrator
 
 El objetivo no es un agente general que elija libremente qué jugar. La dirección acordada es un orquestador configurable:
@@ -309,7 +328,7 @@ Las herramientas activas quedan delimitadas así:
 - `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2;
 - `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;
 - `tools/review_semantic_slice.py`: revisión humana local del subconjunto seleccionado.
-- `tools/production_perception_evaluation.py`: evaluación offline de observations calibradas y estados resueltos sobre el manifest confirmado.
+- `tools/production_perception_evaluation.py`: promoción segura de selección Workbench y evaluación offline de observations calibradas/estados resueltos sobre los tres manifests confirmados.
 - `tools/capture_semantic_dataset.py`: adquisición dirigida de screenshots completos con labels humanas explícitas.
 - `tools/semantic_candidate_evaluation.py`: selección y evaluación offline de candidates experimentales mediante raw scores.
 

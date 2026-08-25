@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "screencaps/semantic/workbench/20260823T061544_647270Z-11461340/frame-00001706.png",
+      "base_context": "screen.black_market",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "source": "workbench",
+        "session_id": "20260823T061544_647270Z-11461340",
+        "sequence": 1706,
+        "event_timestamp_utc": "2026-08-23T06:16:44.148949Z",
+        "evidence_reason": "mismatch",
+        "frame_shape": [1224, 2712, 3]
+      }
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260823T061544_647270Z-11461340/frame-00001946.png",
+      "base_context": "screen.black_market",
+      "overlays": [],
+      "review_status": "confirmed",
+      "metadata": {
+        "source": "workbench",
+        "session_id": "20260823T061544_647270Z-11461340",
+        "sequence": 1946,
+        "event_timestamp_utc": "2026-08-23T06:16:52.161280Z",
+        "evidence_reason": "mismatch",
+        "frame_shape": [1224, 2712, 3]
+      }
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260823T064721_367331Z-addb7117/frame-00000905.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.purchase_confirmation"],
+      "review_status": "confirmed",
+      "metadata": {
+        "source": "workbench",
+        "session_id": "20260823T064721_367331Z-addb7117",
+        "sequence": 905,
+        "event_timestamp_utc": "2026-08-23T06:47:54.571507Z",
+        "evidence_reason": "mismatch",
+        "frame_shape": [1224, 2712, 3]
+      }
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260823T064721_367331Z-addb7117/frame-00001145.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.purchase_confirmation"],
+      "review_status": "confirmed",
+      "metadata": {
+        "source": "workbench",
+        "session_id": "20260823T064721_367331Z-addb7117",
+        "sequence": 1145,
+        "event_timestamp_utc": "2026-08-23T06:48:02.557730Z",
+        "evidence_reason": "mismatch",
+        "frame_shape": [1224, 2712, 3]
+      }
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260823T064721_367331Z-addb7117/frame-00001214.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.purchase_confirmation"],
+      "review_status": "confirmed",
+      "metadata": {
+        "source": "workbench",
+        "session_id": "20260823T064721_367331Z-addb7117",
+        "sequence": 1214,
+        "event_timestamp_utc": "2026-08-23T06:48:04.917926Z",
+        "evidence_reason": "manual",
+        "frame_shape": [1224, 2712, 3]
+      }
+    }
+  ]
+}

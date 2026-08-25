@@ -49,12 +49,18 @@ class LinearGapCalibration:
 
 @dataclass(frozen=True)
 class LocalCvSpec:
-    """Template, search region and calibration for one semantic landmark."""
+    """Template variants, search region and calibration for one landmark.
+
+    ``asset_path`` remains the primary rendering. ``variant_asset_paths`` is
+    reserved for human-confirmed rendering variants of the same semantic
+    signal; detector confidence is calibrated over the maximum raw match.
+    """
 
     name: str
     asset_path: Path
     region: RelativeRegion
     calibration: LinearGapCalibration
+    variant_asset_paths: tuple[Path, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "name", validate_semantic_name(self.name))
@@ -62,6 +68,12 @@ class LocalCvSpec:
         if path == Path("."):
             raise ValueError("asset_path must identify a template file")
         object.__setattr__(self, "asset_path", path)
+        variants = tuple(Path(item) for item in self.variant_asset_paths)
+        if any(item == Path(".") for item in variants):
+            raise ValueError("variant_asset_paths must identify template files")
+        if path in variants or len(set(variants)) != len(variants):
+            raise ValueError("template asset paths must be unique")
+        object.__setattr__(self, "variant_asset_paths", variants)
         object.__setattr__(
             self, "region", normalize_relative_region(self.region)
         )
@@ -78,26 +90,38 @@ def _finite_real(value: object, field: str) -> float:
     return result
 
 
-# Anchors reproduced on 2026-08-22 from the versioned human-confirmed manifest
-# and all 173 local Phase 2D screencaps, using native-size templates and the
-# exact normalized regions below. They remain provisional because the reviewed
-# positive sets contain only six and three screenshots respectively.
+# Black Market retained the historical asset and crop after Phase 3F visual
+# review. Current-season Workbench positives show a wider text rendering, but
+# the existing template still separates all 11 confirmed positives from all
+# 51 confirmed negatives. Only its empirical positive anchor changed.
 BLACK_MARKET_TITLE_SPEC = LocalCvSpec(
     name=LANDMARK_BLACK_MARKET_TITLE,
     asset_path=Path("assets/ui/black-market-id.png"),
     region=(0.4395, 0.0997, 0.5579, 0.1495),
     calibration=LinearGapCalibration(
         negative_anchor=0.2230203002691269,
-        positive_anchor=0.997641384601593,
+        positive_anchor=0.3996976613998413,
     ),
 )
 
+# Purchase Confirmation has two human-confirmed renderings of the same literal
+# prompt. The Phase 3F search region admits both native-size templates while
+# deliberately excluding the strongest known generic-confirmation confusion
+# ("Still proceed?") farther to the right. No scaling is performed.
 PURCHASE_CONFIRMATION_PROMPT_SPEC = LocalCvSpec(
     name=LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     asset_path=Path("assets/ui/black-market-purchase-confirmation-id.png"),
-    region=(0.4624, 0.4828, 0.5376, 0.5294),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/purchase-confirmation-prompt-current.png"),
+    ),
+    region=(
+        1235 / 2712,
+        590 / 1224,
+        1460 / 2712,
+        647 / 1224,
+    ),
     calibration=LinearGapCalibration(
-        negative_anchor=0.48758167028427124,
+        negative_anchor=0.4875827729701996,
         positive_anchor=0.9959162473678589,
     ),
 )
@@ -129,6 +153,8 @@ LOBBY_TRADING_CENTER_LABEL_SPEC = LocalCvSpec(
 # screencaps/semantic/character_select/20260823T025343_820522Z.png. This
 # 440x80 current rendering replaces the overlapping legacy template. Its
 # template-based calibration remains reproducibly updateable as labels grow.
+# Phase 3F Workbench Black Market frames raised its confirmed negative anchor
+# without threatening the still-positive gap.
 CHARACTER_SELECT_HEADER_SPEC = LocalCvSpec(
     name=LANDMARK_CHARACTER_SELECT_HEADER,
     asset_path=Path("assets/ui/landmarks/character-select-header.png"),
@@ -139,7 +165,7 @@ CHARACTER_SELECT_HEADER_SPEC = LocalCvSpec(
         0.11212418300653594,
     ),
     calibration=LinearGapCalibration(
-        negative_anchor=0.2443815916776657,
+        negative_anchor=0.2749116122722626,
         positive_anchor=0.43373382091522217,
     ),
 )

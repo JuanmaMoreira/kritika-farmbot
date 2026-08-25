@@ -1,4 +1,4 @@
-"""Evaluate Phase 3C production perception on all confirmed human labels."""
+"""Curate Workbench evidence and evaluate production perception offline."""
 
 from __future__ import annotations
 
@@ -6,6 +6,10 @@ import argparse
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
+from pathlib import PurePosixPath
+import re
+import shutil
+from statistics import median
 from typing import Iterable
 
 import cv2
@@ -25,7 +29,23 @@ from bot.catalog import (
 from bot.capture import FrameSnapshot
 from bot.perception import build_default_perception
 from bot.state import ResolutionStatus
-from tools.semantic_slice_evaluation import CONFIRMED, ManifestEntry, load_manifest
+from tools.semantic_slice_evaluation import (
+    CONFIRMED,
+    MANIFEST_VERSION,
+    ManifestEntry,
+    load_manifest,
+    validate_relative_path,
+)
+
+DEFAULT_MANIFEST_PATHS = (
+    "datasets/semantic_slice_manifest.json",
+    "datasets/semantic_acquisition_manifest.json",
+    "datasets/workbench_evidence_manifest.json",
+)
+DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
+DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
+PROMOTABLE_WORKBENCH_STATUS = "raw_unreviewed"
+WORKBENCH_SOURCE = "workbench"
 
 
 @dataclass(frozen=True)
@@ -39,6 +59,10 @@ class DetectorMetrics:
     raw_negative_anchor: float
     raw_positive_anchor: float
     raw_gap: float
+    raw_positive_min: float
+    raw_positive_median: float
+    raw_positive_max: float
+    raw_negative_max: float
     positive_confidence_min: float | None
     positive_confidence_max: float | None
     max_negative_confidence: float
@@ -85,12 +109,246 @@ class ProductionPerceptionReport:
     frames: tuple[FrameResult, ...]
 
 
+@dataclass(frozen=True)
+class WorkbenchEvidenceMetadata:
+    """Non-sensitive provenance for one explicitly selected Workbench frame."""
+
+    source: str
+    session_id: str
+    sequence: int
+    event_timestamp_utc: str
+    evidence_reason: str
+    frame_shape: tuple[int, int, int]
+
+    def __post_init__(self) -> None:
+        if self.source != WORKBENCH_SOURCE:
+            raise ValueError("workbench evidence source must be 'workbench'")
+        if (
+            not isinstance(self.session_id, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", self.session_id)
+            or self.session_id in {".", ".."}
+        ):
+            raise ValueError("session_id must be a safe relative identifier")
+        if (
+            isinstance(self.sequence, bool)
+            or not isinstance(self.sequence, int)
+            or self.sequence <= 0
+        ):
+            raise ValueError("sequence must be a positive integer")
+        if not isinstance(self.event_timestamp_utc, str) or not self.event_timestamp_utc:
+            raise ValueError("event_timestamp_utc must be a non-empty string")
+        if not isinstance(self.evidence_reason, str) or not self.evidence_reason:
+            raise ValueError("evidence_reason must be a non-empty string")
+        shape = tuple(self.frame_shape)
+        if (
+            len(shape) != 3
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value <= 0
+                for value in shape
+            )
+            or shape[2] != 3
+        ):
+            raise ValueError("frame_shape must be positive (height, width, 3)")
+        object.__setattr__(self, "frame_shape", shape)
+
+
+@dataclass(frozen=True)
+class WorkbenchEvidenceRecord:
+    entry: ManifestEntry
+    metadata: WorkbenchEvidenceMetadata
+
+    def __post_init__(self) -> None:
+        if self.entry.review_status != CONFIRMED:
+            raise ValueError("workbench evidence must be human-confirmed")
+
+
+def load_workbench_evidence_manifest(
+    path: str | Path,
+) -> tuple[WorkbenchEvidenceRecord, ...]:
+    """Load the compatible curated manifest while preserving provenance."""
+
+    path = Path(path)
+    if not path.exists():
+        return ()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("version") != MANIFEST_VERSION:
+        raise ValueError("unsupported Workbench evidence manifest version")
+    records = []
+    for item in payload.get("entries", ()):
+        entry = ManifestEntry(
+            path=item["path"],
+            base_context=item.get("base_context"),
+            overlays=tuple(item.get("overlays", ())),
+            review_status=item["review_status"],
+        )
+        metadata = dict(item["metadata"])
+        metadata["frame_shape"] = tuple(metadata["frame_shape"])
+        records.append(
+            WorkbenchEvidenceRecord(
+                entry=entry,
+                metadata=WorkbenchEvidenceMetadata(**metadata),
+            )
+        )
+    keys = tuple(
+        (record.metadata.session_id, record.metadata.sequence)
+        for record in records
+    )
+    paths = tuple(record.entry.path for record in records)
+    if len(keys) != len(set(keys)):
+        raise ValueError("Workbench session/sequence selections must be unique")
+    if len(paths) != len(set(paths)):
+        raise ValueError("Workbench evidence manifest paths must be unique")
+    return tuple(records)
+
+
+def materialize_workbench_evidence(
+    repository_root: str | Path,
+    *,
+    manifest_path: str | Path = DEFAULT_WORKBENCH_MANIFEST,
+    artifacts_root: str | Path = DEFAULT_WORKBENCH_ARTIFACTS,
+) -> tuple[WorkbenchEvidenceRecord, ...]:
+    """Validate selected raw events and copy their untouched PNGs locally.
+
+    Promotion is deliberately manifest-driven. A raw session is eligible only
+    when its summary explicitly says ``raw_unreviewed``; diagnostic sessions,
+    missing status, predicted labels and path traversal are all rejected.
+    """
+
+    repository_root = Path(repository_root).resolve()
+    manifest_path = _inside_repository(repository_root, manifest_path)
+    artifacts_root = _inside_repository(repository_root, artifacts_root)
+    records = load_workbench_evidence_manifest(manifest_path)
+    pending_copies: list[tuple[Path, Path]] = []
+
+    for record in records:
+        metadata = record.metadata
+        session_root = (artifacts_root / metadata.session_id).resolve()
+        _require_descendant(session_root, artifacts_root, "Workbench session")
+        summary_path = session_root / "summary.json"
+        events_path = session_root / "events.jsonl"
+        if not summary_path.is_file() or not events_path.is_file():
+            raise FileNotFoundError(
+                f"Workbench session metadata is unavailable: {session_root}"
+            )
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if summary.get("session_id") != metadata.session_id:
+            raise ValueError("Workbench summary session_id does not match its path")
+        if summary.get("curation_status") != PROMOTABLE_WORKBENCH_STATUS:
+            raise ValueError(
+                "Workbench session is not promotable: expected explicit "
+                f"{PROMOTABLE_WORKBENCH_STATUS!r} curation_status"
+            )
+        if summary.get("curated") is True:
+            raise ValueError("Workbench session already declares curated=true")
+
+        matching_events = []
+        for line_number, line in enumerate(
+            events_path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"invalid Workbench JSONL at line {line_number}"
+                ) from error
+            if (
+                event.get("event_type") == "evidence.frame"
+                and event.get("payload", {}).get("sequence") == metadata.sequence
+            ):
+                matching_events.append(event)
+        if len(matching_events) != 1:
+            raise ValueError(
+                "selected Workbench sequence must identify exactly one "
+                "evidence.frame event"
+            )
+        event = matching_events[0]
+        if event.get("session_id") != metadata.session_id:
+            raise ValueError("Workbench event session_id does not match selection")
+        payload = event["payload"]
+        human = payload.get("human_ground_truth", {})
+        if human.get("source") != "human_confirmed":
+            raise ValueError("Workbench evidence requires human_confirmed ground truth")
+        if human.get("base_is_unknown"):
+            event_base = "unknown"
+        else:
+            event_base = human.get("base_context")
+        if (
+            event_base != record.entry.base_context
+            or tuple(sorted(human.get("overlays", ()))) != record.entry.overlays
+        ):
+            raise ValueError("curated labels contradict Workbench human ground truth")
+        if event.get("timestamp") != metadata.event_timestamp_utc:
+            raise ValueError("curated timestamp contradicts Workbench event")
+        if payload.get("reason") != metadata.evidence_reason:
+            raise ValueError("curated evidence reason contradicts Workbench event")
+        if tuple(payload.get("frame_shape", ())) != metadata.frame_shape:
+            raise ValueError("curated frame shape contradicts Workbench event")
+
+        frame_relative = validate_relative_path(payload.get("frame"))
+        frame_parts = PurePosixPath(frame_relative).parts
+        if (
+            len(frame_parts) != 2
+            or frame_parts[0] != "frames"
+            or not frame_parts[1].lower().endswith(".png")
+        ):
+            raise ValueError("Workbench event frame must be directly under frames/")
+        source = (session_root / Path(*frame_parts)).resolve()
+        _require_descendant(source, session_root / "frames", "Workbench frame")
+        source_image = cv2.imread(str(source), cv2.IMREAD_COLOR)
+        if source_image is None:
+            raise FileNotFoundError(f"Workbench frame is unreadable: {source}")
+        if tuple(source_image.shape) != metadata.frame_shape:
+            raise ValueError("Workbench PNG shape contradicts curated metadata")
+
+        destination = (repository_root / record.entry.path).resolve()
+        _require_descendant(destination, repository_root, "curated frame")
+        expected_prefix = (
+            repository_root
+            / "screencaps"
+            / "semantic"
+            / "workbench"
+            / metadata.session_id
+        ).resolve()
+        _require_descendant(destination, expected_prefix, "curated frame")
+        if (
+            destination.parent != expected_prefix
+            or destination.suffix.lower() != ".png"
+        ):
+            raise ValueError(
+                "curated frame must be a PNG directly under its session directory"
+            )
+        if destination.exists() and source.read_bytes() != destination.read_bytes():
+            raise ValueError(f"curated destination differs from source: {destination}")
+        pending_copies.append((source, destination))
+
+    for source, destination in pending_copies:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not destination.exists():
+            shutil.copyfile(source, destination)
+    return records
+
+
+def _inside_repository(repository_root: Path, value: str | Path) -> Path:
+    path = Path(value)
+    if not path.is_absolute():
+        path = repository_root / path
+    path = path.resolve()
+    _require_descendant(path, repository_root, "path")
+    return path
+
+
+def _require_descendant(path: Path, parent: Path, label: str) -> None:
+    try:
+        path.relative_to(parent.resolve())
+    except ValueError as error:
+        raise ValueError(f"{label} must remain inside {parent}") from error
+
+
 def evaluate_production_perception(
     repository_root: str | Path,
-    manifest_path: str | Path | Iterable[str | Path] = (
-        "datasets/semantic_slice_manifest.json",
-        "datasets/semantic_acquisition_manifest.json",
-    ),
+    manifest_path: str | Path | Iterable[str | Path] = DEFAULT_MANIFEST_PATHS,
 ) -> ProductionPerceptionReport:
     """Run production detectors and resolver over every confirmed manifest frame."""
 
@@ -300,6 +558,10 @@ def evaluate_production_perception(
             raw_negative_anchor=raw_negative_anchor,
             raw_positive_anchor=raw_positive_anchor,
             raw_gap=raw_positive_anchor - raw_negative_anchor,
+            raw_positive_min=min(positive_raw_scores),
+            raw_positive_median=median(positive_raw_scores),
+            raw_positive_max=max(positive_raw_scores),
+            raw_negative_max=max(negative_raw_scores),
             positive_confidence_min=(
                 min(positive_confidences) if positive_confidences else None
             ),
@@ -350,17 +612,34 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--manifest", action="append")
     parser.add_argument(
-        "--output", default="artifacts/semantic_slice/phase3c-production.json"
+        "--materialize-workbench",
+        action="store_true",
+        help="validate the curated Workbench manifest and copy selected raw PNGs",
+    )
+    parser.add_argument(
+        "--workbench-manifest", default=DEFAULT_WORKBENCH_MANIFEST
+    )
+    parser.add_argument(
+        "--workbench-artifacts", default=DEFAULT_WORKBENCH_ARTIFACTS
+    )
+    parser.add_argument(
+        "--output", default="artifacts/semantic_slice/phase3f-production.json"
     )
     arguments = parser.parse_args(argv)
+
+    if arguments.materialize_workbench:
+        records = materialize_workbench_evidence(
+            arguments.repo_root,
+            manifest_path=arguments.workbench_manifest,
+            artifacts_root=arguments.workbench_artifacts,
+        )
+        print(f"Materialized {len(records)} curated Workbench frames")
+        return 0
 
     report = evaluate_production_perception(
         arguments.repo_root,
         arguments.manifest
-        or (
-            "datasets/semantic_slice_manifest.json",
-            "datasets/semantic_acquisition_manifest.json",
-        ),
+        or DEFAULT_MANIFEST_PATHS,
     )
     output_path = Path(arguments.output)
     if not output_path.is_absolute():

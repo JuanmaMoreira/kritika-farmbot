@@ -102,6 +102,43 @@ def test_local_cv_preloads_template_only_once(tmp_path):
     loader.assert_called_once_with(str(path.resolve()), cv2.IMREAD_GRAYSCALE)
 
 
+def test_local_cv_uses_best_preloaded_rendering_variant(tmp_path):
+    primary_path, _ = write_template(tmp_path, "primary.png", seed=3)
+    variant_path, variant = write_template(tmp_path, "variant.png", seed=7)
+    detector_spec = LocalCvSpec(
+        name="landmark.synthetic",
+        asset_path=primary_path,
+        variant_asset_paths=(variant_path,),
+        region=(0.0, 0.0, 1.0, 1.0),
+        calibration=LinearGapCalibration(0.5, 0.99),
+    )
+    detector = LocalCvDetector(detector_spec)
+    frame = np.zeros((50, 80, 3), dtype=np.uint8)
+    frame[20:28, 30:40] = variant
+
+    detection = detector.measure(frame)
+
+    assert detection.raw_match_score == pytest.approx(1.0, abs=1e-3)
+    assert detector.template_shapes == ((8, 10), (8, 10))
+    assert detector.asset_paths == (
+        primary_path.resolve(),
+        variant_path.resolve(),
+    )
+
+
+def test_local_cv_spec_rejects_duplicate_rendering_variants(tmp_path):
+    path, _ = write_template(tmp_path)
+
+    with pytest.raises(ValueError, match="unique"):
+        LocalCvSpec(
+            name="landmark.synthetic",
+            asset_path=path,
+            variant_asset_paths=(path,),
+            region=(0.0, 0.0, 1.0, 1.0),
+            calibration=LinearGapCalibration(0.5, 0.99),
+        )
+
+
 def test_local_cv_keeps_raw_score_separate_from_calibrated_confidence(
     tmp_path, monkeypatch
 ):

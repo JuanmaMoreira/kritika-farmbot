@@ -442,6 +442,7 @@ class SessionStore:
                 "schema_version": SCHEMA_VERSION,
                 "workbench_version": WORKBENCH_VERSION,
                 "curation_status": "raw_unreviewed",
+                "curated": False,
                 "session_id": self.session_id,
                 "start_time": self.started_at,
                 "end_time": self.finished_at,
