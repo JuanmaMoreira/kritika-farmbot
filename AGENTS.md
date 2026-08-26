@@ -1,70 +1,96 @@
 # Instrucciones operativas
 
-Estas reglas son permanentes para cualquier trabajo realizado por Codex en este repositorio.
+Estas reglas son permanentes para cualquier trabajo de Codex en este repositorio.
 
-## Lectura obligatoria
+## Lectura documental eficiente
 
-Antes de realizar cambios significativos:
-
-1. Leer `AGENTS.md`.
-2. Leer `CONTEXT.md`.
-3. Leer `ROADMAP.md`.
-4. Consultar `ARCHITECTURE.md` cuando el cambio afecte diseño, responsabilidades o límites entre módulos.
+1. Leer siempre `AGENTS.md`.
+2. No cargar automáticamente completos `CONTEXT.md`, `ROADMAP.md` y `ARCHITECTURE.md`.
+3. Antes de leer un documento largo, inspeccionar headings, buscar los términos de la tarea y abrir sólo las secciones necesarias.
+4. Usar `CONTEXT.md` para el estado técnico actual y las decisiones funcionales vigentes.
+5. Usar `ROADMAP.md` principalmente para trabajo activo, siguiente y dependencias relacionadas.
+6. Consultar `ARCHITECTURE.md` sólo cuando la tarea afecte componentes, contratos, data flow o límites entre capas.
+7. Consultar `docs/HISTORY.md`, `docs/legacy/` u otros documentos históricos únicamente cuando hagan falta antecedentes.
+8. No cargar cronología histórica cuando el código y los contratos actuales basten.
 
 ## Fuentes de verdad
 
 - El código y los tests determinan qué está implementado.
-- `CONTEXT.md` resume el estado técnico vigente y las decisiones cerradas.
-- `ARCHITECTURE.md` describe el diseño vigente y los límites acordados.
-- `ROADMAP.md` contiene únicamente trabajo futuro.
+- `CONTEXT.md` resume estado real y decisiones cerradas.
+- `ARCHITECTURE.md` define diseño, contratos y responsabilidades vigentes.
+- `ROADMAP.md` concentra trabajo activo y futuro; lo completado aparece sólo como índice breve.
+- `docs/HISTORY.md` conserva etapas, experimentos y evidencia anteriores; no se lee por defecto.
+- `CHANGELOG.md` registra milestones, migraciones y capacidades importantes, no actividad diaria.
 
-Si la documentación contradice al código, no inventar una resolución. Señalar la discrepancia y, cuando el alcance lo permita, corregir la documentación.
+Si la documentación contradice al código, no inventar una resolución: señalar la discrepancia y corregirla cuando entre en el alcance.
 
-## Reglas para cambios
+## Entorno local de agentes
 
-- No expandir el alcance sin necesidad.
-- No implementar features fuera de la fase actual del roadmap.
-- No introducir dependencias sin una justificación concreta.
-- No hardcodear device IDs ni paths absolutos.
-- No volver a convertir `constants.py` ni otro archivo en una fuente monolítica de configuración, percepción y acciones.
-- En la arquitectura 0.2, mantener los flows separados de percepción y comandos ADB directos.
-- Mantener `AdsManager` desacoplado de la percepción normal del juego.
-- Preferir componentes testeables sin hardware cuando sea posible.
-- Tratar la implementación legacy como conocimiento preservado, no como arquitectura objetivo.
+- Consultar `AGENT_LOCAL.md` antes de redescubrir Python, ADB o scrcpy-server.
+- Usar las rutas registradas allí y redescubrir una herramienta sólo si su ruta deja de funcionar.
+- `AGENT_LOCAL.md` es machine-local, no contiene secretos ni device serials y nunca se versiona.
+- `AGENT_LOCAL.example.md` documenta el formato portable.
+- No asumir que `python` o `adb` están en `PATH`.
+
+## Límites de arquitectura 0.2
+
+- Perception observa y emite semántica; no navega ni decide gameplay.
+- `ContextResolver` resuelve observaciones; no captura, no ejecuta acciones y no conserva policy de flows.
+- Los flows contienen intención de negocio y solicitan acciones semánticas; no hacen matching ni llaman ADB directamente.
+- `ActionExecutor` traduce intents validados a input físico; no reconoce pantallas ni decide qué jugar o comprar.
+- `AdbClient` es el único límite activo de comandos ADB.
+- Rotation es transversal al orquestador y no pertenece a ningún flow.
+- `AdsManager` permanece desacoplado de la percepción normal del juego.
+- No volver a concentrar configuración, percepción y acciones en `constants.py` ni en otro archivo monolítico.
+- Tratar el código legacy como conocimiento preservado, no como arquitectura runtime objetivo.
+- Derivar geometría desde `frame.shape`; no hardcodear resoluciones, device IDs ni paths absolutos portables.
+- Mantener lifecycle y cleanup explícitos para sources, procesos, sockets y forwards adquiridos.
+
+## Alcance y cambios
+
+- No expandir el alcance ni implementar features fuera del trabajo activo sin necesidad concreta.
+- No introducir dependencias sin justificación.
+- Preferir componentes deterministas y testeables sin hardware.
+- Actualizar `CONTEXT.md` cuando cambie el estado real o se cierre una decisión importante.
+- Actualizar `ARCHITECTURE.md` cuando cambien diseño o responsabilidades.
+- Actualizar `ROADMAP.md` al completar o repriorizar trabajo.
+- Actualizar `CHANGELOG.md` sólo para milestones, migraciones, releases o capacidades importantes.
 
 ## Git y datos
 
 - Verificar referencias antes de borrar datos, capturas o assets potencialmente valiosos.
-- No versionar datasets grandes, `screencaps/`, logs, caches ni `.env`.
-- Los assets runtime curados bajo `assets/` sí pueden versionarse.
-- No hacer push remoto salvo instrucción explícita.
-- No reescribir historia Git salvo instrucción explícita.
+- No versionar datasets grandes, `screencaps/`, `artifacts/`, logs, caches, `.env` ni `AGENT_LOCAL.md`.
+- Los manifests curados y los assets runtime bajo `assets/` sí pueden versionarse.
+- No hardcodear ni persistir identidad de dispositivo o usuario cuando no sea parte necesaria del dato.
+- No hacer push salvo instrucción explícita y no reescribir historia Git salvo instrucción explícita.
 - El tag `legacy-pre-hybrid` preserva el estado anterior al rediseño 0.2.
 
-## Documentación
+## Salida de herramientas
 
-Actualizar:
+- Preferir output conciso: `pytest -q`, `git status --short`, `git diff --stat`, `git log --oneline` y búsquedas `rg` acotadas.
+- No imprimir por defecto archivos, logs, diffs, árboles del repo ni output exitoso completos.
+- Ante un fallo, ampliar sólo el error y el contexto necesarios.
+- Para documentos largos, buscar heading o término y leer el rango relevante.
 
-- `CONTEXT.md` cuando cambie el estado real o se cierre una decisión importante.
-- `ARCHITECTURE.md` cuando cambie el diseño o la responsabilidad de una capa.
-- `ROADMAP.md` al completar o repriorizar trabajo.
-- `CHANGELOG.md` solo para milestones, migraciones, releases o capacidades importantes.
+## Política de tests
 
-No usar `CHANGELOG.md` como diario por commit, archivo o función.
+- Durante implementación, ejecutar primero tests dirigidos y ampliar según el área modificada.
+- Antes de commitear cambios de código, ejecutar una vez la suite hardware-free completa y las regresiones productivas relevantes.
+- Para cambios docs-only o tooling que no importa runtime, validar formato, referencias y comportamiento dirigido; no ejecutar automáticamente cientos de tests sin razón técnica.
+- Si `HEAD` coincide con un checkpoint ya validado, el tree está limpio y no hubo cambios, no repetir la suite sólo para volver a demostrar ese baseline.
+- La optimización de ejecuciones redundantes no reduce la cobertura exigida al cerrar cambios de código.
 
 ## Trabajo con hardware
 
-- Los tests normales deben poder ejecutarse sin teléfono cuando sea razonable.
-- Las pruebas que requieran un dispositivo físico deben estar separadas, identificadas y ser opt-in.
-- No ejecutar scripts que hagan taps, swipes o modifiquen el dispositivo sin que la tarea lo requiera expresamente.
+- Los tests normales deben funcionar sin teléfono; toda prueba física es separada, identificada y opt-in.
+- No iniciar el juego ni enviar taps, swipes, keyevents u otro input físico sin autorización expresa dentro de la tarea.
+- Una prueba autorizada debe detenerse antes de una acción con efecto no requerido y asegurar cleanup al finalizar o fallar.
 
 ### Protocolo human-in-the-loop
 
-- En cualquier prueba con dispositivo físico, el chat + `steer` es el canal principal de comunicación con el usuario.
-- Si Codex necesita que el usuario navegue, abra o cierre una pantalla, confirme un estado, asigne ground truth o tome una decisión humana, debe detenerse en un punto seguro, pedir esa acción explícitamente por chat en lenguaje semántico normal y continuar sólo después de recibir la respuesta mediante `steer`.
-- No usar `stdin`, prompts de terminal, menús de consola, códigos numéricos ni secuencias abstractas de teclas como canal principal para obtener información del usuario.
-- La UI y el teclado de Perception Workbench son instrumentación, no el protocolo de conversación con el usuario.
-- Sólo exigir interacción directa con Workbench cuando esa interacción sea parte específica de lo que se está validando o sea necesaria para registrar ground truth. Antes debe explicarse por chat qué acción concreta se necesita y confirmarse que la ventana es visible.
-- Incluso cuando Workbench requiera una tecla, describir primero la acción semántica por chat; no hacer que el usuario tenga que interpretar una máquina de estados o una secuencia abstracta de controles.
-- Preferir que el usuario navegue normalmente desde el dispositivo físico mientras Codex observa y registra evidencia.
-- Nunca inferir una confirmación humana, ground truth o destino semántico a partir de un tap, una predicción o una transición visual.
+- En pruebas físicas, chat + `steer` es el canal principal con el usuario.
+- Si hace falta navegación, confirmación de pantalla, ground truth o una decisión humana, detenerse en un punto seguro, pedir la acción semánticamente por chat y continuar sólo tras la respuesta.
+- No usar `stdin`, menús de terminal, códigos numéricos ni secuencias abstractas de teclas como canal principal.
+- Workbench y su teclado son instrumentación; exigir interacción directa sólo cuando sea lo validado o sea necesaria para registrar ground truth, explicándolo antes por chat.
+- Preferir navegación normal del usuario en el dispositivo mientras Codex observa y registra evidencia.
+- Nunca inferir confirmación humana, ground truth, causalidad o destino semántico desde un tap, una predicción o una transición visual.

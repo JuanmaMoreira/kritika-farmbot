@@ -1,486 +1,143 @@
-# Arquitectura — Kritika FarmBot
+# Arquitectura — Kritika FarmBot 0.2
 
-Este documento distingue el sistema legacy que existe en el repositorio de la arquitectura objetivo 0.2. La segunda sección expresa responsabilidades y límites acordados; no implica que esas capas ya estén implementadas.
+Este documento define componentes, contratos, data flow e invariantes vigentes. El estado implementado está en [`CONTEXT.md`](CONTEXT.md); los antecedentes están en [`docs/HISTORY.md`](docs/HISTORY.md).
 
-## Arquitectura legacy
-
-La implementación preservada sigue aproximadamente este flujo:
-
-```text
-main.py
-  → flow TOT
-    → actions y matching directo
-      → estado global de context.py
-        → catálogo de constants.py
-          → templates y coordenadas
-      → antigua API de screen.py (retirada)
-```
-
-Responsabilidades reales:
-
-- `bot/constants.py` mezcla configuración de host, resolución, taxonomía, templates, regiones, botones, offsets y políticas aún incompletas.
-- `bot/screen.py` implementaba a la vez captura scrcpy, almacenamiento del frame, percepción por templates y comandos ADB. Desde Fase 1E conserva solamente matching OpenCV puro y transicional sobre un frame explícito.
-- `bot/context.py` captura un frame y recorre templates hasta encontrar el primer contexto coincidente.
-- `bot/actions.py` resuelve botones mediante estado global y coordenadas del catálogo.
-- `bot/flows.py` contiene lógica TOT, percepción específica, regiones, thresholds y acciones físicas.
-- `bot/ads_manager.py` es un programa standalone basado en UIAutomator2.
-- `main.py` no contiene un loop general: conecta el dispositivo e intenta ejecutar exclusivamente TOT.
-
-Problemas estructurales confirmados:
-
-- captura, percepción e input están acoplados;
-- el contexto depende directamente de templates;
-- actions depende de globals y coordenadas;
-- flows contiene percepción y dependencias directas de la API de input retirada;
-- la geometría no usa de forma confiable las dimensiones landscape del frame;
-- prioridad y outcomes están modelados pero no configurados efectivamente;
-- el runtime legacy no es importable en su estado preservado;
-- el entry point y sus módulos legacy ya no importan porque siguen solicitando esa API retirada.
-
-El uso de scrcpy, OpenCV o ADB no es por sí mismo legacy. Lo legacy es el acoplamiento que obliga a representar cada estado y transición mediante templates y coordenadas mantenidos manualmente.
-
-## Arquitectura objetivo 0.2
+## Data flow runtime
 
 ```text
 Capture
   ↓
 Perception
   ↓
-Semantic Observations
+Semantic Observations / Runtime Facts
   ↓
 ContextResolver
   ↓
-Flows / Decision
+Flow
+  ↓
+Semantic Actions
   ↓
 ActionExecutor
   ↓
-Device / ADB
+AdbClient
 ```
 
-## Fundamentos implementados en Fase 1A
-
-La primera porción implementada de 0.2 permanece desacoplada del runtime legacy:
-
-- `bot/config.py` contiene `RuntimeConfig`, un objeto inmutable para configuración de host y runtime. Puede construirse explícitamente y solo consulta environment o dotenv cuando se invoca `from_env()`; no inicia infraestructura al importarse.
-- `bot/geometry.py` contiene conversiones puras de puntos y regiones normalizados. Las dimensiones visuales proceden de `frame.shape`, cuyo orden es `(height, width, ...)`.
-- Los puntos representan índices de píxel: usan floor y el extremo normalizado `1` se satura al último índice válido. Las regiones representan límites de slicing con extremo final exclusivo, por lo que la región completa termina en `(width, height)`.
-- `adb shell wm size` puede conservarse como metadata, diagnóstico o validación auxiliar, pero no puede decidir la geometría de un frame capturado.
-
-Estos módulos son consumidos por el núcleo 0.2, las herramientas de captura y los helpers visuales transicionales. `constants.py`, `ads_manager.py` y los flows legacy no migraron; `BlackMarketFlow` es una implementación 0.2 separada. La suite automatizada vive exclusivamente en `tests/`; el antiguo directorio `testing/` fue retirado en Fase 1E.
-
-## Composition root y validación real
-
-La Fase 1D añadió `bot/runtime.py` como composition root mínimo. `build_adb_client(config)` y `build_frame_source(config, adb_client=...)` ensamblan el núcleo 0.2 de forma explícita y no ejecutan operaciones externas. La carga de environment/dotenv continúa siendo responsabilidad del caller.
-
-`tools/smoke_capture.py` es una entrada diagnóstica separada de pytest y del runtime legacy. Carga configuración solo dentro de `main()`, comprueba ADB, recibe cinco snapshots distintos y valida ndarray BGR `uint8`, shape, landscape, sequence y timestamps. Usa el context manager de captura y verifica después que el forward utilizado fue retirado.
-
-La validación física con scrcpy-server 3.3.4 confirmó el stack completo con frames `(1224, 2712, 3)`. También cerró una diferencia respecto de la extracción legacy: en H.264, los packets de configuración SPS/PPS se retienen y se anteponen al siguiente media packet antes de enviarlo a PyAV.
-
-### Capture
-
-Obtiene frames landscape desde scrcpy y expone sus dimensiones reales. No reconoce contextos ni toma decisiones.
-
-La Fase 1C implementó esta responsabilidad en `bot/capture.py`. `ScrcpyFrameSource` recibe un `AdbClient` y el path de `scrcpy-server.jar`, prepara el server y el port forwarding, mantiene el proceso ADB y socket, decodifica H.264 con PyAV y publica el frame BGR más reciente. Su API pública es `start()`, `get_frame()`, `stop()`, `is_running`, `failure` y context manager.
-
-Cada `FrameSnapshot` contiene una copia del ndarray, timestamp monotónico y sequence number. Sus dimensiones se consultan desde el shape de esa imagen; la metadata de scrcpy y `adb wm size` no sustituyen esa fuente de verdad. Un `Event` permite cancelar el receptor y los timeouts de socket evitan bloquear el shutdown indefinidamente. Los fallos del thread se conservan y quedan visibles al owner.
-
-La fuente es dueña del lifecycle de socket, decoder, proceso y forward, incluido cleanup best-effort ante startup parcial. `AdbClient` solo construye el proceso persistente mediante `spawn_shell()` y devuelve su handle. Desde Fase 1E es la única implementación activa del protocolo scrcpy: `tools/asset_capture.py` y `tools/screencap_batch.py` la construyen mediante el composition root y no abren sockets, procesos ADB ni decoders propios.
-
-### Perception
-
-La Fase 3A implementó la primera porción productiva de esta capa bajo `bot/perception/`. `PerceptionEngine` recibe una tupla explícita de detectores que cumplen `detect(frame)`, los ejecuta en orden y agrega cero, una o varias observations por detector. Su salida termina en `ObservationBatch`: preserva la identidad del `FrameSnapshot` y no invoca al resolver ni conserva contexto, historial o estado temporal.
-
-El backend actual es `LocalCvDetector`. Cada instancia representa un único landmark y carga durante construcción uno o más PNG que sean variantes human-confirmed del mismo significado visual. Conserva copias grayscale preparadas y reporta el máximo raw entre variantes compatibles; no pondera fuentes, no suma evidence y no genera observations duplicadas. Importar el package no abre assets y `build_default_perception()` crea una composición nueva, no un singleton. El matching a tamaño nativo reutiliza `bot.screen.template_match_score()`; la region normalizada se convierte desde las dimensiones reales del ndarray mediante `bot.geometry`. Si ninguna variante cabe en el crop, el error es explícito; no existe scaling implícito.
-
-`LocalCvDetection` mantiene separados `raw_match_score` y `semantic_confidence`. `LinearGapCalibration` mapea linealmente el máximo negativo confirmado a `0` y el mínimo positivo confirmado a `1`, con clamp fuera del intervalo. Esa confidence sólo expresa posición en el gap empírico de la muestra 2D y no es una probabilidad. El detector omite evidence con confidence `0`; no aplica el threshold semántico `0.80`, que sigue siendo policy exclusiva del `ContextResolver`.
-
-Después de la promoción 3H.3, las specs de landmarks productivos contienen:
-
-| Observation | Asset | Region validada | Gap empírico provisional |
-|---|---|---|---|
-| `landmark.lobby_trading_center_label` | `assets/ui/landmarks/lobby-trading-center-label.png` | `(0.19095870206489673, 0.905032679738562, 0.29761061946902656, 0.9822222222222222)` | `0.4657268226146698 → 0.7198567986488342` |
-| `landmark.character_select_header` | `assets/ui/landmarks/character-select-header.png` | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | `0.2776434123516083 → 0.43373382091522217` |
-| `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.3993116021156311` |
-| `landmark.insufficient_gold_prompt` | `assets/ui/landmarks/insufficient-gold-prompt-current.png` | `(1100/2712, 500/1224, 1620/2712, 610/1224)` | `0.443979948759079 → 0.9999777674674988` |
-| `landmark.purchase_confirmation_prompt` | asset histórico + `assets/ui/landmarks/purchase-confirmation-prompt-current.png` | `(1235/2712, 590/1224, 1460/2712, 647/1224)` | `0.4875827729701996 → 0.9959162473678589` |
-| `landmark.quick_menu_lobby_tile` | `assets/ui/landmarks/quick-menu-lobby-tile.png` | `(0.02, 0.10, 0.25, 0.32)` | `0.2981472909450531 → 0.9826233983039856` |
-
-Los assets promovidos son copias exactas de crops evaluados; producción no depende de `artifacts/`. El detector de Lobby consume únicamente el rótulo `Trading Center`: no usa oro, una conjunción ni fallback a la franja amplia. Su separación está validada contra el corpus actual, no contra un conjunto controlado multi-season; un cambio de season exige nuevos positives humanos y recalibración. Character Select usa el rendering actual validado y no el asset legacy con overlap. Black Market conserva un solo asset porque el rendering live más ancho aún mantiene gap con el template histórico. Purchase requiere las dos variantes nativas del literal “Purchase?” porque ninguna de ellas sola conserva una separación robusta entre ambas apariencias; la región compartida excluye deliberadamente la confusión genérica “Still proceed?”.
-
-Quick Menu se detecta mediante el tile literal “Lobby” dentro del panel. Su región única
-incluye las posiciones confirmadas sobre Lobby e Inventory y reemplaza la necesidad de
-aplicar offsets de coordenadas por contexto. La regla `menu.quick` vive entre overlays:
-el namespace distingue menú de popup, pero reutiliza la composición ya soportada por
-`ResolvedState`. Si el panel oculta el landmark de la base, `UNKNOWN + menu.quick` es
-un resultado válido y no se intenta reconstruir una base invisible.
-
-Además de esos seis detectores de landmarks, `build_default_perception()` añade
-`BlackMarketGoldDetector`. Este detector especializado reutiliza el asset legacy
-`gold-coin-bm.png` a tamaño nativo, pero no convierte cada slot ni item en contexto:
-mide diez regiones de currency derivadas de un grid fijo 5×2 y emite cero o más
-observaciones repetibles `currency.black_market.gold`. Cada observation conserva el
-índice row-major como valor y la región de búsqueda relativa. KARATS, Video,
-Purchase Complete y cualquier señal subthreshold no emiten evidencia elegible.
-
-La calibration GOLD usa `0.5731779932975769 → 0.9343795776367188` y una policy
-local conservadora de confidence `0.80`. El corpus revisado produce 25 TP, 0 FP/FN y
-0 FP sobre KARATS; sus positivos reales cubren ocho de las diez posiciones y los
-tests geométricos cubren las diez. Esta observation no participa en
-`ContextResolver`: es consumida únicamente por `BlackMarketFlow` cuando la base es
-Black Market.
-
-`BlackMarketPurchasedDetector` mide diez panels de precio y usa dos crops nativos
-curados del literal `Purchase Complete!`. Emite observations repetibles
-`status.black_market.purchased` con índice row-major y region relativa. Su calibration
-es `0.557578444480896 → 0.8815832138061523`, con confidence threshold `0.80`; el
-corpus actual produce 11 TP, 0 FP/FN frente a GOLD, KARATS, Video y 840 regions de
-pantallas ajenas. Este fact tampoco participa en `ContextResolver`: el flow lo usa
-exclusivamente como postcondición del mismo slot después de aceptar una compra.
-
-No existe todavía detector productivo para Battle Mode Select ni otros estados. Su `ContextRule` permanece disponible, de modo que sin otra señal productiva esos frames resuelven `UNKNOWN`. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
-
-### Semantic Observations
-
-La Fase 2A implementó esta frontera mediante contratos inmutables y puramente estructurales:
-
-- `Observation` representa un hecho semántico con nombre namespaced, confianza normalizada, categoría de origen, valor escalar opcional y una `RelativeRegion` opcional.
-- `ObservationSource` expresa categorías extensibles (`LOCAL_CV`, `OCR`, `VLM`, `SYSTEM`), no proveedores, modelos, templates ni motores concretos.
-- `ObservationValue` se limita a `bool`, `int`, `float`, `str` o `None`; frames, crops y objetos de detector no atraviesan esta frontera.
-- `ObservationBatch` asocia una colección ordenada de evidencia con el `sequence` y `timestamp` de un único frame lógico, pero no retiene el ndarray.
-- Un batch preserva observaciones repetidas e independientes. `find(name)` devuelve todas y `best(name)` ofrece sólo una conveniencia por confianza reportada; no constituye una política de fusión.
-
-Las ubicaciones permanecen normalizadas en `[0,1]` y con área positiva. `bot/geometry.py` expone `normalize_relative_region()` para compartir esa validación sin convertirlas todavía en targets de acción ni coordenadas pixel.
-
-### ContextResolver
-
-La Fase 2B implementó `bot/resolver.py` como motor puro para transformar un `ObservationBatch` en `ResolvedState`. Se construye con tuplas explícitas de `ContextRule` para contextos base y overlays; no contiene catálogo de Kritika, imports legacy, percepción, IO ni estado temporal.
-
-Una `ContextRule` declara un nombre de resultado, requirements semánticos únicos y un threshold común. Para cada requirement, `match_rule()` consulta la observación de mayor confidence de ese nombre. La fuente y región permanecen disponibles en la evidencia, pero no alteran el resultado. Las confidences no se suman, promedian, votan ni ponderan entre fuentes no calibradas.
-
-Una regla sólo coincide si todos sus requirements alcanzan el threshold inclusivo. El `RuleMatch` diagnóstico conserva la regla y exactamente una observación seleccionada por requirement; su confidence es el mínimo conservador de esas evidencias y no una probabilidad estadística.
-
-La resolución base aplica estas reglas sin first-match ni prioridades:
-
-- cero candidatos producen `UNKNOWN`;
-- un candidato produce `RESOLVED`;
-- varios candidatos distintos producen `AMBIGUOUS`, aun si sus confidences difieren.
-
-Reglas, candidatos y overlays se normalizan por nombre para que el orden de inyección no decida semántica. Los overlays se evalúan independientemente y todos los que coinciden se conservan, incluso con base `UNKNOWN` o `AMBIGUOUS`; no existe ambigüedad ni prioridad propia de overlays en esta fase.
-
-La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState` conserva la identidad `sequence`/`timestamp` del batch y separa:
-
-- `base_context`, que sólo está seleccionado para un resultado `RESOLVED`;
-- un `subcontext` opcional y explícito, sin jerarquías arbitrariamente profundas;
-- cero o más `overlays`, independientes del contexto base;
-- `base_candidates` conflictivos para un resultado `AMBIGUOUS`.
-
-`ResolutionStatus.UNKNOWN` es first-class: la imposibilidad de resolver el contexto base no es una excepción y aun puede coexistir con overlays conocidos. La policy de subcontexto permanece pendiente y el resolver de 2B produce siempre `subcontext=None`. Tampoco implementa hysteresis, debounce, historial, transiciones ni voting entre frames.
-
-### Catálogo semántico mínimo
-
-La Fase 2C añadió `bot/catalog.py` como configuración semántica productiva separada del motor genérico. Su API pública es `BASE_CONTEXT_RULES`, `OVERLAY_RULES`, `SEMANTIC_OBSERVATION_NAMES` y `build_default_resolver()`. No importa `constants.py`, assets ni capas de percepción.
-
-Después de la promoción 3H.3, el catálogo productivo contiene cuatro reglas base y tres overlays. El antiguo oro del shell de Lobby dejó de formar parte del vocabulary productivo; la nueva observation GOLD interna de Black Market no es una regla de contexto:
-
-| Resultado semántico | Tipo | Requirement | Referencia legacy | Región legacy | Threshold legacy |
-|---|---|---|---|---|---|
-| `screen.lobby` | base | `landmark.lobby_trading_center_label` | candidate 3B.1 curado | `(0.19095870206489673, 0.905032679738562, 0.29761061946902656, 0.9822222222222222)` | — |
-| `screen.character_select` | base | `landmark.character_select_header` | candidate 3B curado | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | — |
-| `screen.battle_mode_select` | base | `landmark.monster_wave_entry_title` | `survival` / `assets/ui/survival-id.png` | `(0.1707, 0.2337, 0.2994, 0.2974)` | `0.85` |
-| `screen.black_market` | base | `landmark.black_market_title` | `black-market` / `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.85` |
-| `popup.purchase_confirmation` | overlay | `landmark.purchase_confirmation_prompt` | `black-market-purchase-confirmation` / `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.85` |
-| `popup.insufficient_gold` | overlay | `landmark.insufficient_gold_prompt` | evidencia live 3H.3 / `assets/ui/landmarks/insufficient-gold-prompt-current.png` | `(1100/2712, 500/1224, 1620/2712, 610/1224)` | — |
-| `menu.quick` | overlay | `landmark.quick_menu_lobby_tile` | evidencia Workbench 3H.2 | `(0.02, 0.10, 0.25, 0.32)` | — |
-
-Esta tabla es trazabilidad histórica, no configuración runtime. Los landmarks describen señales visibles; no prescriben template matching y podrían provenir de cualquier backend futuro.
-
-Todas las `ContextRule` usan `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80`. Es una policy uniforme y provisional sobre confidence reportada, distinta del threshold de matching legacy de la tabla. La evaluación 2D no definió ninguna conversión desde score OpenCV a esa confidence.
-
-Las siete rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. Purchase Confirmation, Insufficient Gold y Quick Menu se resuelven independientemente y no reemplazan la base.
-
-La regla de `screen.lobby` introducida inicialmente en 2C fue retirada hasta 3C: inspección visual confirmó que `lobby-id.png` contiene un icono de moneda, no un header, y la muestra humana encontró scores cercanos a `1.0` en Black Market y otros contextos. Fase 3B.1 aclaró que se trata de una señal posicional real del shell de Lobby, pero ese shell permanece visible bajo modales y Black Market; por tanto no puede resolver por sí solo el contexto base definido por la taxonomía actual. Fase 3C restauró la regla con el rótulo `Trading Center`, que sí separa el corpus confirmado. `survival-id.png` contiene “Monster Wave” dentro de “Select Battle Mode”, por lo que tanto el landmark como su resultado se corrigieron. El prompt “Purchase?” también aparece en Guild Shop; su semántica de overlay ahora es independiente de Black Market.
-
-TOT no se incorporó: aunque `flow_tot()` consume `lobby → survival → tot`, los assets `tot-id.png` y sus subcontextos físicos/mágicos no están entre los assets runtime activos y la entrada conserva coordenadas pixel legacy. `bag-full-alert` tampoco se incorporó porque su comentario legacy cuestiona si representa siempre el mismo tipo de inventario lleno. No se inventaron señales para cubrir esos huecos.
-
-### Validación offline del slice
-
-La Fase 2D añadió tooling de evaluación, no una capa Perception. `template_match_score()` en `bot/screen.py` recibe un frame explícito, un template y una region opcional, y devuelve el máximo crudo de `TM_CCOEFF_NORMED`. `tools/semantic_slice_evaluation.py` usa esa primitiva para inventario, matriz completa, selección determinista y estadísticas; `tools/review_semantic_slice.py` solamente facilita labels humanos. Los resultados completos viven bajo `artifacts/`, ignorado por Git, y el manifest pequeño conserva paths relativos sin imágenes.
-
-La corrida histórica cubrió 173 PNG `2712×1224`, 865 mediciones compatibles y 27 frames confirmados manualmente. Todas las regions eran relativas y se convirtieron mediante `bot.geometry`; no hubo fallback full-frame ni scaling. Los assets a tamaño nativo produjeron separación fuerte para Black Market y confirmación de compra, evidencia prometedora pero escasa para Character Select y Monster Wave, y solapamiento semántico para el icono de moneda bajo estados superpuestos al shell de Lobby. Estas mediciones caracterizan únicamente el dataset histórico y no establecen thresholds productivos ni semantic confidence.
-
-Fase 3A reprodujo los scores de los dos landmarks validados sobre las 173 capturas para fijar sus anchors provisionales y añadió `tools/production_perception_evaluation.py`. Esta segunda evaluación ejecuta el pipeline productivo sobre las 27 entradas confirmadas y luego pasa cada batch por `build_default_resolver()`. Obtuvo 6 TP de Black Market y 3 TP de Purchase Confirmation, cero FP, cero FN, 27/27 resoluciones esperadas y cero estados ambiguos. Incluyó dos casos `screen.black_market` + overlay y un caso `UNKNOWN` + overlay, confirmando que el prompt de compra permanece genérico.
-
-### Adquisición dirigida y candidates de Fase 3B
-
-`tools/capture_semantic_dataset.py` extiende adquisición sin crear otra implementación de scrcpy o ADB. El composition root permanece `RuntimeConfig → build_frame_source() → ScrcpyFrameSource`; el usuario selecciona explícitamente una de las tres labels y `SPACE` guarda el `FrameSnapshot.image` completo como PNG. La similitud entre capturas consecutivas de la misma label es únicamente diagnóstica y nunca decide el ground truth.
-
-Las 30 capturas nuevas viven bajo `screencaps/semantic/` e ignoradas por Git. `datasets/semantic_acquisition_manifest.json` usa el mismo núcleo versionado del manifest 2D (`path`, `base_context`, `overlays`, `review_status`) y agrega metadata de adquisición no sensible. `tools/semantic_candidate_evaluation.py` fusiona manifests humanos, rechaza conflictos, permite crops experimentales interpretables y evalúa únicamente `raw_match_score`; sus thresholds de clasificación son policy offline explícita, no calibration productiva.
-
-La evaluación combinada cubrió 57 frames confirmados: 27 históricos y 30 nuevos. Los artefactos de candidate permanecen bajo `artifacts/` y no se incorporaron a `assets/ui/`, `bot/perception/specs.py` ni `build_default_perception()`.
-
-| Señal evaluada | Positivos / negativos | Positivo min/median/max | Máximo negativo | Gap | Estado 3B |
-|---|---:|---:|---:|---:|---|
-| Asset legacy Character Select | 12 / 45 | `0.4343 / 0.4413 / 1.0000` | `0.4921` | `-0.0578` | NEEDS_REWORK |
-| Candidate actual Character Select | 12 / 45 | `0.4337 / 0.9899 / 1.0000` | `0.2444` | `0.1894` | VALIDATED |
-| Asset legacy Monster Wave | 11 / 46 | `0.3480 / 0.3486 / 1.0000` | `0.4000` | `-0.0520` | NEEDS_REWORK |
-| Candidate actual Monster Wave | 11 / 46 | `0.3817 / 0.9997 / 1.0000` | `0.3538` | `0.0278` | PROMISING |
-| Candidate Lobby: `Shop / Black Market / Trading Center` | 11 / 46 | `0.7178 / 0.9862 / 1.0000` | `0.4514` | `0.2664` | VALIDATED |
-
-El candidate elegido inicialmente para Lobby usa los tres rótulos comerciales de la esquina inferior izquierda. Se prefirió al crop más amplio de la misma franja —que obtuvo un gap mayor pero incorporaba más personajes y animación— por ser visualmente más acotado e interpretable. La columna `Stage / Survival / Battle` también separó la muestra, mientras `Time Rewards` quedó `NEEDS_REWORK` por solapamiento. Fase 3B.1 volvió a reducir la señal para limitar su exposición a retratos y fondo.
-
-Los diez nuevos frames Battle Mode Select conservaron visible `Monster Wave`, pero nueve diferencias consecutivas cayeron bajo el aviso de near-duplicate; esto demuestra estabilidad en una UI estática, no diversidad suficiente de variantes. Por eso el candidate actualizado no se promueve pese a no producir errores en el operating point diagnóstico.
-
-La regresión de los dos detectores productivos existentes sobre los 57 labels mantuvo 6/6 Black Market y 3/3 Purchase, cero FP/FN y 57/57 resoluciones correctas. Fase 3B no definió confidence, anchors ni thresholds de ContextRule para los candidates.
-
-### Reevaluación de Lobby de Fase 3B.1
-
-La reevaluación fue exclusivamente offline y reutilizó los mismos 57 labels confirmados. `lobby-id.png` mide `51×47`. La región normalizada legacy equivale a `(552, 36, 660, 110)` sobre los frames landscape; el código de `legacy-pre-hybrid`, en cambio, la escalaba con el orden portrait reportado por `adb wm size`, de modo que su crop efectivo era `(249, 81, 297, 243)`. La arquitectura 0.2 conserva la intención correcta al derivar dimensiones de `frame.shape`.
-
-Los matches positivos del oro ocuparon `x=565` y `y=49` o `61`. El sobre mínimo que incluye esos matches, `(565, 49, 616, 108)`, es el único ajuste de región ensayado porque deriva directamente de las posiciones confirmadas; no produjo separación. Los negativos más altos conservaron el icono exactamente en `(565, 49)` dentro de Quests, Trading Center, Item Trade y Black Market superpuestos al Lobby.
-
-| Señal Lobby reevaluada | Positivos / negativos | Positivo min/median/max | Máximo negativo | Gap | Riesgo estacional esperado |
-|---|---:|---:|---:|---:|---|
-| Franja comercial amplia 3B | 11 / 46 | `0.7124 / 0.9787 / 1.0000` | `0.2274` | `0.4851` | Alto: incluye retratos, animación y fondo |
-| Tres rótulos comerciales 3B | 11 / 46 | `0.7178 / 0.9862 / 1.0000` | `0.4514` | `0.2664` | Medio: todavía conserva partes de retratos y fondo |
-| `Trading Center` aislado | 11 / 46 | `0.7199 / 0.9826 / 1.0000` | `0.4657` | `0.2541` | Bajo-medio por diseño: rótulo y backing GUI |
-| `Black Market + Trading Center` aislados | 11 / 46 | `0.6503 / 0.9833 / 1.0000` | `0.3629` | `0.2874` | Bajo-medio, pero abarca dos rótulos y más superficie |
-| Oro en región legacy landscape | 11 / 46 | `0.9686 / 0.9721 / 1.0000` | `0.9882` | `-0.0196` | Bajo visualmente, pero no es exclusivo del contexto base |
-| Oro en sobre posicional ajustado | 11 / 46 | `0.9686 / 0.9721 / 1.0000` | `0.9882` | `-0.0196` | Igual que el anterior; el ajuste no elimina el solapamiento |
-
-Para 3C, la señal primaria recomendada es `landmark.lobby_trading_center_label`: es el crop validado de menor superficie que excluye retratos y conserva un gap fuerte. `landmark.lobby_commerce_pair` queda como alternativa experimental por su gap algo mayor, no como segundo requirement. Exigir simultáneamente `landmark.lobby_currency_anchor` no reduce errores en el dataset frente al rótulo comercial solo y agrega un punto de fallo; el oro puede conservarse como evidencia diagnóstica del shell subyacente, no como regla de `screen.lobby`.
-
-Estos estados VALIDATED describen únicamente la separación en el corpus actual. Sus fondos visualmente diferentes no forman una campaña multi-season controlada. La robustez estacional asignada en la tabla es una expectativa de diseño basada en qué píxeles consume cada crop, no una validación empírica entre temporadas.
-
-Fase 3C amplió el evaluator productivo existente, sin duplicarlo, para fusionar y deduplicar los dos manifests humanos. La corrida sobre 57 frames confirmó los cuatro gaps productivos y produjo 57/57 estados esperados, cero ambigüedades y cero resoluciones incorrectas. Lobby obtuvo 11/11 y Character Select 12/12; Black Market conservó 6/6 y los tres Purchase overlays conservaron 3/3. Battle Mode Select quedó 11/11 `UNKNOWN` deliberadamente y los otros 17 contextos también permanecieron `UNKNOWN`. Los anchors 3A no cambiaron porque las capturas nuevas no añadieron extremos.
-
-### Diagnóstico live de Fase 3D
-
-`tools/smoke_perception.py` es un composition root diagnóstico manual, no un runtime general. Construye explícitamente configuración, ADB, captura, los cuatro detectores productivos y el resolver; el loop consume únicamente snapshots con sequence nuevo, a aproximadamente 3 análisis por segundo, y conserva siempre el frame más reciente sin backlog. Su lifecycle pertenece al context manager de `ScrcpyFrameSource` también ante `Ctrl+C`, error o cierre normal.
-
-La herramienta mantiene fuera de los contratos productivos dos responsabilidades puramente diagnósticas: consulta `LocalCvDetector.measure()` después de ejecutar el pipeline real para mostrar raw OpenCV score, y acumula latencia/confidence/rachas por una etapa marcada manualmente. No modifica `Observation`, no etiqueta ground truth, no retiene contexto previo y no aplica hysteresis, debounce, voting ni scheduler. El usuario sigue siendo responsable de la navegación y la herramienta no contiene comandos Android de input.
-
-La primera corrida real cubrió el pipeline completo con frames `2712×1224`. Lobby, Character Select, reentrada a Lobby y un contexto unsupported se comportaron conforme al diseño stateless. Black Market y Purchase Confirmation no alcanzaron sus calibraciones offline en la apariencia live, aunque el crop del prompt sí mostró un aumento raw al abrir el popup. Esto es una discrepancia de evidencia entre dataset y hardware, no una razón arquitectónica para introducir temporalidad o bajar thresholds: se requieren capturas current-season human-confirmed y reevaluación offline antes de modificar specs productivas.
-
-## Perception Workbench — tooling humano de desarrollo
-
-Fase 3E añade una composición paralela de enseñanza y mantenimiento, deliberadamente fuera del runtime de gameplay:
+Invariantes centrales:
 
 ```text
-ScrcpyFrameSource → PerceptionEngine → ContextResolver
-          │                    │               │
-          └────────────────────┴───────────────┴→ Perception Workbench UI
-
-Android touchscreen → HumanInputObserver ─────────→ Perception Workbench UI
+Rotation ≠ Flow
+Flow ≠ ActionExecutor
+ActionExecutor ≠ Perception
 ```
 
-`bot/human_input.py` implementa exclusivamente la dirección `HUMAN → system observation`. Descubre mediante `adb shell getevent -pl` un dispositivo que exponga `ABS_MT_POSITION_X` y `ABS_MT_POSITION_Y`, conserva sus rangos inclusivos reales y posee un proceso persistente `getevent -lt` creado por `AdbClient.spawn_shell(capture_output=True)`. No conoce gameplay, no ejecuta input y no constituye un `ActionExecutor` alternativo. La selección es determinista por capacidades táctiles, área del sensor y path; el path concreto nunca se hardcodea ni se persiste como identidad.
+- Perception observa; no navega ni decide gameplay.
+- El resolver interpreta evidencia; no captura ni ejecuta acciones.
+- Un flow decide según estado/facts y solicita intents; no hace matching ni llama ADB.
+- `ActionExecutor` conoce targets y geometría; no reconoce pantallas ni aplica policy de negocio.
+- `AdbClient` conoce comandos físicos; no conoce frames ni semántica.
 
-Los timestamps impresos por `getevent` pertenecen al `CLOCK_MONOTONIC` del teléfono, mientras `FrameSnapshot` usa el monotónico del host; no son comparables aunque ambos sean monotónicos. `HumanInputObserver` reestampa cada evento al recibirlo con el reloj host y sólo ese valor se usa para asociación con frames, duración y UI. El parser v1 reconstruye contacto down, movimiento y up; una tolerancia relativa configura la frontera tap/swipe. Multitouch e interacciones incompletas se preservan como `UnknownGesture`, sin inventar semántica de elemento.
+## Configuración y composition root
 
-Las coordenadas humanas persistidas son relativas a display y pertenecen a `[0,1]`. Primero se normalizan desde `axis min/max`; luego se aplica la rotación Android encontrada en `dumpsys input`: `0 → (x,y)`, `90° → (y,1-x)`, `180° → (1-x,1-y)`, `270° → (1-y,x)`. Esta política sigue la transformación documentada por [AOSP para touch devices](https://source.android.com/docs/core/interaction/input/touch-devices) y el formato/timestamp de [AOSP getevent](https://source.android.com/docs/core/interaction/input/getevent). Sólo después se proyecta el punto relativo al frame usando `frame.shape`; `adb wm size` no participa. El overlay temporal de tap/swipe se dibuja sobre una copia de UI y nunca sobre la imagen guardada.
+`bot/config.py` define `RuntimeConfig` inmutable. La construcción explícita no lee environment; `RuntimeConfig.from_env()` lo hace sólo cuando el caller lo solicita. Rutas locales y seriales no se hardcodean.
 
-`tools/perception_workbench.py` compone explícitamente `RuntimeConfig`, `AdbClient`, `ScrcpyFrameSource`, `build_default_perception()`, `build_default_resolver()` y `HumanInputObserver`. Desde Fase 3H.1 la UI OpenCV construye sus opciones desde `bot/acquisition_vocabulary.py`: incluye los nombres productivos inyectados desde el resolver y una lista pequeña de candidates de adquisición. El ground truth humano permanece activo hasta ser cambiado, está marcado `human_confirmed` y nunca se completa a partir de una prediction.
+`bot/runtime.py` ensambla `RuntimeConfig → AdbClient → ScrcpyFrameSource` sin iniciar infraestructura durante imports o construcción. Los tools y futuros entry points poseen el lifecycle de la composición.
 
-La evidencia se selecciona por mismatch, `AMBIGUOUS`, input humano, guardado manual o modo representative. Un fingerprint grayscale `32×32`, cooldown de 2 s, diferencia media mínima de 3 niveles, refresh máximo de 8 s y límite de 12 ejemplos automáticos por key reducen near-duplicates sin clustering. Un ring buffer de 24 frames analizados asocia el frame más cercano anterior al inicio del gesto y un frame posterior al fin con delay nominal de 0,5 s; al cerrar, una interacción pendiente usa el último frame disponible y conserva las secuencias, sin inferir una transición semántica.
+Toda geometría visual deriva de `frame.shape` en orden `(height, width, ...)`. Los puntos normalizados representan índices de píxel; las regiones usan límite final exclusivo. `adb wm size` puede ser diagnóstico, nunca fuente de geometría de captura.
 
-La primera sesión humana de 3E se abortó por preview degradada y lag extremo. La auditoría demostró que los PNG originales ya contenían macroblocking antes de render: un mismo ndarray BGR `2712×1224` evaluado por `tools.smoke_perception.analyze_snapshot()` y el path Workbench produjo raw scores exactamente iguales y conservó su hash. El defecto no provenía de resize, overlay ni composición. La combinación de stream `2 Mbps` sin límite de FPS, render/copia repetidos aunque no hubiera frame nuevo y PNG full-frame síncrono añadía presión suficiente para degradar/atrasar el stream y bloquear UI. Esa sesión `20260823T054558_979538Z-46e40344` es diagnóstica y no curable/promovible.
+## Capture
 
-Workbench usa ahora scrcpy a `8 Mbps / 30 fps`, analiza sólo el snapshot más reciente y acepta gaps de sequence como descarte intencional de frames intermedios. Perception recibe siempre `FrameSnapshot.image` original; la UI copia primero y sólo la copia se dibuja/redimensiona a `1356×612`, exactamente la mitad de `2712×1224` y con el mismo aspect ratio. El canvas se reconstruye únicamente ante un análisis/evento/cambio visible. Un único evidence writer con queue acotada de 16 realiza PNG/JSONL fuera del loop; si se satura, registra `evidence.skipped` en vez de formar backlog ilimitado. La UI muestra source sequence, frame age, perception, UI/display, evidence-save y profundidad de queue. `--compare-once` captura un frame y prueba igualdad de raw scores/hash entre los paths 3D y Workbench antes de un smoke.
+`bot/capture.py` implementa `ScrcpyFrameSource` como única captura activa 0.2. Recibe un `AdbClient` y el path de scrcpy-server, prepara push/forward, proceso, socket y decoder PyAV, y publica el último frame BGR.
 
-Cada sesión raw vive bajo `artifacts/workbench/<session-id>/` —ya ignorado por Git— con `events.jsonl`, `frames/` y `summary.json`. Los eventos comparten `schema_version`, `session_id`, `event_type`, timestamp UTC y payload extensible; los eventos humanos agregan timestamp monotónico, coordenadas normalizadas y raw diagnostics. No se persisten serial ADB, paths absolutos ni identidad de usuario/dispositivo. Los manifests versionados de `datasets/` siguen siendo la única fuente curated; promover evidencia raw será trabajo posterior.
+`FrameSnapshot` contiene copia del ndarray, sequence y timestamp monotónico. La fuente posee todos los recursos adquiridos y garantiza cleanup best-effort e idempotente, incluso tras startup parcial. Los fallos del receiver permanecen observables.
 
-El smoke final de 3E confirmó preview prácticamente live, igualdad de raw scores con el path 3D, ground truth base/overlay editable, deduplicación acotada, writer sin backlog y cleanup completo. Los marcadores de taps en sectores diversos y de un swipe coincidieron visualmente con las acciones físicas según validación humana; todas las interacciones conservaron frames before/after. Black Market y Purchase Confirmation quedaron capturados como falsos negativos actuales sin recalibrar detectores. La primera sesión degradada permanece exclusivamente diagnóstica y ninguna sesión raw se promovió automáticamente.
+Capture no importa Perception, Resolver, flows ni acciones.
 
-El Workbench es una herramienta humana de desarrollo y enseñanza. El producto final continúa siendo un runtime automatizado unattended; ninguno de los estados persistentes, hotkeys o decisiones del Workbench pertenece por defecto a ese producto.
+## Perception
 
-### Adquisición semántica abierta y evidencia de transición
+`PerceptionEngine` recibe detectores explícitos y produce un `ObservationBatch` con la identidad temporal exacta del `FrameSnapshot`. No conserva historial, contexto ni estado de gameplay.
 
-Fase 3H.1 establece este límite explícito:
+El backend actual usa OpenCV local:
+
+- templates precargados y matching a tamaño nativo;
+- regiones normalizadas proyectadas desde el ndarray;
+- raw score separado de semantic confidence;
+- calibración empírica por detector;
+- cero IO de assets por frame;
+- múltiples variantes sólo cuando representan el mismo significado visual.
+
+Los detectores productivos cubren Lobby, Character Select, Black Market, Quick Menu, Purchase Confirmation e Insufficient Gold. Detectores especializados emiten GOLD y Purchased por slot. La lista y evidencia actual están en `CONTEXT.md`; paths, regiones y anchors son verdad de código/tests.
+
+OCR y VLM deberán implementar el mismo límite de detector. VLM será provider-agnostic y ninguna capa superior dependerá de proveedor, modelo o API concretos.
+
+### Observaciones y facts
+
+`Observation` es evidencia semántica inmutable: nombre namespaced, confidence normalizada, `ObservationSource`, valor escalar opcional y `RelativeRegion` opcional. No transporta frames, templates ni objetos de detector.
+
+`ObservationBatch` agrupa evidencia ordenada de un único frame y permite nombres repetidos. Sus helpers buscan; no fusionan fuentes ni aplican policy.
+
+Hay dos consumos deliberadamente distintos:
+
+- landmarks de pantalla alimentan `ContextResolver`;
+- facts internos como `currency.black_market.gold(slot)` y `status.black_market.purchased(slot)` son consumidos por el flow correspondiente.
+
+Un fact no se convierte en contexto sólo para facilitar navegación.
+
+## ContextResolver
+
+`bot/resolver.py` es puro, determinista y stateless. Recibe reglas base y overlay explícitas. Cada `ContextRule` exige observations namespaced con un threshold común; selecciona la mayor confidence de cada nombre y usa el mínimo sólo como diagnóstico.
+
+La resolución base no tiene first-match ni desempate por confidence:
+
+- cero candidatos → `UNKNOWN`;
+- uno → `RESOLVED`;
+- varios → `AMBIGUOUS` con candidatos explícitos.
+
+Los overlays se resuelven independientemente y pueden coexistir con cualquier estado base. El resolver no implementa hysteresis, voting, debounce, transiciones ni memoria. `ResolvedState` separa base, subcontexto opcional, overlays y candidatos conflictivos.
+
+## RuntimeObserver
+
+`RuntimeObserver` une captura, Perception y Resolver sin mezclarlos. Cada `RuntimeSnapshot` garantiza que observations, estado resuelto, runtime facts y geometría proceden del mismo frame.
+
+Las esperas son bounded, rechazan sequences stale posteriores a una acción y pueden exigir estabilidad continua sobre frames distintos. La estabilidad pertenece a la espera del caso de uso, no introduce estado implícito en `ContextResolver`.
+
+## Flows
+
+Los flows contienen intención y reglas de negocio deterministas. Declaran scope, prerequisites y outcomes; reaccionan a `RuntimeSnapshot` y emiten semantic actions.
+
+`BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, los dos popups, GOLD y Purchased; Quick Menu no es prerequisite. La policy funcional detallada está en `CONTEXT.md`.
+
+Los support operations futuros seguirán `check → bounded support operation → recheck → continue/skip/fail`; no se permiten llamadas recursivas arbitrarias entre flows.
+
+## Semantic Actions y ActionExecutor
+
+Los intents modelan acciones del dominio, no coordenadas. El slice actual define abrir/cerrar Black Market, seleccionar slot `0..9`, aceptar Purchase Confirmation y rechazar Insufficient Gold.
+
+`ActionExecutor` es el único traductor de intent a input físico. Valida el intent, obtiene el target normalizado, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no espera postcondiciones y no decide si una compra corresponde; esas responsabilidades permanecen en observer/flow.
+
+## Device / ADB
+
+`bot/adb.py` define `AdbClient`, límite único para procesos y comandos ADB. Recibe ejecutable, serial y timeout explícitos; construye argumentos separados y traduce fallos a `AdbError` o `AdbTimeoutError` con contexto.
+
+Expone estado, shell, taps/swipes pixel, push, forwards y procesos persistentes. El owner de un proceso o forward conserva su lifecycle. Tests normales inyectan un runner fake y no requieren ADB instalado.
+
+## Perception Workbench
+
+Workbench es una composición humana paralela, fuera del runtime de gameplay:
 
 ```text
-production semantic catalog          human acquisition vocabulary
-ContextRule / OverlayRule      !=    production labels + candidate labels
-          ↓                                      ↓
-ContextResolver                         Perception Workbench GT
+ScrcpyFrameSource → PerceptionEngine → ContextResolver ─┐
+Android touch → HumanInputObserver (read-only) ─────────┴→ Workbench UI / raw evidence
 ```
 
-`bot/catalog.py` no importa ni consume `bot/acquisition_vocabulary.py`. El vocabulario de adquisición recibe nombres productivos como datos y agrega únicamente un seed candidate pequeño (`screen.guild_shop`, `screen.inventory`, `popup.bag_full_alert`). Desde 3H.2, `menu.quick` llega desde el catálogo productivo y dejó de pertenecer al seed candidate. La procedencia `production`/`candidate` se muestra en UI y se registra en `session.started`; no crea requirements, detectors, assets, targets ni reglas. `UNKNOWN` permanece como selección humana independiente, y `U` deja base y overlays en estado `UNSET` para hacer observable un período transicional no confirmado.
+`HumanInputObserver` observa `getevent`, reconstruye gestos y normaliza coordenadas/rotación; nunca envía input. La UI trabaja sobre copias, conserva ground truth explícito, limita escritura y separa vocabulary de adquisición del catálogo productivo.
 
-### Semantic census y Quick Menu
+La evidencia de una interacción es observacional. Sólo una confirmación humana explícita puede registrar destino semántico; ni el frame posterior ni una prediction rellenan ground truth, prueban causalidad o crean targets. Raw sessions viven en `artifacts/`; sólo manifests curados bajo `datasets/` alimentan evaluación productiva.
 
-Fase 3H.2 preserva en `docs/semantic_census.md` las 75 entradas top-level legacy
-sin convertirlas en configuración runtime. Quick Menu permanece fuera de ese conteo:
-legacy lo detectaba con identidad visual propia y acomodaba su posición mediante
-offsets `default`/`lobby` compartidos por 18 contextos. 0.2 conserva ese conocimiento
-como una región de búsqueda que admite ambas posiciones observadas, pero descarta los
-valores concretos de botones, targets y causalidad de taps.
+El protocolo conversacional y las restricciones de hardware están centralizados en `AGENTS.md`.
 
-La sesión raw `20260825T193046_517947Z-76b5e238` fue revisada visualmente antes de
-crear `datasets/quick_menu_evidence_manifest.json`. El manifest registra 18 positivos,
-15 negativos locales y las exclusiones de GT atrasado/transicional; al fusionarlo con
-los 62 labels previos, el detector se evalúa contra 77 negativos. Los frames sobre
-Inventory conservan ese dato como provenance de adquisición, pero la expectativa
-productiva de base es `unknown` porque `screen.inventory` no fue promovido.
+## Orquestación futura
 
-El envelope Workbench `2.0` añade un `interaction_id` a cada tap/swipe/gesto desconocido. El evento físico conserva GT previo, frame previo y un frame posterior temporal con `frame_after_role=temporal_observation_only`; incluso puede conservar la prediction posterior como diagnóstico, pero nunca contiene `after_ground_truth` por inferencia. La tecla `T` es la única operación UI que emite `human.transition_confirmed`: vincula explícitamente el GT humano actual y el frame vigente de confirmación al gesto pendiente más reciente. Sin esa operación, el gesto permanece sin destino semántico confirmado. Los eventos `1.0` continúan legibles y el promotor 3F acepta evidence frames `1.0`/`2.0` bajo su policy previa.
-
-Esta evidencia sigue siendo raw y observacional:
-
-```text
-before GT humano + gesto físico + frame temporal posterior
-                       + confirmación humana opcional de after GT
-                    !=
-NavigationRule / botón / target / acción productiva
-```
-
-Una confirmación no afirma causalidad, repetibilidad ni seguridad de navegación. Las coordenadas no se aprenden y los datasets curated no se modifican desde el Workbench.
-
-### Currency interna y falta de oro en Black Market
-
-Fase 3H.3 separa explícitamente contexto, percepción interna y policy futura:
-
-```text
-screen.black_market
-  + currency.black_market.gold(value=slot_index) × N
-  + popup.purchase_confirmation | popup.insufficient_gold | sin overlay
-```
-
-El layout confirmado es 5 filas × 2 columnas. El conocimiento reutilizable legacy
-son el asset GOLD, dos franjas de búsqueda y diez posiciones; sus targets absolutos,
-globals, taps y modelado como subcontexto de columnas son deuda preservada. No existe
-asset KARATS de Black Market ni flow legacy implementado que deba migrarse.
-
-La policy del flow es `BUY iff currency == GOLD` y `NEVER BUY KARATS`.
-Precisión GOLD domina recall: ausencia, KARATS, Video y slots ya comprados son no
-elegibles. No se reconoce item, precio ni balances y no se hace OCR preventivo.
-
-La secuencia human-confirmed tiene dos ramas desde la selección manual:
-
-```text
-GOLD con fondos suficientes   → popup.purchase_confirmation
-GOLD sin fondos suficientes   → popup.insufficient_gold directamente
-popup.insufficient_gold + No  → screen.black_market estándar
-```
-
-La rama Yes del popup de insuficiencia no se exploró porque propone comprar Gold.
-La policy cerrada del flow es elegir No, regresar a Black Market y continuar
-con el siguiente slot GOLD. Este resultado esperado de negocio no pertenece a
-Perception ni altera el contrato del overlay.
-
-### BlackMarketFlow implementado
-
-`BlackMarketFlow` tiene scope `PER_CHARACTER` y opera exclusivamente sobre el
-personaje activo. Su prerequisite de entrada es `screen.lobby` y su navegación es
-directa:
-
-```text
-Lobby → Black Market → Lobby
-```
-
-Black Market no se abre desde Quick Menu. `menu.quick` no forma parte del semantic
-closure propio del flow y el flow tampoco cambia de personaje.
-
-La tienda actual presenta diez ofertas en cinco filas por dos columnas. El flow hará
-una única lectura inicial, conserva la lista de slots detectados como GOLD y la
-recorre secuencialmente en orden row-major. La tienda no reordena las
-ofertas después de comprar; una compra exitosa deja el mismo slot marcado como
-`Purchased`, que es la postcondición mínima de éxito. No se identifica item, precio
-ni balance y no se introduce OCR.
-
-```text
-GOLD + fondos
-  → seleccionar slot
-  → popup.purchase_confirmation
-  → Yes
-  → screen.black_market
-  → mismo slot Purchased
-
-GOLD + fondos insuficientes
-  → seleccionar slot
-  → popup.insufficient_gold
-  → log(timestamp, low_gold)
-  → No
-  → screen.black_market
-  → siguiente slot GOLD
-```
-
-Una lectura inicial con cero slots GOLD es success/no-op normal y permite que Rotation
-continúe después del retorno a Lobby. No se intenta distinguir entre tienda ya procesada manualmente, ausencia de
-ofertas GOLD u otra causa no observable. El reset ocurre aproximadamente cada hora por
-personaje y su contador comienza al visitar Black Market.
-
-La primera policy de runtime está orientada a debug. Purchase Confirmation,
-Insufficient Gold, cero GOLD y `Purchased` verificado son resultados esperados. Ante
-un error técnico o estado inesperado se registra el evento, se hace cleanup seguro y
-se aborta el proceso completo; todavía no habrá recovery sofisticado. Si la
-postcondición `Purchased` no aparece en el slot esperado dentro del timeout,
-`purchase_unverified` no se considera éxito y obliga a abortar. Los logs iniciales no
-usan OCR ni identidad: `popup.insufficient_gold` registra sólo timestamp + `low_gold`,
-con una forma extensible para añadir `current_character_name` en el futuro.
-
-Los límites concretos del vertical slice son:
-
-```text
-ScrcpyFrameSource
-  → RuntimeObserver
-      ├── PerceptionEngine → ObservationBatch
-      ├── ContextResolver → ResolvedState
-      ├── RuntimeFacts(GOLD slots, Purchased slots)
-      └── FrameGeometry(frame.shape)
-  → BlackMarketFlow
-      → semantic action intent
-          → ActionExecutor
-              → AdbClient.tap(pixel)
-```
-
-`RuntimeSnapshot` garantiza que observations, state, facts y geometry pertenecen al
-mismo `FrameSnapshot`. `RuntimeObserver.wait_until()` exige sequences frescas
-posteriores a cada acción, tiene timeout/abort explícitos y opcionalmente estabilidad
-continua sobre snapshots distintos. La entrada a Black Market exige `0.75 s` de
-estabilidad porque el title se resuelve antes que la grilla; esto no añade
-hysteresis, voting ni memoria a `ContextResolver`.
-
-Los intents productivos del slice son `OpenBlackMarket`, `CloseBlackMarket`,
-`SelectBlackMarketSlot(0..9)`, `AcceptPurchaseConfirmation` y
-`RejectInsufficientGold`. `ActionExecutor` conoce sus targets normalizados, valida
-slots, deriva pixels desde la geometría del frame real y no reconoce estados ni
-aplica policy de compra. El target de cierre también exige un frame fresco
-`screen.lobby`; un fallo en esa postcondición aborta el flow.
-
-`BlackMarketPurchasedDetector` emite `status.black_market.purchased` con el índice
-row-major como value. Usa dos variantes nativas curadas del mismo texto
-`Purchase Complete!` y diez regions de panel de precio; GOLD, KARATS, Video y
-pantallas ajenas son negativos. La evaluación tras los smokes live contiene 11 TP,
-0 FP y 0 FN, raw positivo mínimo `0.881583`, máximo negativo `0.557578` y gap
-`0.324005`. La confidence sigue usando threshold semántico `0.80`; el anchor positivo
-se recalibró con la nueva muestra humana, sin bajar el threshold.
-
-### Promoción curated y mantenimiento de detectores
-
-Fase 3F establece el flujo oficial offline desde Workbench hacia Perception:
-
-```text
-raw session ignorada
-  → selección visual humana explícita
-    → manifest versionado con provenance
-      → materialización local de PNG ignorado
-        → evaluación completa
-          → asset/spec/calibration productivos
-```
-
-`datasets/workbench_evidence_manifest.json` selecciona exactamente frames revisados y conserva sólo paths relativos, `source=workbench`, session id, sequence, timestamp, reason y shape. `tools/production_perception_evaluation.py` materializa esos PNG bajo `screencaps/semantic/workbench/` después de contrastar manifest, summary, evento y bytes fuente. La session debe declarar `curation_status=raw_unreviewed`; estados `diagnostic`, status ausente, `curated=true`, ground truth no humano, labels fuera del catálogo productivo, labels contradictorios, secuencias duplicadas o paths fuera del repositorio se rechazan antes de copiar. Los raw `events.jsonl`, summaries y frames de sesión nunca se convierten automáticamente en dataset. Esta allowlist preserva el scope 3F: un candidate de adquisición no se vuelve curated por aparecer en un evento `2.0`.
-
-El evaluator fusiona el manifest histórico, acquisition, Workbench 3F, Quick Menu e interrupciones Black Market, deduplica por path y ejecuta los seis landmarks productivos más el resolver. Reporta min/median/max positivos, máximo negativo, anchors, gap, FP/FN emitidos y resultados end-to-end. `tools/black_market_gold_evaluation.py` evalúa por separado las diez posiciones, GOLD/KARATS/Video/Purchased y negativos de pantallas ajenas. Los manifests siguen siendo utilizables aunque los PNG ignorados no existan en otra checkout; la suite normal prueba parsing y policy con fixtures in-memory/locales y no depende de las sesiones reales.
-
-La variante múltiple de `LocalCvDetector` no es ensemble semántico ni source weighting: son renderings nativos, explícitos y curados del mismo landmark dentro de un único detector. La calibration se calcula sobre el máximo raw que ese detector realmente producirá. Este mecanismo se incorporó sólo para `landmark.purchase_confirmation_prompt`; Black Market mantuvo su asset/crop original y cambió únicamente su calibration.
-
-### Revalidación live post-repair
-
-Fase 3G revalidó en hardware real el mismo pipeline stateless `ScrcpyFrameSource → PerceptionEngine → ObservationBatch → ContextResolver → ResolvedState`. Lobby, Character Select, reentrada, Black Market, Black Market + Purchase Confirmation y `UNKNOWN + Purchase Confirmation` resolvieron conforme al contrato; Battle Mode Select permaneció `UNKNOWN`. La comparación sobre un único `FrameSnapshot` conservó el ndarray/hash y produjo los mismos raw scores en los paths 3D y Workbench. La sesión cerró 3D con cleanup completo y sin input Android, pero sólo valida la apariencia current-season observada: no cambia límites, thresholds, catálogo, temporalidad ni demuestra robustez multi-season.
-
-## Dirección del producto final — Session Orchestrator
-
-El objetivo no es un agente general que elija libremente qué jugar. La dirección acordada es un orquestador configurable:
+El producto objetivo es un orquestador configurable, no un agente general:
 
 ```text
 User Control Panel
@@ -490,97 +147,18 @@ User Control Panel
       └── Selected PER_CHARACTER Flow(s)
 ```
 
-El usuario seleccionará previamente flows como `query_resources_type_1`, `clean_friends`, `farm_tot`, `farm_elite` o `farm_arena`. En Kritika la mayoría son `PER_CHARACTER`, pero el modelo futuro deberá exigir scopes explícitos y no suponer que todo flow comparte ese alcance.
+`SessionRunner` compondrá Rotation y flows. `RotationStrategy` decide cómo avanzar entre personajes; cada flow opera sólo sobre el personaje activo y retorna un outcome. Ninguno conoce la implementación interna del otro.
 
-`Rotation` / `RotationStrategy` es una responsabilidad transversal del orquestador:
-decide cómo avanzar entre personajes, no qué hace un flow sobre ellos. Un flow
-`PER_CHARACTER` opera sobre el personaje activo, retorna un outcome y nunca selecciona
-el siguiente personaje ni invoca una estrategia de Rotation. Rotation no conoce la
-lógica de Black Market ni la de otros flows. Los flows con otro scope no están
-obligados a usar Rotation.
+La primera estrategia, `rotation.standard`, usará Quick Menu → Character Select → scroll al final → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual; `character_count = 28` será configuración explícita. MAIN/SUBS quedan para estrategias futuras.
 
-La primera estrategia prevista, todavía no implementada, es `rotation.standard`.
-Después de ejecutar los flows del personaje activo usará Quick Menu para iniciar el
-cambio, llegará a Character Select, hará scroll hasta el final, elegirá siempre la
-última posición y esperará Lobby antes de repetir. Character Select se comporta como
-una lista MRU, de modo que esta política recorre personajes sin identificarlos.
-`character_count = 28` será configuración explícita de la estrategia, no un número
-mágico de navegación. `MAIN`, `SUB1`, `SUB2` y `SUB3` y sus accesos especiales desde
-Quick Menu se conservan como conocimiento para estrategias futuras, sin trato especial
-en `rotation.standard` inicial.
-
-Los límites quedan cerrados:
-
-```text
-Rotation ≠ Flow
-Flow ≠ ActionExecutor
-ActionExecutor ≠ Perception
-```
-
-El `SessionRunner` compone Rotation y los flows seleccionados; no crea coupling donde
-un flow invoque directamente Rotation. Esta separación permite combinar distintas
-estrategias de recorrido con distintos flows `PER_CHARACTER`.
-
-Un top-level flow declarará prerequisites en lugar de invocar recursivamente otros flows de forma arbitraria. El patrón previsto es `check → bounded support operation → recheck → continue/skip/fail`. Operaciones como `acquire_sapphires`, `buy_stamina` o `empty_inventory` podrán ser mini-flows internos, pero no se confundirán con los flows principales seleccionables. `RequirementRunner`, `SessionPlan` y `SessionRunner` todavía no están implementados.
-
-Las sesiones de producto deberán correr unattended durante horas. El diseño posterior necesita timeouts, recovery, logging, resultados explícitos, aislamiento de fallos, cleanup y política para continuar con el siguiente flow o personaje. Hasta que exista ese recovery transversal, el primer vertical slice abortará la sesión completa ante errores técnicos después de registrar y limpiar.
-
-También se preserva una distinción futura: los runtime facts (`stamina`, inventario, attempts) sirven para decisiones inmediatas y no exigen persistencia; los informational snapshots de currencies/resources se actualizan mediante flows explícitos de consulta y no constituyen una réplica autoritativa, porque el usuario también juega manualmente. Fase 3E no implementa OCR ni almacenamiento de esos valores.
-
-### Flows / Decision
-
-Contienen intención y reglas de negocio deterministas. Solicitan acciones semánticas y reaccionan a estados resueltos; no hacen template matching ni llaman a ADB.
-
-### ActionExecutor
-
-Traduce una intención de acción validada a interacción con el dispositivo. La resolución geométrica debe usar el frame landscape real y coordenadas normalizadas en `[0,1]` cuando corresponda.
-
-### Device / ADB
-
-Es el límite de infraestructura para taps, swipes y demás comandos del dispositivo. Debe poder sustituirse por un fake en tests normales.
-
-La Fase 1B implementó este límite en `bot/adb.py`. `AdbClient` recibe explícitamente el ejecutable ADB y el serial, y concentra la ejecución en primitivas `subprocess` con argumentos separados, timeout y traducción a `AdbError`/`AdbTimeoutError`. Expone `get_state`, `shell`, input en coordenadas pixel, push y administración de port forwarding. La extensión `spawn_shell()` de Fase 1C crea un proceso persistente sin apropiarse de su lifecycle.
-
-`AdbClient` no conoce frames, resolución, coordenadas relativas, percepción ni acciones semánticas. Puede construirse desde los campos ADB de `RuntimeConfig`, pero no retiene configuración de scrcpy o del juego. Desde Fase 1E es el único límite activo de procesos ADB; `bot/screen.py` ya no captura, conecta ni ejecuta taps o swipes.
-
-## Cierre del núcleo reutilizable — Fase 1E
-
-`bot/screen.py` permanece con nombre legacy solo como módulo transicional de visión. Expone `template_match_score()`, `find_image_on_screen()` y `find_all_on_screen()`, recibe el ndarray explícitamente, calcula regiones normalizadas desde `frame.shape` y no consulta globals, dispositivo ni configuración. `template_match_score()` acepta además un template grayscale precargado para que Perception reutilice la misma primitiva sin IO por frame. Fase 3A conserva deliberadamente el tamaño nativo validado; scaling seguirá requiriendo evidencia runtime antes de diseñarse.
-
-Los consumers legacy `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` conservan imports de captura/input ya retirados. No se añadieron shims: no forman parte del runtime activo y repararlos implicaría migrar resolución semántica, ejecución de acciones y flows fuera del alcance de Fase 1. El tag `legacy-pre-hybrid` conserva su implementación anterior.
-
-Las herramientas activas quedan delimitadas así:
-
-- `tools/smoke_capture.py`: diagnóstico opt-in sin escritura de frames ni input físico;
-- `tools/smoke_perception.py`: diagnóstico end-to-end manual de captura, observations y resolución, con métricas stateless y sin acciones;
-- `tools/screencap_batch.py`: adquisición interactiva de capturas mediante `ScrcpyFrameSource`;
-- `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2;
-- `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;
-- `tools/review_semantic_slice.py`: revisión humana local del subconjunto seleccionado.
-- `tools/production_perception_evaluation.py`: promoción segura de selección Workbench y evaluación offline de observations calibradas/estados resueltos sobre los cinco manifests confirmados.
-- `tools/capture_semantic_dataset.py`: adquisición dirigida de screenshots completos con labels humanas explícitas.
-- `tools/semantic_candidate_evaluation.py`: selección y evaluación offline de candidates experimentales mediante raw scores.
-- `tools/capture_black_market_currency.py`: captura pasiva opt-in de un frame full-resolution para curación de currency, sin input Android.
-- `tools/black_market_gold_evaluation.py`: evaluación offline reproducible de GOLD por slot y falsos positivos globales.
-- `tools/black_market_purchased_evaluation.py`: evaluación offline reproducible de Purchased por slot contra GOLD, KARATS, Video y pantallas ajenas.
-- `tools/smoke_black_market_single_character.py`: harness hardware opt-in del flow, con límites de debug, modo full y cierre validado del mercado actual.
-
-`tools/debug_context.py` y `testing/` fueron retirados porque duplicaban captura, dependían del modelo de contexto legacy o contenían IDs/acciones manuales cubiertas por herramientas vigentes. No se migró percepción ni gameplay.
+El runtime unattended futuro necesita timeouts, recovery transversal, logging, aislamiento de fallos, cleanup y policy de continuación. Hasta entonces, el vertical slice aborta ante errores técnicos después de registrar y limpiar.
 
 ## AdsManager
 
-Los anuncios pertenecen a aplicaciones o packages externos y se inspeccionan mediante UIAutomator2:
+`bot/ads_manager.py` sigue siendo un subsistema standalone basado en UIAutomator2 para aplicaciones o packages externos. No participa en Perception ni `ContextResolver`; su contrato futuro es recuperar control y devolverlo al juego.
 
-```text
-external ad detected
-  ↓
-AdsManager / UIAutomator2
-  ↓
-return to game
-```
+## Legacy y migración
 
-AdsManager es una interrupción externa separada de Perception y ContextResolver. Su resultado relevante para el bot principal es recuperar el control y volver al juego.
+El tag `legacy-pre-hybrid` y `docs/legacy/` preservan la implementación anterior. `constants.py` conserva taxonomía y conocimiento de dominio, pero no es configuración objetivo. Los consumers legacy rotos no se reparan mediante shims: cada capacidad se migra incrementalmente a los límites 0.2 cuando un caso funcional la requiere.
 
-## Estrategia de migración
-
-La migración será incremental. Se extraerán primero captura, dispositivo y contratos testeables; después se incorporarán el modelo semántico y casos de percepción concretos. Los templates y flows legacy se reutilizarán únicamente cuando aporten evidencia o conocimiento de negocio verificable.
+OpenCV, scrcpy y ADB no son legacy por sí mismos; lo legacy es acoplar captura, reconocimiento, decisión y coordenadas en el mismo modelo.

@@ -14,6 +14,7 @@ venv/
 .env
 .env.*
 !.env.example
+AGENT_LOCAL.md
 
 # Capturas, datasets y salidas de runtime
 screencaps/
