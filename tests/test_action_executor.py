@@ -17,9 +17,9 @@ from bot.semantic_actions import (
     OpenCharacterSelect,
     OpenQuickMenu,
     RejectInsufficientGold,
-    ScrollCharacterSelectTowardEnd,
     SelectLastVisibleCharacter,
     SelectBlackMarketSlot,
+    Swipe,
 )
 
 
@@ -105,25 +105,33 @@ def test_executor_translates_rotation_taps_from_frame_geometry(action, target):
     assert receipt.pixel_target == expected
 
 
-def test_executor_translates_character_scroll_to_one_bounded_adb_swipe():
+def test_executor_translates_generic_normalized_swipe_to_one_adb_swipe():
     adb = Mock()
     executor = ActionExecutor(adb)
     geometry = FrameGeometry(width=2712, height=1224)
+    action = Swipe(start=(0.80, 0.80), end=(0.80, 0.025), duration_ms=190)
 
-    receipt = executor.execute(ScrollCharacterSelectTowardEnd(), geometry)
+    receipt = executor.execute(action, geometry)
 
-    targets = DEFAULT_ROTATION_ACTION_TARGETS
-    assert targets.scroll_start == (0.68, 0.76)
-    assert targets.scroll_end == (0.68, 0.24)
-    assert targets.scroll_duration_ms == 200
-    start = (int(targets.scroll_start[0] * 2712), int(targets.scroll_start[1] * 1224))
-    end = (int(targets.scroll_end[0] * 2712), int(targets.scroll_end[1] * 1224))
-    adb.swipe.assert_called_once_with(
-        *start, *end, targets.scroll_duration_ms
-    )
+    start = (int(action.start[0] * 2712), int(action.start[1] * 1224))
+    end = (int(action.end[0] * 2712), int(action.end[1] * 1224))
+    adb.swipe.assert_called_once_with(*start, *end, action.duration_ms)
     adb.tap.assert_not_called()
     assert receipt.pixel_start == start
     assert receipt.pixel_end == end
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"start": (-0.1, 0.5), "end": (0.5, 0.5), "duration_ms": 100},
+        {"start": (0.5, 0.5), "end": (1.1, 0.5), "duration_ms": 100},
+        {"start": (0.5, 0.5), "end": (0.5, 0.2), "duration_ms": 0},
+    ),
+)
+def test_generic_swipe_rejects_invalid_geometry_or_duration(kwargs):
+    with pytest.raises(ValueError):
+        Swipe(**kwargs)
 
 
 @pytest.mark.parametrize("slot_index", (-1, 10, 1.5, True))

@@ -7,9 +7,13 @@ import pytest
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.catalog import MENU_QUICK, SCREEN_CHARACTER_SELECT, SCREEN_LOBBY
-from bot.character_select_scroll import (
-    CharacterSelectScrollDetector,
+from bot.character_select_scroll import CharacterSelectScrollProfile
+from bot.observed_scroll import (
+    ObservedScroll,
+    ObservedScrollOutcome,
+    ObservedScrollResult,
     ScrollAttemptKind,
+    ScrollAttemptMeasurement,
 )
 from bot.observations import ObservationBatch
 from bot.rotation import (
@@ -27,8 +31,8 @@ from bot.semantic_actions import (
     ConfirmCharacterSelection,
     OpenCharacterSelect,
     OpenQuickMenu,
-    ScrollCharacterSelectTowardEnd,
     SelectLastVisibleCharacter,
+    Swipe,
 )
 from bot.state import ResolutionStatus, ResolvedState
 
@@ -111,6 +115,16 @@ class TrackingExecutor(InlineExecutor):
         return False
 
 
+class DelegatingScroll:
+    def __init__(self, result):
+        self.result = result
+        self.calls = []
+
+    def scroll_to_edge(self, before, **kwargs):
+        self.calls.append((before, kwargs))
+        return self.result
+
+
 def _frame(fill=0, *, grid_fill=None):
     image = np.full((200, 400, 3), fill, dtype=np.uint8)
     if grid_fill is not None:
@@ -161,14 +175,27 @@ def _rotation(observes, waits, **kwargs):
     swipe_executor_factory = kwargs.pop(
         "swipe_executor_factory", InlineExecutor
     )
+    profile_kwargs = {}
+    for old_name, profile_name in (
+        ("max_swipes", "max_attempts"),
+        ("end_confirmation_swipes", "required_confirmations"),
+        ("movement_threshold", "movement_threshold"),
+        ("scroll_settle_for", "settle_for"),
+    ):
+        if old_name in kwargs:
+            profile_kwargs[profile_name] = kwargs.pop(old_name)
+    scroll_profile = CharacterSelectScrollProfile(**profile_kwargs)
+    observed_scroll = ObservedScroll(
+        observer,
+        actions,
+        swipe_executor_factory=swipe_executor_factory,
+    )
     rotation = StandardRotation(
         observer,
         actions,
         events,
-        scroll_detector=CharacterSelectScrollDetector(
-            unchanged_threshold=0.05
-        ),
-        swipe_executor_factory=swipe_executor_factory,
+        scroll_profile=scroll_profile,
+        observed_scroll=observed_scroll,
         **kwargs,
     )
     return rotation, actions, events, observer
@@ -181,6 +208,56 @@ def test_standard_rotation_contract_and_character_count_configuration():
     assert rotation.character_count == 28
 
 
+def test_rotation_delegates_scroll_algorithm_to_observed_scroll():
+    initial = _snapshot(1, base=SCREEN_LOBBY)
+    character_select = _snapshot(3, base=SCREEN_CHARACTER_SELECT)
+    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT)
+    measurement = ScrollAttemptMeasurement(
+        pre_sequence=3,
+        settled_sequence=4,
+        fresh_sample_count=2,
+        transient_peak_sequence=4,
+        max_transient_difference=0.14,
+        settled_difference=0.02,
+    )
+    delegated = DelegatingScroll(
+        ObservedScrollResult(
+            outcome=ObservedScrollOutcome.EDGE_REACHED,
+            final_snapshot=edge,
+            attempts=(measurement,),
+            attempt_kinds=(ScrollAttemptKind.EDGE_CANDIDATE,),
+            effective_gesture_count=1,
+            confirmation_count=1,
+        )
+    )
+    observer = ScriptedObserver(
+        [initial],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            character_select,
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT),
+            _snapshot(6, base=SCREEN_LOBBY),
+        ],
+    )
+    actions = Actions()
+    rotation = StandardRotation(
+        observer,
+        actions,
+        Events(),
+        observed_scroll=delegated,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert len(delegated.calls) == 1
+    before, arguments = delegated.calls[0]
+    assert before is character_select
+    assert arguments["config"] == rotation.scroll_profile.config()
+    assert arguments["detector"] == rotation.scroll_profile.detector()
+    assert SelectLastVisibleCharacter() in actions.actions
+
+
 @pytest.mark.parametrize("character_count", (0, -1, 1.5, True))
 def test_character_count_must_be_a_positive_integer(character_count):
     with pytest.raises(ValueError, match="character_count"):
@@ -191,14 +268,14 @@ def test_character_count_must_be_a_positive_integer(character_count):
 def test_end_confirmation_swipes_must_be_a_positive_integer(
     end_confirmation_swipes,
 ):
-    with pytest.raises(ValueError, match="end_confirmation_swipes"):
+    with pytest.raises(ValueError, match="required_confirmations"):
         _rotation(
             [], [], end_confirmation_swipes=end_confirmation_swipes
         )
 
 
 def test_end_confirmation_swipes_must_fit_inside_swipe_limit():
-    with pytest.raises(ValueError, match="must not exceed max_swipes"):
+    with pytest.raises(ValueError, match="must not exceed max_attempts"):
         _rotation([], [], max_swipes=1, end_confirmation_swipes=2)
 
 
@@ -235,23 +312,23 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
     assert result.bottom_confirmation_count == 1
     assert result.end_difference == 0.0
     assert result.scroll_attempt_kinds == (
-        ScrollAttemptKind.NORMAL,
-        ScrollAttemptKind.BOUNCE_CANDIDATE,
+        ScrollAttemptKind.PROGRESS,
+        ScrollAttemptKind.EDGE_CANDIDATE,
     )
     assert actions.actions == [
         OpenQuickMenu(),
         OpenCharacterSelect(),
-        ScrollCharacterSelectTowardEnd(),
-        ScrollCharacterSelectTowardEnd(),
+        CharacterSelectScrollProfile().progress_swipe,
+        CharacterSelectScrollProfile().confirmation_swipe,
         SelectLastVisibleCharacter(),
         ConfirmCharacterSelection(),
     ]
     assert events.events == []
     assert observer.wait_calls == [
         (1, 0.0),
-        (2, 0.75),
-        (3, 0.75),
-        (4, 0.75),
+        (2, 1.0),
+        (3, 1.0),
+        (4, 1.0),
         (6, 0.25),
         (7, 0.0),
     ]
@@ -295,7 +372,7 @@ def test_resolved_non_lobby_precondition_aborts_without_wait_or_input():
     assert events.events == ["rotation.standard.unexpected_state"]
 
 
-def test_ineffective_swipe_does_not_confirm_bottom_or_block_later_progress():
+def test_ineffective_swipe_aborts_without_selecting_or_spending_third_attempt():
     initial_grid = _frame(grid_fill=40)
     moved_grid = _frame(grid_fill=220)
     rotation, actions, events, _ = _rotation(
@@ -316,16 +393,15 @@ def test_ineffective_swipe_does_not_confirm_bottom_or_block_later_progress():
 
     result = rotation.advance()
 
-    assert result.succeeded
-    assert result.swipe_count == 3
-    assert result.effective_swipe_count == 2
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error.endswith("ineffective_gesture")
+    assert result.swipe_count == 1
+    assert result.effective_swipe_count == 0
     assert result.scroll_attempt_kinds[0] is ScrollAttemptKind.INEFFECTIVE
-    assert actions.actions.count(ScrollCharacterSelectTowardEnd()) == 3
-    assert actions.actions[-2:] == [
-        SelectLastVisibleCharacter(),
-        ConfirmCharacterSelection(),
-    ]
-    assert events.events == []
+    assert sum(isinstance(action, Swipe) for action in actions.actions) == 1
+    assert SelectLastVisibleCharacter() not in actions.actions
+    assert ConfirmCharacterSelection() not in actions.actions
+    assert events.events == ["rotation.standard.unexpected_state"]
 
 
 def test_zero_effective_swipes_never_confirms_bottom_or_selects():
@@ -344,13 +420,10 @@ def test_zero_effective_swipes_never_confirms_bottom_or_selects():
     result = rotation.advance()
 
     assert result.outcome is RotationOutcome.ABORTED
-    assert result.error == "scroll_limit_reached"
+    assert result.error.endswith("ineffective_gesture")
     assert result.effective_swipe_count == 0
     assert result.bottom_confirmation_count == 0
-    assert result.scroll_attempt_kinds == (
-        ScrollAttemptKind.INEFFECTIVE,
-        ScrollAttemptKind.INEFFECTIVE,
-    )
+    assert result.scroll_attempt_kinds == (ScrollAttemptKind.INEFFECTIVE,)
     assert SelectLastVisibleCharacter() not in actions.actions
 
 
@@ -376,7 +449,7 @@ def test_configured_double_confirmation_does_not_accept_one_bounce():
 
     assert result.outcome is RotationOutcome.ABORTED
     assert result.bottom_confirmation_count == 1
-    assert result.scroll_attempt_kinds[-1] is ScrollAttemptKind.BOUNCE_CANDIDATE
+    assert result.scroll_attempt_kinds[-1] is ScrollAttemptKind.EDGE_CANDIDATE
     assert SelectLastVisibleCharacter() not in actions.actions
 
 
@@ -409,8 +482,8 @@ def test_configured_double_confirmation_selects_after_two_effective_bounces():
     assert result.effective_swipe_count == 2
     assert result.bottom_confirmation_count == 2
     assert result.scroll_attempt_kinds == (
-        ScrollAttemptKind.BOUNCE_CANDIDATE,
-        ScrollAttemptKind.BOUNCE_CANDIDATE,
+        ScrollAttemptKind.EDGE_CANDIDATE,
+        ScrollAttemptKind.EDGE_CANDIDATE,
     )
     assert SelectLastVisibleCharacter() in actions.actions
 
@@ -457,7 +530,7 @@ def test_scroll_limit_aborts_before_character_selection():
     assert result.outcome is RotationOutcome.ABORTED
     assert result.error == "scroll_limit_reached"
     assert result.swipe_count == 2
-    assert actions.actions[-1] == ScrollCharacterSelectTowardEnd()
+    assert isinstance(actions.actions[-1], Swipe)
     assert SelectLastVisibleCharacter() not in actions.actions
     assert ConfirmCharacterSelection() not in actions.actions
     assert events.events == ["rotation.standard.unexpected_state"]

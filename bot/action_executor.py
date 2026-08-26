@@ -1,4 +1,4 @@
-"""Translate semantic intents to normalized taps at the Android boundary."""
+"""Translate typed actions to normalized physical Android input."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from bot.semantic_actions import (
     OpenCharacterSelect,
     OpenQuickMenu,
     RejectInsufficientGold,
-    ScrollCharacterSelectTowardEnd,
+    Swipe,
     SelectLastVisibleCharacter,
     SelectBlackMarketSlot,
     SemanticAction,
@@ -101,26 +101,17 @@ class RotationActionTargets:
 
     open_quick_menu: RelativePoint = (0.0520, 0.1110)
     open_character_select: RelativePoint = (0.0704, 0.7835)
-    scroll_start: RelativePoint = (0.6800, 0.7600)
-    scroll_end: RelativePoint = (0.6800, 0.2400)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
     confirm_character_selection: RelativePoint = (0.6855, 0.9101)
-    scroll_duration_ms: int = 200
 
     def __post_init__(self) -> None:
         for point in (
             self.open_quick_menu,
             self.open_character_select,
-            self.scroll_start,
-            self.scroll_end,
             self.last_visible_character,
             self.confirm_character_selection,
         ):
             relative_point_to_pixel(point, 1, 1)
-        duration = self.scroll_duration_ms
-        if isinstance(duration, bool) or not isinstance(duration, Integral) or duration <= 0:
-            raise ValueError("scroll_duration_ms must be a positive integer")
-        object.__setattr__(self, "scroll_duration_ms", int(duration))
 
 
 DEFAULT_ROTATION_ACTION_TARGETS = RotationActionTargets()
@@ -139,7 +130,7 @@ class ActionExecution:
 class SwipeExecution:
     """Diagnostic receipt for one physical swipe already sent to ADB."""
 
-    action: ScrollCharacterSelectTowardEnd
+    action: Swipe
     normalized_start: RelativePoint
     normalized_end: RelativePoint
     pixel_start: PixelPoint
@@ -174,8 +165,8 @@ class ActionExecutor:
 
         if not isinstance(geometry, FrameGeometry):
             raise ValueError("geometry must be FrameGeometry")
-        if isinstance(action, ScrollCharacterSelectTowardEnd):
-            return self._execute_scroll(action, geometry)
+        if isinstance(action, Swipe):
+            return self._execute_swipe(action, geometry)
         target = self._target_for(action)
         pixel = relative_point_to_pixel(target, geometry.width, geometry.height)
         self.adb.tap(*pixel)
@@ -206,19 +197,19 @@ class ActionExecutor:
             return self.rotation_targets.confirm_character_selection
         raise ValueError("unsupported semantic action")
 
-    def _execute_scroll(
+    def _execute_swipe(
         self,
-        action: ScrollCharacterSelectTowardEnd,
+        action: Swipe,
         geometry: FrameGeometry,
     ) -> SwipeExecution:
         swipe = getattr(self.adb, "swipe", None)
         if not callable(swipe):
             raise ValueError("adb must provide swipe(x1, y1, x2, y2, duration_ms)")
-        start = self.rotation_targets.scroll_start
-        end = self.rotation_targets.scroll_end
+        start = action.start
+        end = action.end
         pixel_start = relative_point_to_pixel(start, geometry.width, geometry.height)
         pixel_end = relative_point_to_pixel(end, geometry.width, geometry.height)
-        duration = self.rotation_targets.scroll_duration_ms
+        duration = action.duration_ms
         swipe(*pixel_start, *pixel_end, duration)
         return SwipeExecution(
             action=action,

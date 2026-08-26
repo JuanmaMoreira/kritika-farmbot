@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 from numbers import Integral, Real
@@ -11,13 +10,17 @@ from typing import Callable, Protocol, runtime_checkable
 
 from bot.action_executor import ActionExecutor
 from bot.catalog import MENU_QUICK, SCREEN_CHARACTER_SELECT, SCREEN_LOBBY
-from bot.capture import FrameSnapshot
 from bot.character_select_scroll import (
-    CharacterSelectScrollDetector,
+    CharacterSelectScrollProfile,
+    DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE,
+)
+from bot.event_log import EventSink
+from bot.observed_scroll import (
+    ObservedScroll,
+    ObservedScrollOutcome,
     ScrollAttemptKind,
     ScrollAttemptMeasurement,
 )
-from bot.event_log import EventSink
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
@@ -28,7 +31,6 @@ from bot.semantic_actions import (
     ConfirmCharacterSelection,
     OpenCharacterSelect,
     OpenQuickMenu,
-    ScrollCharacterSelectTowardEnd,
     SelectLastVisibleCharacter,
 )
 from bot.state import ResolutionStatus
@@ -78,14 +80,6 @@ class _Observer(Protocol):
     ) -> RuntimeSnapshot: ...
 
 
-class _SwipeExecutor(Protocol):
-    def submit(self, function: Callable, *args: object) -> Future: ...
-
-    def __enter__(self) -> "_SwipeExecutor": ...
-
-    def __exit__(self, exc_type, exc_value, traceback) -> bool | None: ...
-
-
 class StandardRotation:
     """Advance once using Quick Menu and the MRU Character Select list."""
 
@@ -96,15 +90,13 @@ class StandardRotation:
         events: EventSink,
         *,
         character_count: int = 28,
-        max_swipes: int = 10,
-        end_confirmation_swipes: int = 1,
-        movement_threshold: float = 0.0500,
         timeout: float = 6.0,
         precondition_settle_for: float = 0.25,
-        scroll_settle_for: float = 0.75,
         selection_settle_for: float = 0.25,
-        scroll_detector: CharacterSelectScrollDetector | None = None,
-        swipe_executor_factory: Callable[[], _SwipeExecutor] | None = None,
+        scroll_profile: CharacterSelectScrollProfile = (
+            DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE
+        ),
+        observed_scroll: ObservedScroll | None = None,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -115,38 +107,24 @@ class StandardRotation:
         if not callable(getattr(events, "record", None)):
             raise ValueError("events must provide record(event)")
         self.character_count = _positive_integer(character_count, "character_count")
-        self.max_swipes = _positive_integer(max_swipes, "max_swipes")
-        self.end_confirmation_swipes = _positive_integer(
-            end_confirmation_swipes, "end_confirmation_swipes"
-        )
-        if self.end_confirmation_swipes > self.max_swipes:
-            raise ValueError("end_confirmation_swipes must not exceed max_swipes")
-        self.movement_threshold = _normalized_threshold(
-            movement_threshold, "movement_threshold"
-        )
         self.timeout = _positive_duration(timeout, "timeout")
         self.precondition_settle_for = _non_negative_duration(
             precondition_settle_for, "precondition_settle_for"
         )
-        self.scroll_settle_for = _non_negative_duration(
-            scroll_settle_for, "scroll_settle_for"
-        )
         self.selection_settle_for = _non_negative_duration(
             selection_settle_for, "selection_settle_for"
         )
-        if scroll_detector is None:
-            scroll_detector = CharacterSelectScrollDetector()
-        if not isinstance(scroll_detector, CharacterSelectScrollDetector):
-            raise ValueError("scroll_detector must be CharacterSelectScrollDetector")
+        if not isinstance(scroll_profile, CharacterSelectScrollProfile):
+            raise ValueError("scroll_profile must be CharacterSelectScrollProfile")
+        if observed_scroll is None:
+            observed_scroll = ObservedScroll(observer, actions)
+        if not callable(getattr(observed_scroll, "scroll_to_edge", None)):
+            raise ValueError("observed_scroll must provide scroll_to_edge()")
         self.observer: _Observer = observer
         self.actions = actions
         self.events = events
-        self.scroll_detector = scroll_detector
-        if swipe_executor_factory is None:
-            swipe_executor_factory = lambda: ThreadPoolExecutor(max_workers=1)
-        if not callable(swipe_executor_factory):
-            raise ValueError("swipe_executor_factory must be callable")
-        self._swipe_executor_factory = swipe_executor_factory
+        self.scroll_profile = scroll_profile
+        self.observed_scroll = observed_scroll
 
     def advance(self) -> RotationResult:
         """Perform exactly one Lobby -> different character -> Lobby change."""
@@ -194,76 +172,44 @@ class StandardRotation:
                 after_sequence=quick_menu.sequence,
                 timeout=self.timeout,
                 abort_if=_has_unexpected_character_select_transition,
-                stable_for=self.scroll_settle_for,
+                stable_for=self.scroll_profile.settle_for,
             )
         except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
             return self._abort(f"character_select_navigation_failed: {error}")
 
-        end_difference: float | None = None
-        effective_swipe_count = 0
-        bottom_confirmation_count = 0
-        scroll_attempts: list[ScrollAttemptMeasurement] = []
-        scroll_attempt_kinds: list[ScrollAttemptKind] = []
-        with self._swipe_executor_factory() as executor:
-            for swipe_count in range(1, self.max_swipes + 1):
-                before = character_select
-                try:
-                    character_select, measurement = self._measure_scroll_attempt(
-                        before, executor
-                    )
-                except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
-                    return self._abort(
-                        f"character_select_scroll_failed: {error}",
-                        swipe_count=swipe_count,
-                        effective_swipe_count=effective_swipe_count,
-                        bottom_confirmation_count=bottom_confirmation_count,
-                        end_difference=end_difference,
-                        scroll_attempts=tuple(scroll_attempts),
-                        scroll_attempt_kinds=tuple(scroll_attempt_kinds),
-                    )
-
-                kind = self.scroll_detector.classify(
-                    measurement,
-                    movement_threshold=self.movement_threshold,
-                )
-                scroll_attempts.append(measurement)
-                scroll_attempt_kinds.append(kind)
-                end_difference = measurement.settled_difference
-                if kind is ScrollAttemptKind.INEFFECTIVE:
-                    bottom_confirmation_count = 0
-                else:
-                    effective_swipe_count += 1
-                    if kind is ScrollAttemptKind.BOUNCE_CANDIDATE:
-                        bottom_confirmation_count += 1
-                    else:
-                        bottom_confirmation_count = 0
-
-                if (
-                    effective_swipe_count > 0
-                    and bottom_confirmation_count
-                    >= self.end_confirmation_swipes
-                ):
-                    break
-            else:
-                return self._abort(
-                    "scroll_limit_reached",
-                    swipe_count=self.max_swipes,
-                    effective_swipe_count=effective_swipe_count,
-                    bottom_confirmation_count=bottom_confirmation_count,
-                    end_difference=end_difference,
-                    scroll_attempts=tuple(scroll_attempts),
-                    scroll_attempt_kinds=tuple(scroll_attempt_kinds),
-                )
-
-        if effective_swipe_count == 0:
+        scroll_result = self.observed_scroll.scroll_to_edge(
+            character_select,
+            detector=self.scroll_profile.detector(),
+            config=self.scroll_profile.config(),
+            is_compatible=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_CHARACTER_SELECT
+            ),
+            abort_if=_has_incompatible_clean_screen,
+        )
+        scroll_attempts = scroll_result.attempts
+        scroll_attempt_kinds = scroll_result.attempt_kinds
+        swipe_count = len(scroll_attempts)
+        effective_swipe_count = scroll_result.effective_gesture_count
+        bottom_confirmation_count = scroll_result.confirmation_count
+        end_difference = (
+            scroll_attempts[-1].settled_difference if scroll_attempts else None
+        )
+        if not scroll_result.edge_reached:
+            reason = (
+                "scroll_limit_reached"
+                if scroll_result.outcome is ObservedScrollOutcome.LIMIT_REACHED
+                else f"character_select_scroll_failed: {scroll_result.error}"
+            )
             return self._abort(
-                "bottom_without_effective_swipe",
+                reason,
                 swipe_count=swipe_count,
+                effective_swipe_count=effective_swipe_count,
                 bottom_confirmation_count=bottom_confirmation_count,
                 end_difference=end_difference,
-                scroll_attempts=tuple(scroll_attempts),
-                scroll_attempt_kinds=tuple(scroll_attempt_kinds),
+                scroll_attempts=scroll_attempts,
+                scroll_attempt_kinds=scroll_attempt_kinds,
             )
+        character_select = scroll_result.final_snapshot
 
         self.actions.execute(
             SelectLastVisibleCharacter(), character_select.geometry
@@ -316,45 +262,6 @@ class StandardRotation:
             end_difference=end_difference,
             scroll_attempts=tuple(scroll_attempts),
             scroll_attempt_kinds=tuple(scroll_attempt_kinds),
-        )
-
-    def _measure_scroll_attempt(
-        self,
-        before: RuntimeSnapshot,
-        executor: _SwipeExecutor,
-    ) -> tuple[RuntimeSnapshot, ScrollAttemptMeasurement]:
-        samples: list[FrameSnapshot] = []
-        future = executor.submit(
-            self.actions.execute,
-            ScrollCharacterSelectTowardEnd(),
-            before.geometry,
-        )
-
-        def action_finished_on_character_select(
-            snapshot: RuntimeSnapshot,
-        ) -> bool:
-            samples.append(snapshot.frame)
-            if future.done():
-                error = future.exception()
-                if error is not None:
-                    raise error
-            return future.done() and _is_clean_base(
-                snapshot, SCREEN_CHARACTER_SELECT
-            )
-
-        settled = self.observer.wait_until(
-            action_finished_on_character_select,
-            after_sequence=before.sequence,
-            timeout=self.timeout,
-            abort_if=_has_incompatible_clean_screen,
-            stable_for=self.scroll_settle_for,
-        )
-        future.result()
-        return (
-            settled,
-            self.scroll_detector.measure_transition(
-                before.frame, samples, settled.frame
-            ),
         )
 
     def _abort(
@@ -471,16 +378,6 @@ def _non_negative_duration(value: object, name: str) -> float:
     if not math.isfinite(result) or result < 0:
         raise ValueError(f"{name} must be a non-negative finite number")
     return result
-
-
-def _normalized_threshold(value: object, name: str) -> float:
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, Real)
-        or not 0.0 <= float(value) <= 1.0
-    ):
-        raise ValueError(f"{name} must be a real number in [0, 1]")
-    return float(value)
 
 
 __all__ = (

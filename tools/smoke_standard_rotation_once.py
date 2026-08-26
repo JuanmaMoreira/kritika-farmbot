@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 from pathlib import Path
 import sys
@@ -16,6 +16,7 @@ from bot.action_executor import ActionExecutor
 from bot.adb import AdbError
 from bot.capture import CaptureError
 from bot.catalog import build_default_resolver
+from bot.character_select_scroll import DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE
 from bot.config import RuntimeConfig
 from bot.event_log import JsonLineEventLog
 from bot.perception import build_default_perception
@@ -38,9 +39,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="explicit runtime dotenv path",
     )
     parser.add_argument("--character-count", type=int, default=28)
-    parser.add_argument("--max-swipes", type=int, default=10)
+    parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--timeout", type=float, default=6.0)
-    parser.add_argument("--scroll-settle-for", type=float, default=0.75)
+    parser.add_argument("--scroll-settle-for", type=float, default=1.0)
     parser.add_argument("--selection-settle-for", type=float, default=0.25)
     parser.add_argument(
         "--event-log",
@@ -76,6 +77,12 @@ def main(argv: list[str] | None = None) -> int:
         resolver = build_default_resolver()
         events = JsonLineEventLog(args.event_log)
         actions = ActionExecutor(adb)
+        scroll_profile = replace(
+            DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE,
+            max_attempts=args.max_attempts,
+            timeout=args.timeout,
+            settle_for=args.scroll_settle_for,
+        )
 
         with source:
             observer = RuntimeObserver(source, perception, resolver)
@@ -84,10 +91,9 @@ def main(argv: list[str] | None = None) -> int:
                 actions,
                 events,
                 character_count=args.character_count,
-                max_swipes=args.max_swipes,
                 timeout=args.timeout,
-                scroll_settle_for=args.scroll_settle_for,
                 selection_settle_for=args.selection_settle_for,
+                scroll_profile=scroll_profile,
             )
             result = rotation.advance()
     except (AdbError, CaptureError, OSError, ValueError) as error:
@@ -97,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = asdict(result)
     payload["outcome"] = result.outcome.value
     payload["character_count"] = args.character_count
-    payload["max_swipes"] = args.max_swipes
+    payload["max_attempts"] = args.max_attempts
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 1 if result.outcome is RotationOutcome.ABORTED else 0
 

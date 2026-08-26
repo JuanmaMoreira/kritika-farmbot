@@ -104,7 +104,9 @@ Las esperas son bounded, rechazan sequences stale posteriores a una acción y pu
 
 `bot/rotation.py` define `RotationStrategy.advance()` como contrato transversal. `StandardRotation` decide cómo cambiar una vez de personaje mediante estado semántico y solicita intents al `ActionExecutor`; no conoce flows, identidad de personajes ni ADB.
 
-`bot/character_select_scroll.py` contiene la medición visual determinista del viewport. Rotation conserva un frame settled A, observa frames transitorios T mientras `ActionExecutor` ejecuta el swipe y espera un frame settled B posterior al release/bounce. La similitud A/B por sí sola nunca prueba bottom: el intento debe exhibir movimiento transitorio efectivo y luego volver aproximadamente a A. Las confirmaciones de bounce y el máximo de intentos son bounded y configurables. Esta lógica no pertenece a Perception contextual ni a policy de Flow.
+`bot/observed_scroll.py` es una operación transversal que compone `RuntimeObserver + ActionExecutor`. Conserva un frame settled A, observa frames transitorios T mientras se ejecuta un `Swipe` y exige un settled B fresco posterior al release/bounce. Clasifica progreso, edge candidate e intento inefectivo; aplica confirmaciones, timeout y máximo de intentos bounded. La similitud A/B por sí sola nunca prueba edge: debe existir movimiento transitorio efectivo del mismo intento.
+
+`bot/character_select_scroll.py` sólo aporta el perfil específico de Character Select: ROI, thresholds, gestos de progreso/confirmación, settle y policy bounded. `StandardRotation` navega, delega `scroll_to_edge` y sólo selecciona si el resultado confirma edge; no contiene medición A/T/B ni detección de bounce.
 
 ## Flows
 
@@ -116,9 +118,11 @@ Los support operations futuros seguirán `check → bounded support operation �
 
 ## Semantic Actions y ActionExecutor
 
-Los intents modelan acciones del dominio, no coordenadas. El slice actual define acciones de Black Market y las mínimas de Rotation: abrir Quick Menu, entrar a Character Select, scrollear su grilla, elegir la última tarjeta visible y confirmar selección.
+Los intents modelan acciones del dominio y primitives físicas tipadas. El slice actual define acciones de Black Market y las mínimas de Rotation: abrir Quick Menu, entrar a Character Select, elegir la última tarjeta visible y confirmar selección. `Swipe(start, end, duration)` es genérico y no contiene policy de scroll, bounce ni conocimiento de pantallas.
 
-`ActionExecutor` es el único traductor de intent a input físico. Valida el intent, obtiene el target normalizado, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no espera postcondiciones y no decide si una compra corresponde; esas responsabilidades permanecen en observer/flow.
+`ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
+
+El boundary de scroll queda: `Rotation / Flow → ObservedScroll → ActionExecutor → Swipe genérico → AdbClient`.
 
 ## Device / ADB
 

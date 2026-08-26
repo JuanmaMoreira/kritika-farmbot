@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from numbers import Integral
 
+from bot.geometry import RelativePoint, relative_point_to_pixel
+
 
 _BLACK_MARKET_SLOT_COUNT = 10
 
@@ -59,8 +61,24 @@ class OpenCharacterSelect:
 
 
 @dataclass(frozen=True)
-class ScrollCharacterSelectTowardEnd:
-    """Request one bounded upward swipe inside the character grid."""
+class Swipe:
+    """Request one normalized physical swipe without scroll policy."""
+
+    start: RelativePoint
+    end: RelativePoint
+    duration_ms: int
+
+    def __post_init__(self) -> None:
+        relative_point_to_pixel(self.start, 1, 1)
+        relative_point_to_pixel(self.end, 1, 1)
+        duration = self.duration_ms
+        if (
+            isinstance(duration, bool)
+            or not isinstance(duration, Integral)
+            or duration <= 0
+        ):
+            raise ValueError("duration_ms must be a positive integer")
+        object.__setattr__(self, "duration_ms", int(duration))
 
 
 @dataclass(frozen=True)
@@ -81,7 +99,7 @@ SemanticAction = (
     | RejectInsufficientGold
     | OpenQuickMenu
     | OpenCharacterSelect
-    | ScrollCharacterSelectTowardEnd
+    | Swipe
     | SelectLastVisibleCharacter
     | ConfirmCharacterSelection
 )
@@ -95,7 +113,7 @@ __all__ = (
     "OpenCharacterSelect",
     "OpenQuickMenu",
     "RejectInsufficientGold",
-    "ScrollCharacterSelectTowardEnd",
+    "Swipe",
     "SelectLastVisibleCharacter",
     "SelectBlackMarketSlot",
     "SemanticAction",
