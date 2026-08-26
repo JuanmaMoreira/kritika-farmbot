@@ -48,20 +48,55 @@ class RejectInsufficientGold:
     """Request the No action on Insufficient Gold."""
 
 
+@dataclass(frozen=True)
+class OpenQuickMenu:
+    """Request opening Quick Menu from Lobby."""
+
+
+@dataclass(frozen=True)
+class OpenCharacterSelect:
+    """Request the Character tile inside an already-open Quick Menu."""
+
+
+@dataclass(frozen=True)
+class ScrollCharacterSelectTowardEnd:
+    """Request one bounded upward swipe inside the character grid."""
+
+
+@dataclass(frozen=True)
+class SelectLastVisibleCharacter:
+    """Request the last occupied card in the end-of-list layout."""
+
+
+@dataclass(frozen=True)
+class ConfirmCharacterSelection:
+    """Request the Select button after choosing a character card."""
+
+
 SemanticAction = (
     OpenBlackMarket
     | CloseBlackMarket
     | SelectBlackMarketSlot
     | AcceptPurchaseConfirmation
     | RejectInsufficientGold
+    | OpenQuickMenu
+    | OpenCharacterSelect
+    | ScrollCharacterSelectTowardEnd
+    | SelectLastVisibleCharacter
+    | ConfirmCharacterSelection
 )
 
 
 __all__ = (
     "AcceptPurchaseConfirmation",
     "CloseBlackMarket",
+    "ConfirmCharacterSelection",
     "OpenBlackMarket",
+    "OpenCharacterSelect",
+    "OpenQuickMenu",
     "RejectInsufficientGold",
+    "ScrollCharacterSelectTowardEnd",
+    "SelectLastVisibleCharacter",
     "SelectBlackMarketSlot",
     "SemanticAction",
 )

@@ -1,9 +1,9 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2; Fase 4 single-character Black Market cerrada y validada live.
-**Último checkpoint funcional:** `4a14eee` — `feat: implement single-character Black Market flow`.
-**Baseline conocido:** 460/460 tests hardware-free verdes en ese checkpoint.
-**Siguiente trabajo funcional:** `RotationStrategy` / `rotation.standard`.
+**Estado:** rediseño híbrido 0.2; Fase 4 cerrada y primer primitive aislado de Rotation validado live.
+**Unidad funcional vigente:** `StandardRotation.advance()` realiza un único cambio `Lobby → Quick Menu → Character Select → final de lista → última tarjeta → Lobby`.
+**Baseline conocido:** 486/486 tests hardware-free verdes; regresión productiva 96/96 sin estados ambiguos ni errores.
+**Siguiente trabajo funcional:** completar la semántica de `rotation.standard` para una rotación entera, sin integrar todavía `SessionRunner`.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -14,10 +14,11 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - `ScrcpyFrameSource` captura y decodifica H.264 mediante scrcpy/PyAV, publica `FrameSnapshot` BGR y posee el cleanup de proceso, socket y forward.
 - `PerceptionEngine` ejecuta detectores locales precargados y produce `ObservationBatch` del mismo frame.
 - `ContextResolver` transforma observaciones en `ResolvedState` determinista (`RESOLVED`, `UNKNOWN` o `AMBIGUOUS`) y resuelve overlays independientemente.
-- `RuntimeObserver` produce `RuntimeSnapshot` coherentes con observations, estado, facts y geometría del mismo frame; sus esperas exigen frames frescos y tienen timeout.
+- `RuntimeObserver` produce `RuntimeSnapshot` coherentes con frame BGR, observations, estado, facts y geometría del mismo frame; sus esperas exigen frames frescos y tienen timeout.
 - Los intents semánticos tipados separan negocio de coordenadas.
 - `ActionExecutor` traduce esos intents a taps ADB normalizados contra `frame.shape`; no decide gameplay.
 - `BlackMarketFlow` es un flow 0.2 `PER_CHARACTER` implementado y separado del runtime legacy.
+- `StandardRotation` es transversal, implementa un solo `advance()` y no conoce flows ni ADB.
 
 El data flow y los límites vigentes se describen en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -71,6 +72,16 @@ La entrada espera estabilidad visual de Black Market durante 0,75 s porque el t�
 
 La validación live incremental confirmó un one-slot smoke, un full smoke con dos compras verificadas y el cierre final a un frame fresco `screen.lobby`. Todos los sources hicieron cleanup.
 
+## Primitive Rotation standard
+
+`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. El primitive implementado abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, selecciona la última tarjeta del layout final, confirma y exige un Lobby fresco. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente.
+
+El final de scroll se detecta en `bot/character_select_scroll.py`: compara thumbnails grayscale de la región normalizada de la grilla, excluyendo modelo animado, header y footer. Tras cada swipe espera frames frescos con 0,6 s de estabilidad; una diferencia media normalizada `<= 0,03` indica contenido repetido. Hay un máximo de 10 swipes.
+
+La última posición es la primera columna de la última fila visible, regla confirmada en el layout de tres columnas con el slot `+` inmediatamente después. El target es normalizado y no depende de `character_count`.
+
+El smoke aislado ejecutó exactamente un cambio con cuatro swipes, detectó final con diferencia `0,0116` y retornó a `screen.lobby`; la verificación pasiva posterior confirmó Quick Menu cerrado y cleanup completo.
+
 ## Decisiones funcionales cerradas
 
 - Black Market se abre sólo desde Lobby; Quick Menu no participa en `BlackMarketFlow`.
@@ -86,7 +97,7 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 ## Limitaciones y deferred
 
-- `RotationStrategy`, `rotation.standard`, `SessionPlan` y `SessionRunner` no están implementados.
+- El primitive `StandardRotation.advance()` está implementado; la rotación completa de 28 personajes, el retorno final al inicial sin repetir flows, `SessionPlan` y `SessionRunner` siguen pendientes.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
 - Battle Mode Select requiere evidencia más diversa o una señal con mejor separación.
@@ -96,4 +107,4 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 ## Próximo trabajo
 
-Implementar `RotationStrategy` y `rotation.standard` sin acoplarlas a `BlackMarketFlow`: Quick Menu → Character Select → scroll al final → última posición → Lobby, con 28 personajes configurables y pruebas hardware-free primero. Después corresponde la composición mínima `SessionPlan / SessionRunner → RotationStrategy + Selected PER_CHARACTER Flow(s)`.
+Extender el primitive validado hasta la semántica completa de `rotation.standard`: procesar una vez los 28 personajes configurables, hacer el cambio final necesario para regresar al inicial y no volver a ejecutar flows sobre éste. `SessionPlan / SessionRunner` permanece posterior y fuera del primitive.

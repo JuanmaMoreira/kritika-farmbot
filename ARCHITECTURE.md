@@ -96,9 +96,15 @@ Los overlays se resuelven independientemente y pueden coexistir con cualquier es
 
 ## RuntimeObserver
 
-`RuntimeObserver` une captura, Perception y Resolver sin mezclarlos. Cada `RuntimeSnapshot` garantiza que observations, estado resuelto, runtime facts y geometría proceden del mismo frame.
+`RuntimeObserver` une captura, Perception y Resolver sin mezclarlos. Cada `RuntimeSnapshot` conserva el `FrameSnapshot` BGR y garantiza que observations, estado resuelto, runtime facts y geometría proceden de ese mismo frame. La imagen permite comparaciones visuales acotadas sin saltarse el observer.
 
 Las esperas son bounded, rechazan sequences stale posteriores a una acción y pueden exigir estabilidad continua sobre frames distintos. La estabilidad pertenece a la espera del caso de uso, no introduce estado implícito en `ContextResolver`.
+
+## Rotation
+
+`bot/rotation.py` define `RotationStrategy.advance()` como contrato transversal. `StandardRotation` decide cómo cambiar una vez de personaje mediante estado semántico y solicita intents al `ActionExecutor`; no conoce flows, identidad de personajes ni ADB.
+
+`bot/character_select_scroll.py` contiene la comparación visual determinista del viewport. El final se reconoce cuando un swipe settled deja la grilla sin cambio material, siempre bajo timeout y límite máximo. Esta lógica no pertenece a Perception contextual ni a policy de Flow.
 
 ## Flows
 
@@ -110,7 +116,7 @@ Los support operations futuros seguirán `check → bounded support operation �
 
 ## Semantic Actions y ActionExecutor
 
-Los intents modelan acciones del dominio, no coordenadas. El slice actual define abrir/cerrar Black Market, seleccionar slot `0..9`, aceptar Purchase Confirmation y rechazar Insufficient Gold.
+Los intents modelan acciones del dominio, no coordenadas. El slice actual define acciones de Black Market y las mínimas de Rotation: abrir Quick Menu, entrar a Character Select, scrollear su grilla, elegir la última tarjeta visible y confirmar selección.
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida el intent, obtiene el target normalizado, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no espera postcondiciones y no decide si una compra corresponde; esas responsabilidades permanecen en observer/flow.
 
@@ -147,9 +153,9 @@ User Control Panel
       └── Selected PER_CHARACTER Flow(s)
 ```
 
-`SessionRunner` compondrá Rotation y flows. `RotationStrategy` decide cómo avanzar entre personajes; cada flow opera sólo sobre el personaje activo y retorna un outcome. Ninguno conoce la implementación interna del otro.
+`SessionRunner` compondrá en el futuro Rotation y flows. El contrato `RotationStrategy` y el primer `StandardRotation.advance()` ya existen; cada flow sigue operando sólo sobre el personaje activo. Ninguno conoce la implementación interna del otro.
 
-La primera estrategia, `rotation.standard`, usará Quick Menu → Character Select → scroll al final → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual; `character_count = 28` será configuración explícita. MAIN/SUBS quedan para estrategias futuras.
+El primitive de `rotation.standard` ya usa Quick Menu → Character Select → scroll al final → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita. El loop completo y regreso final al personaje inicial siguen pendientes; MAIN/SUBS quedan para estrategias futuras.
 
 El runtime unattended futuro necesita timeouts, recovery transversal, logging, aislamiento de fallos, cleanup y policy de continuación. Hasta entonces, el vertical slice aborta ante errores técnicos después de registrar y limpiar.
 

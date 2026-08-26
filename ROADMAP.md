@@ -2,7 +2,7 @@
 
 ## Estado
 
-El primer vertical slice de runtime está cerrado. Rotation sigue siendo el próximo trabajo funcional; la optimización documental/tooling posterior a Fase 4 no añade gameplay.
+El primer vertical slice de runtime está cerrado. Rotation tiene su primer primitive aislado implementado y validado live; la estrategia completa y la composición de sesión siguen pendientes.
 
 ## Completado
 
@@ -19,11 +19,13 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 ### Rotation — continuación funcional de Fase 4
 
-- [ ] Definir `RotationStrategy` como responsabilidad transversal.
-- [ ] Implementar `rotation.standard` con `character_count = 28` configurable.
-- [ ] Navegar Quick Menu → Character Select → scroll al final → última posición → Lobby.
-- [ ] Aprovechar el orden MRU sin identificar personajes y sin lógica especial MAIN/SUBS.
-- [ ] Validar hardware-free primero y mantener cualquier prueba física separada y opt-in.
+- [x] Definir `RotationStrategy` como responsabilidad transversal.
+- [x] Implementar y validar aisladamente un `StandardRotation.advance()` con `character_count = 28` configurable.
+- [x] Navegar un cambio Quick Menu → Character Select → scroll al final → última posición → Lobby.
+- [x] Detectar final por contenido visual repetido con timeout y límite anti-loop.
+- [x] Aprovechar el orden MRU sin identificar personajes y sin lógica especial MAIN/SUBS.
+- [x] Validar hardware-free primero y ejecutar un único smoke físico opt-in.
+- [ ] Completar el loop de 28 y el regreso final al personaje inicial sin repetir flows sobre éste.
 
 ### Composición mínima de sesión
 

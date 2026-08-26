@@ -55,12 +55,15 @@ class RuntimeFacts:
 class RuntimeSnapshot:
     """Resolved state, semantic evidence and facts from the same fresh frame."""
 
+    frame: FrameSnapshot
     observations: ObservationBatch
     state: ResolvedState
     facts: RuntimeFacts
     geometry: FrameGeometry
 
     def __post_init__(self) -> None:
+        if not isinstance(self.frame, FrameSnapshot):
+            raise ValueError("frame must be a FrameSnapshot")
         if not isinstance(self.observations, ObservationBatch):
             raise ValueError("observations must be ObservationBatch")
         if not isinstance(self.state, ResolvedState):
@@ -70,10 +73,14 @@ class RuntimeSnapshot:
         if not isinstance(self.geometry, FrameGeometry):
             raise ValueError("geometry must be FrameGeometry")
         if (
-            self.observations.sequence != self.state.sequence
+            self.frame.sequence != self.observations.sequence
+            or self.frame.timestamp != self.observations.timestamp
+            or self.observations.sequence != self.state.sequence
             or self.observations.timestamp != self.state.timestamp
         ):
-            raise ValueError("observations and state must identify the same frame")
+            raise ValueError("frame, observations and state must identify the same frame")
+        if FrameGeometry.from_frame(self.frame.image) != self.geometry:
+            raise ValueError("geometry must be derived from the same frame")
 
     @property
     def sequence(self) -> int:
@@ -146,6 +153,7 @@ class RuntimeObserver:
         batch = self.perception.analyze(frame)
         state = self.resolver.resolve(batch)
         return RuntimeSnapshot(
+            frame=frame,
             observations=batch,
             state=state,
             facts=_facts_from(batch),

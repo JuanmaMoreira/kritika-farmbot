@@ -15,8 +15,13 @@ from bot.geometry import (
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
     CloseBlackMarket,
+    ConfirmCharacterSelection,
     OpenBlackMarket,
+    OpenCharacterSelect,
+    OpenQuickMenu,
     RejectInsufficientGold,
+    ScrollCharacterSelectTowardEnd,
+    SelectLastVisibleCharacter,
     SelectBlackMarketSlot,
     SemanticAction,
 )
@@ -86,6 +91,42 @@ DEFAULT_BLACK_MARKET_ACTION_TARGETS = BlackMarketActionTargets()
 
 
 @dataclass(frozen=True)
+class RotationActionTargets:
+    """Normalized targets measured from the current 2712x1224 layout.
+
+    The character card target describes the first column of the final visible
+    row. It is a layout rule and is intentionally independent of the configured
+    number of characters.
+    """
+
+    open_quick_menu: RelativePoint = (0.0520, 0.1110)
+    open_character_select: RelativePoint = (0.0704, 0.7835)
+    scroll_start: RelativePoint = (0.6800, 0.7200)
+    scroll_end: RelativePoint = (0.6800, 0.3000)
+    last_visible_character: RelativePoint = (0.5500, 0.7300)
+    confirm_character_selection: RelativePoint = (0.6855, 0.9101)
+    scroll_duration_ms: int = 400
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.open_quick_menu,
+            self.open_character_select,
+            self.scroll_start,
+            self.scroll_end,
+            self.last_visible_character,
+            self.confirm_character_selection,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+        duration = self.scroll_duration_ms
+        if isinstance(duration, bool) or not isinstance(duration, Integral) or duration <= 0:
+            raise ValueError("scroll_duration_ms must be a positive integer")
+        object.__setattr__(self, "scroll_duration_ms", int(duration))
+
+
+DEFAULT_ROTATION_ACTION_TARGETS = RotationActionTargets()
+
+
+@dataclass(frozen=True)
 class ActionExecution:
     """Diagnostic receipt for one physical action already sent to ADB."""
 
@@ -94,29 +135,47 @@ class ActionExecution:
     pixel_target: PixelPoint
 
 
+@dataclass(frozen=True)
+class SwipeExecution:
+    """Diagnostic receipt for one physical swipe already sent to ADB."""
+
+    action: ScrollCharacterSelectTowardEnd
+    normalized_start: RelativePoint
+    normalized_end: RelativePoint
+    pixel_start: PixelPoint
+    pixel_end: PixelPoint
+    duration_ms: int
+
+
 class ActionExecutor:
-    """Resolve an intent to one tap without recognizing or awaiting game state."""
+    """Resolve one intent to physical input without recognizing game state."""
 
     def __init__(
         self,
         adb: AdbClient,
         *,
         targets: BlackMarketActionTargets = DEFAULT_BLACK_MARKET_ACTION_TARGETS,
+        rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
             raise ValueError("adb must provide tap(x, y)")
         if not isinstance(targets, BlackMarketActionTargets):
             raise ValueError("targets must be BlackMarketActionTargets")
+        if not isinstance(rotation_targets, RotationActionTargets):
+            raise ValueError("rotation_targets must be RotationActionTargets")
         self.adb = adb
         self.targets = targets
+        self.rotation_targets = rotation_targets
 
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
-    ) -> ActionExecution:
-        """Send exactly one normalized target as an ADB pixel tap."""
+    ) -> ActionExecution | SwipeExecution:
+        """Translate one semantic action to exactly one ADB input command."""
 
         if not isinstance(geometry, FrameGeometry):
             raise ValueError("geometry must be FrameGeometry")
+        if isinstance(action, ScrollCharacterSelectTowardEnd):
+            return self._execute_scroll(action, geometry)
         target = self._target_for(action)
         pixel = relative_point_to_pixel(target, geometry.width, geometry.height)
         self.adb.tap(*pixel)
@@ -137,7 +196,38 @@ class ActionExecutor:
             return self.targets.accept_purchase
         if isinstance(action, RejectInsufficientGold):
             return self.targets.reject_insufficient_gold
+        if isinstance(action, OpenQuickMenu):
+            return self.rotation_targets.open_quick_menu
+        if isinstance(action, OpenCharacterSelect):
+            return self.rotation_targets.open_character_select
+        if isinstance(action, SelectLastVisibleCharacter):
+            return self.rotation_targets.last_visible_character
+        if isinstance(action, ConfirmCharacterSelection):
+            return self.rotation_targets.confirm_character_selection
         raise ValueError("unsupported semantic action")
+
+    def _execute_scroll(
+        self,
+        action: ScrollCharacterSelectTowardEnd,
+        geometry: FrameGeometry,
+    ) -> SwipeExecution:
+        swipe = getattr(self.adb, "swipe", None)
+        if not callable(swipe):
+            raise ValueError("adb must provide swipe(x1, y1, x2, y2, duration_ms)")
+        start = self.rotation_targets.scroll_start
+        end = self.rotation_targets.scroll_end
+        pixel_start = relative_point_to_pixel(start, geometry.width, geometry.height)
+        pixel_end = relative_point_to_pixel(end, geometry.width, geometry.height)
+        duration = self.rotation_targets.scroll_duration_ms
+        swipe(*pixel_start, *pixel_end, duration)
+        return SwipeExecution(
+            action=action,
+            normalized_start=start,
+            normalized_end=end,
+            pixel_start=pixel_start,
+            pixel_end=pixel_end,
+            duration_ms=duration,
+        )
 
 
 __all__ = (
@@ -145,5 +235,8 @@ __all__ = (
     "ActionExecutor",
     "BlackMarketActionTargets",
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
+    "DEFAULT_ROTATION_ACTION_TARGETS",
     "FrameGeometry",
+    "RotationActionTargets",
+    "SwipeExecution",
 )

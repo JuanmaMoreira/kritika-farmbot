@@ -6,13 +6,19 @@ import pytest
 from bot.action_executor import (
     ActionExecutor,
     DEFAULT_BLACK_MARKET_ACTION_TARGETS,
+    DEFAULT_ROTATION_ACTION_TARGETS,
     FrameGeometry,
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
     CloseBlackMarket,
+    ConfirmCharacterSelection,
     OpenBlackMarket,
+    OpenCharacterSelect,
+    OpenQuickMenu,
     RejectInsufficientGold,
+    ScrollCharacterSelectTowardEnd,
+    SelectLastVisibleCharacter,
     SelectBlackMarketSlot,
 )
 
@@ -66,6 +72,55 @@ def test_executor_supports_each_row_major_black_market_slot(slot_index):
     expected = (int(target[0] * 2712), int(target[1] * 1224))
     adb.tap.assert_called_once_with(*expected)
     assert receipt.pixel_target == expected
+
+
+@pytest.mark.parametrize(
+    ("action", "target"),
+    (
+        (OpenQuickMenu(), DEFAULT_ROTATION_ACTION_TARGETS.open_quick_menu),
+        (
+            OpenCharacterSelect(),
+            DEFAULT_ROTATION_ACTION_TARGETS.open_character_select,
+        ),
+        (
+            SelectLastVisibleCharacter(),
+            DEFAULT_ROTATION_ACTION_TARGETS.last_visible_character,
+        ),
+        (
+            ConfirmCharacterSelection(),
+            DEFAULT_ROTATION_ACTION_TARGETS.confirm_character_selection,
+        ),
+    ),
+)
+def test_executor_translates_rotation_taps_from_frame_geometry(action, target):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    geometry = FrameGeometry(width=2712, height=1224)
+
+    receipt = executor.execute(action, geometry)
+
+    expected = (int(target[0] * 2712), int(target[1] * 1224))
+    adb.tap.assert_called_once_with(*expected)
+    assert receipt.normalized_target == target
+    assert receipt.pixel_target == expected
+
+
+def test_executor_translates_character_scroll_to_one_bounded_adb_swipe():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    geometry = FrameGeometry(width=2712, height=1224)
+
+    receipt = executor.execute(ScrollCharacterSelectTowardEnd(), geometry)
+
+    targets = DEFAULT_ROTATION_ACTION_TARGETS
+    start = (int(targets.scroll_start[0] * 2712), int(targets.scroll_start[1] * 1224))
+    end = (int(targets.scroll_end[0] * 2712), int(targets.scroll_end[1] * 1224))
+    adb.swipe.assert_called_once_with(
+        *start, *end, targets.scroll_duration_ms
+    )
+    adb.tap.assert_not_called()
+    assert receipt.pixel_start == start
+    assert receipt.pixel_end == end
 
 
 @pytest.mark.parametrize("slot_index", (-1, 10, 1.5, True))

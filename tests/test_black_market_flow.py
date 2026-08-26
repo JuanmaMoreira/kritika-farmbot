@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 
+import numpy as np
 import pytest
 
 from bot.action_executor import FrameGeometry
 from bot.black_market_flow import BlackMarketFlow, FlowOutcome
+from bot.capture import FrameSnapshot
 from bot.catalog import (
     POPUP_INSUFFICIENT_GOLD,
     POPUP_PURCHASE_CONFIRMATION,
@@ -97,6 +99,11 @@ def _snapshot(
         ),
     )
     return RuntimeSnapshot(
+        frame=FrameSnapshot(
+            image=np.zeros((1224, 2712, 3), dtype=np.uint8),
+            sequence=sequence,
+            timestamp=float(sequence),
+        ),
         observations=batch,
         state=state,
         facts=RuntimeFacts(
