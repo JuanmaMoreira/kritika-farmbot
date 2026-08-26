@@ -1,4 +1,5 @@
 from pathlib import Path
+from concurrent.futures import Future
 
 import numpy as np
 import pytest
@@ -6,7 +7,10 @@ import pytest
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.catalog import MENU_QUICK, SCREEN_CHARACTER_SELECT, SCREEN_LOBBY
-from bot.character_select_scroll import CharacterSelectScrollDetector
+from bot.character_select_scroll import (
+    CharacterSelectScrollDetector,
+    ScrollAttemptKind,
+)
 from bot.observations import ObservationBatch
 from bot.rotation import (
     RotationOutcome,
@@ -48,14 +52,22 @@ class ScriptedObserver:
         stable_for=0.0,
     ):
         self.wait_calls.append((after_sequence, stable_for))
-        item = self.waits.pop(0)
-        if isinstance(item, BaseException):
-            raise item
-        assert item.sequence > after_sequence
-        if abort_if is not None and abort_if(item):
-            raise RuntimeWaitAborted(item)
-        assert condition(item)
-        return item
+        item_or_items = self.waits.pop(0)
+        if isinstance(item_or_items, BaseException):
+            raise item_or_items
+        items = (
+            item_or_items
+            if isinstance(item_or_items, list)
+            else [item_or_items]
+        )
+        matched = False
+        for item in items:
+            assert item.sequence > after_sequence
+            if abort_if is not None and abort_if(item):
+                raise RuntimeWaitAborted(item)
+            matched = condition(item)
+        assert matched
+        return items[-1]
 
 
 class Actions:
@@ -72,6 +84,31 @@ class Events:
 
     def record(self, event):
         self.events.append(event)
+
+
+class InlineExecutor:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+    def submit(self, function, *args):
+        future = Future()
+        try:
+            future.set_result(function(*args))
+        except BaseException as error:
+            future.set_exception(error)
+        return future
+
+
+class TrackingExecutor(InlineExecutor):
+    def __init__(self):
+        self.exited = False
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.exited = True
+        return False
 
 
 def _frame(fill=0, *, grid_fill=None):
@@ -121,13 +158,17 @@ def _rotation(observes, waits, **kwargs):
     observer = ScriptedObserver(observes, waits)
     actions = Actions()
     events = Events()
+    swipe_executor_factory = kwargs.pop(
+        "swipe_executor_factory", InlineExecutor
+    )
     rotation = StandardRotation(
         observer,
         actions,
         events,
         scroll_detector=CharacterSelectScrollDetector(
-            unchanged_threshold=0.03
+            unchanged_threshold=0.05
         ),
+        swipe_executor_factory=swipe_executor_factory,
         **kwargs,
     )
     return rotation, actions, events, observer
@@ -146,6 +187,27 @@ def test_character_count_must_be_a_positive_integer(character_count):
         _rotation([], [], character_count=character_count)
 
 
+@pytest.mark.parametrize("end_confirmation_swipes", (0, -1, 1.5, True))
+def test_end_confirmation_swipes_must_be_a_positive_integer(
+    end_confirmation_swipes,
+):
+    with pytest.raises(ValueError, match="end_confirmation_swipes"):
+        _rotation(
+            [], [], end_confirmation_swipes=end_confirmation_swipes
+        )
+
+
+def test_end_confirmation_swipes_must_fit_inside_swipe_limit():
+    with pytest.raises(ValueError, match="must not exceed max_swipes"):
+        _rotation([], [], max_swipes=1, end_confirmation_swipes=2)
+
+
+@pytest.mark.parametrize("movement_threshold", (-0.1, 1.1, True))
+def test_movement_threshold_must_be_normalized(movement_threshold):
+    with pytest.raises(ValueError, match="movement_threshold"):
+        _rotation([], [], movement_threshold=movement_threshold)
+
+
 def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
     first_grid = _frame(grid_fill=40)
     scrolled_grid = _frame(grid_fill=230)
@@ -155,9 +217,12 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
             _snapshot(2, overlays={MENU_QUICK}),
             _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=first_grid),
             _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid),
-            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid.copy()),
-            _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid.copy()),
-            _snapshot(7, base=SCREEN_LOBBY),
+            [
+                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=first_grid),
+                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid.copy()),
+            ],
+            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid.copy()),
+            _snapshot(8, base=SCREEN_LOBBY),
         ],
     )
 
@@ -166,7 +231,13 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
     assert result.outcome is RotationOutcome.SUCCESS
     assert result.succeeded
     assert result.swipe_count == 2
+    assert result.effective_swipe_count == 2
+    assert result.bottom_confirmation_count == 1
     assert result.end_difference == 0.0
+    assert result.scroll_attempt_kinds == (
+        ScrollAttemptKind.NORMAL,
+        ScrollAttemptKind.BOUNCE_CANDIDATE,
+    )
     assert actions.actions == [
         OpenQuickMenu(),
         OpenCharacterSelect(),
@@ -178,12 +249,195 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
     assert events.events == []
     assert observer.wait_calls == [
         (1, 0.0),
-        (2, 0.0),
-        (3, 0.6),
-        (4, 0.6),
-        (5, 0.25),
-        (6, 0.0),
+        (2, 0.75),
+        (3, 0.75),
+        (4, 0.75),
+        (6, 0.25),
+        (7, 0.0),
     ]
+
+
+def test_unknown_startup_frame_waits_for_fresh_lobby_before_input():
+    timeout = RuntimeWaitTimeout(
+        after_sequence=2,
+        timeout=6.0,
+        last_snapshot=_snapshot(3, base=SCREEN_LOBBY),
+    )
+    rotation, actions, events, observer = _rotation(
+        [_snapshot(1)],
+        [
+            _snapshot(2, base=SCREEN_LOBBY),
+            timeout,
+        ],
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error.startswith("quick_menu_navigation_failed")
+    assert actions.actions == [OpenQuickMenu()]
+    assert observer.wait_calls == [(1, 0.25), (2, 0.0)]
+    assert events.events == ["rotation.standard.unexpected_state"]
+
+
+def test_resolved_non_lobby_precondition_aborts_without_wait_or_input():
+    rotation, actions, events, observer = _rotation(
+        [_snapshot(1, base=SCREEN_CHARACTER_SELECT)],
+        [],
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error == "precondition_lobby_failed"
+    assert actions.actions == []
+    assert observer.wait_calls == []
+    assert events.events == ["rotation.standard.unexpected_state"]
+
+
+def test_ineffective_swipe_does_not_confirm_bottom_or_block_later_progress():
+    initial_grid = _frame(grid_fill=40)
+    moved_grid = _frame(grid_fill=220)
+    rotation, actions, events, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=initial_grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=initial_grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=moved_grid),
+            [
+                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=initial_grid),
+                _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=moved_grid.copy()),
+            ],
+            _snapshot(8, base=SCREEN_CHARACTER_SELECT, image=moved_grid.copy()),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 3
+    assert result.effective_swipe_count == 2
+    assert result.scroll_attempt_kinds[0] is ScrollAttemptKind.INEFFECTIVE
+    assert actions.actions.count(ScrollCharacterSelectTowardEnd()) == 3
+    assert actions.actions[-2:] == [
+        SelectLastVisibleCharacter(),
+        ConfirmCharacterSelection(),
+    ]
+    assert events.events == []
+
+
+def test_zero_effective_swipes_never_confirms_bottom_or_selects():
+    grid = _frame(grid_fill=80)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+        ],
+        max_swipes=2,
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error == "scroll_limit_reached"
+    assert result.effective_swipe_count == 0
+    assert result.bottom_confirmation_count == 0
+    assert result.scroll_attempt_kinds == (
+        ScrollAttemptKind.INEFFECTIVE,
+        ScrollAttemptKind.INEFFECTIVE,
+    )
+    assert SelectLastVisibleCharacter() not in actions.actions
+
+
+def test_configured_double_confirmation_does_not_accept_one_bounce():
+    first_grid = _frame(grid_fill=40)
+    bottom_grid = _frame(grid_fill=220)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=first_grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=bottom_grid),
+            [
+                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=first_grid),
+                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=bottom_grid.copy()),
+            ],
+        ],
+        max_swipes=2,
+        end_confirmation_swipes=2,
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.bottom_confirmation_count == 1
+    assert result.scroll_attempt_kinds[-1] is ScrollAttemptKind.BOUNCE_CANDIDATE
+    assert SelectLastVisibleCharacter() not in actions.actions
+
+
+def test_configured_double_confirmation_selects_after_two_effective_bounces():
+    grid = _frame(grid_fill=80)
+    transient = _frame(grid_fill=220)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            [
+                _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=transient),
+                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            ],
+            [
+                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=transient),
+                _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            ],
+            _snapshot(8, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+        end_confirmation_swipes=2,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 2
+    assert result.effective_swipe_count == 2
+    assert result.bottom_confirmation_count == 2
+    assert result.scroll_attempt_kinds == (
+        ScrollAttemptKind.BOUNCE_CANDIDATE,
+        ScrollAttemptKind.BOUNCE_CANDIDATE,
+    )
+    assert SelectLastVisibleCharacter() in actions.actions
+
+
+def test_scroll_timeout_exits_swipe_executor_and_never_selects():
+    tracker = TrackingExecutor()
+    timeout = RuntimeWaitTimeout(
+        after_sequence=3,
+        timeout=6.0,
+        last_snapshot=_snapshot(4, base=SCREEN_CHARACTER_SELECT),
+    )
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT),
+            timeout,
+        ],
+        swipe_executor_factory=lambda: tracker,
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error.startswith("character_select_scroll_failed")
+    assert tracker.exited
+    assert SelectLastVisibleCharacter() not in actions.actions
 
 
 def test_scroll_limit_aborts_before_character_selection():
@@ -230,17 +484,20 @@ def test_quick_menu_timeout_aborts_without_more_input():
 def test_fresh_lobby_is_required_after_confirming_selection():
     grid = _frame(grid_fill=80)
     timeout = RuntimeWaitTimeout(
-        after_sequence=5,
+        after_sequence=6,
         timeout=6.0,
-        last_snapshot=_snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid),
+        last_snapshot=_snapshot(7, base=SCREEN_CHARACTER_SELECT, image=grid),
     )
     rotation, actions, events, _ = _rotation(
         [_snapshot(1, base=SCREEN_LOBBY)],
         [
             _snapshot(2, overlays={MENU_QUICK}),
             _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
-            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
-            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            [
+                _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=200)),
+                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            ],
+            _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
             timeout,
         ],
     )

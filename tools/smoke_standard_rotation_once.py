@@ -40,7 +40,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--character-count", type=int, default=28)
     parser.add_argument("--max-swipes", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=6.0)
-    parser.add_argument("--scroll-settle-for", type=float, default=0.6)
+    parser.add_argument("--scroll-settle-for", type=float, default=0.75)
     parser.add_argument("--selection-settle-for", type=float, default=0.25)
     parser.add_argument(
         "--event-log",

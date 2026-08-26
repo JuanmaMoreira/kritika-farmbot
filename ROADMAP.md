@@ -22,9 +22,11 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Definir `RotationStrategy` como responsabilidad transversal.
 - [x] Implementar y validar aisladamente un `StandardRotation.advance()` con `character_count = 28` configurable.
 - [x] Navegar un cambio Quick Menu → Character Select → scroll al final → última posición → Lobby.
-- [x] Detectar final por contenido visual repetido con timeout y límite anti-loop.
+- [x] Endurecer bottom con frames A/T/B, movimiento efectivo y bounce validado sobre ROI de la grilla.
+- [x] Calibrar thresholds y gesto en 5/5 entradas scroll-only, sin seleccionar personajes.
+- [x] Validar tres `advance()` supervisados con bottom confirmado antes de seleccionar y retorno a Lobby.
 - [x] Aprovechar el orden MRU sin identificar personajes y sin lógica especial MAIN/SUBS.
-- [x] Validar hardware-free primero y ejecutar un único smoke físico opt-in.
+- [x] Validar hardware-free primero y mantener todo smoke físico explícitamente opt-in.
 - [ ] Completar el loop de 28 y el regreso final al personaje inicial sin repetir flows sobre éste.
 
 ### Composición mínima de sesión

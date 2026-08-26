@@ -104,7 +104,7 @@ Las esperas son bounded, rechazan sequences stale posteriores a una acción y pu
 
 `bot/rotation.py` define `RotationStrategy.advance()` como contrato transversal. `StandardRotation` decide cómo cambiar una vez de personaje mediante estado semántico y solicita intents al `ActionExecutor`; no conoce flows, identidad de personajes ni ADB.
 
-`bot/character_select_scroll.py` contiene la comparación visual determinista del viewport. El final se reconoce cuando un swipe settled deja la grilla sin cambio material, siempre bajo timeout y límite máximo. Esta lógica no pertenece a Perception contextual ni a policy de Flow.
+`bot/character_select_scroll.py` contiene la medición visual determinista del viewport. Rotation conserva un frame settled A, observa frames transitorios T mientras `ActionExecutor` ejecuta el swipe y espera un frame settled B posterior al release/bounce. La similitud A/B por sí sola nunca prueba bottom: el intento debe exhibir movimiento transitorio efectivo y luego volver aproximadamente a A. Las confirmaciones de bounce y el máximo de intentos son bounded y configurables. Esta lógica no pertenece a Perception contextual ni a policy de Flow.
 
 ## Flows
 
@@ -155,7 +155,7 @@ User Control Panel
 
 `SessionRunner` compondrá en el futuro Rotation y flows. El contrato `RotationStrategy` y el primer `StandardRotation.advance()` ya existen; cada flow sigue operando sólo sobre el personaje activo. Ninguno conoce la implementación interna del otro.
 
-El primitive de `rotation.standard` ya usa Quick Menu → Character Select → scroll al final → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita. El loop completo y regreso final al personaje inicial siguen pendientes; MAIN/SUBS quedan para estrategias futuras.
+El primitive de `rotation.standard` ya usa Quick Menu → Character Select → bottom confirmado → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita. La captura transitoria concurrente no cambia los límites: Rotation solicita un intent semántico y `ActionExecutor` sigue siendo quien ejecuta el input físico. El loop completo y regreso final al personaje inicial siguen pendientes; MAIN/SUBS quedan para estrategias futuras.
 
 El runtime unattended futuro necesita timeouts, recovery transversal, logging, aislamiento de fallos, cleanup y policy de continuación. Hasta entonces, el vertical slice aborta ante errores técnicos después de registrar y limpiar.
 

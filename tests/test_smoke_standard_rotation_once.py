@@ -12,4 +12,5 @@ def test_smoke_defaults_are_one_standard_rotation_only():
     assert not args.execute
     assert args.character_count == 28
     assert args.max_swipes == 10
+    assert args.scroll_settle_for == 0.75
     assert args.timeout == 6.0

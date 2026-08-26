@@ -113,6 +113,9 @@ def test_executor_translates_character_scroll_to_one_bounded_adb_swipe():
     receipt = executor.execute(ScrollCharacterSelectTowardEnd(), geometry)
 
     targets = DEFAULT_ROTATION_ACTION_TARGETS
+    assert targets.scroll_start == (0.68, 0.76)
+    assert targets.scroll_end == (0.68, 0.24)
+    assert targets.scroll_duration_ms == 200
     start = (int(targets.scroll_start[0] * 2712), int(targets.scroll_start[1] * 1224))
     end = (int(targets.scroll_end[0] * 2712), int(targets.scroll_end[1] * 1224))
     adb.swipe.assert_called_once_with(

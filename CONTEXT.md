@@ -74,13 +74,13 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 ## Primitive Rotation standard
 
-`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. El primitive implementado abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, selecciona la última tarjeta del layout final, confirma y exige un Lobby fresco. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente.
+`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, selecciona la última tarjeta del layout final, confirma y exige un Lobby fresco. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente Lobby fresco; una pantalla resuelta incompatible, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente.
 
-El final de scroll se detecta en `bot/character_select_scroll.py`: compara thumbnails grayscale de la región normalizada de la grilla, excluyendo modelo animado, header y footer. Tras cada swipe espera frames frescos con 0,6 s de estabilidad; una diferencia media normalizada `<= 0,03` indica contenido repetido. Hay un máximo de 10 swipes.
+El final de scroll se detecta en `bot/character_select_scroll.py` sobre la ROI normalizada `(0.49, 0.19, 0.85, 0.805)`, que contiene la grilla y excluye modelo animado, header, footer y Select. Cada intento separa un viewport settled A, frames transitorios T capturados mientras `ActionExecutor` ejecuta el gesto y un viewport settled B posterior al release/bounce. Un intento es efectivo sólo si el máximo `diff(A,T/B) >= 0,05`; un bounce candidate exige además `diff(A,B) <= 0,05`. Un gesto sin movimiento nunca prueba bottom. El default confirma bottom con un bounce efectivo; la cantidad de confirmaciones sigue configurable y el máximo permanece en 10 intentos.
 
 La última posición es la primera columna de la última fila visible, regla confirmada en el layout de tres columnas con el slot `+` inmediatamente después. El target es normalizado y no depende de `character_count`.
 
-El smoke aislado ejecutó exactamente un cambio con cuatro swipes, detectó final con diferencia `0,0116` y retornó a `screen.lobby`; la verificación pasiva posterior confirmó Quick Menu cerrado y cleanup completo.
+La calibración live usó cinco entradas scroll-only sin seleccionar personajes. El ruido estático máximo fue `0,00944`, el movimiento efectivo mínimo `0,13316`, el bounce settled máximo `0,03528` y el avance normal inequívoco mínimo `0,12275`; de allí surgen ambos thresholds `0,05`. El gesto elegido es `(0.68, 0.76) → (0.68, 0.24)` en `200 ms`: en cuatro entradas consecutivas llegó visualmente al fondo con dos swipes y produjo bounce consistente desde el tercero. Luego tres `advance()` aislados supervisados confirmaron `normal → normal → bounce_candidate → selección → Lobby`, siempre con cleanup. No se ejecutó el loop de 28.
 
 ## Decisiones funcionales cerradas
 
@@ -97,7 +97,7 @@ El smoke aislado ejecutó exactamente un cambio con cuatro swipes, detectó fina
 
 ## Limitaciones y deferred
 
-- El primitive `StandardRotation.advance()` está implementado; la rotación completa de 28 personajes, el retorno final al inicial sin repetir flows, `SessionPlan` y `SessionRunner` siguen pendientes.
+- El primitive `StandardRotation.advance()` está endurecido y validado en tres cambios aislados; la rotación completa de 28 personajes, el retorno final al inicial sin repetir flows, `SessionPlan` y `SessionRunner` siguen pendientes.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
 - Battle Mode Select requiere evidencia más diversa o una señal con mejor separación.
@@ -107,4 +107,4 @@ El smoke aislado ejecutó exactamente un cambio con cuatro swipes, detectó fina
 
 ## Próximo trabajo
 
-Extender el primitive validado hasta la semántica completa de `rotation.standard`: procesar una vez los 28 personajes configurables, hacer el cambio final necesario para regresar al inicial y no volver a ejecutar flows sobre éste. `SessionPlan / SessionRunner` permanece posterior y fuera del primitive.
+En una tarea posterior, retomar el smoke aislado de 28 cambios sobre el primitive endurecido y validar el retorno humano al personaje inicial. Esto no implica que el runtime productivo hará 28 cambios seguidos. `SessionPlan / SessionRunner` permanece posterior y fuera del primitive.

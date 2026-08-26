@@ -101,11 +101,11 @@ class RotationActionTargets:
 
     open_quick_menu: RelativePoint = (0.0520, 0.1110)
     open_character_select: RelativePoint = (0.0704, 0.7835)
-    scroll_start: RelativePoint = (0.6800, 0.7200)
-    scroll_end: RelativePoint = (0.6800, 0.3000)
+    scroll_start: RelativePoint = (0.6800, 0.7600)
+    scroll_end: RelativePoint = (0.6800, 0.2400)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
     confirm_character_selection: RelativePoint = (0.6855, 0.9101)
-    scroll_duration_ms: int = 400
+    scroll_duration_ms: int = 200
 
     def __post_init__(self) -> None:
         for point in (
