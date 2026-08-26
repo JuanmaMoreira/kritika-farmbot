@@ -1,6 +1,6 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2 — Fase 3H.3 completada; prerequisites perceptuales de Black Market GOLD cubiertos sin flow automático
+**Estado:** rediseño híbrido 0.2 — Fase 3H.3 completada; primer vertical slice de runtime definido, todavía no implementado
 **Última actualización:** 2026-08-26
 
 ## Objetivo
@@ -289,7 +289,7 @@ La Fase 3H.1 extendió Perception Workbench para adquisición semántica abierta
 - Las sesiones continúan bajo `artifacts/workbench/`, con paths relativos y sin serial/device/user IDs ni paths absolutos. El writer acotado, deduplicación, representative mode, asociación temporal, captura no masiva y manifests curated permanecen separados.
 - La suite hardware-free no ejecuta ADB. El smoke opt-in `20260825T185040_032589Z-95f6cd26` validó visualmente Lobby, candidate Guild Shop con prediction `UNKNOWN`, período `UNSET`, dos taps raw sin GT posterior inferido, confirmación explícita del segundo tap como `screen.guild_shop`, swipe con confirmación `screen.guild_shop → screen.guild_shop`, frames full-resolution y paths relativos. Registró 35 evidence events/31 PNG únicos, queue máxima 3, cero drops/failure y cleanup completo de observer, scrcpy y forward. La sesión permanece `raw_unreviewed` bajo `artifacts/` y no se promovió.
 
-La Fase 3H.2 auditó la taxonomía legacy y cerró el hueco semántico inmediato del primer flow 0.2 ya decidido —comprar ítems de interés en Black Market con todos los personajes— sin implementar navegación ni reconocimiento de ítems:
+La Fase 3H.2 auditó la taxonomía legacy y promovió Quick Menu como semántica productiva transversal, sin implementar navegación ni asignarlo como prerequisite del futuro flow Black Market:
 
 - `docs/semantic_census.md` registra las 75 entradas top-level de `CONTEXTOS_DEFINIDOS`, su clasificación 0.2 tentativa, assets, estado de UI, relaciones, necesidad y ambigüedades. Quick Menu no era una entrada 76: legacy lo detectaba globalmente con un asset propio, declaraba disponibilidad en 18 contextos y ajustaba botones mediante offsets `default`/`lobby`; los valores concretos siguen siendo frágiles, aunque el concepto de desplazamiento se conserva.
 - La sesión Workbench `20260825T193046_517947Z-76b5e238` adquirió Quick Menu human-confirmed abierto/cerrado/reabierto sobre Lobby y abierto/cerrado sobre Inventory, sin input ADB. Produjo 70 evidence events, 69 PNG únicos, queue máxima 3, cero drops/failure y cleanup completo. La apertura/cierre es instantánea y el panel cambia de posición horizontal según la base.
@@ -298,7 +298,7 @@ La Fase 3H.2 auditó la taxonomía legacy y cerró el hueco semántico inmediato
 - La evaluación productiva grayscale sobre cuatro manifests obtuvo para Quick Menu 18/18 TP, 0 FP, 0 FN frente a 77 negativos y gap raw `0.6844761073589325` (`0.2981472909450531 → 0.9826233983039856`). Los cinco detectores y el resolver produjeron 95/95 estados esperados, cero wrong y cero `AMBIGUOUS`; Lobby, Character Select, Black Market y Purchase Confirmation conservaron sus resultados previos.
 - No se completó un segundo smoke streaming post-promoción: al cierre ADB respondió `device not found`. La validación live de comportamiento corresponde a la adquisición human-confirmed y la regresión productiva posterior se ejecutó offline sobre esos mismos PNG intactos current-season.
 - Cuando Quick Menu cubre Lobby, también cubre su landmark productivo inferior: el resultado observable correcto es `UNKNOWN + menu.quick`. La independencia del overlay queda demostrada sobre Lobby e Inventory sin afirmar conocimiento de una base oculta.
-- El cierre semántico contextual quedó productivo para `screen.character_select`, `screen.lobby`, `menu.quick`, `screen.black_market` y `popup.purchase_confirmation`. La currency/posición interna de las ofertas permanecía como problema separado para la fase siguiente; no hacía falta reconocer identidad/tipo de item.
+- La cobertura productiva quedó disponible para `screen.character_select`, `screen.lobby`, `menu.quick`, `screen.black_market` y `popup.purchase_confirmation`. Esa lista describe percepción disponible, no el recorrido propio de un flow: Black Market se abre exclusivamente desde Lobby y `menu.quick` no es prerequisite de `BlackMarketFlow`.
 
 La Fase 3H.3 cerró los prerequisites perceptuales internos del primer flow Black Market y el recovery de oro insuficiente, sin implementar el flow:
 
@@ -315,9 +315,28 @@ La Fase 3H.3 cerró los prerequisites perceptuales internos del primer flow Blac
 - La nueva evidencia ajustó sólo anchors empíricos: Black Market positivo `0.399312` y Character Select negativo `0.277643`. `SEMANTIC_CONFIDENCE_THRESHOLD`, `ContextResolver`, temporalidad y reglas de base no cambiaron. La regresión completa produjo 96/96 estados esperados, 60 `UNKNOWN`, cero `AMBIGUOUS`, cero wrong y todos los overlays correctos.
 - El probe live post-promoción sobre Black Market estándar resolvió `screen.black_market`, sin popup, y emitió tres slots GOLD con confidence `1.0`; el primer probe `UNKNOWN` fue descartado tras confirmación humana de que el teléfono no estaba entonces en Black Market. Ambos probes limpiaron source y forward.
 - `tools/capture_black_market_currency.py` aporta captura pasiva de un frame, y `tools/black_market_gold_evaluation.py` versiona/evalúa ground truth por slot y negativos globales. No envían input Android.
-- No se implementaron ActionExecutor, navegación, taps productivos, compra automática, cambio de personaje, SessionRunner, OCR, VLM ni clasificación de items. La policy posterior a `popup.insufficient_gold` —continuar con otros slots o terminar el Black Market del personaje— permanece deliberadamente pendiente para el diseño del flow.
+- No se implementaron ActionExecutor, navegación, taps productivos, compra automática, cambio de personaje, SessionRunner, OCR, VLM ni clasificación de items.
 
-La dirección de producto quedó cerrada documentalmente: el runtime final será un Session Orchestrator configurable (`User Control Panel → SessionPlan → SessionRunner → Characters → Selected Flows`), no un agente general. Los flows serán predominantemente `PER_CHARACTER` pero con scope explícito. Sus prerequisites solicitarán support operations acotadas y revalidarán condiciones en lugar de formar llamadas recursivas arbitrarias. El producto unattended deberá aislar fallos, recuperar, registrar outcomes, limpiar y continuar cuando corresponda. Runtime facts inmediatos y informational snapshots consultados explícitamente serán conceptos distintos; ninguno se implementó en 3E ni 3F.
+## Primer vertical slice — diseño cerrado, no implementado
+
+`Rotation` / `RotationStrategy` es una responsabilidad transversal que decide cómo avanzar entre personajes durante una sesión. No pertenece a la lógica interna de ningún flow. La composición prevista es `SessionPlan / SessionRunner → RotationStrategy + Selected PER_CHARACTER Flow(s)`: cada flow `PER_CHARACTER` opera sólo sobre el personaje activo y retorna un outcome; no elige el siguiente personaje ni implementa cambio de personaje. Flows de otros scopes no quedan obligados a usar Rotation.
+
+La primera estrategia prevista es `rotation.standard`, con `character_count = 28` como configuración explícita. Ejecutará los flows seleccionados sobre el personaje activo y, para avanzar, usará Quick Menu, llegará a Character Select, hará scroll hasta el final, elegirá siempre la última posición y esperará Lobby. La lista de Character Select se comporta como MRU, por lo que repetir esa operación permite recorrer los 28 personajes sin identificarlos. El dominio preserva `MAIN`, `SUB1`, `SUB2` y `SUB3`, con accesos especiales desde Quick Menu, pero la primera versión no les aplicará lógica especial. Rotation no conoce Black Market ni la lógica interna de otros flows.
+
+`BlackMarketFlow` tendrá scope `PER_CHARACTER`, comenzará en `screen.lobby` y navegará directamente `Lobby → Black Market`. Black Market no se abre desde Quick Menu. El flow analizará una sola vez los diez slots del grid 5×2, tomará los detectados como GOLD y los recorrerá en un orden determinista. La tienda no reordena ofertas tras comprar y una compra exitosa deja el mismo slot como `Purchased`. La policy permanece `BUY iff currency == GOLD` y `NEVER BUY KARATS`; no requiere identificar item, leer precio o balance, ni usar OCR.
+
+Las ramas cerradas por slot GOLD son:
+
+- con fondos: seleccionar slot → `popup.purchase_confirmation` → Yes → `screen.black_market` → verificar `Purchased` en el mismo slot;
+- sin fondos: seleccionar slot → `popup.insufficient_gold` → registrar `timestamp + low_gold` → No → `screen.black_market` → continuar con el siguiente slot GOLD.
+
+Una primera lectura con cero slots GOLD es un resultado normal: se registra de forma simple, el flow termina success/no-op y Rotation continúa. Puede deberse a juego manual, tienda ya procesada, ausencia de ofertas GOLD u otra condición normal indistinguible por percepción. Black Market se resetea aproximadamente cada hora por personaje y el contador comienza al visitarlo; el flow no inventará una causa. Los logs iniciales tampoco incluirán slot, item, precio, balance ni identidad de personaje, pero podrán enriquecerse más adelante con `current_character_name` sin cambiar la lógica.
+
+La policy inicial de debug distingue outcomes esperados —Purchase Confirmation, Insufficient Gold, cero GOLD y compra verificada mediante `Purchased`— de errores técnicos o estados inesperados. Ante estos últimos: log → cleanup seguro → abortar el proceso completo, sin recovery sofisticado. En particular, `purchase_unverified` no afirma éxito ni permite continuar si el slot esperado no aparece como `Purchased` dentro del timeout futuro.
+
+Estas decisiones no implementan todavía `RotationStrategy`, `rotation.standard`, `BlackMarketFlow`, `ActionExecutor`, navegación ni `SessionRunner`. OCR y VLM permanecen deferred hasta que un caso funcional los requiera y no bloquean este primer vertical slice.
+
+La dirección de producto quedó cerrada documentalmente: el runtime final será un Session Orchestrator configurable (`User Control Panel → SessionPlan → SessionRunner → RotationStrategy + Selected Flows`), no un agente general. Los flows serán predominantemente `PER_CHARACTER` pero con scope explícito. Sus prerequisites solicitarán support operations acotadas y revalidarán condiciones en lugar de formar llamadas recursivas arbitrarias. El producto unattended deberá aislar fallos, recuperar, registrar outcomes, limpiar y continuar cuando corresponda; el primer vertical slice usará antes la policy de debug abort-on-technical-error descrita arriba. Runtime facts inmediatos e informational snapshots consultados explícitamente serán conceptos distintos.
 
 El inventario confirmó que `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` todavía importan símbolos de captura/input eliminados de `bot.screen`. Se mantienen rotos deliberadamente: no son runtime activo y adaptarlos exigiría introducir ActionExecutor, ContextResolver y migración de flows fuera de esta fase. `bot/constants.py` continúa como conocimiento legacy preservado y `bot/ads_manager.py` sigue separado mediante UIAutomator2.
 

@@ -355,8 +355,60 @@ popup.insufficient_gold + No  → screen.black_market estándar
 ```
 
 La rama Yes del popup de insuficiencia no se exploró porque propone comprar Gold.
-La policy de flow posterior al recovery —seguir con otros slots o terminar el
-personaje— queda pendiente y no pertenece a Perception ni al overlay.
+La policy cerrada del futuro flow es elegir No, regresar a Black Market y continuar
+con el siguiente slot GOLD. Este resultado esperado de negocio no pertenece a
+Perception ni altera el contrato del overlay.
+
+### BlackMarketFlow previsto
+
+`BlackMarketFlow` tendrá scope `PER_CHARACTER` y operará exclusivamente sobre el
+personaje activo. Su prerequisite de entrada es `screen.lobby` y su navegación es
+directa:
+
+```text
+Lobby → Black Market
+```
+
+Black Market no se abre desde Quick Menu. `menu.quick` no forma parte del semantic
+closure propio del flow y el flow tampoco cambia de personaje.
+
+La tienda actual presenta diez ofertas en cinco filas por dos columnas. El flow hará
+una única lectura inicial, conservará la lista de slots detectados como GOLD y la
+recorrerá secuencialmente en cualquier orden determinista. La tienda no reordena las
+ofertas después de comprar; una compra exitosa deja el mismo slot marcado como
+`Purchased`, que será la postcondición mínima de éxito. No se identifica item, precio
+ni balance y no se introduce OCR.
+
+```text
+GOLD + fondos
+  → seleccionar slot
+  → popup.purchase_confirmation
+  → Yes
+  → screen.black_market
+  → mismo slot Purchased
+
+GOLD + fondos insuficientes
+  → seleccionar slot
+  → popup.insufficient_gold
+  → log(timestamp, low_gold)
+  → No
+  → screen.black_market
+  → siguiente slot GOLD
+```
+
+Una lectura inicial con cero slots GOLD es success/no-op normal y permite que Rotation
+continúe. No se intenta distinguir entre tienda ya procesada manualmente, ausencia de
+ofertas GOLD u otra causa no observable. El reset ocurre aproximadamente cada hora por
+personaje y su contador comienza al visitar Black Market.
+
+La primera policy de runtime está orientada a debug. Purchase Confirmation,
+Insufficient Gold, cero GOLD y `Purchased` verificado son resultados esperados. Ante
+un error técnico o estado inesperado se registra el evento, se hace cleanup seguro y
+se aborta el proceso completo; todavía no habrá recovery sofisticado. Si la
+postcondición `Purchased` no aparece en el slot esperado dentro del timeout futuro,
+`purchase_unverified` no se considera éxito y obliga a abortar. Los logs iniciales no
+usan OCR ni identidad: `popup.insufficient_gold` registra sólo timestamp + `low_gold`,
+con una forma extensible para añadir `current_character_name` en el futuro.
 
 ### Promoción curated y mantenimiento de detectores
 
@@ -389,15 +441,44 @@ El objetivo no es un agente general que elija libremente qué jugar. La direcci�
 User Control Panel
   → SessionPlan
     → SessionRunner
-      → Characters
-        → Selected Flows
+      ├── RotationStrategy
+      └── Selected PER_CHARACTER Flow(s)
 ```
 
 El usuario seleccionará previamente flows como `query_resources_type_1`, `clean_friends`, `farm_tot`, `farm_elite` o `farm_arena`. En Kritika la mayoría son `PER_CHARACTER`, pero el modelo futuro deberá exigir scopes explícitos y no suponer que todo flow comparte ese alcance.
 
+`Rotation` / `RotationStrategy` es una responsabilidad transversal del orquestador:
+decide cómo avanzar entre personajes, no qué hace un flow sobre ellos. Un flow
+`PER_CHARACTER` opera sobre el personaje activo, retorna un outcome y nunca selecciona
+el siguiente personaje ni invoca una estrategia de Rotation. Rotation no conoce la
+lógica de Black Market ni la de otros flows. Los flows con otro scope no están
+obligados a usar Rotation.
+
+La primera estrategia prevista, todavía no implementada, es `rotation.standard`.
+Después de ejecutar los flows del personaje activo usará Quick Menu para iniciar el
+cambio, llegará a Character Select, hará scroll hasta el final, elegirá siempre la
+última posición y esperará Lobby antes de repetir. Character Select se comporta como
+una lista MRU, de modo que esta política recorre personajes sin identificarlos.
+`character_count = 28` será configuración explícita de la estrategia, no un número
+mágico de navegación. `MAIN`, `SUB1`, `SUB2` y `SUB3` y sus accesos especiales desde
+Quick Menu se conservan como conocimiento para estrategias futuras, sin trato especial
+en `rotation.standard` inicial.
+
+Los límites quedan cerrados:
+
+```text
+Rotation ≠ Flow
+Flow ≠ ActionExecutor
+ActionExecutor ≠ Perception
+```
+
+El `SessionRunner` compone Rotation y los flows seleccionados; no crea coupling donde
+un flow invoque directamente Rotation. Esta separación permite combinar distintas
+estrategias de recorrido con distintos flows `PER_CHARACTER`.
+
 Un top-level flow declarará prerequisites en lugar de invocar recursivamente otros flows de forma arbitraria. El patrón previsto es `check → bounded support operation → recheck → continue/skip/fail`. Operaciones como `acquire_sapphires`, `buy_stamina` o `empty_inventory` podrán ser mini-flows internos, pero no se confundirán con los flows principales seleccionables. `RequirementRunner`, `SessionPlan` y `SessionRunner` todavía no están implementados.
 
-Las sesiones de producto deberán correr unattended durante horas. El diseño posterior necesita timeouts, recovery, logging, resultados explícitos, aislamiento de fallos, cleanup y política para continuar con el siguiente flow o personaje.
+Las sesiones de producto deberán correr unattended durante horas. El diseño posterior necesita timeouts, recovery, logging, resultados explícitos, aislamiento de fallos, cleanup y política para continuar con el siguiente flow o personaje. Hasta que exista ese recovery transversal, el primer vertical slice abortará la sesión completa ante errores técnicos después de registrar y limpiar.
 
 También se preserva una distinción futura: los runtime facts (`stamina`, inventario, attempts) sirven para decisiones inmediatas y no exigen persistencia; los informational snapshots de currencies/resources se actualizan mediante flows explícitos de consulta y no constituyen una réplica autoritativa, porque el usuario también juega manualmente. Fase 3E no implementa OCR ni almacenamiento de esos valores.
 

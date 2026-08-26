@@ -11,7 +11,7 @@ en `constants.py`, `context.py`, `actions.py` o `flows.py`).
 - UI: `current` = vista/revisada en evidencia current-season; `legacy` = sólo código,
   asset o screencap histórico; `unknown` = no alcanza la evidencia disponible.
 - Estado 0.2: `production`, `candidate`, `legacy-only` o `unresolved`.
-- Necesidad: `BLACK_MARKET_FLOW`, `RECOVERY_COMMON`, `FUTURE` o `UNKNOWN`.
+- Necesidad: `BLACK_MARKET_FLOW`, `ROTATION`, `RECOVERY_COMMON`, `FUTURE` o `UNKNOWN`.
 - Los nombres 0.2 de filas no productivas son propuestas de búsqueda, no contratos.
 
 ## Inventario estructural
@@ -29,8 +29,8 @@ en `constants.py`, `context.py`, `actions.py` o `flows.py`).
 
 | # | Legacy | Posible nombre 0.2 | Tipo | Asset legacy | UI / estado 0.2 | Necesidad | Relaciones y ambigüedades |
 |---:|---|---|---|---|---|---|---|
-| 1 | `lobby` | `screen.lobby` | base | `lobby-id.png` | current / production | BLACK_MARKET_FLOW | Base confirmada; acceso legacy directo a Black Market y Quick Menu. |
-| 2 | `select-character` | `screen.character_select` | base | `select-character-id.png` | current / production | BLACK_MARKET_FLOW | Inicio/cambio de personaje; no tiene Quick Menu. |
+| 1 | `lobby` | `screen.lobby` | base | `lobby-id.png` | current / production | BLACK_MARKET_FLOW / ROTATION | Base confirmada; acceso directo a Black Market y disponibilidad separada de Quick Menu. |
+| 2 | `select-character` | `screen.character_select` | base | `select-character-id.png` | current / production | ROTATION | Cambio de personaje; no pertenece a la lógica interna de `BlackMarketFlow`. |
 | 3 | `stage_normal` | `screen.stage_select` | base | `stage-normal-id.png` | legacy / legacy-only | FUTURE | Contiene episodio `ep-14` y menú local `world-map`; Quick Menu disponible. |
 | 4 | `stage-normal-selected` | `state.stage.selected` | internal | `stage-normal-selected-id.png` | legacy / legacy-only | FUTURE | Microestado de selección; variantes MAO support. |
 | 5 | `stage-normal-selected-start` | `popup.stage_start` | overlay | `stage-normal-selected-start-id.png` | legacy / legacy-only | FUTURE | Diálogo de inicio sobre selección de stage. |
@@ -154,21 +154,22 @@ la pantalla oculta. No hubo un segundo smoke streaming post-promoción porque el
 dispositivo ya no figuraba en ADB; la evaluación productiva se hizo sobre los PNG
 intactos adquiridos live en esa sesión.
 
-## Cierre semántico mínimo del flow Black Market multi-character
+## Cobertura semántica disponible para Black Market y Rotation
 
-| Estado requerido | Estado 0.2 | Detector | Validación / límite |
+| Estado disponible | Consumidor futuro | Estado 0.2 | Validación / límite |
 |---|---|---|---|
-| `screen.character_select` | production | sí | Offline 12/12 y live current-season. |
-| `screen.lobby` | production | sí | Offline 12/12 visibles y live current-season; bajo Quick Menu queda oculta y resuelve `UNKNOWN`. |
-| `menu.quick` | production overlay/menu | sí | 18/18 TP, 0 FP/FN sobre 95 labels totales; live sobre Lobby e Inventory. |
-| `screen.black_market` | production | sí | Offline 11/11 y live current-season después de repair 3F. |
-| `popup.purchase_confirmation` | production | sí | Offline 6/6 y live sobre base conocida/UNKNOWN. |
+| `screen.character_select` | `rotation.standard` | production | Offline 12/12 y live current-season. |
+| `screen.lobby` | `BlackMarketFlow` y Rotation | production | Offline 12/12 visibles y live current-season; bajo Quick Menu queda oculta y resuelve `UNKNOWN`. |
+| `menu.quick` | `rotation.standard` | production overlay/menu | 18/18 TP, 0 FP/FN sobre 95 labels totales; live sobre Lobby e Inventory. No es prerequisite de `BlackMarketFlow`. |
+| `screen.black_market` | `BlackMarketFlow` | production | Offline 11/11 y live current-season después de repair 3F. |
+| `popup.purchase_confirmation` | `BlackMarketFlow` | production | Offline 6/6 y live sobre base conocida/UNKNOWN. |
+| `popup.insufficient_gold` | `BlackMarketFlow` | production | Human-confirmed live; 1 TP y 0 FP/FN frente a 95 negativos. |
 
-Dentro de `screen.black_market`, identificar ofertas de interés es otro problema de
-percepción, no context resolution. El futuro flow necesitará al menos identidad/tipo
-visual y posición/slot de la oferta; precio o recurso sólo si la evidencia funcional
-demuestra que son necesarios. No se decide todavía entre OCR, templates, detector o
-VLM, y ningún item/slot se convierte en contexto.
+Black Market se abre exclusivamente desde Lobby. Quick Menu se reserva para el cambio
+de personaje transversal de Rotation. Dentro de `screen.black_market`, 3H.3 promovió
+`currency.black_market.gold` con índice row-major para el grid 5×2. El futuro flow no
+necesita identidad/tipo de item, precio, balance, OCR ni VLM: compra únicamente slots
+GOLD. Ningún item/slot se convierte en contexto.
 
 ## Ciclo de incorporación 0.2
 
