@@ -49,6 +49,26 @@
       "path": "screencaps/semantic/black_market_currency/20260826T075019_711006Z.png",
       "review_status": "human_confirmed",
       "slots": ["GOLD", "KARATS", "GOLD", "PURCHASED", "GOLD", "KARATS", "KARATS", "KARATS", "PURCHASED", "KARATS"]
+    },
+    {
+      "path": "screencaps/semantic/black_market_currency/20260826T100811_587179Z.png",
+      "review_status": "visual_reviewed",
+      "slots": ["KARATS", "KARATS", "KARATS", "KARATS", "KARATS", "KARATS", "PURCHASED", "KARATS", "GOLD", "KARATS"],
+      "metadata": {
+        "phase": "4",
+        "purchased_slots_human_confirmed_via_chat": [6],
+        "source": "one_slot_smoke_postcondition"
+      }
+    },
+    {
+      "path": "screencaps/semantic/black_market_currency/20260826T125357_697403Z.png",
+      "review_status": "human_confirmed",
+      "slots": ["KARATS", "KARATS", "KARATS", "KARATS", "KARATS", "KARATS", "KARATS", "PURCHASED", "PURCHASED", "KARATS"],
+      "metadata": {
+        "phase": "4",
+        "purchased_slots_human_confirmed_via_chat": [7, 8],
+        "source": "full_single_character_smoke_postcondition"
+      }
     }
   ]
 }

@@ -13,8 +13,15 @@ from .black_market import (
     BLACK_MARKET_GRID_COLUMNS,
     BLACK_MARKET_GRID_ROWS,
     BLACK_MARKET_SLOT_COUNT,
+    BLACK_MARKET_PURCHASED_ASSETS,
+    BLACK_MARKET_PURCHASED_CALIBRATION,
+    BLACK_MARKET_PURCHASED_CONFIDENCE_THRESHOLD,
+    BLACK_MARKET_PURCHASED_OBSERVATION,
+    BLACK_MARKET_PURCHASED_SLOT_REGIONS,
     BlackMarketGoldDetector,
     BlackMarketGoldReading,
+    BlackMarketPurchasedDetector,
+    BlackMarketPurchasedReading,
 )
 from .engine import PerceptionDetector, PerceptionEngine
 from .local_cv import LocalCvDetection, LocalCvDetector
@@ -48,6 +55,7 @@ def build_default_perception(
                 for spec in DEFAULT_LOCAL_CV_SPECS
             ),
             BlackMarketGoldDetector(asset_root=root),
+            BlackMarketPurchasedDetector(asset_root=root),
         )
     )
 
@@ -61,9 +69,16 @@ __all__ = (
     "BLACK_MARKET_GRID_COLUMNS",
     "BLACK_MARKET_GRID_ROWS",
     "BLACK_MARKET_SLOT_COUNT",
+    "BLACK_MARKET_PURCHASED_ASSETS",
+    "BLACK_MARKET_PURCHASED_CALIBRATION",
+    "BLACK_MARKET_PURCHASED_CONFIDENCE_THRESHOLD",
+    "BLACK_MARKET_PURCHASED_OBSERVATION",
+    "BLACK_MARKET_PURCHASED_SLOT_REGIONS",
     "BLACK_MARKET_TITLE_SPEC",
     "BlackMarketGoldDetector",
     "BlackMarketGoldReading",
+    "BlackMarketPurchasedDetector",
+    "BlackMarketPurchasedReading",
     "CHARACTER_SELECT_HEADER_SPEC",
     "DEFAULT_LOCAL_CV_SPECS",
     "INSUFFICIENT_GOLD_PROMPT_SPEC",

@@ -22,7 +22,10 @@ from bot.catalog import (
 from bot.capture import FrameSnapshot
 from bot.observations import ObservationSource
 from bot.perception import build_default_perception
-from bot.perception.black_market import BlackMarketGoldDetector
+from bot.perception.black_market import (
+    BlackMarketGoldDetector,
+    BlackMarketPurchasedDetector,
+)
 from bot.perception.engine import PerceptionEngine
 from bot.perception.local_cv import LocalCvDetector
 from bot.perception.specs import (
@@ -241,9 +244,10 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
 
     assert engine is not second
     assert tuple(
-        detector.spec for detector in engine.detectors[:-1]
+        detector.spec for detector in engine.detectors[:-2]
     ) == DEFAULT_LOCAL_CV_SPECS
-    assert isinstance(engine.detectors[-1], BlackMarketGoldDetector)
+    assert isinstance(engine.detectors[-2], BlackMarketGoldDetector)
+    assert isinstance(engine.detectors[-1], BlackMarketPurchasedDetector)
     assert len(created) == 12
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,

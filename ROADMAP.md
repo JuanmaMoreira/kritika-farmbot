@@ -1,6 +1,6 @@
 # Roadmap — Kritika FarmBot 0.2
 
-El roadmap contiene trabajo futuro y fases completadas del rediseño. La prioridad inmediata es construir el primer vertical slice de runtime controlado sobre la infraestructura de percepción ya disponible; no completar el catálogo legacy de templates y coordenadas.
+El roadmap contiene trabajo futuro y fases completadas del rediseño. El primer vertical slice de runtime controlado ya está cerrado; la prioridad siguiente es incorporar Rotation y composición de sesión sin acoplarlas al flow ni completar el catálogo legacy de templates y coordenadas.
 
 ## Fase 0 — Baseline y documentación
 
@@ -39,14 +39,14 @@ El roadmap contiene trabajo futuro y fases completadas del rediseño. La priorid
 
 ## Fase 4 — Primer runtime / vertical slice controlado
 
-- [ ] Definir `ActionExecutor` y navegación semántica mínima con tests hardware-free; mantenerlos separados de Perception y de los flows.
-- [ ] Implementar navegación directa `screen.lobby → screen.black_market` sin usar Quick Menu.
-- [ ] Implementar `BlackMarketFlow` con scope `PER_CHARACTER`: una lectura de 10 slots, `BUY iff GOLD`, cero GOLD como success/no-op, ramas Purchase/Insufficient Gold y verificación `Purchased` del mismo slot.
-- [ ] Implementar outcomes y logging inicial (`timestamp + low_gold`) sin OCR ni identidad de personaje.
-- [ ] Aplicar la policy temprana `log → cleanup seguro → abortar proceso completo` ante errores técnicos, incluido `purchase_unverified`; no añadir recovery sofisticado todavía.
+- [x] Definir `ActionExecutor` y navegación semántica mínima con tests hardware-free; mantenerlos separados de Perception y de los flows.
+- [x] Implementar navegación directa `screen.lobby → screen.black_market → screen.lobby` sin usar Quick Menu.
+- [x] Implementar `BlackMarketFlow` con scope `PER_CHARACTER`: una lectura de 10 slots, `BUY iff GOLD`, cero GOLD como success/no-op, ramas Purchase/Insufficient Gold y verificación `Purchased` del mismo slot.
+- [x] Implementar outcomes y logging inicial (`timestamp + low_gold`) sin OCR ni identidad de personaje.
+- [x] Aplicar la policy temprana `log → cleanup seguro → abortar proceso completo` ante errores técnicos, incluido `purchase_unverified`; no añadir recovery sofisticado todavía.
 - [ ] Definir `RotationStrategy` como responsabilidad transversal y `rotation.standard` con `character_count = 28` configurable, Quick Menu → Character Select → scroll al final → última posición → Lobby, sin lógica especial MAIN/SUBS.
 - [ ] Implementar la composición mínima `SessionPlan / SessionRunner → RotationStrategy + Selected PER_CHARACTER Flow(s)` sin permitir que un flow invoque Rotation.
-- [ ] Validar primero offline/hardware-free y separar cualquier prueba opt-in que requiera dispositivo físico.
+- [x] Validar primero offline/hardware-free y separar cualquier prueba opt-in que requiera dispositivo físico.
 
 ## Fase 5 — Percepción incremental según necesidad funcional
 

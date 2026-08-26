@@ -66,7 +66,7 @@ La primera porción implementada de 0.2 permanece desacoplada del runtime legacy
 - Los puntos representan índices de píxel: usan floor y el extremo normalizado `1` se satura al último índice válido. Las regiones representan límites de slicing con extremo final exclusivo, por lo que la región completa termina en `(width, height)`.
 - `adb shell wm size` puede conservarse como metadata, diagnóstico o validación auxiliar, pero no puede decidir la geometría de un frame capturado.
 
-Estos módulos son consumidos por el núcleo 0.2, las herramientas de captura y los helpers visuales transicionales. `constants.py`, `ads_manager.py` y los flows todavía no migraron. La suite automatizada vive exclusivamente en `tests/`; el antiguo directorio `testing/` fue retirado en Fase 1E.
+Estos módulos son consumidos por el núcleo 0.2, las herramientas de captura y los helpers visuales transicionales. `constants.py`, `ads_manager.py` y los flows legacy no migraron; `BlackMarketFlow` es una implementación 0.2 separada. La suite automatizada vive exclusivamente en `tests/`; el antiguo directorio `testing/` fue retirado en Fase 1E.
 
 ## Composition root y validación real
 
@@ -123,11 +123,19 @@ observaciones repetibles `currency.black_market.gold`. Cada observation conserva
 Purchase Complete y cualquier señal subthreshold no emiten evidencia elegible.
 
 La calibration GOLD usa `0.5731779932975769 → 0.9343795776367188` y una policy
-local conservadora de confidence `0.80`. El corpus revisado produce 24 TP, 0 FP/FN y
-0 FP sobre KARATS; sus positivos reales cubren siete de las diez posiciones y los
+local conservadora de confidence `0.80`. El corpus revisado produce 25 TP, 0 FP/FN y
+0 FP sobre KARATS; sus positivos reales cubren ocho de las diez posiciones y los
 tests geométricos cubren las diez. Esta observation no participa en
-`ContextResolver`: será consumida únicamente por el futuro flow cuando la base sea
+`ContextResolver`: es consumida únicamente por `BlackMarketFlow` cuando la base es
 Black Market.
+
+`BlackMarketPurchasedDetector` mide diez panels de precio y usa dos crops nativos
+curados del literal `Purchase Complete!`. Emite observations repetibles
+`status.black_market.purchased` con índice row-major y region relativa. Su calibration
+es `0.557578444480896 → 0.8815832138061523`, con confidence threshold `0.80`; el
+corpus actual produce 11 TP, 0 FP/FN frente a GOLD, KARATS, Video y 840 regions de
+pantallas ajenas. Este fact tampoco participa en `ContextResolver`: el flow lo usa
+exclusivamente como postcondición del mismo slot después de aceptar una compra.
 
 No existe todavía detector productivo para Battle Mode Select ni otros estados. Su `ContextRule` permanece disponible, de modo que sin otra señal productiva esos frames resuelven `UNKNOWN`. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
 
@@ -342,7 +350,7 @@ son el asset GOLD, dos franjas de búsqueda y diez posiciones; sus targets absol
 globals, taps y modelado como subcontexto de columnas son deuda preservada. No existe
 asset KARATS de Black Market ni flow legacy implementado que deba migrarse.
 
-La policy del futuro flow es `BUY iff currency == GOLD` y `NEVER BUY KARATS`.
+La policy del flow es `BUY iff currency == GOLD` y `NEVER BUY KARATS`.
 Precisión GOLD domina recall: ausencia, KARATS, Video y slots ya comprados son no
 elegibles. No se reconoce item, precio ni balances y no se hace OCR preventivo.
 
@@ -355,28 +363,28 @@ popup.insufficient_gold + No  → screen.black_market estándar
 ```
 
 La rama Yes del popup de insuficiencia no se exploró porque propone comprar Gold.
-La policy cerrada del futuro flow es elegir No, regresar a Black Market y continuar
+La policy cerrada del flow es elegir No, regresar a Black Market y continuar
 con el siguiente slot GOLD. Este resultado esperado de negocio no pertenece a
 Perception ni altera el contrato del overlay.
 
-### BlackMarketFlow previsto
+### BlackMarketFlow implementado
 
-`BlackMarketFlow` tendrá scope `PER_CHARACTER` y operará exclusivamente sobre el
+`BlackMarketFlow` tiene scope `PER_CHARACTER` y opera exclusivamente sobre el
 personaje activo. Su prerequisite de entrada es `screen.lobby` y su navegación es
 directa:
 
 ```text
-Lobby → Black Market
+Lobby → Black Market → Lobby
 ```
 
 Black Market no se abre desde Quick Menu. `menu.quick` no forma parte del semantic
 closure propio del flow y el flow tampoco cambia de personaje.
 
 La tienda actual presenta diez ofertas en cinco filas por dos columnas. El flow hará
-una única lectura inicial, conservará la lista de slots detectados como GOLD y la
-recorrerá secuencialmente en cualquier orden determinista. La tienda no reordena las
+una única lectura inicial, conserva la lista de slots detectados como GOLD y la
+recorre secuencialmente en orden row-major. La tienda no reordena las
 ofertas después de comprar; una compra exitosa deja el mismo slot marcado como
-`Purchased`, que será la postcondición mínima de éxito. No se identifica item, precio
+`Purchased`, que es la postcondición mínima de éxito. No se identifica item, precio
 ni balance y no se introduce OCR.
 
 ```text
@@ -397,7 +405,7 @@ GOLD + fondos insuficientes
 ```
 
 Una lectura inicial con cero slots GOLD es success/no-op normal y permite que Rotation
-continúe. No se intenta distinguir entre tienda ya procesada manualmente, ausencia de
+continúe después del retorno a Lobby. No se intenta distinguir entre tienda ya procesada manualmente, ausencia de
 ofertas GOLD u otra causa no observable. El reset ocurre aproximadamente cada hora por
 personaje y su contador comienza al visitar Black Market.
 
@@ -405,10 +413,47 @@ La primera policy de runtime está orientada a debug. Purchase Confirmation,
 Insufficient Gold, cero GOLD y `Purchased` verificado son resultados esperados. Ante
 un error técnico o estado inesperado se registra el evento, se hace cleanup seguro y
 se aborta el proceso completo; todavía no habrá recovery sofisticado. Si la
-postcondición `Purchased` no aparece en el slot esperado dentro del timeout futuro,
+postcondición `Purchased` no aparece en el slot esperado dentro del timeout,
 `purchase_unverified` no se considera éxito y obliga a abortar. Los logs iniciales no
 usan OCR ni identidad: `popup.insufficient_gold` registra sólo timestamp + `low_gold`,
 con una forma extensible para añadir `current_character_name` en el futuro.
+
+Los límites concretos del vertical slice son:
+
+```text
+ScrcpyFrameSource
+  → RuntimeObserver
+      ├── PerceptionEngine → ObservationBatch
+      ├── ContextResolver → ResolvedState
+      ├── RuntimeFacts(GOLD slots, Purchased slots)
+      └── FrameGeometry(frame.shape)
+  → BlackMarketFlow
+      → semantic action intent
+          → ActionExecutor
+              → AdbClient.tap(pixel)
+```
+
+`RuntimeSnapshot` garantiza que observations, state, facts y geometry pertenecen al
+mismo `FrameSnapshot`. `RuntimeObserver.wait_until()` exige sequences frescas
+posteriores a cada acción, tiene timeout/abort explícitos y opcionalmente estabilidad
+continua sobre snapshots distintos. La entrada a Black Market exige `0.75 s` de
+estabilidad porque el title se resuelve antes que la grilla; esto no añade
+hysteresis, voting ni memoria a `ContextResolver`.
+
+Los intents productivos del slice son `OpenBlackMarket`, `CloseBlackMarket`,
+`SelectBlackMarketSlot(0..9)`, `AcceptPurchaseConfirmation` y
+`RejectInsufficientGold`. `ActionExecutor` conoce sus targets normalizados, valida
+slots, deriva pixels desde la geometría del frame real y no reconoce estados ni
+aplica policy de compra. El target de cierre también exige un frame fresco
+`screen.lobby`; un fallo en esa postcondición aborta el flow.
+
+`BlackMarketPurchasedDetector` emite `status.black_market.purchased` con el índice
+row-major como value. Usa dos variantes nativas curadas del mismo texto
+`Purchase Complete!` y diez regions de panel de precio; GOLD, KARATS, Video y
+pantallas ajenas son negativos. La evaluación tras los smokes live contiene 11 TP,
+0 FP y 0 FN, raw positivo mínimo `0.881583`, máximo negativo `0.557578` y gap
+`0.324005`. La confidence sigue usando threshold semántico `0.80`; el anchor positivo
+se recalibró con la nueva muestra humana, sin bajar el threshold.
 
 ### Promoción curated y mantenimiento de detectores
 
@@ -517,6 +562,8 @@ Las herramientas activas quedan delimitadas así:
 - `tools/semantic_candidate_evaluation.py`: selección y evaluación offline de candidates experimentales mediante raw scores.
 - `tools/capture_black_market_currency.py`: captura pasiva opt-in de un frame full-resolution para curación de currency, sin input Android.
 - `tools/black_market_gold_evaluation.py`: evaluación offline reproducible de GOLD por slot y falsos positivos globales.
+- `tools/black_market_purchased_evaluation.py`: evaluación offline reproducible de Purchased por slot contra GOLD, KARATS, Video y pantallas ajenas.
+- `tools/smoke_black_market_single_character.py`: harness hardware opt-in del flow, con límites de debug, modo full y cierre validado del mercado actual.
 
 `tools/debug_context.py` y `testing/` fueron retirados porque duplicaban captura, dependían del modelo de contexto legacy o contenían IDs/acciones manuales cubiertas por herramientas vigentes. No se migró percepción ni gameplay.
 

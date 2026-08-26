@@ -78,7 +78,8 @@ def test_runtime_and_tools_import_without_external_side_effects(tmp_path):
             (
                 "import bot.runtime; import bot.screen; "
                 "import tools.smoke_capture; import tools.screencap_batch; "
-                "import tools.asset_capture"
+                "import tools.asset_capture; "
+                "import tools.smoke_black_market_single_character"
             ),
         ],
         cwd=tmp_path,
