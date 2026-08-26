@@ -12,6 +12,7 @@ Estas reglas son permanentes para cualquier trabajo de Codex en este repositorio
 6. Consultar `ARCHITECTURE.md` sólo cuando la tarea afecte componentes, contratos, data flow o límites entre capas.
 7. Consultar `docs/HISTORY.md`, `docs/legacy/` u otros documentos históricos únicamente cuando hagan falta antecedentes.
 8. No cargar cronología histórica cuando el código y los contratos actuales basten.
+9. Antes de editar un archivo largo, localizar el heading/rango vigente y aplicar patches pequeños sobre texto verificado. Si falla el contexto, releer sólo esa región y reintentar de forma acotada; no construir patches grandes desde texto recordado.
 
 ## Fuentes de verdad
 
@@ -31,6 +32,7 @@ Si la documentación contradice al código, no inventar una resolución: señala
 - `AGENT_LOCAL.md` es machine-local, no contiene secretos ni device serials y nunca se versiona.
 - `AGENT_LOCAL.example.md` documenta el formato portable.
 - No asumir que `python` o `adb` están en `PATH`.
+- Desde la raíz, ejecutar las tools Python que importan módulos internos como módulos: `& <PYTHON_EXE> -m tools.nombre <args>`, preferentemente mediante `.\tools\agent_run.ps1 tools.nombre <args>`. No usar `python path/to/tool.py` salvo que la tool declare explícitamente un import path independiente.
 
 ## Límites de arquitectura 0.2
 

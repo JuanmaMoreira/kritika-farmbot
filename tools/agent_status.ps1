@@ -5,39 +5,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$localConfigPath = Join-Path $repoRoot 'AGENT_LOCAL.md'
-$localValues = @{}
-
-if (Test-Path -LiteralPath $localConfigPath -PathType Leaf) {
-    foreach ($line in Get-Content -LiteralPath $localConfigPath) {
-        if ($line -match '^\s*(PYTHON_EXE|ADB_EXE|SCRCPY_SERVER_PATH)\s*=\s*(.+?)\s*$') {
-            $localValues[$Matches[1]] = $Matches[2].Trim().Trim('"').Trim("'")
-        }
-    }
-}
-
-function Resolve-AgentPath {
-    param([string]$Name)
-
-    if (-not $localValues.ContainsKey($Name)) {
-        return $null
-    }
-
-    $value = $localValues[$Name]
-    if ([string]::IsNullOrWhiteSpace($value) -or $value.StartsWith('<')) {
-        return $null
-    }
-
-    if (-not [System.IO.Path]::IsPathRooted($value)) {
-        $value = Join-Path $repoRoot $value
-    }
-
-    return [System.IO.Path]::GetFullPath($value)
-}
-
-$pythonExe = Resolve-AgentPath 'PYTHON_EXE'
-$adbExe = Resolve-AgentPath 'ADB_EXE'
-$scrcpyServer = Resolve-AgentPath 'SCRCPY_SERVER_PATH'
+. (Join-Path $PSScriptRoot 'agent_local.ps1')
+$localPaths = Get-AgentLocalPaths -RepositoryRoot $repoRoot
+$pythonExe = $localPaths.PythonExe
+$adbExe = $localPaths.AdbExe
+$scrcpyServer = $localPaths.ScrcpyServerPath
 
 Push-Location $repoRoot
 try {
