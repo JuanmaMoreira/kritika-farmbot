@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "policy": {
+    "eligible": "GOLD only",
+    "ineligible": ["KARATS", "VIDEO", "PURCHASED"],
+    "order": "row-major",
+    "rows": 5,
+    "columns": 2,
+    "buy_rule": "BUY iff currency == GOLD",
+    "premium_rule": "NEVER BUY KARATS"
+  },
+  "entries": [
+    {
+      "path": "screencaps/batch/done/20260402_164928_086696.png",
+      "review_status": "visual_reviewed",
+      "slots": ["KARATS", "KARATS", "GOLD", "GOLD", "KARATS", "GOLD", "KARATS", "GOLD", "KARATS", "KARATS"]
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164944_649947.png",
+      "review_status": "visual_reviewed",
+      "slots": ["KARATS", "KARATS", "GOLD", "GOLD", "KARATS", "GOLD", "KARATS", "PURCHASED", "KARATS", "KARATS"]
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170101_208277.png",
+      "review_status": "visual_reviewed",
+      "slots": ["KARATS", "KARATS", "PURCHASED", "GOLD", "KARATS", "GOLD", "KARATS", "PURCHASED", "KARATS", "KARATS"]
+    },
+    {
+      "path": "screencaps/batch/done/20260402_170106_642733.png",
+      "review_status": "visual_reviewed",
+      "slots": ["KARATS", "KARATS", "PURCHASED", "GOLD", "KARATS", "PURCHASED", "KARATS", "PURCHASED", "KARATS", "KARATS"]
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260823T061544_647270Z-11461340/frame-00001706.png",
+      "review_status": "visual_reviewed",
+      "slots": ["GOLD", "KARATS", "KARATS", "KARATS", "VIDEO", "GOLD", "GOLD", "GOLD", "KARATS", "KARATS"]
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260823T061544_647270Z-11461340/frame-00001946.png",
+      "review_status": "visual_reviewed",
+      "slots": ["GOLD", "KARATS", "KARATS", "KARATS", "VIDEO", "GOLD", "GOLD", "GOLD", "KARATS", "KARATS"]
+    },
+    {
+      "path": "screencaps/semantic/black_market_currency/20260825T204554_063659Z.png",
+      "review_status": "human_confirmed",
+      "slots": ["VIDEO", "KARATS", "KARATS", "KARATS", "GOLD", "KARATS", "GOLD", "GOLD", "KARATS", "KARATS"]
+    },
+    {
+      "path": "screencaps/semantic/black_market_currency/20260826T075019_711006Z.png",
+      "review_status": "human_confirmed",
+      "slots": ["GOLD", "KARATS", "GOLD", "PURCHASED", "GOLD", "KARATS", "KARATS", "KARATS", "PURCHASED", "KARATS"]
+    }
+  ]
+}

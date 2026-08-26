@@ -22,6 +22,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se cerraron las Fases 3D y 3G revalidando en hardware real el repair offline 3F: Black Market y Purchase Confirmation generalizaron al runtime current-season, incluida la composición sobre base conocida y `UNKNOWN`, con igualdad Workbench/3D, latencia operativa y cleanup completo sin input Android.
 - Se completó la Fase 3H.1: Perception Workbench usa un vocabulario humano separado con candidate semantics, períodos `UNSET` y confirmación explícita de GT posterior enlazada a gestos raw; un smoke read-only validó Lobby → Guild Shop y swipe sin cambio de contexto, sin crear navegación, acciones ni reglas productivas.
 - Se completó la Fase 3H.2 con el census de 75 entradas legacy y la promoción human-confirmed de `menu.quick` como overlay global: 18/18 positivos, 0 FP/FN sobre 77 negativos y 95/95 resoluciones offline, cerrando la semántica contextual mínima del flow Black Market multi-character sin implementar ítems ni navegación.
+- Se completó la Fase 3H.3 revalidando `menu.quick` live y promoviendo la policy mínima de Black Market `BUY iff currency == GOLD`: detector GOLD por 10 slots con 24/24 TP, cero FP/FN y cero FP sobre KARATS, más `popup.insufficient_gold` como overlay human-confirmed con retorno seguro a Black Market mediante No. No se implementó el flow ni se añadió OCR.
 
 ### Changed
 
@@ -30,6 +31,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se reorganizó la documentación activa alrededor de `AGENTS.md`, `CONTEXT.md`, `ARCHITECTURE.md` y `ROADMAP.md`.
 - Los assets runtime dejaron de quedar ocultos por una regla global para imágenes.
 - `bot/screen.py` quedó como módulo transicional de matching OpenCV puro; los scripts manuales redundantes de `testing/` y el debugger de contextos legacy fueron retirados.
+- `AGENTS.md` incorporó como regla canónica el protocolo human-in-the-loop: chat + `steer` como canal principal y Workbench únicamente como instrumentación explícita.
 
 ### Preserved
 

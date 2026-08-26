@@ -17,10 +17,12 @@ import cv2
 from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     MENU_QUICK,
+    POPUP_INSUFFICIENT_GOLD,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
@@ -44,6 +46,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/semantic_acquisition_manifest.json",
     "datasets/workbench_evidence_manifest.json",
     "datasets/quick_menu_evidence_manifest.json",
+    "datasets/black_market_interruptions_manifest.json",
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
@@ -92,6 +95,7 @@ class ResolverMetrics:
     black_market_correct: int
     purchase_overlay_correct: int
     quick_menu_overlay_correct: int
+    insufficient_gold_overlay_correct: int
     black_market_plus_overlay_correct: int
     unknown_plus_purchase_overlay_correct: int
     by_ground_truth: dict[str, ContextMetrics]
@@ -405,7 +409,11 @@ def evaluate_production_perception(
             "positives": 0,
             "negatives": 0,
         }
-        for spec in (detector.spec for detector in engine.detectors)
+        for spec in (
+            detector.spec
+            for detector in engine.detectors
+            if hasattr(detector, "spec")
+        )
     }
     resolver_counts = {
         "correct": 0,
@@ -416,6 +424,7 @@ def evaluate_production_perception(
         "black_market_correct": 0,
         "purchase_correct": 0,
         "quick_menu_correct": 0,
+        "insufficient_gold_correct": 0,
         "base_overlay_correct": 0,
         "unknown_overlay_correct": 0,
     }
@@ -444,7 +453,9 @@ def evaluate_production_perception(
         )
         state = resolver.resolve(batch)
 
-        for detector in engine.detectors:
+        for detector in (
+            item for item in engine.detectors if hasattr(item, "spec")
+        ):
             name = detector.spec.name
             accumulator = detector_accumulators[name]
             evidence = batch.best(name)
@@ -506,6 +517,10 @@ def evaluate_production_perception(
         if MENU_QUICK in entry.overlays:
             resolver_counts["quick_menu_correct"] += int(
                 MENU_QUICK in state.overlays
+            )
+        if POPUP_INSUFFICIENT_GOLD in entry.overlays:
+            resolver_counts["insufficient_gold_correct"] += int(
+                POPUP_INSUFFICIENT_GOLD in state.overlays
             )
         if (
             entry.base_context == SCREEN_BLACK_MARKET
@@ -602,6 +617,9 @@ def evaluate_production_perception(
             black_market_correct=resolver_counts["black_market_correct"],
             purchase_overlay_correct=resolver_counts["purchase_correct"],
             quick_menu_overlay_correct=resolver_counts["quick_menu_correct"],
+            insufficient_gold_overlay_correct=resolver_counts[
+                "insufficient_gold_correct"
+            ],
             black_market_plus_overlay_correct=resolver_counts["base_overlay_correct"],
             unknown_plus_purchase_overlay_correct=resolver_counts[
                 "unknown_overlay_correct"
@@ -624,6 +642,8 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return entry.base_context == SCREEN_BLACK_MARKET
     if name == LANDMARK_PURCHASE_CONFIRMATION_PROMPT:
         return POPUP_PURCHASE_CONFIRMATION in entry.overlays
+    if name == LANDMARK_INSUFFICIENT_GOLD_PROMPT:
+        return POPUP_INSUFFICIENT_GOLD in entry.overlays
     if name == LANDMARK_QUICK_MENU_LOBBY_TILE:
         return MENU_QUICK in entry.overlays
     raise ValueError(f"Unsupported production detector: {name}")

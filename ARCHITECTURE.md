@@ -94,13 +94,14 @@ El backend actual es `LocalCvDetector`. Cada instancia representa un único land
 
 `LocalCvDetection` mantiene separados `raw_match_score` y `semantic_confidence`. `LinearGapCalibration` mapea linealmente el máximo negativo confirmado a `0` y el mínimo positivo confirmado a `1`, con clamp fuera del intervalo. Esa confidence sólo expresa posición en el gap empírico de la muestra 2D y no es una probabilidad. El detector omite evidence con confidence `0`; no aplica el threshold semántico `0.80`, que sigue siendo policy exclusiva del `ContextResolver`.
 
-Después de la promoción 3H.2, las specs productivas contienen:
+Después de la promoción 3H.3, las specs de landmarks productivos contienen:
 
 | Observation | Asset | Region validada | Gap empírico provisional |
 |---|---|---|---|
 | `landmark.lobby_trading_center_label` | `assets/ui/landmarks/lobby-trading-center-label.png` | `(0.19095870206489673, 0.905032679738562, 0.29761061946902656, 0.9822222222222222)` | `0.4657268226146698 → 0.7198567986488342` |
-| `landmark.character_select_header` | `assets/ui/landmarks/character-select-header.png` | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | `0.2749116122722626 → 0.43373382091522217` |
-| `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.3996976613998413` |
+| `landmark.character_select_header` | `assets/ui/landmarks/character-select-header.png` | `(0.40297935103244836, 0.02676470588235294, 0.5852212389380531, 0.11212418300653594)` | `0.2776434123516083 → 0.43373382091522217` |
+| `landmark.black_market_title` | `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.2230203002691269 → 0.3993116021156311` |
+| `landmark.insufficient_gold_prompt` | `assets/ui/landmarks/insufficient-gold-prompt-current.png` | `(1100/2712, 500/1224, 1620/2712, 610/1224)` | `0.443979948759079 → 0.9999777674674988` |
 | `landmark.purchase_confirmation_prompt` | asset histórico + `assets/ui/landmarks/purchase-confirmation-prompt-current.png` | `(1235/2712, 590/1224, 1460/2712, 647/1224)` | `0.4875827729701996 → 0.9959162473678589` |
 | `landmark.quick_menu_lobby_tile` | `assets/ui/landmarks/quick-menu-lobby-tile.png` | `(0.02, 0.10, 0.25, 0.32)` | `0.2981472909450531 → 0.9826233983039856` |
 
@@ -112,6 +113,21 @@ aplicar offsets de coordenadas por contexto. La regla `menu.quick` vive entre ov
 el namespace distingue menú de popup, pero reutiliza la composición ya soportada por
 `ResolvedState`. Si el panel oculta el landmark de la base, `UNKNOWN + menu.quick` es
 un resultado válido y no se intenta reconstruir una base invisible.
+
+Además de esos seis detectores de landmarks, `build_default_perception()` añade
+`BlackMarketGoldDetector`. Este detector especializado reutiliza el asset legacy
+`gold-coin-bm.png` a tamaño nativo, pero no convierte cada slot ni item en contexto:
+mide diez regiones de currency derivadas de un grid fijo 5×2 y emite cero o más
+observaciones repetibles `currency.black_market.gold`. Cada observation conserva el
+índice row-major como valor y la región de búsqueda relativa. KARATS, Video,
+Purchase Complete y cualquier señal subthreshold no emiten evidencia elegible.
+
+La calibration GOLD usa `0.5731779932975769 → 0.9343795776367188` y una policy
+local conservadora de confidence `0.80`. El corpus revisado produce 24 TP, 0 FP/FN y
+0 FP sobre KARATS; sus positivos reales cubren siete de las diez posiciones y los
+tests geométricos cubren las diez. Esta observation no participa en
+`ContextResolver`: será consumida únicamente por el futuro flow cuando la base sea
+Black Market.
 
 No existe todavía detector productivo para Battle Mode Select ni otros estados. Su `ContextRule` permanece disponible, de modo que sin otra señal productiva esos frames resuelven `UNKNOWN`. OCR y el fallback VLM tampoco están implementados. Cuando se incorporen, deberán respetar el mismo límite de detector; VLM permanecerá provider-agnostic y ninguna capa superior dependerá de un proveedor, API o modelo específico.
 
@@ -156,7 +172,7 @@ La Fase 2A sí definió su contrato de salida en `bot/state.py`. `ResolvedState`
 
 La Fase 2C añadió `bot/catalog.py` como configuración semántica productiva separada del motor genérico. Su API pública es `BASE_CONTEXT_RULES`, `OVERLAY_RULES`, `SEMANTIC_OBSERVATION_NAMES` y `build_default_resolver()`. No importa `constants.py`, assets ni capas de percepción.
 
-Después de la promoción 3C, el catálogo productivo contiene cuatro reglas base y un overlay. El oro dejó de formar parte del vocabulary productivo; su referencia se conserva sólo como trazabilidad histórica en tooling y documentación:
+Después de la promoción 3H.3, el catálogo productivo contiene cuatro reglas base y tres overlays. El antiguo oro del shell de Lobby dejó de formar parte del vocabulary productivo; la nueva observation GOLD interna de Black Market no es una regla de contexto:
 
 | Resultado semántico | Tipo | Requirement | Referencia legacy | Región legacy | Threshold legacy |
 |---|---|---|---|---|---|
@@ -165,12 +181,14 @@ Después de la promoción 3C, el catálogo productivo contiene cuatro reglas bas
 | `screen.battle_mode_select` | base | `landmark.monster_wave_entry_title` | `survival` / `assets/ui/survival-id.png` | `(0.1707, 0.2337, 0.2994, 0.2974)` | `0.85` |
 | `screen.black_market` | base | `landmark.black_market_title` | `black-market` / `assets/ui/black-market-id.png` | `(0.4395, 0.0997, 0.5579, 0.1495)` | `0.85` |
 | `popup.purchase_confirmation` | overlay | `landmark.purchase_confirmation_prompt` | `black-market-purchase-confirmation` / `assets/ui/black-market-purchase-confirmation-id.png` | `(0.4624, 0.4828, 0.5376, 0.5294)` | `0.85` |
+| `popup.insufficient_gold` | overlay | `landmark.insufficient_gold_prompt` | evidencia live 3H.3 / `assets/ui/landmarks/insufficient-gold-prompt-current.png` | `(1100/2712, 500/1224, 1620/2712, 610/1224)` | — |
+| `menu.quick` | overlay | `landmark.quick_menu_lobby_tile` | evidencia Workbench 3H.2 | `(0.02, 0.10, 0.25, 0.32)` | — |
 
 Esta tabla es trazabilidad histórica, no configuración runtime. Los landmarks describen señales visibles; no prescriben template matching y podrían provenir de cualquier backend futuro.
 
 Todas las `ContextRule` usan `SEMANTIC_CONFIDENCE_THRESHOLD = 0.80`. Es una policy uniforme y provisional sobre confidence reportada, distinta del threshold de matching legacy de la tabla. La evaluación 2D no definió ninguna conversión desde score OpenCV a esa confidence.
 
-Las cinco rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. El overlay de confirmación coexiste con `screen.black_market` y no reemplaza la base.
+Las siete rules tienen conjuntos mínimos de evidence distintos y por ello no generan solapamiento estructural. Proporcionar simultáneamente landmarks de dos bases sigue produciendo `AMBIGUOUS`, como exige el resolver. Purchase Confirmation, Insufficient Gold y Quick Menu se resuelven independientemente y no reemplazan la base.
 
 La regla de `screen.lobby` introducida inicialmente en 2C fue retirada hasta 3C: inspección visual confirmó que `lobby-id.png` contiene un icono de moneda, no un header, y la muestra humana encontró scores cercanos a `1.0` en Black Market y otros contextos. Fase 3B.1 aclaró que se trata de una señal posicional real del shell de Lobby, pero ese shell permanece visible bajo modales y Black Market; por tanto no puede resolver por sí solo el contexto base definido por la taxonomía actual. Fase 3C restauró la regla con el rótulo `Trading Center`, que sí separa el corpus confirmado. `survival-id.png` contiene “Monster Wave” dentro de “Select Battle Mode”, por lo que tanto el landmark como su resultado se corrigieron. El prompt “Purchase?” también aparece en Guild Shop; su semántica de overlay ahora es independiente de Black Market.
 
@@ -309,6 +327,37 @@ NavigationRule / botón / target / acción productiva
 
 Una confirmación no afirma causalidad, repetibilidad ni seguridad de navegación. Las coordenadas no se aprenden y los datasets curated no se modifican desde el Workbench.
 
+### Currency interna y falta de oro en Black Market
+
+Fase 3H.3 separa explícitamente contexto, percepción interna y policy futura:
+
+```text
+screen.black_market
+  + currency.black_market.gold(value=slot_index) × N
+  + popup.purchase_confirmation | popup.insufficient_gold | sin overlay
+```
+
+El layout confirmado es 5 filas × 2 columnas. El conocimiento reutilizable legacy
+son el asset GOLD, dos franjas de búsqueda y diez posiciones; sus targets absolutos,
+globals, taps y modelado como subcontexto de columnas son deuda preservada. No existe
+asset KARATS de Black Market ni flow legacy implementado que deba migrarse.
+
+La policy del futuro flow es `BUY iff currency == GOLD` y `NEVER BUY KARATS`.
+Precisión GOLD domina recall: ausencia, KARATS, Video y slots ya comprados son no
+elegibles. No se reconoce item, precio ni balances y no se hace OCR preventivo.
+
+La secuencia human-confirmed tiene dos ramas desde la selección manual:
+
+```text
+GOLD con fondos suficientes   → popup.purchase_confirmation
+GOLD sin fondos suficientes   → popup.insufficient_gold directamente
+popup.insufficient_gold + No  → screen.black_market estándar
+```
+
+La rama Yes del popup de insuficiencia no se exploró porque propone comprar Gold.
+La policy de flow posterior al recovery —seguir con otros slots o terminar el
+personaje— queda pendiente y no pertenece a Perception ni al overlay.
+
 ### Promoción curated y mantenimiento de detectores
 
 Fase 3F establece el flujo oficial offline desde Workbench hacia Perception:
@@ -324,7 +373,7 @@ raw session ignorada
 
 `datasets/workbench_evidence_manifest.json` selecciona exactamente frames revisados y conserva sólo paths relativos, `source=workbench`, session id, sequence, timestamp, reason y shape. `tools/production_perception_evaluation.py` materializa esos PNG bajo `screencaps/semantic/workbench/` después de contrastar manifest, summary, evento y bytes fuente. La session debe declarar `curation_status=raw_unreviewed`; estados `diagnostic`, status ausente, `curated=true`, ground truth no humano, labels fuera del catálogo productivo, labels contradictorios, secuencias duplicadas o paths fuera del repositorio se rechazan antes de copiar. Los raw `events.jsonl`, summaries y frames de sesión nunca se convierten automáticamente en dataset. Esta allowlist preserva el scope 3F: un candidate de adquisición no se vuelve curated por aparecer en un evento `2.0`.
 
-El evaluator fusiona el manifest histórico, acquisition, Workbench 3F y Quick Menu, deduplica por path y ejecuta siempre los cinco detectores productivos más el resolver. Reporta min/median/max positivos, máximo negativo, anchors, gap, FP/FN emitidos y resultados end-to-end. Los manifests siguen siendo utilizables aunque los PNG ignorados no existan en otra checkout; la suite normal prueba parsing y policy con fixtures in-memory/locales y no depende de las sesiones reales.
+El evaluator fusiona el manifest histórico, acquisition, Workbench 3F, Quick Menu e interrupciones Black Market, deduplica por path y ejecuta los seis landmarks productivos más el resolver. Reporta min/median/max positivos, máximo negativo, anchors, gap, FP/FN emitidos y resultados end-to-end. `tools/black_market_gold_evaluation.py` evalúa por separado las diez posiciones, GOLD/KARATS/Video/Purchased y negativos de pantallas ajenas. Los manifests siguen siendo utilizables aunque los PNG ignorados no existan en otra checkout; la suite normal prueba parsing y policy con fixtures in-memory/locales y no depende de las sesiones reales.
 
 La variante múltiple de `LocalCvDetector` no es ensemble semántico ni source weighting: son renderings nativos, explícitos y curados del mismo landmark dentro de un único detector. La calibration se calcula sobre el máximo raw que ese detector realmente producirá. Este mecanismo se incorporó sólo para `landmark.purchase_confirmation_prompt`; Black Market mantuvo su asset/crop original y cambió únicamente su calibration.
 
@@ -382,9 +431,11 @@ Las herramientas activas quedan delimitadas así:
 - `tools/asset_capture.py`: curación de templates/regiones desde carpeta o desde la misma fuente 0.2;
 - `tools/semantic_slice_evaluation.py`: evaluación reproducible y offline de raw template scores;
 - `tools/review_semantic_slice.py`: revisión humana local del subconjunto seleccionado.
-- `tools/production_perception_evaluation.py`: promoción segura de selección Workbench y evaluación offline de observations calibradas/estados resueltos sobre los cuatro manifests confirmados.
+- `tools/production_perception_evaluation.py`: promoción segura de selección Workbench y evaluación offline de observations calibradas/estados resueltos sobre los cinco manifests confirmados.
 - `tools/capture_semantic_dataset.py`: adquisición dirigida de screenshots completos con labels humanas explícitas.
 - `tools/semantic_candidate_evaluation.py`: selección y evaluación offline de candidates experimentales mediante raw scores.
+- `tools/capture_black_market_currency.py`: captura pasiva opt-in de un frame full-resolution para curación de currency, sin input Android.
+- `tools/black_market_gold_evaluation.py`: evaluación offline reproducible de GOLD por slot y falsos positivos globales.
 
 `tools/debug_context.py` y `testing/` fueron retirados porque duplicaban captura, dependían del modelo de contexto legacy o contenían IDs/acciones manuales cubiertas por herramientas vigentes. No se migró percepción ni gameplay.
 

@@ -57,3 +57,14 @@ No usar `CHANGELOG.md` como diario por commit, archivo o función.
 - Los tests normales deben poder ejecutarse sin teléfono cuando sea razonable.
 - Las pruebas que requieran un dispositivo físico deben estar separadas, identificadas y ser opt-in.
 - No ejecutar scripts que hagan taps, swipes o modifiquen el dispositivo sin que la tarea lo requiera expresamente.
+
+### Protocolo human-in-the-loop
+
+- En cualquier prueba con dispositivo físico, el chat + `steer` es el canal principal de comunicación con el usuario.
+- Si Codex necesita que el usuario navegue, abra o cierre una pantalla, confirme un estado, asigne ground truth o tome una decisión humana, debe detenerse en un punto seguro, pedir esa acción explícitamente por chat en lenguaje semántico normal y continuar sólo después de recibir la respuesta mediante `steer`.
+- No usar `stdin`, prompts de terminal, menús de consola, códigos numéricos ni secuencias abstractas de teclas como canal principal para obtener información del usuario.
+- La UI y el teclado de Perception Workbench son instrumentación, no el protocolo de conversación con el usuario.
+- Sólo exigir interacción directa con Workbench cuando esa interacción sea parte específica de lo que se está validando o sea necesaria para registrar ground truth. Antes debe explicarse por chat qué acción concreta se necesita y confirmarse que la ventana es visible.
+- Incluso cuando Workbench requiera una tecla, describir primero la acción semántica por chat; no hacer que el usuario tenga que interpretar una máquina de estados o una secuencia abstracta de controles.
+- Preferir que el usuario navegue normalmente desde el dispositivo físico mientras Codex observa y registra evidencia.
+- Nunca inferir una confirmación humana, ground truth o destino semántico a partir de un tap, una predicción o una transición visual.

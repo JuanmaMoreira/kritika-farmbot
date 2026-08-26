@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "curation": {
+    "phase": "3H.3",
+    "source": "passive_live_capture",
+    "ground_truth": "human_confirmed_via_chat_steer",
+    "observed_trigger": "selecting a GOLD offer with insufficient funds opens the popup directly",
+    "observed_safe_exit": "No returns to the standard Black Market view",
+    "sequence_correction": "popup.purchase_confirmation is not shown on the insufficient-funds branch"
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/black_market_currency/20260825T204903_103690Z.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.insufficient_gold"],
+      "review_status": "confirmed"
+    }
+  ]
+}

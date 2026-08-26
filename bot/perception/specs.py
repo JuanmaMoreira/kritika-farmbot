@@ -10,6 +10,7 @@ from pathlib import Path
 from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
@@ -101,7 +102,26 @@ BLACK_MARKET_TITLE_SPEC = LocalCvSpec(
     region=(0.4395, 0.0997, 0.5579, 0.1495),
     calibration=LinearGapCalibration(
         negative_anchor=0.2230203002691269,
-        positive_anchor=0.3996976613998413,
+        positive_anchor=0.3993116021156311,
+    ),
+)
+
+# Human-confirmed live literal shown directly after selecting a GOLD offer
+# that cannot be afforded. The popup remains independent from Purchase
+# Confirmation and returns to Black Market when the user chooses No. One
+# positive is currently available, so the strong empirical gap is provisional.
+INSUFFICIENT_GOLD_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_INSUFFICIENT_GOLD_PROMPT,
+    asset_path=Path("assets/ui/landmarks/insufficient-gold-prompt-current.png"),
+    region=(
+        1100 / 2712,
+        500 / 1224,
+        1620 / 2712,
+        610 / 1224,
+    ),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.443979948759079,
+        positive_anchor=0.9999777674674988,
     ),
 )
 
@@ -181,7 +201,7 @@ CHARACTER_SELECT_HEADER_SPEC = LocalCvSpec(
         0.11212418300653594,
     ),
     calibration=LinearGapCalibration(
-        negative_anchor=0.2749116122722626,
+        negative_anchor=0.2776434123516083,
         positive_anchor=0.43373382091522217,
     ),
 )
@@ -190,6 +210,7 @@ DEFAULT_LOCAL_CV_SPECS = (
     LOBBY_TRADING_CENTER_LABEL_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
+    INSUFFICIENT_GOLD_PROMPT_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
 )

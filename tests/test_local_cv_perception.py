@@ -11,6 +11,7 @@ import pytest
 from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
@@ -21,6 +22,7 @@ from bot.catalog import (
 from bot.capture import FrameSnapshot
 from bot.observations import ObservationSource
 from bot.perception import build_default_perception
+from bot.perception.black_market import BlackMarketGoldDetector
 from bot.perception.engine import PerceptionEngine
 from bot.perception.local_cv import LocalCvDetector
 from bot.perception.specs import (
@@ -238,12 +240,16 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     second = build_default_perception()
 
     assert engine is not second
-    assert tuple(detector.spec for detector in engine.detectors) == DEFAULT_LOCAL_CV_SPECS
-    assert len(created) == 10
+    assert tuple(
+        detector.spec for detector in engine.detectors[:-1]
+    ) == DEFAULT_LOCAL_CV_SPECS
+    assert isinstance(engine.detectors[-1], BlackMarketGoldDetector)
+    assert len(created) == 12
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
         LANDMARK_CHARACTER_SELECT_HEADER,
         LANDMARK_BLACK_MARKET_TITLE,
+        LANDMARK_INSUFFICIENT_GOLD_PROMPT,
         LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
         LANDMARK_QUICK_MENU_LOBBY_TILE,
     )

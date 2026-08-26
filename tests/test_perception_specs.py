@@ -10,6 +10,7 @@ from bot.perception.specs import (
     BLACK_MARKET_TITLE_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
+    INSUFFICIENT_GOLD_PROMPT_SPEC,
     LOBBY_TRADING_CENTER_LABEL_SPEC,
     LinearGapCalibration,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
@@ -90,7 +91,7 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
         0.11212418300653594,
     )
     assert CHARACTER_SELECT_HEADER_SPEC.calibration.negative_anchor == (
-        pytest.approx(0.2749116122722626)
+        pytest.approx(0.2776434123516083)
     )
     assert BLACK_MARKET_TITLE_SPEC.asset_path.as_posix() == (
         "assets/ui/black-market-id.png"
@@ -100,7 +101,22 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
         0.2230203002691269
     )
     assert BLACK_MARKET_TITLE_SPEC.calibration.positive_anchor == pytest.approx(
-        0.3996976613998413
+        0.3993116021156311
+    )
+    assert INSUFFICIENT_GOLD_PROMPT_SPEC.asset_path.as_posix() == (
+        "assets/ui/landmarks/insufficient-gold-prompt-current.png"
+    )
+    assert INSUFFICIENT_GOLD_PROMPT_SPEC.region == (
+        1100 / 2712,
+        500 / 1224,
+        1620 / 2712,
+        610 / 1224,
+    )
+    assert INSUFFICIENT_GOLD_PROMPT_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.443979948759079)
+    )
+    assert INSUFFICIENT_GOLD_PROMPT_SPEC.calibration.positive_anchor == (
+        pytest.approx(0.9999777674674988)
     )
     assert PURCHASE_CONFIRMATION_PROMPT_SPEC.variant_asset_paths == (
         Path("assets/ui/landmarks/purchase-confirmation-prompt-current.png"),
@@ -146,6 +162,11 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             CHARACTER_SELECT_HEADER_SPEC,
             (440, 80),
             "e16be1dc88a74f9f4511d5c0058f7249e635dcd2bca864c1f206f567b2b61e93",
+        ),
+        (
+            INSUFFICIENT_GOLD_PROMPT_SPEC,
+            (375, 52),
+            "5917521be0a18a42bd8fa24ffca4c796c1aac92ee6873fe6a7bf15119b61bf07",
         ),
         (
             PURCHASE_CONFIRMATION_PROMPT_SPEC,

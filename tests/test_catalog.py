@@ -9,10 +9,12 @@ import pytest
 from bot.catalog import (
     BASE_CONTEXT_RULES,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     MENU_QUICK,
     OVERLAY_RULES,
+    POPUP_INSUFFICIENT_GOLD,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
@@ -104,7 +106,9 @@ def test_catalog_resolves_black_market_with_its_purchase_overlay():
     black_market_rule = next(
         rule for rule in BASE_CONTEXT_RULES if rule.name == SCREEN_BLACK_MARKET
     )
-    purchase_rule = OVERLAY_RULES[0]
+    purchase_rule = next(
+        rule for rule in OVERLAY_RULES if rule.name == POPUP_PURCHASE_CONFIRMATION
+    )
 
     state = resolver.resolve(
         batch(*black_market_rule.requires, *purchase_rule.requires)
@@ -113,6 +117,19 @@ def test_catalog_resolves_black_market_with_its_purchase_overlay():
     assert state.status is ResolutionStatus.RESOLVED
     assert state.base_context == SCREEN_BLACK_MARKET
     assert state.overlays == (POPUP_PURCHASE_CONFIRMATION,)
+
+
+def test_catalog_resolves_black_market_with_insufficient_gold_overlay():
+    state = build_default_resolver().resolve(
+        batch(
+            "landmark.black_market_title",
+            LANDMARK_INSUFFICIENT_GOLD_PROMPT,
+        )
+    )
+
+    assert state.status is ResolutionStatus.RESOLVED
+    assert state.base_context == SCREEN_BLACK_MARKET
+    assert state.overlays == (POPUP_INSUFFICIENT_GOLD,)
 
 
 def test_catalog_returns_unknown_for_insufficient_evidence():
@@ -203,8 +220,8 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
     assert len(BASE_CONTEXT_RULES) == 4
-    assert len(OVERLAY_RULES) == 2
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 6
+    assert len(OVERLAY_RULES) == 3
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 7
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 
