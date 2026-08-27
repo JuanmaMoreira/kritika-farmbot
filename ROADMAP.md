@@ -2,7 +2,7 @@
 
 ## Estado
 
-El primer vertical slice de runtime está cerrado. `BlackMarketFlow` cubre `low_gold + inventory_full` como resultados de negocio no fatales, `rotation.standard` quedó validada en un ciclo live 28/28 y la composición mínima de sesión pasó un smoke live N=2.
+El primer vertical slice de runtime está cerrado. `BlackMarketFlow` cubre `low_gold + inventory_full` como resultados de negocio no fatales, `rotation.standard` quedó validada en un ciclo live 28/28 y la composición de sesión completó el smoke productivo 28/28 con retorno humano-confirmado al personaje inicial.
 
 ## Completado
 
@@ -43,7 +43,7 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Mantener flows, Rotation y ADB separados y exigir Lobby entre componentes.
 - [x] Preparar `CharacterContext(name=None)` para identidad futura sin implementar OCR.
 - [x] Validar live N=2: 2/2 flows, 2/2 advances y Lobby estable entre componentes; smokes incrementales acumularon tres `inventory_full` no fatales.
-- [ ] Validar la sesión Black Market completa de 28 personajes sin reprocesar al inicial tras el advance final. Dos intentos abortaron conservadoramente en 3/28: primero por selección de slot durante carga post-compra y después por un `Yes` no registrado. El audit completo de interacciones pasó 4/4 compras GOLD consecutivas y retorno a Lobby en un smoke acotado; el 28/28 sigue pausado hasta nueva autorización.
+- [x] Validar la sesión Black Market completa de 28 personajes sin reprocesar al inicial tras el advance final: 28/28 flows, 28/28 advances, business events no fatales, Lobby final y retorno al inicial confirmado humanamente.
 
 ## Después
 
