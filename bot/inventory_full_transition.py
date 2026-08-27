@@ -18,6 +18,7 @@ def acknowledge_inventory_full(
     before: RuntimeSnapshot,
     *,
     policy: VerifiedTransitionPolicy,
+    stable_for: float = 0.0,
 ) -> VerifiedTransitionResult:
     """Tap OK and require a fresh clean Black Market postcondition."""
 
@@ -29,6 +30,7 @@ def acknowledge_inventory_full(
         precondition=is_inventory_full_popup,
         retryable_from=is_inventory_full_popup,
         abort_if=_has_unexpected_ack_state,
+        stable_for=stable_for,
         policy=policy,
     )
 

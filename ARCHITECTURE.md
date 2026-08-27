@@ -118,7 +118,7 @@ Los flows contienen intención y reglas de negocio deterministas. Declaran scope
 
 `bot/flow_contracts.py` define el contrato transversal `FlowResult(status, events)`. `COMPLETED` garantiza que el flow terminó y recuperó Lobby; `FAILED` indica que continuar no es seguro. `FlowEvent(kind, detail=None)` representa resultados de negocio extensibles y no controla la sesión.
 
-`BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, Purchase Confirmation, Insufficient Gold, Inventory Full, GOLD y Purchased; Quick Menu no es prerequisite. Low Gold e Inventory Full producen business events no fatales; este último se reconoce mediante una transición verificada, pero el flow no identifica ni libera inventarios. La policy funcional detallada está en `CONTEXT.md`.
+`BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, Purchase Confirmation, Insufficient Gold, Inventory Full, GOLD y Purchased; Quick Menu no es prerequisite. Cada selección GOLD es una transición verificada hacia una de las tres ramas esperadas y sólo admite retry desde Black Market limpio; el retorno de cada rama debe permanecer estable antes del siguiente slot. Low Gold e Inventory Full producen business events no fatales; este último se reconoce mediante una transición verificada, pero el flow no identifica ni libera inventarios. La policy funcional detallada está en `CONTEXT.md`.
 
 Los support operations futuros seguirán `check → bounded support operation → recheck → continue/skip/fail`; no se permiten llamadas recursivas arbitrarias entre flows.
 

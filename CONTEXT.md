@@ -2,8 +2,8 @@
 
 **Estado:** rediseño híbrido 0.2; composición mínima `BlackMarketFlow + rotation.standard` implementada y validada en smoke live N=2.
 **Unidad funcional vigente:** `SessionRunner` ejecuta flows `PER_CHARACTER` en orden y hace exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 597/597 tests hardware-free verdes; smoke final de sesión 2/2 personajes y 2/2 advances.
-**Siguiente trabajo funcional:** validación completa de la sesión Black Market de 28 personajes, todavía no autorizada ni ejecutada.
+**Baseline conocido:** 600/600 tests hardware-free verdes; hardening de selección GOLD validado en smoke single-character.
+**Siguiente trabajo funcional:** nueva ejecución completa de la sesión Black Market de 28 personajes; el primer intento abortó 3/28 y no se reanuda.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -67,12 +67,13 @@ El protocolo human-in-the-loop canónico está en [`AGENTS.md`](AGENTS.md).
 - compra si y sólo si la moneda es GOLD: **NEVER BUY KARATS**;
 - no identifica item, precio, balance ni personaje y no usa OCR;
 - acepta `popup.purchase_confirmation`, espera el retorno a Black Market y exige `Purchased` en el mismo slot;
+- selecciona cada slot mediante `VerifiedTransition`: espera inicial corta de 1 s + grace pasiva de 2 s y sólo reintenta si un snapshot fresco confirma Black Market limpio;
 - ante `popup.insufficient_gold`, registra `timestamp + low_gold`, elige No y continúa con el siguiente GOLD;
 - ante `popup.inventory_full`, registra `black_market.inventory_full`, ejecuta `OK` mediante `VerifiedTransition`, exige volver a Black Market y continúa con el siguiente GOLD sin reintentar el slot;
 - trata cero GOLD como success/no-op normal y vuelve a Lobby;
 - ante `purchase_unverified` u otro error técnico aplica la policy temprana `log → cleanup seguro → abortar proceso completo`.
 
-La entrada espera estabilidad visual de Black Market durante 0,75 s porque el título puede aparecer antes que la grilla. No se añadió memoria ni voting a `ContextResolver`.
+La entrada espera estabilidad visual de Black Market durante 0,75 s porque el título puede aparecer antes que la grilla. Después de Purchase, Low Gold o Inventory Full exige Black Market limpio estable durante 0,5 s antes del siguiente slot. No se añadió memoria ni voting a `ContextResolver`.
 
 La validación live incremental confirmó un one-slot smoke, un full smoke con dos compras verificadas, el cierre final a Lobby y `popup.inventory_full → OK → screen.black_market` al primer intento, sin grace ni retry. Todos los sources hicieron cleanup.
 
@@ -89,6 +90,10 @@ Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `Charac
 Los smokes incrementales expusieron latencia de carga entre Lobby y Black Market. Un tap de apertura no registrado abortó correctamente sin advance; `black_market.open` pasó a `VerifiedTransition` con grace sin input, espera pasiva de un guard inconcluso y retry sólo desde Lobby fresco. La precondición del flow y la sonda Lobby del composition root también esperan estabilidad pasivamente y rechazan estados incompatibles.
 
 La revisión humana detectó además un falso `no GOLD`: el personaje tenía GOLD que el primer snapshot de facts no había mostrado. El probe sin compras confirmó slots `[2,3,5,8]`; el flow ahora espera una ventana fresca adicional antes de aceptar ausencia, y una validación posterior detectó y compró los cuatro. El smoke final, después de 597 tests verdes, completó 2/2 flows y 2/2 advances: el primer personaje mostró como Purchased los slots `[1,9]` comprados en un intento incremental, y el segundo detectó y compró GOLD `[1,5]`. No hubo business events en la corrida final; un smoke incremental anterior acumuló tres `inventory_full` no fatales. Todos los resultados conservaron `CharacterContext.name=None` y Lobby entre componentes.
+
+El primer smoke productivo 28-character abortó correctamente en el índice 3 tras `2/28` flows y `2/28` advances: no apareció una rama de compra dentro del timeout y el estado final permaneció en Black Market limpio, por lo que no se hizo el advance 3. La observación humana confirmó que el tap del siguiente GOLD ocurrió mientras la compra anterior todavía terminaba de procesarse. Ese caso cerró el gap restante: estabilidad post-rama de 0,5 s y `black_market.select_slot` verificado con grace + retry state-guarded. La sesión 28/28 completa sigue pendiente de una ejecución nueva desde el inicio; el intento abortado no se reanuda ni cuenta como válido.
+
+La policy inicial de selección usa una ventana corta de `1 s`; sólo si no aparece una rama espera `2 s` adicionales de grace sin input y después permite retry desde Black Market limpio. Un smoke single-character posterior detectó GOLD `[7,8]`, verificó ambas compras al primer intento, no usó grace/retry y volvió a Lobby. El settle post-rama de `0,5 s` queda abierto a calibración futura si la evidencia live muestra que puede reducirse sin reintroducir taps durante carga.
 
 ## Primitive Rotation standard
 

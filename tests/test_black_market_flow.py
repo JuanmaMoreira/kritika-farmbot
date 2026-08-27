@@ -268,8 +268,83 @@ def test_purchase_confirmation_yes_and_same_slot_purchased_are_verified():
     assert observer.wait_calls == [
         (1, 0.75),
         (3, 0.0),
-        (4, 0.0),
+        (4, 0.5),
         (5, 0.0),
+    ]
+
+
+def test_slot_selection_accepts_popup_during_grace_without_second_tap():
+    result, actions, _, observer = _run(
+        [_snapshot(1, base=SCREEN_LOBBY), _snapshot(3, base=SCREEN_BLACK_MARKET)],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET, gold={0}),
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=1.0,
+                last_snapshot=_snapshot(4, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(
+                5,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_PURCHASE_CONFIRMATION},
+            ),
+            _snapshot(6, base=SCREEN_BLACK_MARKET, purchased={0}),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.verified_purchases == (0,)
+    assert actions.count(SelectBlackMarketSlot(0)) == 1
+    assert observer.wait_calls == [
+        (1, 0.75),
+        (3, 0.0),
+        (4, 0.0),
+        (5, 0.5),
+        (6, 0.0),
+    ]
+
+
+def test_slot_selection_retries_once_from_clean_market_after_grace():
+    result, actions, _, observer = _run(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(3, base=SCREEN_BLACK_MARKET),
+            _snapshot(6, base=SCREEN_BLACK_MARKET),
+        ],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET, gold={0}),
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=1.0,
+                last_snapshot=_snapshot(4, base=SCREEN_BLACK_MARKET),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=2.0,
+                last_snapshot=_snapshot(5, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(
+                7,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_PURCHASE_CONFIRMATION},
+            ),
+            _snapshot(8, base=SCREEN_BLACK_MARKET, purchased={0}),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.attempted_slots == (0,)
+    assert result.verified_purchases == (0,)
+    assert actions.count(SelectBlackMarketSlot(0)) == 2
+    assert observer.wait_calls == [
+        (1, 0.75),
+        (3, 0.0),
+        (4, 0.0),
+        (6, 0.0),
+        (7, 0.5),
+        (8, 0.0),
     ]
 
 
@@ -309,7 +384,7 @@ def test_multiple_gold_slots_are_attempted_in_deterministic_order():
 
 
 def test_insufficient_gold_logs_no_slot_rejects_and_continues():
-    result, actions, events, _ = _run(
+    result, actions, events, observer = _run(
         [
             _snapshot(1, base=SCREEN_LOBBY),
             _snapshot(3, base=SCREEN_BLACK_MARKET),
@@ -347,10 +422,12 @@ def test_insufficient_gold_logs_no_slot_rejects_and_continues():
         AcceptPurchaseConfirmation(),
         CloseBlackMarket(),
     ]
+    assert (4, 0.5) in observer.wait_calls
+    assert (7, 0.5) in observer.wait_calls
 
 
 def test_inventory_full_logs_ok_and_continues_without_retrying_same_slot():
-    result, actions, events, _ = _run(
+    result, actions, events, observer = _run(
         [
             _snapshot(1, base=SCREEN_LOBBY),
             _snapshot(3, base=SCREEN_BLACK_MARKET),
@@ -388,6 +465,8 @@ def test_inventory_full_logs_ok_and_continues_without_retrying_same_slot():
         AcceptPurchaseConfirmation(),
         CloseBlackMarket(),
     ]
+    assert (4, 0.5) in observer.wait_calls
+    assert (7, 0.5) in observer.wait_calls
 
 
 def test_multiple_inventory_full_results_are_nonfatal_business_events():
@@ -637,7 +716,11 @@ def test_unexpected_branch_timeout_aborts_without_recovery_or_extra_taps():
     )
     result, actions, events, _ = _run(
         [_snapshot(1, base=SCREEN_LOBBY), _snapshot(3, base=SCREEN_BLACK_MARKET)],
-        [_snapshot(2, base=SCREEN_BLACK_MARKET, gold={0}), timeout],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET, gold={0}),
+            timeout,
+            RuntimeWaitAborted(_snapshot(5, base=SCREEN_LOBBY)),
+        ],
     )
 
     assert result.status is FlowStatus.FAILED
@@ -673,3 +756,11 @@ def test_invalid_smoke_limit_is_rejected_before_any_observation():
 
     with pytest.raises(ValueError, match="max_slot_attempts"):
         flow.run(max_slot_attempts=-1)
+
+
+def test_slot_selection_uses_short_initial_wait_then_longer_grace():
+    flow = BlackMarketFlow(ScriptedObserver([], []), Actions(), Events())
+
+    assert flow.slot_selection_policy.normal_timeout == 1.0
+    assert flow.slot_selection_policy.grace_timeout == 2.0
+    assert flow.slot_selection_policy.max_attempts == 2

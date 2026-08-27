@@ -43,7 +43,7 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Mantener flows, Rotation y ADB separados y exigir Lobby entre componentes.
 - [x] Preparar `CharacterContext(name=None)` para identidad futura sin implementar OCR.
 - [x] Validar live N=2: 2/2 flows, 2/2 advances y Lobby estable entre componentes; smokes incrementales acumularon tres `inventory_full` no fatales.
-- [ ] Validar la sesión Black Market completa de 28 personajes sin reprocesar al inicial tras el advance final.
+- [ ] Validar la sesión Black Market completa de 28 personajes sin reprocesar al inicial tras el advance final. El primer intento abortó conservadoramente en 3/28 por selección de slot durante carga post-compra; queda pendiente una ejecución nueva con estabilidad post-rama y retry de selección verificado.
 
 ## Después
 

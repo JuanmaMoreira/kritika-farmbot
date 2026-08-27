@@ -80,7 +80,10 @@ class BlackMarketFlow:
         *,
         timeout: float = 5.0,
         lobby_precondition_settle_for: float = 0.25,
+        post_branch_settle_for: float = 0.5,
         empty_gold_confirmation_timeout: float = 2.0,
+        slot_selection_timeout: float = 1.0,
+        slot_selection_grace_timeout: float = 2.0,
         transition_retry_guard_timeout: float = 1.0,
         transition_grace_timeout: float = 2.0,
         transition_max_attempts: int = 2,
@@ -98,8 +101,14 @@ class BlackMarketFlow:
             raise ValueError("timeout must be positive")
         if lobby_precondition_settle_for < 0:
             raise ValueError("lobby_precondition_settle_for must be non-negative")
+        if post_branch_settle_for < 0:
+            raise ValueError("post_branch_settle_for must be non-negative")
         if empty_gold_confirmation_timeout <= 0:
             raise ValueError("empty_gold_confirmation_timeout must be positive")
+        if slot_selection_timeout <= 0:
+            raise ValueError("slot_selection_timeout must be positive")
+        if slot_selection_grace_timeout <= 0:
+            raise ValueError("slot_selection_grace_timeout must be positive")
         if transition_retry_guard_timeout <= 0:
             raise ValueError("transition_retry_guard_timeout must be positive")
         self.observer: _Observer = observer
@@ -109,6 +118,7 @@ class BlackMarketFlow:
         self.lobby_precondition_settle_for = float(
             lobby_precondition_settle_for
         )
+        self.post_branch_settle_for = float(post_branch_settle_for)
         self.empty_gold_confirmation_timeout = float(
             empty_gold_confirmation_timeout
         )
@@ -121,6 +131,12 @@ class BlackMarketFlow:
         self.inventory_full_policy = VerifiedTransitionPolicy(
             normal_timeout=self.timeout,
             grace_timeout=transition_grace_timeout,
+            max_attempts=transition_max_attempts,
+        )
+        self.slot_selection_policy = VerifiedTransitionPolicy(
+            normal_timeout=slot_selection_timeout,
+            grace_timeout=slot_selection_grace_timeout,
+            retry_guard_timeout=transition_retry_guard_timeout,
             max_attempts=transition_max_attempts,
         )
         if verified_transition is None:
@@ -235,24 +251,30 @@ class BlackMarketFlow:
                 )
 
             attempted.append(slot)
-            self.actions.execute(
-                SelectBlackMarketSlot(slot), current.geometry
+            selected_slot = self.verified_transition.execute(
+                "black_market.select_slot",
+                SelectBlackMarketSlot(slot),
+                current,
+                expected=_is_expected_purchase_branch,
+                precondition=lambda snapshot: _is_clean_base(
+                    snapshot, SCREEN_BLACK_MARKET
+                ),
+                retryable_from=lambda snapshot: _is_clean_base(
+                    snapshot, SCREEN_BLACK_MARKET
+                ),
+                abort_if=_has_incompatible_branch,
+                policy=self.slot_selection_policy,
             )
-            try:
-                branch = self.observer.wait_until(
-                    _is_expected_purchase_branch,
-                    after_sequence=current.sequence,
-                    timeout=self.timeout,
-                    abort_if=_has_incompatible_branch,
-                )
-            except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
+            if not selected_slot.succeeded:
                 return self._abort(
-                    f"unexpected_purchase_branch: {error}",
+                    "unexpected_purchase_branch: "
+                    f"{selected_slot.outcome.value}: {selected_slot.error}",
                     initial_gold,
                     attempted,
                     verified,
                     flow_events=flow_events,
                 )
+            branch = selected_slot.final_snapshot
 
             overlays = set(branch.state.overlays)
             if overlays == {POPUP_PURCHASE_CONFIRMATION}:
@@ -268,6 +290,7 @@ class BlackMarketFlow:
                         after_sequence=branch.sequence,
                         timeout=self.timeout,
                         abort_if=_has_incompatible_post_purchase,
+                        stable_for=self.post_branch_settle_for,
                     )
                 except RuntimeWaitTimeout as error:
                     if (
@@ -316,6 +339,7 @@ class BlackMarketFlow:
                         after_sequence=branch.sequence,
                         timeout=self.timeout,
                         abort_if=_has_incompatible_after_reject,
+                        stable_for=self.post_branch_settle_for,
                     )
                 except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
                     return self._abort(
@@ -332,6 +356,7 @@ class BlackMarketFlow:
                 self.verified_transition,
                 branch,
                 policy=self.inventory_full_policy,
+                stable_for=self.post_branch_settle_for,
             )
             if not acknowledged.succeeded:
                 return self._abort(
@@ -478,6 +503,10 @@ def _has_incompatible_branch(snapshot: RuntimeSnapshot) -> bool:
     }
     return (
         snapshot.state.status is ResolutionStatus.AMBIGUOUS
+        or (
+            snapshot.state.status is ResolutionStatus.RESOLVED
+            and snapshot.state.base_context != SCREEN_BLACK_MARKET
+        )
         or bool(overlays - expected)
         or len(overlays & expected) > 1
     )
