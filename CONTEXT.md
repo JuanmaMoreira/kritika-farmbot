@@ -82,11 +82,11 @@ Las interacciones discretas retry-safe de Rotation delegan en `bot/verified_tran
 
 `bot/character_selection.py` responde únicamente si la tarjeta target quedó seleccionada. Mide píxeles amarillos HSV en el borde de la ROI normalizada `(0.48, 0.64, 0.63, 0.84)`, excluyendo la mayor parte del retrato. Cinco pares live selected/unselected dieron negativos `0,00000–0,00087` y positivos `0,09864–0,11216`; `≤ 0,01` autoriza el estado unselected, `≥ 0,05` confirma selected y la banda intermedia es incierta, por lo que no confirma ni habilita retry. El frame previo debe ser unselected y sólo sequences frescas posteriores al tap pueden confirmar el efecto. `Select` no se ejecuta sin esta postcondición.
 
-La verificación visual de tarjeta quedó validada live en 5/5 entradas aisladas y 3/3 `advance()` supervisados. Las aisladas produjeron scores selected `0,10417–0,11258`; los advances, `0,10709–0,10819`. Todos usaron scroll `progress → edge_candidate`, selección correcta confirmada humanamente y primer intento sin grace ni retry real. Los 3 advances regresaron a Lobby fresco. Las rutas delayed/retry permanecen cubiertas hardware-free; el smoke 28/28 continúa pausado hasta publicar este checkpoint.
+La verificación visual de tarjeta quedó validada live en 5/5 entradas aisladas y 3/3 `advance()` supervisados. El ciclo completo posterior cerró `rotation.standard`: 28/28 advances, 56 swipes totales, todos `progress → edge_candidate`, 28/28 tarjetas selected al primer tap, 112/112 interacciones verificadas al primer intento y 28/28 retornos a Lobby. No hubo grace, retries, gestos inefectivos ni anomalías; el usuario confirmó visualmente el regreso exacto al personaje inicial A después del advance 28. Duración del loop: `292,7 s`.
 
 La última posición es la primera columna de la última fila visible, regla confirmada en el layout de tres columnas con el slot `+` inmediatamente después. El target es normalizado y no depende de `character_count`.
 
-La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)` en `188 ms`. El perfil ADB derivado usa progreso `(0.80, 0.80) → (0.80, 0.025)` en `190 ms` y confirmación controlada `(0.68, 0.76) → (0.68, 0.24)` en `200 ms`. En 5/5 entradas independientes produjo `progress → edge_candidate`; ROI y thresholds permanecieron sin cambios. Un smoke completo posterior llegó a 14/28 y se detuvo correctamente en la iteración 15: el scroll y la selección de tarjeta fueron correctos, pero el único tap de Select no produjo transición. El ciclo 28/28 permanece pausado hasta publicar los checkpoints locales ya validados.
+La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)` en `188 ms`. El perfil ADB derivado usa progreso `(0.80, 0.80) → (0.80, 0.025)` en `190 ms` y confirmación controlada `(0.68, 0.76) → (0.68, 0.24)` en `200 ms`. En 5/5 entradas independientes produjo `progress → edge_candidate`; ROI y thresholds permanecieron sin cambios. Un smoke anterior llegó a 14/28 y se detuvo en la iteración 15 por un tap Select no registrado; `VerifiedTransition` y la selección visual verificada cerraron esa brecha antes del PASS definitivo posterior.
 
 ## Decisiones funcionales cerradas
 
@@ -103,7 +103,7 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Limitaciones y deferred
 
-- El primitive `StandardRotation.advance()` está endurecido; el smoke 28/28 está temporalmente pausado tras un tap Select no registrado en la iteración 15. La rotación completa, el retorno final al inicial, `SessionPlan` y `SessionRunner` siguen pendientes.
+- `StandardRotation` aislado está cerrado con ciclo live 28/28 y retorno al inicial confirmado; `SessionPlan` y `SessionRunner` siguen pendientes.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
 - Battle Mode Select requiere evidencia más diversa o una señal con mejor separación.
@@ -113,4 +113,4 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Próximo trabajo
 
-Revisar y publicar conjuntamente los checkpoints locales de transición y selección verificada. Sólo después retomar el smoke aislado de 28 cambios y validar humanamente el retorno al personaje inicial. Esto no implica que el runtime productivo hará 28 cambios seguidos; un futuro `SessionRunner` intercalará flows con `RotationStrategy.advance()`.
+Implementar la composición mínima `SessionPlan / SessionRunner` para intercalar los flows `PER_CHARACTER` seleccionados con `RotationStrategy.advance()`, sin mover lógica de flows dentro de Rotation ni viceversa.

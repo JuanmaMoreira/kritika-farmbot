@@ -2,7 +2,7 @@
 
 ## Estado
 
-El primer vertical slice de runtime está cerrado. Rotation tiene su primer primitive aislado implementado y validado live; la estrategia completa y la composición de sesión siguen pendientes.
+El primer vertical slice de runtime está cerrado. `rotation.standard` aislada quedó validada end-to-end en un ciclo live 28/28 con retorno al personaje inicial confirmado; la composición mínima de sesión es el siguiente trabajo.
 
 ## Completado
 
@@ -17,7 +17,7 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 ## Activo / siguiente
 
-### Rotation — continuación funcional de Fase 4
+### Rotation — cerrada aisladamente
 
 - [x] Definir `RotationStrategy` como responsabilidad transversal.
 - [x] Implementar y validar aisladamente un `StandardRotation.advance()` con `character_count = 28` configurable.
@@ -33,7 +33,7 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Validar live la transición discreta en 3 advances supervisados, sin regresión de scroll ni navegación.
 - [x] Calibrar y verificar hardware-free la postcondición visual de selección de la última tarjeta, con grace y retry state-guarded.
 - [x] Validar la selección observada en 5/5 entradas aisladas y 3/3 `advance()` supervisados.
-- [ ] Retomar el loop de 28, pausado en 14/28 por un tap Select no registrado, y validar el regreso final al personaje inicial sin repetir flows sobre éste.
+- [x] Completar el loop live 28/28 y validar humanamente el regreso final al personaje inicial sin repetir flows sobre éste.
 
 ### Composición mínima de sesión
 
