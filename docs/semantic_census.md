@@ -78,7 +78,7 @@ en `constants.py`, `context.py`, `actions.py` o `flows.py`).
 | 47 | `friends-pending-max-amount` | `popup.friends_pending_max` | overlay | `friends-pending-max-amount-id.png` | legacy / legacy-only | FUTURE | Límite alcanzado. |
 | 48 | `friends-recommended-request-sent` | `popup.friend_request_sent` | overlay | `friends-recommended-request-sent-id.png` | legacy / legacy-only | FUTURE | Acknowledgement. |
 | 49 | `quests` | `screen.quests` | unclear | `quests-id.png` | legacy / unresolved | FUTURE | Close + tab daily; puede ser panel sobre Lobby. |
-| 50 | `bag-full-alert` | `popup.bag_full_alert` | overlay | `bag-full-alert-id.png` | legacy / candidate | RECOVERY_COMMON | Semántica legacy dudosa ya preservada como candidate; no promover sin evidencia. |
+| 50 | `bag-full-alert` | `popup.inventory_full` | overlay | `bag-full-alert-id.png` (legacy text), `landmarks/inventory-full-ok-button-current.png` (current) | current / production en Black Market | BLACK_MARKET_FLOW | El nombre legacy queda como historia fría; producción normaliza todas las variantes al mismo evento, sin clasificar inventory kind. |
 | 51 | `tot` | `screen.tower_of_tribulations` | base | `tot-id.png` (missing) | unknown / unresolved | FUTURE | Quick Menu; asset principal ausente, intención preservada por flow legacy. |
 | 52 | `tot-auto-repeat` | `popup.tot_auto_repeat` | overlay | `tot-auto-repeat-id.png` (missing) | unknown / unresolved | FUTURE | Configuración auto-repeat. |
 | 53 | `tot-auto-repeat-defeated` | `popup.tot_defeated` | overlay | `tot-auto-repeat-defeated-id.png` (missing) | unknown / unresolved | FUTURE | Recovery. |
@@ -164,6 +164,7 @@ intactos adquiridos live en esa sesión.
 | `screen.black_market` | `BlackMarketFlow` | production | Offline 11/11 y live current-season después de repair 3F. |
 | `popup.purchase_confirmation` | `BlackMarketFlow` | production | Offline 6/6 y live sobre base conocida/UNKNOWN. |
 | `popup.insufficient_gold` | `BlackMarketFlow` | production | Human-confirmed live; 1 TP y 0 FP/FN frente a 95 negativos. |
+| `popup.inventory_full` | `BlackMarketFlow` | production con gating Black Market | 6/6 TP, 0 FP/FN; cero conflictos para `OK + screen.black_market` en 252 capturas locales. |
 
 Black Market se abre exclusivamente desde Lobby. Quick Menu se reserva para el cambio
 de personaje transversal de Rotation. Dentro de `screen.black_market`, 3H.3 promovió

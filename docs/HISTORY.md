@@ -86,6 +86,12 @@ La validación física fue incremental: probe pasivo con GOLD `[6,8]`; one-slot 
 
 El checkpoint `4a14eee` cerró la fase con 460 tests hardware-free. Rotation, SessionRunner, OCR, VLM y recovery transversal quedaron sin implementar.
 
+### Extensión Inventory Full
+
+Una adquisición live read-only preservó seis frames frescos del popup real de límite de Emerald. La señal elegida fue el botón `OK` común, excluyendo el mensaje variable. Los positivos dieron `0,983645–0,999941`; el máximo negativo revisado entre otros diálogos con `OK` fue `0,894897`, con threshold raw efectivo `0,965896` y gap `0,088749`. El gating adicional exige `landmark.black_market_title`: sobre 252 capturas locales la conjunción produjo sólo los seis positivos y ningún conflicto.
+
+`popup.inventory_full` reemplazó el candidate semántico `popup.bag_full_alert`. `BlackMarketFlow` lo registra como `black_market.inventory_full`, ejecuta un intent `AcknowledgeInventoryFull` mediante `VerifiedTransition`, exige un Black Market fresco y continúa con el siguiente GOLD sin reintentar el slot. No se añadió OCR, `inventory_kind`, limpieza de inventario ni composición de sesión. La prueba live sobre el popup adquirido cerró al primer tap, sin grace ni retry, y el usuario confirmó visualmente el Black Market normal. El cierre quedó en 574/574 tests hardware-free.
+
 ## Decisiones y alternativas reemplazadas
 
 - El icono de oro de Lobby describe un shell persistente, no una pantalla base exclusiva.

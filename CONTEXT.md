@@ -1,9 +1,9 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2; Fase 4 cerrada y primer primitive aislado de Rotation validado live.
-**Unidad funcional vigente:** `StandardRotation.advance()` realiza un único cambio `Lobby → Quick Menu → Character Select → final de lista → última tarjeta → Lobby`.
-**Baseline conocido:** 486/486 tests hardware-free verdes; regresión productiva 96/96 sin estados ambiguos ni errores.
-**Siguiente trabajo funcional:** completar la semántica de `rotation.standard` para una rotación entera, sin integrar todavía `SessionRunner`.
+**Estado:** rediseño híbrido 0.2; `BlackMarketFlow` y `rotation.standard` cerrados aisladamente y validados live.
+**Unidad funcional vigente:** `BlackMarketFlow` opera el personaje activo y `StandardRotation.advance()` realiza un único cambio de personaje verificado.
+**Baseline conocido:** 574/574 tests hardware-free verdes; regresión productiva 102/102 sin estados ambiguos ni errores.
+**Siguiente trabajo funcional:** composición mínima `SessionPlan / SessionRunner`, todavía no implementada.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -32,6 +32,7 @@ Contextos base y overlays disponibles:
 - `menu.quick` como overlay global
 - `popup.purchase_confirmation`
 - `popup.insufficient_gold`
+- `popup.inventory_full`, acotado a Black Market mediante el landmark común del botón `OK` + `landmark.black_market_title`
 
 Facts internos de Black Market:
 
@@ -44,7 +45,8 @@ Estado de evidencia vigente:
 - GOLD: 25/25 TP, 0 FP/FN y 0 FP sobre 61 KARATS; hay positivos reales en ocho posiciones y cobertura geométrica sintética de las diez.
 - Purchased: 11/11 TP, 0 FP/FN frente a 929 regiones negativas.
 - Insufficient Gold: 1/1 TP, 0 FP/FN frente a 95 negativos; su muestra positiva todavía es pequeña.
-- La regresión productiva previa al flow produjo estados esperados sin `AMBIGUOUS`; la validación live de Fase 4 confirmó compras, `Purchased` y retorno final a Lobby.
+- Inventory Full: 6/6 TP, 0 FP/FN frente a 96 negativos confirmados. El botón común dio positivos `0,983645–0,999941`; el máximo negativo revisado con otro `OK` fue `0,894897`, threshold raw efectivo `0,965896` y gap `0,088749`. La conjunción productiva tuvo 6 matches positivos y cero conflictos al recorrer 252 capturas locales.
+- La regresión productiva produjo 102/102 estados esperados sin `AMBIGUOUS`; la validación live confirmó compras, `Purchased`, Inventory Full y retornos frescos.
 
 Las calibraciones exactas, manifests y antecedentes de repair están en código/tests, datasets versionados y [`docs/HISTORY.md`](docs/HISTORY.md). Battle Mode Select no tiene detector productivo.
 
@@ -65,12 +67,13 @@ El protocolo human-in-the-loop canónico está en [`AGENTS.md`](AGENTS.md).
 - no identifica item, precio, balance ni personaje y no usa OCR;
 - acepta `popup.purchase_confirmation`, espera el retorno a Black Market y exige `Purchased` en el mismo slot;
 - ante `popup.insufficient_gold`, registra `timestamp + low_gold`, elige No y continúa con el siguiente GOLD;
+- ante `popup.inventory_full`, registra `black_market.inventory_full`, ejecuta `OK` mediante `VerifiedTransition`, exige volver a Black Market y continúa con el siguiente GOLD sin reintentar el slot;
 - trata cero GOLD como success/no-op normal y vuelve a Lobby;
 - ante `purchase_unverified` u otro error técnico aplica la policy temprana `log → cleanup seguro → abortar proceso completo`.
 
 La entrada espera estabilidad visual de Black Market durante 0,75 s porque el título puede aparecer antes que la grilla. No se añadió memoria ni voting a `ContextResolver`.
 
-La validación live incremental confirmó un one-slot smoke, un full smoke con dos compras verificadas y el cierre final a un frame fresco `screen.lobby`. Todos los sources hicieron cleanup.
+La validación live incremental confirmó un one-slot smoke, un full smoke con dos compras verificadas, el cierre final a Lobby y `popup.inventory_full → OK → screen.black_market` al primer intento, sin grace ni retry. Todos los sources hicieron cleanup.
 
 ## Primitive Rotation standard
 
@@ -91,6 +94,7 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 ## Decisiones funcionales cerradas
 
 - Black Market se abre sólo desde Lobby; Quick Menu no participa en `BlackMarketFlow`.
+- Todos los límites de inventario observados durante una compra se normalizan inicialmente a `popup.inventory_full`; Black Market no distingue el tipo ni gestiona inventarios.
 - Quick Menu pertenece a Rotation.
 - Rotation es transversal: un flow opera sobre el personaje activo y nunca selecciona el siguiente.
 - La primera estrategia será `rotation.standard`, con `character_count = 28` explícito.
@@ -106,6 +110,7 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 - `StandardRotation` aislado está cerrado con ciclo live 28/28 y retorno al inicial confirmado; `SessionPlan` y `SessionRunner` siguen pendientes.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
+- `inventory_kind` e identidad de personaje permanecen desconocidos; liberar, vender o mover inventario pertenece a futuros flows especializados.
 - Battle Mode Select requiere evidencia más diversa o una señal con mejor separación.
 - `landmark.lobby_commerce_pair` permanece como alternativa offline, no detector productivo.
 - `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` legacy conservan imports retirados y no son runtime activo.

@@ -185,7 +185,7 @@ def test_workbench_promotion_rejects_label_contradictions(tmp_path):
     ("field", "candidate", "message"),
     [
         ("base_context", "screen.guild_shop", "valid base_context"),
-        ("overlays", ["popup.bag_full_alert"], "unsupported overlay"),
+        ("overlays", ["popup.unsupported"], "unsupported overlay"),
     ],
 )
 def test_phase3f_promotion_rejects_acquisition_candidates(

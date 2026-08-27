@@ -19,11 +19,13 @@ from bot.capture import CaptureError
 from bot.catalog import SCREEN_BLACK_MARKET, SCREEN_LOBBY, build_default_resolver
 from bot.config import RuntimeConfig
 from bot.event_log import JsonLineEventLog
+from bot.inventory_full_transition import acknowledge_inventory_full
 from bot.perception import build_default_perception
 from bot.runtime import build_adb_client, build_frame_source
 from bot.runtime_observer import RuntimeObserver, RuntimeWaitAborted, RuntimeWaitTimeout
 from bot.semantic_actions import CloseBlackMarket
 from bot.state import ResolutionStatus
+from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -58,6 +60,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--close-current",
         action="store_true",
         help="close an already-open clean Black Market and verify Lobby",
+    )
+    mode.add_argument(
+        "--ack-inventory-full-current",
+        action="store_true",
+        help=(
+            "acknowledge an already-open popup.inventory_full and verify "
+            "screen.black_market"
+        ),
     )
     parser.add_argument("--timeout", type=float, default=6.0)
     parser.add_argument(
@@ -100,7 +110,35 @@ def main(argv: list[str] | None = None) -> int:
 
         with source:
             observer = RuntimeObserver(source, perception, resolver)
-            if args.close_current:
+            if args.ack_inventory_full_current:
+                initial = observer.observe()
+                transition = acknowledge_inventory_full(
+                    VerifiedTransition(observer, actions),
+                    initial,
+                    policy=VerifiedTransitionPolicy(
+                        normal_timeout=args.timeout,
+                        grace_timeout=2.0,
+                        max_attempts=2,
+                    ),
+                )
+                if not transition.succeeded:
+                    raise ValueError(
+                        "inventory-full acknowledgement failed: "
+                        f"{transition.outcome.value}: {transition.error}"
+                    )
+                final = transition.final_snapshot
+                payload = {
+                    "action": "acknowledge_inventory_full",
+                    "attempt_count": transition.attempt_count,
+                    "final_base_context": final.state.base_context,
+                    "final_sequence": final.sequence,
+                    "grace_wait_count": transition.grace_wait_count,
+                    "initial_overlays": list(initial.state.overlays),
+                    "initial_sequence": initial.sequence,
+                    "outcome": transition.outcome.value,
+                }
+                result = None
+            elif args.close_current:
                 initial = observer.observe()
                 if not _is_clean_base(initial, SCREEN_BLACK_MARKET):
                     raise ValueError(

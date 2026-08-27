@@ -12,6 +12,7 @@ from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
+    LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
@@ -248,12 +249,13 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     ) == DEFAULT_LOCAL_CV_SPECS
     assert isinstance(engine.detectors[-2], BlackMarketGoldDetector)
     assert isinstance(engine.detectors[-1], BlackMarketPurchasedDetector)
-    assert len(created) == 12
+    assert len(created) == 2 * len(DEFAULT_LOCAL_CV_SPECS)
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
         LANDMARK_CHARACTER_SELECT_HEADER,
         LANDMARK_BLACK_MARKET_TITLE,
         LANDMARK_INSUFFICIENT_GOLD_PROMPT,
+        LANDMARK_INVENTORY_FULL_OK_BUTTON,
         LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
         LANDMARK_QUICK_MENU_LOBBY_TILE,
     )

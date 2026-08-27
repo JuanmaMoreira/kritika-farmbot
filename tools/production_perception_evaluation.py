@@ -18,11 +18,13 @@ from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
+    LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     MENU_QUICK,
     POPUP_INSUFFICIENT_GOLD,
+    POPUP_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
@@ -96,6 +98,7 @@ class ResolverMetrics:
     purchase_overlay_correct: int
     quick_menu_overlay_correct: int
     insufficient_gold_overlay_correct: int
+    inventory_full_overlay_correct: int
     black_market_plus_overlay_correct: int
     unknown_plus_purchase_overlay_correct: int
     by_ground_truth: dict[str, ContextMetrics]
@@ -425,6 +428,7 @@ def evaluate_production_perception(
         "purchase_correct": 0,
         "quick_menu_correct": 0,
         "insufficient_gold_correct": 0,
+        "inventory_full_correct": 0,
         "base_overlay_correct": 0,
         "unknown_overlay_correct": 0,
     }
@@ -521,6 +525,10 @@ def evaluate_production_perception(
         if POPUP_INSUFFICIENT_GOLD in entry.overlays:
             resolver_counts["insufficient_gold_correct"] += int(
                 POPUP_INSUFFICIENT_GOLD in state.overlays
+            )
+        if POPUP_INVENTORY_FULL in entry.overlays:
+            resolver_counts["inventory_full_correct"] += int(
+                POPUP_INVENTORY_FULL in state.overlays
             )
         if (
             entry.base_context == SCREEN_BLACK_MARKET
@@ -620,6 +628,9 @@ def evaluate_production_perception(
             insufficient_gold_overlay_correct=resolver_counts[
                 "insufficient_gold_correct"
             ],
+            inventory_full_overlay_correct=resolver_counts[
+                "inventory_full_correct"
+            ],
             black_market_plus_overlay_correct=resolver_counts["base_overlay_correct"],
             unknown_plus_purchase_overlay_correct=resolver_counts[
                 "unknown_overlay_correct"
@@ -644,6 +655,8 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return POPUP_PURCHASE_CONFIRMATION in entry.overlays
     if name == LANDMARK_INSUFFICIENT_GOLD_PROMPT:
         return POPUP_INSUFFICIENT_GOLD in entry.overlays
+    if name == LANDMARK_INVENTORY_FULL_OK_BUTTON:
+        return POPUP_INVENTORY_FULL in entry.overlays
     if name == LANDMARK_QUICK_MENU_LOBBY_TILE:
         return MENU_QUICK in entry.overlays
     raise ValueError(f"Unsupported production detector: {name}")

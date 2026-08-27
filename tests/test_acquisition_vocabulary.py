@@ -4,7 +4,7 @@ from bot.acquisition_vocabulary import (
     DEFAULT_CANDIDATE_OVERLAY_LABELS,
     build_acquisition_vocabulary,
 )
-from bot.catalog import MENU_QUICK, build_default_resolver
+from bot.catalog import MENU_QUICK, POPUP_INVENTORY_FULL, build_default_resolver
 
 
 def test_acquisition_candidates_are_separate_from_production_rules():
@@ -25,11 +25,11 @@ def test_acquisition_candidates_are_separate_from_production_rules():
     assert vocabulary.origin_for(production_bases[0]) is AcquisitionLabelOrigin.PRODUCTION
 
 
-def test_candidate_base_and_overlay_are_valid_human_choices_without_rules():
+def test_candidate_bases_are_valid_human_choices_without_rules():
     vocabulary = build_acquisition_vocabulary()
 
     assert "screen.guild_shop" in vocabulary.base_names
-    assert "popup.bag_full_alert" in vocabulary.overlay_names
+    assert vocabulary.overlay_names == ()
     assert MENU_QUICK not in vocabulary.overlay_names
 
 
@@ -41,6 +41,10 @@ def test_promoted_quick_menu_is_exposed_as_production():
     )
 
     assert vocabulary.origin_for(MENU_QUICK) is AcquisitionLabelOrigin.PRODUCTION
+    assert (
+        vocabulary.origin_for(POPUP_INVENTORY_FULL)
+        is AcquisitionLabelOrigin.PRODUCTION
+    )
 
 
 def test_production_name_wins_if_a_candidate_list_repeats_it():

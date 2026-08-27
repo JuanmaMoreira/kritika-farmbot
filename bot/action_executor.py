@@ -14,6 +14,7 @@ from bot.geometry import (
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
+    AcknowledgeInventoryFull,
     CloseBlackMarket,
     ConfirmCharacterSelection,
     OpenBlackMarket,
@@ -69,6 +70,7 @@ class BlackMarketActionTargets:
     )
     accept_purchase: RelativePoint = (0.4347, 0.6340)
     reject_insufficient_gold: RelativePoint = (0.5690, 0.6307)
+    acknowledge_inventory_full: RelativePoint = (0.5006, 0.6270)
 
     def __post_init__(self) -> None:
         slots = tuple(self.slots)
@@ -80,6 +82,7 @@ class BlackMarketActionTargets:
             *slots,
             self.accept_purchase,
             self.reject_insufficient_gold,
+            self.acknowledge_inventory_full,
         )
         for point in points:
             # Reuse the production point validator without fixing a resolution.
@@ -187,6 +190,8 @@ class ActionExecutor:
             return self.targets.accept_purchase
         if isinstance(action, RejectInsufficientGold):
             return self.targets.reject_insufficient_gold
+        if isinstance(action, AcknowledgeInventoryFull):
+            return self.targets.acknowledge_inventory_full
         if isinstance(action, OpenQuickMenu):
             return self.rotation_targets.open_quick_menu
         if isinstance(action, OpenCharacterSelect):

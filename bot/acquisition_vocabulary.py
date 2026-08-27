@@ -60,9 +60,7 @@ DEFAULT_CANDIDATE_BASE_LABELS = (
     "screen.guild_shop",
     "screen.inventory",
 )
-DEFAULT_CANDIDATE_OVERLAY_LABELS = (
-    "popup.bag_full_alert",
-)
+DEFAULT_CANDIDATE_OVERLAY_LABELS: tuple[str, ...] = ()
 
 
 def build_acquisition_vocabulary(

@@ -1,18 +1,56 @@
 {
   "version": 1,
   "curation": {
-    "phase": "3H.3",
-    "source": "passive_live_capture",
+    "phase": "inventory-full",
+    "source": "passive_live_capture_and_chat_confirmed_read_only_burst",
     "ground_truth": "human_confirmed_via_chat_steer",
     "observed_trigger": "selecting a GOLD offer with insufficient funds opens the popup directly",
     "observed_safe_exit": "No returns to the standard Black Market view",
-    "sequence_correction": "popup.purchase_confirmation is not shown on the insufficient-funds branch"
+    "sequence_correction": "popup.purchase_confirmation is not shown on the insufficient-funds branch",
+    "inventory_full_policy": "all inventory-cap message variants normalize to popup.inventory_full; inventory kind remains unknown",
+    "inventory_full_landmark": "common OK button gated by the Black Market title; message text excluded"
   },
   "entries": [
     {
       "path": "screencaps/semantic/black_market_currency/20260825T204903_103690Z.png",
       "base_context": "screen.black_market",
       "overlays": ["popup.insufficient_gold"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/inventory_full/20260827T075832_116844Z/frame-01-seq-00000001.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.inventory_full"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/inventory_full/20260827T075832_116844Z/frame-02-seq-00000021.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.inventory_full"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/inventory_full/20260827T075832_116844Z/frame-03-seq-00000039.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.inventory_full"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/inventory_full/20260827T075832_116844Z/frame-04-seq-00000056.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.inventory_full"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/inventory_full/20260827T075832_116844Z/frame-05-seq-00000072.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.inventory_full"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/inventory_full/20260827T075832_116844Z/frame-06-seq-00000088.png",
+      "base_context": "screen.black_market",
+      "overlays": ["popup.inventory_full"],
       "review_status": "confirmed"
     }
   ]

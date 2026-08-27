@@ -2,7 +2,7 @@
 
 ## Estado
 
-El primer vertical slice de runtime está cerrado. `rotation.standard` aislada quedó validada end-to-end en un ciclo live 28/28 con retorno al personaje inicial confirmado; la composición mínima de sesión es el siguiente trabajo.
+El primer vertical slice de runtime está cerrado. `BlackMarketFlow` cubre `low_gold + inventory_full` como resultados de negocio no fatales y `rotation.standard` quedó validada end-to-end en un ciclo live 28/28; la composición mínima de sesión es el siguiente trabajo.
 
 ## Completado
 
@@ -11,6 +11,7 @@ El primer vertical slice de runtime está cerrado. `rotation.standard` aislada q
 - [x] Fase 2 — observations, estado, resolver determinista, catálogo mínimo y validación offline.
 - [x] Fase 3 — Perception local, adquisición y Workbench, repair/revalidación live, Quick Menu, GOLD e Insufficient Gold.
 - [x] Fase 4 — semantic actions, `ActionExecutor` y `BlackMarketFlow` single-character `Lobby → Black Market → Lobby`, validado live con 460 tests hardware-free.
+- [x] Extensión Black Market — `popup.inventory_full`, `OK` verificado y continuación al siguiente GOLD sin identificar ni gestionar inventarios.
 - [x] Maintenance — hot context compactado, historia separada, entorno local persistente y bootstrap/status para agentes.
 
 La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY.md).

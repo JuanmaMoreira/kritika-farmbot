@@ -11,6 +11,7 @@ from bot.catalog import (
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
+    LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
@@ -125,6 +126,24 @@ INSUFFICIENT_GOLD_PROMPT_SPEC = LocalCvSpec(
     ),
 )
 
+# Current-season common OK button from a human-confirmed Black Market
+# inventory-cap popup. The search region is position-specific, and the
+# catalog additionally requires the Black Market title so generic OK dialogs
+# elsewhere do not become popup.inventory_full. Six fresh frames score
+# 0.983645380..0.999940693; the strongest reviewed non-inventory OK scores
+# 0.894896746. Message text is deliberately outside the landmark.
+INVENTORY_FULL_OK_BUTTON_SPEC = LocalCvSpec(
+    name=LANDMARK_INVENTORY_FULL_OK_BUTTON,
+    asset_path=Path(
+        "assets/ui/landmarks/inventory-full-ok-button-current.png"
+    ),
+    region=(0.41, 0.54, 0.59, 0.70),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.8948967456817627,
+        positive_anchor=0.9836453795433044,
+    ),
+)
+
 # Purchase Confirmation has two human-confirmed renderings of the same literal
 # prompt. The Phase 3F search region admits both native-size templates while
 # deliberately excluding the strongest known generic-confirmation confusion
@@ -211,6 +230,7 @@ DEFAULT_LOCAL_CV_SPECS = (
     CHARACTER_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     INSUFFICIENT_GOLD_PROMPT_SPEC,
+    INVENTORY_FULL_OK_BUTTON_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
 )

@@ -11,6 +11,7 @@ from bot.action_executor import (
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
+    AcknowledgeInventoryFull,
     CloseBlackMarket,
     ConfirmCharacterSelection,
     OpenBlackMarket,
@@ -44,6 +45,10 @@ def test_frame_geometry_is_derived_from_actual_landscape_frame_shape():
         (
             RejectInsufficientGold(),
             DEFAULT_BLACK_MARKET_ACTION_TARGETS.reject_insufficient_gold,
+        ),
+        (
+            AcknowledgeInventoryFull(),
+            DEFAULT_BLACK_MARKET_ACTION_TARGETS.acknowledge_inventory_full,
         ),
     ),
 )

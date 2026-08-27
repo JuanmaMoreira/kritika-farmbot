@@ -10,11 +10,13 @@ from bot.catalog import (
     BASE_CONTEXT_RULES,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
+    LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     MENU_QUICK,
     OVERLAY_RULES,
     POPUP_INSUFFICIENT_GOLD,
+    POPUP_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
@@ -53,8 +55,18 @@ def test_each_catalog_base_rule_resolves_individually(context_rule):
 def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
     state = build_default_resolver().resolve(batch(*overlay_rule.requires))
 
-    assert state.status is ResolutionStatus.UNKNOWN
-    assert state.base_context is None
+    expected_base = (
+        SCREEN_BLACK_MARKET
+        if overlay_rule.name == POPUP_INVENTORY_FULL
+        else None
+    )
+    expected_status = (
+        ResolutionStatus.RESOLVED
+        if expected_base is not None
+        else ResolutionStatus.UNKNOWN
+    )
+    assert state.status is expected_status
+    assert state.base_context == expected_base
     assert state.overlays == (overlay_rule.name,)
 
 
@@ -130,6 +142,23 @@ def test_catalog_resolves_black_market_with_insufficient_gold_overlay():
     assert state.status is ResolutionStatus.RESOLVED
     assert state.base_context == SCREEN_BLACK_MARKET
     assert state.overlays == (POPUP_INSUFFICIENT_GOLD,)
+
+
+def test_inventory_full_requires_ok_button_and_black_market_context_gate():
+    resolver = build_default_resolver()
+
+    ungated = resolver.resolve(batch(LANDMARK_INVENTORY_FULL_OK_BUTTON))
+    gated = resolver.resolve(
+        batch(
+            "landmark.black_market_title",
+            LANDMARK_INVENTORY_FULL_OK_BUTTON,
+        )
+    )
+
+    assert ungated.status is ResolutionStatus.UNKNOWN
+    assert ungated.overlays == ()
+    assert gated.base_context == SCREEN_BLACK_MARKET
+    assert gated.overlays == (POPUP_INVENTORY_FULL,)
 
 
 def test_catalog_returns_unknown_for_insufficient_evidence():
@@ -220,8 +249,8 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
     assert len(BASE_CONTEXT_RULES) == 4
-    assert len(OVERLAY_RULES) == 3
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 7
+    assert len(OVERLAY_RULES) == 4
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 8
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

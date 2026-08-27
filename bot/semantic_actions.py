@@ -51,6 +51,11 @@ class RejectInsufficientGold:
 
 
 @dataclass(frozen=True)
+class AcknowledgeInventoryFull:
+    """Request the common OK action on an Inventory Full popup."""
+
+
+@dataclass(frozen=True)
 class OpenQuickMenu:
     """Request opening Quick Menu from Lobby."""
 
@@ -97,6 +102,7 @@ SemanticAction = (
     | SelectBlackMarketSlot
     | AcceptPurchaseConfirmation
     | RejectInsufficientGold
+    | AcknowledgeInventoryFull
     | OpenQuickMenu
     | OpenCharacterSelect
     | Swipe
@@ -107,6 +113,7 @@ SemanticAction = (
 
 __all__ = (
     "AcceptPurchaseConfirmation",
+    "AcknowledgeInventoryFull",
     "CloseBlackMarket",
     "ConfirmCharacterSelection",
     "OpenBlackMarket",

@@ -65,7 +65,7 @@ El backend actual usa OpenCV local:
 - cero IO de assets por frame;
 - múltiples variantes sólo cuando representan el mismo significado visual.
 
-Los detectores productivos cubren Lobby, Character Select, Black Market, Quick Menu, Purchase Confirmation e Insufficient Gold. Detectores especializados emiten GOLD y Purchased por slot. La lista y evidencia actual están en `CONTEXT.md`; paths, regiones y anchors son verdad de código/tests.
+Los detectores productivos cubren Lobby, Character Select, Black Market, Quick Menu, Purchase Confirmation, Insufficient Gold e Inventory Full. Este último usa el botón `OK` común con gating explícito de Black Market, no el mensaje variable. Detectores especializados emiten GOLD y Purchased por slot. La lista y evidencia actual están en `CONTEXT.md`; paths, regiones y anchors son verdad de código/tests.
 
 OCR y VLM deberán implementar el mismo límite de detector. VLM será provider-agnostic y ninguna capa superior dependerá de proveedor, modelo o API concretos.
 
@@ -116,13 +116,13 @@ Todo efecto de una acción que tenga una postcondición observable fiable se ver
 
 Los flows contienen intención y reglas de negocio deterministas. Declaran scope, prerequisites y outcomes; reaccionan a `RuntimeSnapshot` y emiten semantic actions.
 
-`BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, los dos popups, GOLD y Purchased; Quick Menu no es prerequisite. La policy funcional detallada está en `CONTEXT.md`.
+`BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, Purchase Confirmation, Insufficient Gold, Inventory Full, GOLD y Purchased; Quick Menu no es prerequisite. Inventory Full es un impedimento de compra no fatal: el flow lo registra y reconoce mediante una transición verificada, pero no identifica ni libera inventarios. La policy funcional detallada está en `CONTEXT.md`.
 
 Los support operations futuros seguirán `check → bounded support operation → recheck → continue/skip/fail`; no se permiten llamadas recursivas arbitrarias entre flows.
 
 ## Semantic Actions y ActionExecutor
 
-Los intents modelan acciones del dominio y primitives físicas tipadas. El slice actual define acciones de Black Market y las mínimas de Rotation: abrir Quick Menu, entrar a Character Select, elegir la última tarjeta visible y confirmar selección. `Swipe(start, end, duration)` es genérico y no contiene policy de scroll, bounce ni conocimiento de pantallas.
+Los intents modelan acciones del dominio y primitives físicas tipadas. El slice actual define acciones de Black Market —incluido el `OK` de Inventory Full— y las mínimas de Rotation: abrir Quick Menu, entrar a Character Select, elegir la última tarjeta visible y confirmar selección. `Swipe(start, end, duration)` es genérico y no contiene policy de scroll, bounce ni conocimiento de pantallas.
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
 
@@ -163,7 +163,7 @@ User Control Panel
 
 `SessionRunner` compondrá en el futuro Rotation y flows. El contrato `RotationStrategy` y el primer `StandardRotation.advance()` ya existen; cada flow sigue operando sólo sobre el personaje activo. Ninguno conoce la implementación interna del otro.
 
-El primitive de `rotation.standard` ya usa Quick Menu → Character Select → bottom confirmado → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita. La captura transitoria concurrente no cambia los límites: Rotation solicita un intent semántico y `ActionExecutor` sigue siendo quien ejecuta el input físico. El loop completo y regreso final al personaje inicial siguen pendientes; MAIN/SUBS quedan para estrategias futuras.
+El primitive de `rotation.standard` usa Quick Menu → Character Select → bottom confirmado → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita. La captura transitoria concurrente no cambia los límites: Rotation solicita un intent semántico y `ActionExecutor` sigue siendo quien ejecuta el input físico. El loop aislado 28/28 y el regreso final al personaje inicial están validados; la composición con flows sigue pendiente. MAIN/SUBS quedan para estrategias futuras.
 
 El runtime unattended futuro necesita timeouts, recovery transversal, logging, aislamiento de fallos, cleanup y policy de continuación. Hasta entonces, el vertical slice aborta ante errores técnicos después de registrar y limpiar.
 

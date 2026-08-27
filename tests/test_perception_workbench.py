@@ -110,13 +110,13 @@ def test_ground_truth_is_persistent_explicit_and_overlay_dynamic():
 
 def test_candidate_labels_can_be_explicit_human_gt_without_prediction():
     truth = GroundTruthState().select_base("screen.guild_shop")
-    truth = truth.toggle_overlay("popup.bag_full_alert")
+    truth = truth.toggle_overlay("popup.future_alert")
 
     assert truth.payload() == {
         "source": "human_confirmed",
         "base_context": "screen.guild_shop",
         "base_is_unknown": False,
-        "overlays": ["popup.bag_full_alert"],
+        "overlays": ["popup.future_alert"],
     }
     assert evaluate_correctness(truth, state(ResolutionStatus.UNKNOWN)) is Correctness.MISMATCH
 

@@ -8,6 +8,7 @@ from bot.black_market_flow import BlackMarketFlow, FlowOutcome
 from bot.capture import FrameSnapshot
 from bot.catalog import (
     POPUP_INSUFFICIENT_GOLD,
+    POPUP_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
     SCREEN_BLACK_MARKET,
     SCREEN_LOBBY,
@@ -21,6 +22,7 @@ from bot.runtime_observer import (
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
+    AcknowledgeInventoryFull,
     CloseBlackMarket,
     OpenBlackMarket,
     RejectInsufficientGold,
@@ -261,6 +263,157 @@ def test_insufficient_gold_logs_no_slot_rejects_and_continues():
         SelectBlackMarketSlot(8),
         AcceptPurchaseConfirmation(),
         CloseBlackMarket(),
+    ]
+
+
+def test_inventory_full_logs_ok_and_continues_without_retrying_same_slot():
+    result, actions, events, _ = _run(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(3, base=SCREEN_BLACK_MARKET),
+            _snapshot(6, base=SCREEN_BLACK_MARKET),
+        ],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET, gold={1, 8}),
+            _snapshot(
+                4,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_INVENTORY_FULL},
+            ),
+            _snapshot(5, base=SCREEN_BLACK_MARKET),
+            _snapshot(
+                7,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_PURCHASE_CONFIRMATION},
+            ),
+            _snapshot(8, base=SCREEN_BLACK_MARKET, purchased={8}),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.attempted_slots == (1, 8)
+    assert result.verified_purchases == (8,)
+    assert result.inventory_full_count == 1
+    assert events == ["black_market.inventory_full"]
+    assert actions == [
+        OpenBlackMarket(),
+        SelectBlackMarketSlot(1),
+        AcknowledgeInventoryFull(),
+        SelectBlackMarketSlot(8),
+        AcceptPurchaseConfirmation(),
+        CloseBlackMarket(),
+    ]
+
+
+def test_multiple_inventory_full_results_are_nonfatal_business_events():
+    result, actions, events, _ = _run(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(3, base=SCREEN_BLACK_MARKET),
+            _snapshot(6, base=SCREEN_BLACK_MARKET),
+        ],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET, gold={2, 5}),
+            _snapshot(
+                4,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_INVENTORY_FULL},
+            ),
+            _snapshot(5, base=SCREEN_BLACK_MARKET),
+            _snapshot(
+                7,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_INVENTORY_FULL},
+            ),
+            _snapshot(8, base=SCREEN_BLACK_MARKET),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.attempted_slots == (2, 5)
+    assert result.inventory_full_count == 2
+    assert events == [
+        "black_market.inventory_full",
+        "black_market.inventory_full",
+    ]
+    assert actions.count(AcknowledgeInventoryFull()) == 2
+
+
+def test_low_gold_and_inventory_full_can_both_happen_for_one_character():
+    result, actions, events, _ = _run(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(3, base=SCREEN_BLACK_MARKET),
+            _snapshot(6, base=SCREEN_BLACK_MARKET),
+        ],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET, gold={0, 9}),
+            _snapshot(
+                4,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_INSUFFICIENT_GOLD},
+            ),
+            _snapshot(5, base=SCREEN_BLACK_MARKET),
+            _snapshot(
+                7,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_INVENTORY_FULL},
+            ),
+            _snapshot(8, base=SCREEN_BLACK_MARKET),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.insufficient_gold_count == 1
+    assert result.inventory_full_count == 1
+    assert events == ["black_market.low_gold", "black_market.inventory_full"]
+    assert RejectInsufficientGold() in actions
+    assert AcknowledgeInventoryFull() in actions
+
+
+def test_inventory_full_ack_technical_failure_aborts_before_next_slot():
+    still_open = _snapshot(
+        5,
+        base=SCREEN_BLACK_MARKET,
+        overlays={POPUP_INVENTORY_FULL},
+    )
+    unknown = _snapshot(7)
+    result, actions, events, _ = _run(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(3, base=SCREEN_BLACK_MARKET),
+            unknown,
+        ],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET, gold={1, 8}),
+            _snapshot(
+                4,
+                base=SCREEN_BLACK_MARKET,
+                overlays={POPUP_INVENTORY_FULL},
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=5.0,
+                last_snapshot=still_open,
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=5,
+                timeout=2.0,
+                last_snapshot=_snapshot(6),
+            ),
+        ],
+    )
+
+    assert result.outcome is FlowOutcome.ABORTED
+    assert result.error.startswith("inventory_full_ack_failed")
+    assert result.inventory_full_count == 1
+    assert SelectBlackMarketSlot(8) not in actions
+    assert events == [
+        "black_market.inventory_full",
+        "black_market.unexpected_state",
     ]
 
 
