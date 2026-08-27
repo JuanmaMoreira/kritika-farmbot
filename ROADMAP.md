@@ -31,6 +31,8 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Aprovechar el orden MRU sin identificar personajes y sin lógica especial MAIN/SUBS.
 - [x] Validar hardware-free primero y mantener todo smoke físico explícitamente opt-in.
 - [x] Validar live la transición discreta en 3 advances supervisados, sin regresión de scroll ni navegación.
+- [x] Calibrar y verificar hardware-free la postcondición visual de selección de la última tarjeta, con grace y retry state-guarded.
+- [x] Validar la selección observada en 5/5 entradas aisladas y 3/3 `advance()` supervisados.
 - [ ] Retomar el loop de 28, pausado en 14/28 por un tap Select no registrado, y validar el regreso final al personaje inicial sin repetir flows sobre éste.
 
 ### Composición mínima de sesión

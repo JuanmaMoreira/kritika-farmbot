@@ -41,6 +41,7 @@ Si la documentación contradice al código, no inventar una resolución: señala
 - Los flows contienen intención de negocio y solicitan acciones semánticas; no hacen matching ni llaman ADB directamente.
 - `ActionExecutor` traduce intents validados a input físico; no reconoce pantallas ni decide qué jugar o comprar.
 - `AdbClient` es el único límite activo de comandos ADB.
+- Ante una acción nueva, buscar una postcondición observable fiable y verificarla antes de continuar; no asumir éxito sólo porque se envió input ni inventar señales débiles. Si el efecto no es verificable, documentarlo explícitamente y aplicar policy conservadora.
 - Rotation es transversal al orquestador y no pertenece a ningún flow.
 - `AdsManager` permanece desacoplado de la percepción normal del juego.
 - No volver a concentrar configuración, percepción y acciones en `constants.py` ni en otro archivo monolítico.

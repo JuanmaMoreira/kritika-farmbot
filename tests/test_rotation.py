@@ -132,6 +132,21 @@ def _frame(fill=0, *, grid_fill=None):
     return image
 
 
+def _selected_frame(image):
+    selected = image.copy()
+    height, width = selected.shape[:2]
+    x1, x2 = round(width * 0.48), round(width * 0.63)
+    y1, y2 = round(height * 0.64), round(height * 0.84)
+    crop = selected[y1:y2, x1:x2]
+    border_x = round(crop.shape[1] * 0.16)
+    border_y = round(crop.shape[0] * 0.18)
+    crop[:, :border_x] = (0, 255, 255)
+    crop[:, -border_x:] = (0, 255, 255)
+    crop[:border_y, :] = (0, 255, 255)
+    crop[-border_y:, :] = (0, 255, 255)
+    return selected
+
+
 def _snapshot(
     sequence,
     *,
@@ -235,7 +250,11 @@ def test_rotation_delegates_scroll_algorithm_to_observed_scroll():
         [
             _snapshot(2, overlays={MENU_QUICK}),
             character_select,
-            _snapshot(5, base=SCREEN_CHARACTER_SELECT),
+            _snapshot(
+                5,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame(edge.frame.image),
+            ),
             _snapshot(6, base=SCREEN_LOBBY),
         ],
     )
@@ -298,7 +317,11 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
                 _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=first_grid),
                 _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid.copy()),
             ],
-            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid.copy()),
+            _snapshot(
+                7,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame(scrolled_grid),
+            ),
             _snapshot(8, base=SCREEN_LOBBY),
         ],
     )
@@ -327,6 +350,7 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
     assert [trace.name for trace in result.transitions] == [
         "rotation.open_quick_menu",
         "rotation.open_character_select",
+        "rotation.select_last_visible_character",
         "rotation.confirm_character_selection",
     ]
     assert all(
@@ -487,7 +511,11 @@ def test_configured_double_confirmation_selects_after_two_effective_bounces():
                 _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=transient),
                 _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
             ],
-            _snapshot(8, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(
+                8,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame(grid),
+            ),
             _snapshot(9, base=SCREEN_LOBBY),
         ],
         end_confirmation_swipes=2,
@@ -609,7 +637,11 @@ def test_confirm_character_selection_retries_from_fresh_character_select():
                 _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=200)),
                 _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
             ],
-            _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(
+                6,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame(grid),
+            ),
             RuntimeWaitTimeout(
                 after_sequence=6,
                 timeout=6.0,
@@ -639,6 +671,199 @@ def test_confirm_character_selection_retries_from_fresh_character_select():
     assert result.transitions[-1].attempt_count == 2
     assert result.transitions[-1].grace_wait_count == 1
     assert events.events == []
+
+
+def _edge_result(snapshot):
+    measurement = ScrollAttemptMeasurement(
+        pre_sequence=snapshot.sequence - 1,
+        settled_sequence=snapshot.sequence,
+        fresh_sample_count=2,
+        transient_peak_sequence=snapshot.sequence,
+        max_transient_difference=0.14,
+        settled_difference=0.02,
+    )
+    return ObservedScrollResult(
+        outcome=ObservedScrollOutcome.EDGE_REACHED,
+        final_snapshot=snapshot,
+        attempts=(measurement,),
+        attempt_kinds=(ScrollAttemptKind.EDGE_CANDIDATE,),
+        effective_gesture_count=1,
+        confirmation_count=1,
+    )
+
+
+def _rotation_with_delegated_edge(observes, waits, edge):
+    observer = ScriptedObserver(observes, waits)
+    actions = Actions()
+    rotation = StandardRotation(
+        observer,
+        actions,
+        Events(),
+        observed_scroll=DelegatingScroll(_edge_result(edge)),
+    )
+    return rotation, actions, observer
+
+
+def test_card_selection_appearing_during_grace_does_not_send_second_tap():
+    edge_image = _frame(grid_fill=80)
+    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
+    rotation, actions, _ = _rotation_with_delegated_edge(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    5, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+            _snapshot(
+                6,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame(edge_image),
+            ),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+        edge,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert actions.actions.count(SelectLastVisibleCharacter()) == 1
+    assert result.transitions[2].outcome == "success_after_grace"
+    assert result.transitions[2].grace_wait_count == 1
+
+
+def test_card_tap_without_effect_retries_only_from_fresh_unselected_state():
+    edge_image = _frame(grid_fill=80)
+    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
+    rotation, actions, _ = _rotation_with_delegated_edge(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+        ],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    5, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=5,
+                timeout=0.75,
+                last_snapshot=_snapshot(
+                    6, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+            _snapshot(
+                8,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame(edge_image),
+            ),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+        edge,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert actions.actions.count(SelectLastVisibleCharacter()) == 2
+    assert result.transitions[2].outcome == "success_after_retry"
+    assert result.transitions[2].attempt_count == 2
+    assert result.transitions[2].effect_state == "selected"
+
+
+def test_card_selection_attempts_exhaust_without_executing_select():
+    edge_image = _frame(grid_fill=80)
+    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
+    rotation, actions, _ = _rotation_with_delegated_edge(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            _snapshot(10, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+        ],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=1.0,
+                last_snapshot=_snapshot(5, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=5,
+                timeout=0.75,
+                last_snapshot=_snapshot(6, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=7,
+                timeout=1.0,
+                last_snapshot=_snapshot(8, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=8,
+                timeout=0.75,
+                last_snapshot=_snapshot(9, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            ),
+        ],
+        edge,
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert "attempts_exhausted" in result.error
+    assert actions.actions.count(SelectLastVisibleCharacter()) == 2
+    assert ConfirmCharacterSelection() not in actions.actions
+
+
+def test_card_selection_leaving_character_select_aborts_without_retry_or_select():
+    edge_image = _frame(grid_fill=80)
+    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
+    rotation, actions, _ = _rotation_with_delegated_edge(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            _snapshot(5, base=SCREEN_LOBBY),
+        ],
+        edge,
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert "unexpected_state" in result.error
+    assert actions.actions.count(SelectLastVisibleCharacter()) == 1
+    assert ConfirmCharacterSelection() not in actions.actions
+
+
+def test_preexisting_selected_frame_is_not_attributed_to_a_new_tap():
+    edge_image = _selected_frame(_frame(grid_fill=80))
+    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
+    rotation, actions, _ = _rotation_with_delegated_edge(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=80)),
+        ],
+        edge,
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert "precondition_rejected" in result.error
+    assert SelectLastVisibleCharacter() not in actions.actions
+    assert ConfirmCharacterSelection() not in actions.actions
 
 
 def test_rotation_module_never_imports_or_calls_adb_directly():

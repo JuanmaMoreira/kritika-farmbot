@@ -100,15 +100,17 @@ Los overlays se resuelven independientemente y pueden coexistir con cualquier es
 
 Las esperas son bounded, rechazan sequences stale posteriores a una acción y pueden exigir estabilidad continua sobre frames distintos. La estabilidad pertenece a la espera del caso de uso, no introduce estado implícito en `ContextResolver`.
 
+Todo efecto de una acción que tenga una postcondición observable fiable se verifica antes de continuar, incluso cuando la pantalla no cambia. Una interacción observada/verificada combina `RuntimeObserver + ActionExecutor`; el Flow o Rotation declara el efecto requerido y los guards, pero no implementa retries físicos manuales. Si no existe una señal robusta, la acción permanece explícitamente no verificable y usa policy conservadora: no se inventan postcondiciones débiles.
+
 ## Rotation
 
 `bot/rotation.py` define `RotationStrategy.advance()` como contrato transversal. `StandardRotation` decide cómo cambiar una vez de personaje mediante estado semántico y solicita intents al `ActionExecutor`; no conoce flows, identidad de personajes ni ADB.
 
 `bot/observed_scroll.py` es una operación transversal que compone `RuntimeObserver + ActionExecutor`. Conserva un frame settled A, observa frames transitorios T mientras se ejecuta un `Swipe` y exige un settled B fresco posterior al release/bounce. Clasifica progreso, edge candidate e intento inefectivo; aplica confirmaciones, timeout y máximo de intentos bounded. La similitud A/B por sí sola nunca prueba edge: debe existir movimiento transitorio efectivo del mismo intento.
 
-`bot/character_select_scroll.py` sólo aporta el perfil específico de Character Select: ROI, thresholds, gestos de progreso/confirmación, settle y policy bounded. `StandardRotation` navega, delega `scroll_to_edge` y sólo selecciona si el resultado confirma edge; no contiene medición A/T/B ni detección de bounce.
+`bot/character_select_scroll.py` sólo aporta el perfil específico de Character Select: ROI, thresholds, gestos de progreso/confirmación, settle y policy bounded. `StandardRotation` navega, delega `scroll_to_edge` y sólo intenta seleccionar si el resultado confirma edge; no contiene medición A/T/B ni detección de bounce. Después verifica la selección de la tarjeta con `bot/character_selection.py`, un detector local del marco amarillo de la posición target que no identifica personajes.
 
-`bot/verified_transition.py` verifica acciones discretas contra una postcondición: input, espera nominal, ventana de gracia sin input y, sólo cuando el consumidor aporta un guard que acepta el estado fresco actual, retry bounded. Distingue éxito inicial, retrasado o posterior a retry, rechazo del guard, agotamiento, estado inesperado, timeout y fallo. No implementa recovery ni decide qué estados son seguros; Rotation o el Flow aportan precondición, postcondición y `retryable_from`.
+`bot/verified_transition.py` verifica acciones discretas contra una postcondición, tanto transiciones de contexto como efectos intra-screen: input, espera nominal, ventana de gracia sin input y, sólo cuando el consumidor aporta un guard que acepta el estado fresco actual, retry bounded. Distingue éxito inicial, retrasado o posterior a retry, rechazo del guard, agotamiento, estado inesperado, timeout y fallo. No implementa recovery ni decide qué estados son seguros; Rotation o el Flow aportan precondición, postcondición y `retryable_from`.
 
 ## Flows
 
@@ -124,7 +126,7 @@ Los intents modelan acciones del dominio y primitives físicas tipadas. El slice
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
 
-El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas | ObservedScroll para operaciones continuas} → RuntimeObserver + ActionExecutor → AdbClient`. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery y SessionRunner permanecen en capas futuras de mayor nivel.
+El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas observables | ObservedScroll para operaciones continuas} → RuntimeObserver + ActionExecutor → AdbClient`. `ActionExecutor` sólo emite input físico; la interacción observada comprueba su efecto. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery queda reservado para estados inesperados o fallos que no resuelve una interacción local, y SessionRunner permanece en una capa futura de mayor nivel.
 
 ## Device / ADB
 
