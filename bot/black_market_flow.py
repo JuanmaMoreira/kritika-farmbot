@@ -84,7 +84,6 @@ class BlackMarketFlow:
         empty_gold_confirmation_timeout: float = 2.0,
         slot_selection_timeout: float = 1.0,
         slot_selection_grace_timeout: float = 2.0,
-        transition_retry_guard_timeout: float = 1.0,
         transition_grace_timeout: float = 2.0,
         transition_max_attempts: int = 2,
         verified_transition: VerifiedTransition | None = None,
@@ -109,8 +108,6 @@ class BlackMarketFlow:
             raise ValueError("slot_selection_timeout must be positive")
         if slot_selection_grace_timeout <= 0:
             raise ValueError("slot_selection_grace_timeout must be positive")
-        if transition_retry_guard_timeout <= 0:
-            raise ValueError("transition_retry_guard_timeout must be positive")
         self.observer: _Observer = observer
         self.actions = actions
         self.events = events
@@ -125,7 +122,6 @@ class BlackMarketFlow:
         self.navigation_policy = VerifiedTransitionPolicy(
             normal_timeout=self.timeout,
             grace_timeout=transition_grace_timeout,
-            retry_guard_timeout=transition_retry_guard_timeout,
             max_attempts=transition_max_attempts,
         )
         self.inventory_full_policy = VerifiedTransitionPolicy(
@@ -133,10 +129,14 @@ class BlackMarketFlow:
             grace_timeout=transition_grace_timeout,
             max_attempts=transition_max_attempts,
         )
+        self.popup_response_policy = VerifiedTransitionPolicy(
+            normal_timeout=self.timeout,
+            grace_timeout=transition_grace_timeout,
+            max_attempts=transition_max_attempts,
+        )
         self.slot_selection_policy = VerifiedTransitionPolicy(
             normal_timeout=slot_selection_timeout,
             grace_timeout=slot_selection_grace_timeout,
-            retry_guard_timeout=transition_retry_guard_timeout,
             max_attempts=transition_max_attempts,
         )
         if verified_transition is None:
@@ -192,7 +192,7 @@ class BlackMarketFlow:
             retryable_from=lambda snapshot: _is_clean_base(
                 snapshot, SCREEN_LOBBY
             ),
-            abort_if=_has_incompatible_state,
+            abort_if=_has_incompatible_navigation_state,
             stable_for=0.75,
             policy=self.navigation_policy,
         )
@@ -240,10 +240,10 @@ class BlackMarketFlow:
         flow_events: list[FlowEvent] = []
 
         for slot in selected:
-            current = self.observer.observe()
-            if not _is_clean_base(current, SCREEN_BLACK_MARKET):
+            current = market
+            if not _is_actionable_gold_slot(current, slot):
                 return self._abort(
-                    "unexpected_state_before_slot",
+                    "slot_not_actionable",
                     initial_gold,
                     attempted,
                     verified,
@@ -256,11 +256,11 @@ class BlackMarketFlow:
                 SelectBlackMarketSlot(slot),
                 current,
                 expected=_is_expected_purchase_branch,
-                precondition=lambda snapshot: _is_clean_base(
-                    snapshot, SCREEN_BLACK_MARKET
+                precondition=lambda snapshot, expected=slot: (
+                    _is_actionable_gold_slot(snapshot, expected)
                 ),
-                retryable_from=lambda snapshot: _is_clean_base(
-                    snapshot, SCREEN_BLACK_MARKET
+                retryable_from=lambda snapshot, expected=slot: (
+                    _is_actionable_gold_slot(snapshot, expected)
                 ),
                 abort_if=_has_incompatible_branch,
                 policy=self.slot_selection_policy,
@@ -278,28 +278,25 @@ class BlackMarketFlow:
 
             overlays = set(branch.state.overlays)
             if overlays == {POPUP_PURCHASE_CONFIRMATION}:
-                self.actions.execute(
-                    AcceptPurchaseConfirmation(), branch.geometry
+                completed_purchase = self.verified_transition.execute(
+                    "black_market.accept_purchase",
+                    AcceptPurchaseConfirmation(),
+                    branch,
+                    expected=lambda snapshot, expected=slot: (
+                        _is_verified_purchase(snapshot, expected)
+                    ),
+                    precondition=_is_purchase_confirmation,
+                    retryable_from=_is_purchase_confirmation,
+                    abort_if=_has_incompatible_post_purchase,
+                    stable_for=self.post_branch_settle_for,
+                    policy=self.popup_response_policy,
                 )
-                try:
-                    completed = self.observer.wait_until(
-                        lambda snapshot, expected=slot: (
-                            _is_clean_base(snapshot, SCREEN_BLACK_MARKET)
-                            and expected in snapshot.facts.purchased_slots
-                        ),
-                        after_sequence=branch.sequence,
-                        timeout=self.timeout,
-                        abort_if=_has_incompatible_post_purchase,
-                        stable_for=self.post_branch_settle_for,
-                    )
-                except RuntimeWaitTimeout as error:
-                    if (
-                        error.last_snapshot is not None
-                        and _is_clean_base(
-                            error.last_snapshot, SCREEN_BLACK_MARKET
-                        )
-                        and slot
-                        not in error.last_snapshot.facts.purchased_slots
+                if not completed_purchase.succeeded:
+                    if _is_clean_base(
+                        completed_purchase.final_snapshot, SCREEN_BLACK_MARKET
+                    ) and (
+                        slot
+                        not in completed_purchase.final_snapshot.facts.purchased_slots
                     ):
                         return self._abort(
                             "purchase_unverified",
@@ -310,45 +307,43 @@ class BlackMarketFlow:
                             event="black_market.purchase_unverified",
                         )
                     return self._abort(
-                        f"unexpected_state_after_purchase: {error}",
-                        initial_gold,
-                        attempted,
-                        verified,
-                        flow_events=flow_events,
-                    )
-                except RuntimeWaitAborted as error:
-                    return self._abort(
-                        f"unexpected_state_after_purchase: {error}",
+                        "purchase_confirmation_failed: "
+                        f"{completed_purchase.outcome.value}: "
+                        f"{completed_purchase.error}",
                         initial_gold,
                         attempted,
                         verified,
                         flow_events=flow_events,
                     )
                 verified.append(slot)
-                market = completed
+                market = completed_purchase.final_snapshot
                 continue
 
             if overlays == {POPUP_INSUFFICIENT_GOLD}:
                 flow_events.append(FlowEvent("low_gold"))
-                self.actions.execute(RejectInsufficientGold(), branch.geometry)
-                try:
-                    market = self.observer.wait_until(
-                        lambda snapshot: _is_clean_base(
-                            snapshot, SCREEN_BLACK_MARKET
-                        ),
-                        after_sequence=branch.sequence,
-                        timeout=self.timeout,
-                        abort_if=_has_incompatible_after_reject,
-                        stable_for=self.post_branch_settle_for,
-                    )
-                except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
+                rejected = self.verified_transition.execute(
+                    "black_market.reject_insufficient_gold",
+                    RejectInsufficientGold(),
+                    branch,
+                    expected=lambda snapshot: _is_clean_base(
+                        snapshot, SCREEN_BLACK_MARKET
+                    ),
+                    precondition=_is_insufficient_gold_popup,
+                    retryable_from=_is_insufficient_gold_popup,
+                    abort_if=_has_incompatible_after_reject,
+                    stable_for=self.post_branch_settle_for,
+                    policy=self.popup_response_policy,
+                )
+                if not rejected.succeeded:
                     return self._abort(
-                        f"unexpected_state_after_low_gold: {error}",
+                        "insufficient_gold_reject_failed: "
+                        f"{rejected.outcome.value}: {rejected.error}",
                         initial_gold,
                         attempted,
                         verified,
                         flow_events=flow_events,
                     )
+                market = rejected.final_snapshot
                 continue
 
             flow_events.append(FlowEvent("inventory_full"))
@@ -390,17 +385,25 @@ class BlackMarketFlow:
     ) -> BlackMarketFlowResult:
         """Close Black Market and require a fresh clean Lobby postcondition."""
 
-        self.actions.execute(CloseBlackMarket(), market.geometry)
-        try:
-            self.observer.wait_until(
-                lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
-                after_sequence=market.sequence,
-                timeout=self.timeout,
-                abort_if=_has_incompatible_state,
-            )
-        except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
+        closed = self.verified_transition.execute(
+            "black_market.close",
+            CloseBlackMarket(),
+            market,
+            expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+            precondition=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_BLACK_MARKET
+            ),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_BLACK_MARKET
+            ),
+            abort_if=_has_incompatible_navigation_state,
+            stable_for=self.lobby_precondition_settle_for,
+            policy=self.navigation_policy,
+        )
+        if not closed.succeeded:
             return self._abort(
-                f"return_to_lobby_failed: {error}",
+                "return_to_lobby_failed: "
+                f"{closed.outcome.value}: {closed.error}",
                 initial_gold,
                 attempted,
                 verified,
@@ -456,6 +459,39 @@ def _is_clean_base(snapshot: RuntimeSnapshot, base: str) -> bool:
     )
 
 
+def _is_actionable_gold_slot(snapshot: RuntimeSnapshot, slot: int) -> bool:
+    return (
+        _is_clean_base(snapshot, SCREEN_BLACK_MARKET)
+        and slot in snapshot.facts.gold_slots
+        and slot not in snapshot.facts.purchased_slots
+    )
+
+
+def _is_purchase_confirmation(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.RESOLVED
+        and state.base_context == SCREEN_BLACK_MARKET
+        and set(state.overlays) == {POPUP_PURCHASE_CONFIRMATION}
+    )
+
+
+def _is_insufficient_gold_popup(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.RESOLVED
+        and state.base_context == SCREEN_BLACK_MARKET
+        and set(state.overlays) == {POPUP_INSUFFICIENT_GOLD}
+    )
+
+
+def _is_verified_purchase(snapshot: RuntimeSnapshot, slot: int) -> bool:
+    return (
+        _is_clean_base(snapshot, SCREEN_BLACK_MARKET)
+        and slot in snapshot.facts.purchased_slots
+    )
+
+
 def _can_wait_for_lobby_precondition(snapshot: RuntimeSnapshot) -> bool:
     state = snapshot.state
     return state.status is ResolutionStatus.UNKNOWN and not state.overlays
@@ -494,6 +530,18 @@ def _has_incompatible_state(snapshot: RuntimeSnapshot) -> bool:
     )
 
 
+def _has_incompatible_navigation_state(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.AMBIGUOUS
+        or bool(state.overlays)
+        or (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context not in {SCREEN_LOBBY, SCREEN_BLACK_MARKET}
+        )
+    )
+
+
 def _has_incompatible_branch(snapshot: RuntimeSnapshot) -> bool:
     overlays = set(snapshot.state.overlays)
     expected = {
@@ -516,6 +564,10 @@ def _has_incompatible_post_purchase(snapshot: RuntimeSnapshot) -> bool:
     overlays = set(snapshot.state.overlays)
     return (
         snapshot.state.status is ResolutionStatus.AMBIGUOUS
+        or (
+            snapshot.state.status is ResolutionStatus.RESOLVED
+            and snapshot.state.base_context != SCREEN_BLACK_MARKET
+        )
         or POPUP_INSUFFICIENT_GOLD in overlays
         or POPUP_INVENTORY_FULL in overlays
         or bool(
@@ -533,6 +585,10 @@ def _has_incompatible_after_reject(snapshot: RuntimeSnapshot) -> bool:
     overlays = set(snapshot.state.overlays)
     return (
         snapshot.state.status is ResolutionStatus.AMBIGUOUS
+        or (
+            snapshot.state.status is ResolutionStatus.RESOLVED
+            and snapshot.state.base_context != SCREEN_BLACK_MARKET
+        )
         or POPUP_PURCHASE_CONFIRMATION in overlays
         or POPUP_INVENTORY_FULL in overlays
         or bool(
