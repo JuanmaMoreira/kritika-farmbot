@@ -40,23 +40,48 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 - [x] Implementar `SessionPlan / SessionRunner → Selected PER_CHARACTER Flow(s) + RotationStrategy`.
 - [x] Definir `FlowResult / FlowEvent`, resultados parciales, cancelación segura y abort conservador ante fallos técnicos.
-- [x] Mantener flows, Rotation y ADB separados y exigir Lobby entre componentes.
+- [x] Mantener flows, Rotation y ADB separados; componer según precondiciones y postcondiciones explícitas sin exigir Lobby universal.
 - [x] Preparar `CharacterContext(name=None)` para identidad futura sin implementar OCR.
 - [x] Validar live N=2: 2/2 flows, 2/2 advances y Lobby estable entre componentes; smokes incrementales acumularon tres `inventory_full` no fatales.
 - [x] Validar la sesión Black Market completa de 28 personajes sin reprocesar al inicial tras el advance final: 28/28 flows, 28/28 advances, business events no fatales, Lobby final y retorno al inicial confirmado humanamente.
 
-## Después
+### Prerrequisitos transversales para nuevos flows
 
-### Fase 5 — Perception incremental
+- [x] Declarar contratos de flow con precondición y múltiples postcondiciones exitosas posibles; `COMPLETED` ya no implica Lobby.
+- [x] Modelar `quick_menu_accessible` como capability conservadora y Quick Menu como hub operacional, sin pantalla sintética ni grafo de navegación.
+- [x] Componer el próximo componente según su requisito real y reservar Quick Menu → Lobby como única normalización mínima inyectable/verificada.
+- [x] Declarar `StandardRotation` sobre acceso a Quick Menu conservando Lobby como única entrada productiva validada.
+- [x] Incorporar `ControlledWait` monotónico, periódico, cancelable y bounded para actividad larga sin input.
+- [x] Fijar boundaries futuros OCR → extractors → Runtime Facts y VerifiedTransition → failure estructurado → ConflictResolver.
+
+## Siguiente
+
+### World Boss semantic acquisition / perception slice
 
 - [ ] Promover semántica sólo ante una necesidad funcional y evidencia curada.
+- [ ] Adquirir y validar contextos, landmarks y acciones de World Boss sin inferir soporte desde datos legacy.
+- [ ] Validar live qué contextos World Boss son `quick_menu_accessible` antes de ampliar la policy productiva.
+
+### OCR + Runtime Facts
+
 - [ ] Evaluar detector entrenado cuando exista dataset suficiente.
 - [ ] Incorporar OCR para valores dinámicos sólo cuando un flow lo requiera.
 - [ ] Incorporar fallback VLM provider-agnostic sólo para casos no cubiertos y guardar evidencia reutilizable.
+- [ ] Adquirir sapphires desde Lobby y battle timer durante batalla mediante extractors específicos.
+
+### Auto Battle temporal
+
+- [ ] Detectar `ON/OFF/UNKNOWN` mediante variación temporal del glow en varios frames y exigir verificación por cada flow consumidor.
+
+### WorldBossFlow
+
+- [ ] Implementar el flow sólo después de cerrar percepción, facts, acciones y Auto Battle; Auto Repeat queda fuera del primer slice.
+- [ ] Partir de policy `ALWAYS_PARTICIPATE` y reservar `ONLY_IF_NOT_PARTICIPATED` para facts de rank/participation posteriores.
 
 ### Fase 6 — expansión y operación unattended
 
 - [ ] Migrar flows adicionales manteniendo límites entre Perception, Rotation, flows y ADB.
 - [ ] Añadir priorities, interruptions, conflict/recovery transversal y aislamiento de fallos.
+- [ ] Afinar `fast safe retry → retries conservadores → ConflictResolver escalation` con evidencia, sin cambiar por anticipado timings validados.
 - [ ] Incorporar estrategias Rotation futuras para MAIN/SUBS, filtros o identidad cuando exista necesidad.
 - [ ] Reutilizar TOT como conocimiento legacy sin desplazar el vertical slice vigente.

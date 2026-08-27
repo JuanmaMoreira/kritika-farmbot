@@ -1,6 +1,8 @@
 import pytest
 
-from bot.flow_contracts import FlowEvent, FlowResult, FlowStatus
+from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY
+from bot.component_contracts import ComponentRequirement, RequirementKind
+from bot.flow_contracts import FlowContract, FlowEvent, FlowResult, FlowStatus
 
 
 def test_completed_flow_without_events():
@@ -39,3 +41,42 @@ def test_failed_status_is_independent_from_prior_business_events():
 def test_completed_flow_cannot_carry_a_technical_error():
     with pytest.raises(ValueError, match="completed flow"):
         FlowResult(FlowStatus.COMPLETED, error="contradiction")
+
+
+def test_flow_contract_declares_exact_precondition():
+    contract = FlowContract(
+        ComponentRequirement.exact_state(SCREEN_LOBBY),
+        (ComponentRequirement.exact_state(SCREEN_LOBBY),),
+    )
+
+    assert contract.precondition.kind is RequirementKind.EXACT_STATE
+    assert contract.precondition.name == SCREEN_LOBBY
+
+
+def test_flow_contract_accepts_multiple_successful_postconditions():
+    contract = FlowContract(
+        ComponentRequirement.exact_state(SCREEN_LOBBY),
+        (
+            ComponentRequirement.exact_state(SCREEN_LOBBY),
+            ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),
+        ),
+    )
+
+    assert tuple(item.name for item in contract.successful_postconditions) == (
+        SCREEN_LOBBY,
+        SCREEN_BATTLE_MODE_SELECT,
+    )
+
+
+def test_completed_result_does_not_encode_an_implicit_lobby_state():
+    result = FlowResult(FlowStatus.COMPLETED)
+    contract = FlowContract(
+        ComponentRequirement.exact_state(SCREEN_LOBBY),
+        (ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),),
+    )
+
+    assert result.succeeded
+    assert all(
+        postcondition.name != SCREEN_LOBBY
+        for postcondition in contract.successful_postconditions
+    )

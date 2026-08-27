@@ -2,7 +2,21 @@ from dataclasses import dataclass
 
 import pytest
 
-from bot.flow_contracts import FlowEvent, FlowResult, FlowScope, FlowStatus
+from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY
+from bot.component_contracts import (
+    ComponentContract,
+    ComponentRequirement,
+    QUICK_MENU_ACCESS_REQUIREMENT,
+)
+from bot.flow_contracts import (
+    FlowContract,
+    FlowEvent,
+    FlowResult,
+    FlowScope,
+    FlowStatus,
+)
+from bot.preconditions import MinimalPreconditionEnsurer
+from bot.quick_menu import QuickMenuPolicy
 from bot.rotation import RotationOutcome, RotationResult
 from bot.session import CharacterContext, SessionPlan, SessionRunner, SessionStatus
 
@@ -20,6 +34,10 @@ class Flow:
     name: str
     results: list[FlowResult]
     trace: list[str]
+    contract: FlowContract = FlowContract(
+        ComponentRequirement.exact_state(SCREEN_LOBBY),
+        (ComponentRequirement.exact_state(SCREEN_LOBBY),),
+    )
     scope = FlowScope.PER_CHARACTER
 
     def run(self):
@@ -33,6 +51,10 @@ class Rotation:
         self.trace = trace
         self.results = list(results or [])
         self.calls = 0
+        self.contract = ComponentContract(
+            QUICK_MENU_ACCESS_REQUIREMENT,
+            (ComponentRequirement.exact_state(SCREEN_LOBBY),),
+        )
 
     def advance(self):
         self.calls += 1
@@ -48,21 +70,32 @@ def _runner(
     rotation,
     *,
     trace=None,
-    lobby_values=None,
+    context_values=None,
+    default_context=SCREEN_LOBBY,
+    navigate_to_lobby=None,
+    quick_menu_policy=None,
     cancel_requested=lambda: False,
     context_factory=None,
 ):
     events = Events()
-    lobby_values = list(lobby_values or [])
+    context_values = list(context_values or [])
 
-    def lobby_available():
+    def current_context():
         if trace is not None:
-            trace.append("lobby.check")
-        return lobby_values.pop(0) if lobby_values else True
+            trace.append("context.check")
+        return context_values.pop(0) if context_values else default_context
+
+    precondition_args = {}
+    if quick_menu_policy is not None:
+        precondition_args["quick_menu_policy"] = quick_menu_policy
 
     runner = SessionRunner(
         SessionPlan(count, tuple(flows), rotation),
-        lobby_available=lobby_available,
+        preconditions=MinimalPreconditionEnsurer(
+            current_context,
+            navigate_to_lobby=navigate_to_lobby,
+            **precondition_args,
+        ),
         events=events,
         cancel_requested=cancel_requested,
         character_context_factory=context_factory,
@@ -85,7 +118,14 @@ def test_one_character_one_flow_one_advance_and_default_context():
     assert result.character_results[0].character_context == CharacterContext()
     assert result.character_results[0].character_context.name is None
     assert result.character_results[0].completed
-    assert trace == ["one.run", "lobby.check", "rotation.advance", "lobby.check"]
+    assert trace == [
+        "context.check",
+        "one.run",
+        "context.check",
+        "context.check",
+        "rotation.advance",
+        "context.check",
+    ]
 
 
 def test_configurable_n_runs_every_flow_and_advance_exactly_n_times():
@@ -185,13 +225,18 @@ def test_completed_flow_without_lobby_is_composition_failure():
     trace = []
     flow = Flow("black_market", [FlowResult(FlowStatus.COMPLETED)], trace)
     rotation = Rotation(2, trace)
-    runner, _ = _runner(2, [flow], rotation, lobby_values=[False])
+    runner, _ = _runner(
+        2,
+        [flow],
+        rotation,
+        context_values=[SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT],
+    )
 
     result = runner.run()
 
     assert result.status is SessionStatus.FAILED
     assert result.failure_flow == "black_market"
-    assert result.failure_cause == "flow_completed_without_lobby_postcondition"
+    assert result.failure_cause == "flow_completed_outside_successful_postconditions"
     assert rotation.calls == 0
 
 
@@ -276,3 +321,128 @@ def test_plan_rejects_non_per_character_flow_and_count_mismatch():
     good = Flow("good", [FlowResult(FlowStatus.COMPLETED)], trace)
     with pytest.raises(ValueError, match="must match"):
         SessionPlan(2, (good,), Rotation(1, trace))
+
+
+def test_session_does_not_normalize_lobby_when_rotation_only_needs_capability():
+    trace = []
+    capable_policy = QuickMenuPolicy(
+        frozenset({SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT})
+    )
+    flow = Flow(
+        "multi_exit",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+        FlowContract(
+            ComponentRequirement.exact_state(SCREEN_LOBBY),
+            (
+                ComponentRequirement.exact_state(SCREEN_LOBBY),
+                ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),
+            ),
+        ),
+    )
+    rotation = Rotation(1, trace)
+    navigation_calls = []
+    runner, _ = _runner(
+        1,
+        [flow],
+        rotation,
+        context_values=[
+            SCREEN_LOBBY,
+            SCREEN_BATTLE_MODE_SELECT,
+            SCREEN_BATTLE_MODE_SELECT,
+            SCREEN_LOBBY,
+        ],
+        navigate_to_lobby=lambda: navigation_calls.append(True) or True,
+        quick_menu_policy=capable_policy,
+    )
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.COMPLETED
+    assert navigation_calls == []
+    assert rotation.calls == 1
+
+
+def test_session_normalizes_through_quick_menu_for_next_exact_lobby_flow():
+    trace = []
+    capable_policy = QuickMenuPolicy(
+        frozenset({SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT})
+    )
+    first = Flow(
+        "multi_exit",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+        FlowContract(
+            ComponentRequirement.exact_state(SCREEN_LOBBY),
+            (ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),),
+        ),
+    )
+    second = Flow(
+        "lobby_only",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+    )
+    rotation = Rotation(1, trace)
+    navigation_calls = []
+    runner, _ = _runner(
+        1,
+        [first, second],
+        rotation,
+        context_values=[
+            SCREEN_LOBBY,
+            SCREEN_BATTLE_MODE_SELECT,
+            SCREEN_BATTLE_MODE_SELECT,
+            SCREEN_LOBBY,
+            SCREEN_LOBBY,
+            SCREEN_LOBBY,
+            SCREEN_LOBBY,
+            SCREEN_LOBBY,
+        ],
+        navigate_to_lobby=lambda: navigation_calls.append("quick_menu_to_lobby") or True,
+        quick_menu_policy=capable_policy,
+    )
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.COMPLETED
+    assert navigation_calls == ["quick_menu_to_lobby"]
+    assert trace.count("lobby_only.run") == 1
+
+
+def test_session_aborts_when_required_lobby_normalization_fails():
+    trace = []
+    capable_policy = QuickMenuPolicy(
+        frozenset({SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT})
+    )
+    first = Flow(
+        "multi_exit",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+        FlowContract(
+            ComponentRequirement.exact_state(SCREEN_LOBBY),
+            (ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),),
+        ),
+    )
+    second = Flow("lobby_only", [FlowResult(FlowStatus.COMPLETED)], trace)
+    rotation = Rotation(1, trace)
+    runner, _ = _runner(
+        1,
+        [first, second],
+        rotation,
+        context_values=[
+            SCREEN_LOBBY,
+            SCREEN_BATTLE_MODE_SELECT,
+            SCREEN_BATTLE_MODE_SELECT,
+            SCREEN_BATTLE_MODE_SELECT,
+        ],
+        navigate_to_lobby=lambda: False,
+        quick_menu_policy=capable_policy,
+    )
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.FAILED
+    assert result.failure_flow == "lobby_only"
+    assert result.failure_cause.startswith("flow_precondition_failed")
+    assert "lobby_only.run" not in trace
+    assert rotation.calls == 0

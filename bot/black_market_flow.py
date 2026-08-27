@@ -14,8 +14,15 @@ from bot.catalog import (
     SCREEN_BLACK_MARKET,
     SCREEN_LOBBY,
 )
+from bot.component_contracts import ComponentRequirement
 from bot.event_log import EventSink
-from bot.flow_contracts import FlowEvent, FlowResult, FlowScope, FlowStatus
+from bot.flow_contracts import (
+    FlowContract,
+    FlowEvent,
+    FlowResult,
+    FlowScope,
+    FlowStatus,
+)
 from bot.inventory_full_transition import acknowledge_inventory_full
 from bot.runtime_observer import (
     RuntimeObserver,
@@ -71,6 +78,12 @@ class BlackMarketFlow:
 
     name = "black_market"
     scope = FlowScope.PER_CHARACTER
+    contract = FlowContract(
+        precondition=ComponentRequirement.exact_state(SCREEN_LOBBY),
+        successful_postconditions=(
+            ComponentRequirement.exact_state(SCREEN_LOBBY),
+        ),
+    )
 
     def __init__(
         self,

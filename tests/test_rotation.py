@@ -6,8 +6,14 @@ import pytest
 
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
-from bot.catalog import MENU_QUICK, SCREEN_CHARACTER_SELECT, SCREEN_LOBBY
+from bot.catalog import (
+    MENU_QUICK,
+    SCREEN_BATTLE_MODE_SELECT,
+    SCREEN_CHARACTER_SELECT,
+    SCREEN_LOBBY,
+)
 from bot.character_select_scroll import CharacterSelectScrollProfile
+from bot.component_contracts import QUICK_MENU_ACCESS_REQUIREMENT
 from bot.observed_scroll import (
     ObservedScroll,
     ObservedScrollOutcome,
@@ -16,6 +22,7 @@ from bot.observed_scroll import (
     ScrollAttemptMeasurement,
 )
 from bot.observations import ObservationBatch
+from bot.quick_menu import DEFAULT_QUICK_MENU_POLICY, QuickMenuPolicy
 from bot.rotation import (
     RotationOutcome,
     RotationStrategy,
@@ -221,6 +228,7 @@ def test_standard_rotation_contract_and_character_count_configuration():
 
     assert isinstance(rotation, RotationStrategy)
     assert rotation.character_count == 28
+    assert rotation.contract.precondition == QUICK_MENU_ACCESS_REQUIREMENT
 
 
 def test_rotation_delegates_scroll_algorithm_to_observed_scroll():
@@ -304,11 +312,26 @@ def test_movement_threshold_must_be_normalized(movement_threshold):
         _rotation([], [], movement_threshold=movement_threshold)
 
 
-def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
+@pytest.mark.parametrize(
+    ("initial_context", "quick_menu_policy"),
+    (
+        (SCREEN_LOBBY, DEFAULT_QUICK_MENU_POLICY),
+        (
+            SCREEN_BATTLE_MODE_SELECT,
+            QuickMenuPolicy(
+                frozenset({SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT})
+            ),
+        ),
+    ),
+)
+def test_advance_accepts_declared_quick_menu_capable_context_and_changes_once(
+    initial_context,
+    quick_menu_policy,
+):
     first_grid = _frame(grid_fill=40)
     scrolled_grid = _frame(grid_fill=230)
     rotation, actions, events, observer = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
+        [_snapshot(1, base=initial_context)],
         [
             _snapshot(2, overlays={MENU_QUICK}),
             _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=first_grid),
@@ -324,6 +347,7 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
             ),
             _snapshot(8, base=SCREEN_LOBBY),
         ],
+        quick_menu_policy=quick_menu_policy,
     )
 
     result = rotation.advance()
@@ -369,7 +393,7 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
     ]
 
 
-def test_unknown_startup_frame_waits_for_fresh_lobby_before_input():
+def test_unknown_startup_frame_waits_for_fresh_capable_context_before_input():
     normal_timeout = RuntimeWaitTimeout(
         after_sequence=2,
         timeout=6.0,
@@ -399,7 +423,7 @@ def test_unknown_startup_frame_waits_for_fresh_lobby_before_input():
     assert events.events == ["rotation.standard.unexpected_state"]
 
 
-def test_resolved_non_lobby_precondition_aborts_without_wait_or_input():
+def test_resolved_context_without_quick_menu_capability_aborts_without_input():
     rotation, actions, events, observer = _rotation(
         [_snapshot(1, base=SCREEN_CHARACTER_SELECT)],
         [],
@@ -408,7 +432,7 @@ def test_resolved_non_lobby_precondition_aborts_without_wait_or_input():
     result = rotation.advance()
 
     assert result.outcome is RotationOutcome.ABORTED
-    assert result.error == "precondition_lobby_failed"
+    assert result.error == "precondition_quick_menu_accessible_failed"
     assert actions.actions == []
     assert observer.wait_calls == []
     assert events.events == ["rotation.standard.unexpected_state"]

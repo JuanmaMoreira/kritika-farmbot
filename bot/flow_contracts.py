@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol, runtime_checkable
 
+from bot.component_contracts import ComponentContract
+
 
 class FlowScope(str, Enum):
     PER_CHARACTER = "per_character"
@@ -14,6 +16,11 @@ class FlowScope(str, Enum):
 class FlowStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class FlowContract(ComponentContract):
+    """Explicit precondition and allowed successful semantic states."""
 
 
 @dataclass(frozen=True)
@@ -66,11 +73,13 @@ class FlowResult:
 class PerCharacterFlow(Protocol):
     name: str
     scope: FlowScope
+    contract: FlowContract
 
     def run(self) -> FlowResult: ...
 
 
 __all__ = (
+    "FlowContract",
     "FlowEvent",
     "FlowResult",
     "FlowScope",

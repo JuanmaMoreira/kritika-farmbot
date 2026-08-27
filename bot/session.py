@@ -7,15 +7,18 @@ from enum import Enum
 from numbers import Integral, Real
 from typing import Callable
 
+from bot.component_contracts import ComponentContract, ComponentRequirement
 from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventSink
 from bot.flow_contracts import (
     FlowEvent,
+    FlowContract,
     FlowResult,
     FlowScope,
     FlowStatus,
     PerCharacterFlow,
 )
+from bot.preconditions import EnsureResult, PreconditionEnsurer
 from bot.rotation import RotationResult, RotationStrategy
 
 
@@ -66,6 +69,8 @@ class SessionPlan:
                 raise ValueError("each flow must have a non-empty name")
             if not callable(getattr(flow, "run", None)):
                 raise ValueError("each flow must provide run()")
+            if not isinstance(getattr(flow, "contract", None), FlowContract):
+                raise ValueError("each flow must declare a FlowContract")
         rotation = self.rotation_strategy
         if not callable(getattr(rotation, "advance", None)):
             raise ValueError("rotation_strategy must provide advance()")
@@ -73,6 +78,8 @@ class SessionPlan:
             raise ValueError(
                 "rotation_strategy.character_count must match character_count"
             )
+        if not isinstance(getattr(rotation, "contract", None), ComponentContract):
+            raise ValueError("rotation_strategy must declare a ComponentContract")
         object.__setattr__(self, "character_count", count)
         object.__setattr__(self, "flows", flows)
 
@@ -137,15 +144,17 @@ class SessionRunner:
         self,
         plan: SessionPlan,
         *,
-        lobby_available: Callable[[], bool],
+        preconditions: PreconditionEnsurer,
         events: EventSink,
         cancel_requested: Callable[[], bool] = lambda: False,
         character_context_factory: Callable[[int], CharacterContext] | None = None,
     ) -> None:
         if not isinstance(plan, SessionPlan):
             raise ValueError("plan must be SessionPlan")
-        if not callable(lobby_available):
-            raise ValueError("lobby_available must be callable")
+        if not isinstance(preconditions, PreconditionEnsurer):
+            raise ValueError(
+                "preconditions must provide ensure() and current_satisfies_any()"
+            )
         if not callable(getattr(events, "record", None)):
             raise ValueError("events must provide record(event, **fields)")
         if not callable(cancel_requested):
@@ -155,7 +164,7 @@ class SessionRunner:
         ):
             raise ValueError("character_context_factory must be callable or None")
         self.plan = plan
-        self.lobby_available = lobby_available
+        self.preconditions = preconditions
         self.events = events
         self.cancel_requested = cancel_requested
         self.character_context_factory = character_context_factory
@@ -183,6 +192,22 @@ class SessionRunner:
                     )
                     return self._cancel(character_results, advances_completed)
 
+                ensured = self._ensure(flow.contract.precondition)
+                if not ensured.succeeded:
+                    character_results.append(
+                        SessionCharacterResult(index, context, tuple(flow_results))
+                    )
+                    return self._fail(
+                        character_results,
+                        advances_completed,
+                        index=index,
+                        flow=flow.name,
+                        cause=(
+                            "flow_precondition_failed: "
+                            f"{ensured.error or 'unknown'}"
+                        ),
+                    )
+
                 result = self._run_flow(flow)
                 flow_results.append(result)
                 self._record_flow_events(flow.name, result.events, index, context)
@@ -197,7 +222,9 @@ class SessionRunner:
                         flow=flow.name,
                         cause=result.error or "flow_failed",
                     )
-                if not self._lobby_available():
+                if not self._current_satisfies_any(
+                    flow.contract.successful_postconditions
+                ):
                     character_results.append(
                         SessionCharacterResult(index, context, tuple(flow_results))
                     )
@@ -206,13 +233,29 @@ class SessionRunner:
                         advances_completed,
                         index=index,
                         flow=flow.name,
-                        cause="flow_completed_without_lobby_postcondition",
+                        cause="flow_completed_outside_successful_postconditions",
                     )
                 if self._cancelled():
                     character_results.append(
                         SessionCharacterResult(index, context, tuple(flow_results))
                     )
                     return self._cancel(character_results, advances_completed)
+
+            rotation_contract = self.plan.rotation_strategy.contract
+            ensured = self._ensure(rotation_contract.precondition)
+            if not ensured.succeeded:
+                character_results.append(
+                    SessionCharacterResult(index, context, tuple(flow_results))
+                )
+                return self._fail(
+                    character_results,
+                    advances_completed,
+                    index=index,
+                    cause=(
+                        "rotation_precondition_failed: "
+                        f"{ensured.error or 'unknown'}"
+                    ),
+                )
 
             rotation_result = self._advance()
             if not rotation_result.succeeded:
@@ -230,7 +273,9 @@ class SessionRunner:
                     index=index,
                     cause=rotation_result.error or "rotation_failed",
                 )
-            if not self._lobby_available():
+            if not self._current_satisfies_any(
+                rotation_contract.successful_postconditions
+            ):
                 character_results.append(
                     SessionCharacterResult(
                         index,
@@ -243,7 +288,7 @@ class SessionRunner:
                     character_results,
                     advances_completed,
                     index=index,
-                    cause="rotation_completed_without_lobby_postcondition",
+                    cause="rotation_completed_outside_successful_postconditions",
                 )
 
             advances_completed += 1
@@ -317,9 +362,33 @@ class SessionRunner:
                 error=f"{type(error).__name__}: {error}",
             )
 
-    def _lobby_available(self) -> bool:
+    def _ensure(self, requirement: ComponentRequirement) -> EnsureResult:
         try:
-            return self.lobby_available() is True
+            result = self.preconditions.ensure(requirement)
+            if isinstance(result, EnsureResult):
+                return result
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception:
+            pass
+        from bot.preconditions import EnsureOutcome
+
+        return EnsureResult(
+            EnsureOutcome.FAILED,
+            requirement,
+            None,
+            None,
+            "invalid_precondition_result",
+        )
+
+    def _current_satisfies_any(
+        self,
+        requirements: tuple[ComponentRequirement, ...],
+    ) -> bool:
+        try:
+            return self.preconditions.current_satisfies_any(requirements) is True
+        except (KeyboardInterrupt, SystemExit):
+            raise
         except Exception:
             return False
 

@@ -21,6 +21,7 @@ from bot.catalog import SCREEN_LOBBY, build_default_resolver
 from bot.config import RuntimeConfig
 from bot.event_log import JsonLineEventLog
 from bot.perception import build_default_perception
+from bot.preconditions import MinimalPreconditionEnsurer
 from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source
 from bot.runtime_observer import (
@@ -107,7 +108,13 @@ def main(argv: list[str] | None = None) -> int:
             )
             runner = SessionRunner(
                 plan,
-                lobby_available=lambda: _wait_for_clean_lobby(observer),
+                preconditions=MinimalPreconditionEnsurer(
+                    lambda: (
+                        SCREEN_LOBBY
+                        if _wait_for_clean_lobby(observer)
+                        else None
+                    )
+                ),
                 events=events,
             )
             result = runner.run()

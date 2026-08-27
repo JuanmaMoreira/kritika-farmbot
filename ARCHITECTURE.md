@@ -9,11 +9,13 @@ Capture
   ↓
 Perception
   ↓
-Semantic Observations / Runtime Facts
+Semantic Observations
   ↓
 ContextResolver
   ↓
-Flow
+RuntimeSnapshot ──────────────┐
+                              ├→ Flow
+OCR Engine → Extractor/Parser ┘   (Semantic Runtime Facts)
   ↓
 Semantic Actions
   ↓
@@ -112,11 +114,15 @@ Todo efecto de una acción que tenga una postcondición observable fiable se ver
 
 `bot/verified_transition.py` verifica acciones discretas contra una postcondición, tanto transiciones de contexto como efectos intra-screen: input, espera nominal, ventana de gracia sin input y, sólo cuando el consumidor aporta un guard que acepta el estado fresco actual, retry bounded. Una policy opcional puede esperar pasivamente que un guard inicialmente inconcluso se estabilice; nunca repite input desde `UNKNOWN`. Distingue éxito inicial, retrasado o posterior a retry, rechazo del guard, agotamiento, estado inesperado, timeout y fallo. No implementa recovery ni decide qué estados son seguros; Rotation o el Flow aportan precondición, postcondición y `retryable_from`.
 
+`bot/controlled_wait.py` cubre otra semántica temporal: una actividad larga que el juego ejecuta intencionalmente. `ControlledWait` recibe duración esperada o deadline monotónico, intervalo configurable, condición opcional y cancelación; duerme entre checks y devuelve `completed`, `cancelled`, `timeout` o `failed`. No ejecuta input. Con condición visual, el consumidor puede consultar `RuntimeObserver`; el deadline sólo acota la espera y la condición semántica confirma el final. Esperar horas hasta una disponibilidad futura pertenece a un scheduler, no a esta primitive.
+
+`VerifiedTransition` conserva recuperación local de acciones cortas: `input → espera normal → grace → retry seguro`. Si esa recuperación se agota, produce un failure estructurado. Un futuro `ConflictResolver` podrá consumirlo para conexión, popup inesperado, app trabada, navegación segura, restart o recovery de sesión; no absorberá los guards ni retries locales. La futura calibración podrá escalonar retry rápido y luego conservador antes de escalar, sin alterar en este checkpoint los timings ya validados de Black Market.
+
 ## Flows
 
-Los flows contienen intención y reglas de negocio deterministas. Declaran scope, prerequisites y outcomes; reaccionan a `RuntimeSnapshot` y emiten semantic actions.
+Los flows contienen intención y reglas de negocio deterministas. Declaran scope, precondition exacta o capability requerida y estados semánticos permitidos al completar; reaccionan a `RuntimeSnapshot` y emiten semantic actions.
 
-`bot/flow_contracts.py` define el contrato transversal `FlowResult(status, events)`. `COMPLETED` garantiza que el flow terminó y recuperó Lobby; `FAILED` indica que continuar no es seguro. `FlowEvent(kind, detail=None)` representa resultados de negocio extensibles y no controla la sesión.
+`bot/flow_contracts.py` define `FlowContract(precondition, successful_postconditions)` y separa ese contrato de `FlowResult(status, events)`. `COMPLETED` significa que el flow terminó correctamente y dejó uno de los estados permitidos por su contrato; no implica Lobby. `FAILED` indica que continuar no es seguro. `FlowEvent(kind, detail=None)` representa resultados de negocio extensibles y no controla la sesión. `BlackMarketFlow` declara `screen.lobby → screen.lobby`; un flow futuro podrá declarar más de una salida exitosa.
 
 `BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, Purchase Confirmation, Insufficient Gold, Inventory Full, GOLD y Purchased; Quick Menu no es prerequisite. Abrir/cerrar Black Market, seleccionar GOLD y responder a los tres popups son transiciones verificadas. Cada selección admite tres outcomes válidos declarados por el flow y sólo puede repetirse desde Black Market limpio si el target sigue GOLD y no Purchased. `Yes`, `No` y `OK` sólo pueden repetirse si persiste inequívocamente su mismo popup; `Yes` exige además Purchased en el slot y nunca repite la selección completa. El retorno de cada rama entrega Black Market limpio, fresco y estable antes del siguiente slot. Low Gold e Inventory Full producen business events no fatales, pero un fallo al cerrar o verificar sus popups es técnico y aborta. El flow no identifica ni libera inventarios. La policy funcional detallada está en `CONTEXT.md`.
 
@@ -128,7 +134,7 @@ Los intents modelan acciones del dominio y primitives físicas tipadas. El slice
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
 
-El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas observables | ObservedScroll para operaciones continuas} → RuntimeObserver + ActionExecutor → AdbClient`. `ActionExecutor` sólo emite input físico; la interacción observada comprueba su efecto. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery queda reservado para estados inesperados o fallos que no resuelve una interacción local. `SessionRunner` está por encima de flows y Rotation y sólo consume sus contratos.
+El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas observables | ObservedScroll para operaciones continuas | ControlledWait para actividad larga sin input} → RuntimeObserver + ActionExecutor → AdbClient`. `ActionExecutor` sólo emite input físico; la interacción observada comprueba su efecto. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery queda reservado para estados inesperados o fallos que no resuelve una interacción local. `SessionRunner` está por encima de flows y Rotation y sólo consume sus contratos.
 
 ## Device / ADB
 
@@ -163,11 +169,13 @@ User Control Panel
       └── RotationStrategy.advance()
 ```
 
-`SessionPlan` expresa intención: `character_count`, flows ordenados y strategy. `SessionRunner` ejecuta todos los flows del personaje activo, verifica el boundary contractual Lobby mediante una sonda semántica inyectada y sólo entonces solicita un advance. El composition root productivo espera Lobby estable de forma pasiva para no confundir frames `UNKNOWN` de carga con una contradicción. Repite el bloque exactamente `character_count` veces, incluido el advance final que cierra el ciclo; no trata 27 como caso especial ni reprocesa el personaje inicial después del retorno.
+`SessionPlan` expresa intención: `character_count`, flows ordenados y strategy. `SessionRunner` consulta el contrato del próximo componente, pide a `MinimalPreconditionEnsurer` sólo ese requisito y valida después uno de sus estados finales declarados. Si el requisito ya se cumple no navega; si sólo exige `quick_menu_accessible` no fuerza Lobby. Para un requisito exacto `screen.lobby`, el helper sólo puede normalizar desde un contexto declarado Quick Menu-capable mediante un callback de navegación que el composition root deberá implementar con transiciones verificadas. No contiene coordenadas ni ADB. Repite el bloque exactamente `character_count` veces, incluido el advance final que cierra el ciclo; no trata 27 como caso especial ni reprocesa el personaje inicial después del retorno.
+
+`quick_menu_accessible` es una capability de policy (`bot/quick_menu.py`), no `screen.quick_menu_accessible` ni un nodo de navegación. El allow-list productivo contiene únicamente `screen.lobby`; nuevos contextos se incorporan sólo después de validar live que pueden abrir el menú y su interacción observada. Quick Menu actúa como hub operacional para la normalización mínima a Lobby, sin grafo ni pathfinding.
 
 Business events se agregan y registran sin interpretación específica. Un `FlowResult.FAILED`, una postcondición contradictoria o un `RotationResult` fallido abortan la sesión sin intentar el siguiente personaje. La cancelación se observa únicamente antes/después de componentes completos. `SessionCharacterResult` y `SessionResult` preservan el progreso parcial.
 
-El primitive de `rotation.standard` usa Quick Menu → Character Select → bottom confirmado → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita compartida. La captura transitoria concurrente no cambia los límites: Rotation solicita un intent semántico y `ActionExecutor` sigue siendo quien ejecuta el input físico. El loop aislado 28/28 y el regreso final al personaje inicial están validados; MAIN/SUBS quedan para strategies futuras.
+El primitive de `rotation.standard` requiere la capability `quick_menu_accessible`, no Lobby por definición, y usa Quick Menu → Character Select → bottom confirmado → última posición → Lobby. Sólo acepta contextos presentes en la policy productiva; hoy Lobby conserva compatibilidad y es el único declarado. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita compartida. La captura transitoria concurrente no cambia los límites: Rotation solicita un intent semántico y `ActionExecutor` sigue siendo quien ejecuta el input físico. El loop aislado 28/28 y el regreso final al personaje inicial están validados; MAIN/SUBS quedan para strategies futuras.
 
 La identidad futura sigue un boundary independiente:
 
@@ -180,7 +188,11 @@ OCR / Perception extractors
 
 `SessionRunner` coordinará como máximo una adquisición opcional desde Lobby por personaje. Identidad ausente no es fatal cuando sólo alimenta logging. `StandardRotation` no identifica personajes y una strategy futura identity-aware será otra implementación de `RotationStrategy`, no una modificación de la standard.
 
-`CharacterContext` contiene identidad y metadata estable. Los datos dinámicos —stamina, recursos u otros runtime facts— se adquieren cuando un flow los solicita y no se almacenan como identidad. OCR pertenece a Perception/extractors; ni el runner ni los flows lo implementan. En este checkpoint el contexto queda en `name=None` y no existe provider productivo.
+`CharacterContext` contiene identidad y metadata relativamente estable durante el personaje (`name`, `name_confidence`). Un futuro provider podrá adquirirla una vez desde Lobby para compartirla con flows y logging; en este checkpoint permanece `name=None`.
+
+Los datos dinámicos —sapphires, stamina, recursos, battle timer o rank— son Runtime Facts y se adquieren cuando el contexto o flow los necesita. El boundary es `Frame / RuntimeObserver → OCR Engine → extractor/parser específico → Semantic Runtime Fact → Flow / CharacterContextProvider / logging`. Los flows no recortan screenshots, llaman librerías OCR ni parsean píxeles. El motor tampoco decide si un fact es informativo o decisional: esa importancia pertenece al consumidor. No existe motor OCR productivo ni dependencia nueva en este checkpoint.
+
+Para el futuro slice World Boss, sapphires será inicialmente decisional y rank/participation informativo. La policy extensible partirá de `ALWAYS_PARTICIPATE`: si el flow fue invocado y sapphires alcanza el costo, participa una vez aunque exista ranking; `ONLY_IF_NOT_PARTICIPATED` podrá usar esos facts después. La batalla esperada será `Auto Battle verificado ON → timer inicial como pista/deadline → ControlledWait → Raid Complete visual`. Auto Battle requerirá un detector temporal sobre varios frames del glow (`ON/OFF/UNKNOWN`) y cada flow deberá verificarlo aunque el juego recuerde el toggle global. Auto Repeat tiene menús y modos propios, no es una primitive transversal y el World Boss inicial no lo usará.
 
 El runtime unattended futuro necesita timeouts, recovery transversal, logging, aislamiento de fallos, cleanup y policy de continuación. Hasta entonces, el vertical slice aborta ante errores técnicos después de registrar y limpiar.
 

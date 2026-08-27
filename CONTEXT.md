@@ -18,8 +18,11 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - Los intents semánticos tipados separan negocio de coordenadas.
 - `ActionExecutor` traduce esos intents a taps ADB normalizados contra `frame.shape`; no decide gameplay.
 - `BlackMarketFlow` es un flow 0.2 `PER_CHARACTER` implementado y separado del runtime legacy.
-- `StandardRotation` es transversal, implementa un solo `advance()` y no conoce flows ni ADB.
-- `SessionPlan` expresa `character_count + flows PER_CHARACTER + RotationStrategy`; `SessionRunner` los compone sin conocer navegación ni negocio interno.
+- `FlowContract` declara precondición y estados finales exitosos; `FlowResult.COMPLETED` no implica Lobby universalmente.
+- `quick_menu_accessible` es una capability con allow-list productivo conservador; hoy sólo contiene `screen.lobby`.
+- `StandardRotation` es transversal, requiere esa capability, implementa un solo `advance()` y no conoce flows ni ADB.
+- `SessionPlan` expresa `character_count + flows PER_CHARACTER + RotationStrategy`; `SessionRunner` asegura el requisito exacto del próximo componente mediante un helper inyectado y valida sus postcondiciones declaradas.
+- `ControlledWait` aporta espera larga monotónica, periódica, cancelable y bounded sin input físico.
 
 El data flow y los límites vigentes se describen en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -80,13 +83,15 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 ## Composición mínima de sesión
 
-`bot/flow_contracts.py` separa `FlowStatus.COMPLETED/FAILED` de `FlowEvent(kind, detail=None)`. `low_gold` e `inventory_full` son eventos de negocio acumulables y no fatales; un resultado técnico `FAILED` aborta la sesión sin hacer advance. Los counts útiles se derivan de eventos, no son campos estructurales del runner.
+`bot/flow_contracts.py` separa `FlowContract(precondition, successful_postconditions)`, `FlowStatus.COMPLETED/FAILED` y `FlowEvent(kind, detail=None)`. `BlackMarketFlow` declara `screen.lobby → screen.lobby`; un `COMPLETED` sólo es componible si el estado actual pertenece a las salidas permitidas. `low_gold` e `inventory_full` son eventos de negocio acumulables y no fatales; un resultado técnico `FAILED` aborta la sesión sin hacer advance. Los counts útiles se derivan de eventos, no son campos estructurales del runner.
 
-`bot/session.py` ejecuta todos los flows seleccionados en orden para el personaje activo, exige su postcondición semántica Lobby, hace un advance y repite exactamente `character_count` veces. Por eso el plan productivo de 28 realiza 28 ejecuciones por flow y 28 advances: el último retorno al personaje inicial no vuelve a procesarlo. Fallos de flow, contradicciones de postcondición o fallos de Rotation preservan progreso parcial y abortan conservadoramente; la cancelación se consulta sólo entre componentes seguros y produce `CANCELLED`.
+`bot/session.py` ejecuta los flows en orden, pide a `MinimalPreconditionEnsurer` sólo la precondición del próximo componente y no normaliza todo a Lobby. Un requisito satisfecho no navega; la capability Quick Menu tampoco fuerza Lobby. La única normalización prevista es requisito exacto Lobby desde un contexto Quick Menu-capable, mediante un callback que debe usar navegación verificada; como el allow-list productivo sólo contiene Lobby, no se inventó una transición live desde otros contextos. Después de cada componente se verifica una salida permitida. El runner hace un advance y repite exactamente `character_count` veces; el último retorno al personaje inicial no lo reprocesa. Fallos de flow, normalización, postcondición o Rotation preservan progreso parcial y abortan conservadoramente; la cancelación se consulta sólo entre componentes seguros y produce `CANCELLED`.
 
 Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `CharacterContext(name=None, name_confidence=None)`, resultados de flows y resultado de advance. El índice no es identidad. No existe OCR ni provider productivo: un futuro provider opcional podrá enriquecer una vez por personaje el contexto desde Lobby sin hacer fatal la identidad usada sólo para observabilidad.
 
-`CharacterContext` contiene identidad o metadata estable. Stamina, recursos y otros datos cambiantes son runtime facts que un flow solicitará cuando los necesite; no pertenecen al contexto estable y los flows no implementarán OCR directamente.
+`CharacterContext` contiene identidad o metadata estable. Stamina, recursos y otros datos cambiantes son Runtime Facts que un flow solicitará cuando los necesite; no pertenecen al contexto estable. No hay OCR productivo: el boundary futuro queda `RuntimeObserver/Frame → OCR Engine → extractor/parser → Semantic Runtime Fact`, y los flows no procesarán píxeles ni invocarán el engine directamente.
+
+`bot/controlled_wait.py` implementa espera de actividad larga con duración o deadline monotónico, polling configurable, condición opcional, cancelación y outcomes `completed/cancelled/timeout/failed`. No depende de `ActionExecutor` ni cubre scheduling de horas.
 
 Los smokes incrementales expusieron latencia de carga entre Lobby y Black Market. Un tap de apertura no registrado abortó correctamente sin advance; `black_market.open` pasó a `VerifiedTransition` con grace sin input y retry sólo desde Lobby fresco. La precondición del flow y la sonda Lobby del composition root también esperan estabilidad pasivamente y rechazan estados incompatibles.
 
@@ -102,7 +107,7 @@ La siguiente ejecución productiva cerró el checkpoint completo: `28/28` flows 
 
 ## Primitive Rotation standard
 
-`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, verifica visualmente la selección de la última tarjeta del layout final, confirma y exige un Lobby fresco. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente Lobby fresco; una pantalla resuelta incompatible, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente.
+`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. Su requisito declarado es `quick_menu_accessible`; Lobby continúa siendo entrada válida y la única capability productiva habilitada. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, verifica visualmente la selección de la última tarjeta del layout final, confirma y exige un Lobby fresco. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente un contexto capable fresco; una pantalla no declarada, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente. La navegación interna validada no cambió.
 
 El algoritmo reusable vive en `bot/observed_scroll.py`: compone `RuntimeObserver + ActionExecutor`, separa A/T/B frescos, clasifica `progress / edge_candidate / ineffective` y devuelve edge, gesto inefectivo, límite, timeout o fallo explícitos. `StandardRotation` delega esta operación y no selecciona sin `edge_reached`. `bot/character_select_scroll.py` conserva únicamente el perfil del menú: ROI `(0.49, 0.19, 0.85, 0.805)`, thresholds de movimiento/settled `0,05`, settle `1,0 s` y policy de hasta tres intentos. Un gesto inefectivo aborta; el tercero sólo se usa si el segundo todavía demuestra progreso real.
 
@@ -120,7 +125,7 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 - Black Market se abre sólo desde Lobby; Quick Menu no participa en `BlackMarketFlow`.
 - Todos los límites de inventario observados durante una compra se normalizan inicialmente a `popup.inventory_full`; Black Market no distingue el tipo ni gestiona inventarios.
-- Quick Menu pertenece a Rotation.
+- Quick Menu es un hub operacional transversal; Rotation es su consumidor productivo actual.
 - Rotation es transversal: un flow opera sobre el personaje activo y nunca selecciona el siguiente.
 - La primera estrategia será `rotation.standard`, con `character_count = 28` explícito.
 - Character Select funciona como lista MRU: scroll al final + última posición permite recorrer personajes sin identificarlos.
@@ -132,7 +137,7 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Limitaciones y deferred
 
-- `StandardRotation` aislado está cerrado con ciclo live 28/28 y retorno al inicial confirmado; la composición pasó smoke live pequeño, pero la sesión productiva completa sigue sin ejecutarse.
+- `StandardRotation` aislado y la composición completa están cerrados con ciclos live 28/28 y retorno al inicial confirmado. El desacople contractual de precondiciones no recibió smoke live porque conserva a Lobby como única capability productiva y no altera la navegación interna.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
 - `inventory_kind` e identidad de personaje permanecen desconocidos; liberar, vender o mover inventario pertenece a futuros flows especializados.
@@ -143,4 +148,4 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Próximo trabajo
 
-Ejecutar, cuando se autorice explícitamente, la validación completa `BlackMarketFlow + StandardRotation` de 28 personajes. El smoke truncado no intentó ni necesitó regresar al personaje inicial.
+Adquirir el slice semántico/perceptivo de World Boss sin asumir todavía soporte productivo. Después: OCR + Runtime Facts, detector temporal de Auto Battle y `WorldBossFlow`. ConflictResolver, retries escalonados y scheduler permanecen deferred.

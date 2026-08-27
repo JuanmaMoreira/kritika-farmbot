@@ -10,6 +10,11 @@ from typing import Callable, Protocol, runtime_checkable
 
 from bot.action_executor import ActionExecutor
 from bot.catalog import MENU_QUICK, SCREEN_CHARACTER_SELECT, SCREEN_LOBBY
+from bot.component_contracts import (
+    ComponentContract,
+    ComponentRequirement,
+    QUICK_MENU_ACCESS_REQUIREMENT,
+)
 from bot.character_select_scroll import (
     CharacterSelectScrollProfile,
     DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE,
@@ -32,6 +37,11 @@ from bot.runtime_observer import (
     RuntimeSnapshot,
     RuntimeWaitAborted,
     RuntimeWaitTimeout,
+)
+from bot.quick_menu import (
+    DEFAULT_QUICK_MENU_POLICY,
+    QuickMenuPolicy,
+    quick_menu_accessible,
 )
 from bot.semantic_actions import (
     ConfirmCharacterSelection,
@@ -84,6 +94,7 @@ class RotationStrategy(Protocol):
     """Minimal strategy contract required by a future SessionRunner."""
 
     character_count: int
+    contract: ComponentContract
 
     def advance(self) -> RotationResult: ...
 
@@ -105,6 +116,13 @@ class _Observer(Protocol):
 class StandardRotation:
     """Advance once using Quick Menu and the MRU Character Select list."""
 
+    contract = ComponentContract(
+        precondition=QUICK_MENU_ACCESS_REQUIREMENT,
+        successful_postconditions=(
+            ComponentRequirement.exact_state(SCREEN_LOBBY),
+        ),
+    )
+
     def __init__(
         self,
         observer: RuntimeObserver,
@@ -125,6 +143,7 @@ class StandardRotation:
         ),
         observed_scroll: ObservedScroll | None = None,
         verified_transition: VerifiedTransition | None = None,
+        quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
         selection_detector: CharacterSelectionDetector = (
             DEFAULT_CHARACTER_SELECTION_DETECTOR
         ),
@@ -157,6 +176,8 @@ class StandardRotation:
         )
         if not isinstance(selection_detector, CharacterSelectionDetector):
             raise ValueError("selection_detector must be CharacterSelectionDetector")
+        if not isinstance(quick_menu_policy, QuickMenuPolicy):
+            raise ValueError("quick_menu_policy must be QuickMenuPolicy")
         if not isinstance(scroll_profile, CharacterSelectScrollProfile):
             raise ValueError("scroll_profile must be CharacterSelectScrollProfile")
         if observed_scroll is None:
@@ -173,10 +194,11 @@ class StandardRotation:
         self.scroll_profile = scroll_profile
         self.observed_scroll = observed_scroll
         self.verified_transition = verified_transition
+        self.quick_menu_policy = quick_menu_policy
         self.selection_detector = selection_detector
 
     def advance(self) -> RotationResult:
-        """Perform exactly one Lobby -> different character -> Lobby change."""
+        """Advance from a declared Quick Menu-capable context to Lobby."""
 
         try:
             return self._advance()
@@ -187,30 +209,40 @@ class StandardRotation:
 
     def _advance(self) -> RotationResult:
         transitions: list[RotationTransitionTrace] = []
+        capable = lambda snapshot: _is_clean_quick_menu_capable(
+            snapshot, self.quick_menu_policy
+        )
+        has_quick_menu = lambda snapshot: _has_quick_menu(
+            snapshot, self.quick_menu_policy
+        )
         initial = self.observer.observe()
-        if not _is_clean_base(initial, SCREEN_LOBBY):
-            if not _can_wait_for_lobby_precondition(initial):
-                return self._abort("precondition_lobby_failed")
+        if not capable(initial):
+            if not _can_wait_for_quick_menu_precondition(initial):
+                return self._abort("precondition_quick_menu_accessible_failed")
             try:
                 initial = self.observer.wait_until(
-                    lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+                    capable,
                     after_sequence=initial.sequence,
                     timeout=self.timeout,
-                    abort_if=_has_incompatible_lobby_precondition,
+                    abort_if=lambda snapshot: (
+                        _has_incompatible_quick_menu_precondition(
+                            snapshot, self.quick_menu_policy
+                        )
+                    ),
                     stable_for=self.precondition_settle_for,
                 )
             except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
-                return self._abort(f"precondition_lobby_failed: {error}")
+                return self._abort(
+                    f"precondition_quick_menu_accessible_failed: {error}"
+                )
 
         quick_menu_result = self.verified_transition.execute(
             "rotation.open_quick_menu",
             OpenQuickMenu(),
             initial,
-            expected=_has_quick_menu,
-            precondition=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
-            retryable_from=lambda snapshot: _is_clean_base(
-                snapshot, SCREEN_LOBBY
-            ),
+            expected=has_quick_menu,
+            precondition=capable,
+            retryable_from=capable,
             abort_if=_has_unexpected_quick_menu_state,
             policy=self.transition_policy,
         )
@@ -230,8 +262,8 @@ class StandardRotation:
             expected=lambda snapshot: _is_clean_base(
                 snapshot, SCREEN_CHARACTER_SELECT
             ),
-            precondition=_has_quick_menu,
-            retryable_from=_has_quick_menu,
+            precondition=has_quick_menu,
+            retryable_from=has_quick_menu,
             abort_if=_has_unexpected_character_select_transition,
             stable_for=self.scroll_profile.settle_for,
             policy=self.transition_policy,
@@ -425,7 +457,22 @@ def _is_clean_base(snapshot: RuntimeSnapshot, base: str) -> bool:
     )
 
 
-def _has_quick_menu(snapshot: RuntimeSnapshot) -> bool:
+def _is_clean_quick_menu_capable(
+    snapshot: RuntimeSnapshot,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.RESOLVED
+        and not state.overlays
+        and quick_menu_accessible(state.base_context, policy=policy)
+    )
+
+
+def _has_quick_menu(
+    snapshot: RuntimeSnapshot,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> bool:
     state = snapshot.state
     return (
         set(state.overlays) == {MENU_QUICK}
@@ -433,25 +480,28 @@ def _has_quick_menu(snapshot: RuntimeSnapshot) -> bool:
             state.status is ResolutionStatus.UNKNOWN
             or (
                 state.status is ResolutionStatus.RESOLVED
-                and state.base_context == SCREEN_LOBBY
+                and quick_menu_accessible(state.base_context, policy=policy)
             )
         )
     )
 
 
-def _can_wait_for_lobby_precondition(snapshot: RuntimeSnapshot) -> bool:
+def _can_wait_for_quick_menu_precondition(snapshot: RuntimeSnapshot) -> bool:
     state = snapshot.state
     return state.status is ResolutionStatus.UNKNOWN and not state.overlays
 
 
-def _has_incompatible_lobby_precondition(snapshot: RuntimeSnapshot) -> bool:
+def _has_incompatible_quick_menu_precondition(
+    snapshot: RuntimeSnapshot,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> bool:
     state = snapshot.state
     return (
         state.status is ResolutionStatus.AMBIGUOUS
         or bool(state.overlays)
         or (
             state.status is ResolutionStatus.RESOLVED
-            and state.base_context != SCREEN_LOBBY
+            and not quick_menu_accessible(state.base_context, policy=policy)
         )
     )
 
