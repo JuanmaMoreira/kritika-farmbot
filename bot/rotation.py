@@ -19,6 +19,7 @@ from bot.character_selection import (
     CharacterSelectionState,
     DEFAULT_CHARACTER_SELECTION_DETECTOR,
 )
+from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventSink
 from bot.observed_scroll import (
     ObservedScroll,
@@ -110,7 +111,7 @@ class StandardRotation:
         actions: ActionExecutor,
         events: EventSink,
         *,
-        character_count: int = 28,
+        character_count: int = DEFAULT_CHARACTER_COUNT,
         timeout: float = 6.0,
         precondition_settle_for: float = 0.25,
         selection_settle_for: float = 0.25,

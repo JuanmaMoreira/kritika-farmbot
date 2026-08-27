@@ -12,7 +12,7 @@ from bot.observations import validate_semantic_name
 
 
 class EventSink(Protocol):
-    def record(self, event: str) -> None: ...
+    def record(self, event: str, **fields: object) -> None: ...
 
 
 class JsonLineEventLog:
@@ -30,17 +30,18 @@ class JsonLineEventLog:
         self._now = now
         self._lock = threading.Lock()
 
-    def record(self, event: str) -> None:
+    def record(self, event: str, **fields: object) -> None:
         name = validate_semantic_name(event)
         timestamp = self._now()
         if not isinstance(timestamp, datetime):
             raise ValueError("now() must return datetime")
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
-        payload = {
+        payload = dict(fields)
+        payload.update({
             "timestamp": timestamp.astimezone(timezone.utc).isoformat(),
             "event": name,
-        }
+        })
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8") as stream:

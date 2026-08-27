@@ -14,11 +14,12 @@ if str(REPOSITORY_ROOT) not in sys.path:
 
 from bot.action_executor import ActionExecutor
 from bot.adb import AdbError
-from bot.black_market_flow import BlackMarketFlow, FlowOutcome
+from bot.black_market_flow import BlackMarketFlow
 from bot.capture import CaptureError
 from bot.catalog import SCREEN_BLACK_MARKET, SCREEN_LOBBY, build_default_resolver
 from bot.config import RuntimeConfig
 from bot.event_log import JsonLineEventLog
+from bot.flow_contracts import FlowStatus
 from bot.inventory_full_transition import acknowledge_inventory_full
 from bot.perception import build_default_perception
 from bot.runtime import build_adb_client, build_frame_source
@@ -173,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
                     max_slot_attempts=None if args.full else args.max_slots
                 )
                 payload = asdict(result)
-                payload["outcome"] = result.outcome.value
+                payload["status"] = result.status.value
     except (
         AdbError,
         CaptureError,
@@ -186,7 +187,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     print(json.dumps(payload, indent=2, sort_keys=True))
-    return 1 if result is not None and result.outcome is FlowOutcome.ABORTED else 0
+    return 1 if result is not None and result.status is FlowStatus.FAILED else 0
 
 
 def _is_clean_base(snapshot, expected_base: str) -> bool:

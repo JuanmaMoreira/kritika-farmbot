@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 from numbers import Integral
 from typing import Callable, Protocol
 
@@ -16,6 +15,7 @@ from bot.catalog import (
     SCREEN_LOBBY,
 )
 from bot.event_log import EventSink
+from bot.flow_contracts import FlowEvent, FlowResult, FlowScope, FlowStatus
 from bot.inventory_full_transition import acknowledge_inventory_full
 from bot.runtime_observer import (
     RuntimeObserver,
@@ -34,28 +34,22 @@ from bot.state import ResolutionStatus
 from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 
 
-class FlowOutcome(str, Enum):
-    SUCCESS = "success"
-    NOOP = "noop"
-    ABORTED = "aborted"
-
-
 @dataclass(frozen=True)
-class FlowResult:
-    """Reusable minimal outcome for a future SessionRunner."""
+class BlackMarketFlowResult(FlowResult):
+    """FlowResult enriched with useful Black Market diagnostic evidence."""
 
-    outcome: FlowOutcome
     initial_gold_slots: tuple[int, ...] = ()
     initial_purchased_slots: tuple[int, ...] = ()
     attempted_slots: tuple[int, ...] = ()
     verified_purchases: tuple[int, ...] = ()
-    insufficient_gold_count: int = 0
-    inventory_full_count: int = 0
-    error: str | None = None
 
     @property
-    def succeeded(self) -> bool:
-        return self.outcome in (FlowOutcome.SUCCESS, FlowOutcome.NOOP)
+    def insufficient_gold_count(self) -> int:
+        return self.event_count("low_gold")
+
+    @property
+    def inventory_full_count(self) -> int:
+        return self.event_count("inventory_full")
 
 
 class _Observer(Protocol):
@@ -75,6 +69,9 @@ class _Observer(Protocol):
 class BlackMarketFlow:
     """Process GOLD offers for the active character only, starting at Lobby."""
 
+    name = "black_market"
+    scope = FlowScope.PER_CHARACTER
+
     def __init__(
         self,
         observer: RuntimeObserver,
@@ -82,6 +79,9 @@ class BlackMarketFlow:
         events: EventSink,
         *,
         timeout: float = 5.0,
+        lobby_precondition_settle_for: float = 0.25,
+        empty_gold_confirmation_timeout: float = 2.0,
+        transition_retry_guard_timeout: float = 1.0,
         transition_grace_timeout: float = 2.0,
         transition_max_attempts: int = 2,
         verified_transition: VerifiedTransition | None = None,
@@ -96,10 +96,28 @@ class BlackMarketFlow:
             raise ValueError("events must provide record(event)")
         if timeout <= 0:
             raise ValueError("timeout must be positive")
+        if lobby_precondition_settle_for < 0:
+            raise ValueError("lobby_precondition_settle_for must be non-negative")
+        if empty_gold_confirmation_timeout <= 0:
+            raise ValueError("empty_gold_confirmation_timeout must be positive")
+        if transition_retry_guard_timeout <= 0:
+            raise ValueError("transition_retry_guard_timeout must be positive")
         self.observer: _Observer = observer
         self.actions = actions
         self.events = events
         self.timeout = float(timeout)
+        self.lobby_precondition_settle_for = float(
+            lobby_precondition_settle_for
+        )
+        self.empty_gold_confirmation_timeout = float(
+            empty_gold_confirmation_timeout
+        )
+        self.navigation_policy = VerifiedTransitionPolicy(
+            normal_timeout=self.timeout,
+            grace_timeout=transition_grace_timeout,
+            retry_guard_timeout=transition_retry_guard_timeout,
+            max_attempts=transition_max_attempts,
+        )
         self.inventory_full_policy = VerifiedTransitionPolicy(
             normal_timeout=self.timeout,
             grace_timeout=transition_grace_timeout,
@@ -111,7 +129,7 @@ class BlackMarketFlow:
             raise ValueError("verified_transition must provide execute()")
         self.verified_transition = verified_transition
 
-    def run(self, *, max_slot_attempts: int | None = None) -> FlowResult:
+    def run(self, *, max_slot_attempts: int | None = None) -> BlackMarketFlowResult:
         """Run the flow, optionally bounded by an explicit debug attempt limit.
 
         A limit of zero performs the validated Lobby -> Black Market entry and
@@ -126,27 +144,69 @@ class BlackMarketFlow:
             raise
         except Exception as error:
             self._record_best_effort("black_market.unexpected_state")
-            return FlowResult(
-                outcome=FlowOutcome.ABORTED,
+            return BlackMarketFlowResult(
+                status=FlowStatus.FAILED,
                 error=f"{type(error).__name__}: {error}",
             )
 
-    def _run(self, limit: int | None) -> FlowResult:
+    def _run(self, limit: int | None) -> BlackMarketFlowResult:
         initial = self.observer.observe()
         if not _is_clean_base(initial, SCREEN_LOBBY):
-            return self._abort("precondition_lobby_failed")
+            if not _can_wait_for_lobby_precondition(initial):
+                return self._abort("precondition_lobby_failed")
+            try:
+                initial = self.observer.wait_until(
+                    lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+                    after_sequence=initial.sequence,
+                    timeout=self.timeout,
+                    abort_if=_has_incompatible_lobby_precondition,
+                    stable_for=self.lobby_precondition_settle_for,
+                )
+            except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
+                return self._abort(f"precondition_lobby_failed: {error}")
 
-        self.actions.execute(OpenBlackMarket(), initial.geometry)
-        try:
-            market = self.observer.wait_until(
-                lambda snapshot: _is_clean_base(snapshot, SCREEN_BLACK_MARKET),
-                after_sequence=initial.sequence,
-                timeout=self.timeout,
-                abort_if=_has_incompatible_state,
-                stable_for=0.75,
+        opened = self.verified_transition.execute(
+            "black_market.open",
+            OpenBlackMarket(),
+            initial,
+            expected=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_BLACK_MARKET
+            ),
+            precondition=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_LOBBY
+            ),
+            abort_if=_has_incompatible_state,
+            stable_for=0.75,
+            policy=self.navigation_policy,
+        )
+        if not opened.succeeded:
+            return self._abort(
+                "navigation_failed: "
+                f"{opened.outcome.value}: {opened.error}"
             )
-        except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
-            return self._abort(f"navigation_failed: {error}")
+        market = opened.final_snapshot
+
+        if not market.facts.gold_slots:
+            try:
+                market = self.observer.wait_until(
+                    lambda snapshot: (
+                        _is_clean_base(snapshot, SCREEN_BLACK_MARKET)
+                        and bool(snapshot.facts.gold_slots)
+                    ),
+                    after_sequence=market.sequence,
+                    timeout=self.empty_gold_confirmation_timeout,
+                    abort_if=_has_incompatible_state,
+                )
+            except RuntimeWaitTimeout as error:
+                last = error.last_snapshot
+                if last is None or not _is_clean_base(last, SCREEN_BLACK_MARKET):
+                    return self._abort(
+                        f"initial_gold_read_failed: {error}"
+                    )
+                market = last
+            except RuntimeWaitAborted as error:
+                return self._abort(f"initial_gold_read_failed: {error}")
 
         initial_gold = tuple(sorted(market.facts.gold_slots))
         initial_purchased = tuple(sorted(market.facts.purchased_slots))
@@ -154,7 +214,6 @@ class BlackMarketFlow:
             self.events.record("black_market.no_gold")
             return self._finish(
                 market,
-                FlowOutcome.NOOP,
                 initial_gold=(),
                 initial_purchased=initial_purchased,
             )
@@ -162,8 +221,7 @@ class BlackMarketFlow:
         selected = initial_gold if limit is None else initial_gold[:limit]
         attempted: list[int] = []
         verified: list[int] = []
-        insufficient = 0
-        inventory_full = 0
+        flow_events: list[FlowEvent] = []
 
         for slot in selected:
             current = self.observer.observe()
@@ -173,8 +231,7 @@ class BlackMarketFlow:
                     initial_gold,
                     attempted,
                     verified,
-                    insufficient,
-                    inventory_full,
+                    flow_events=flow_events,
                 )
 
             attempted.append(slot)
@@ -194,8 +251,7 @@ class BlackMarketFlow:
                     initial_gold,
                     attempted,
                     verified,
-                    insufficient,
-                    inventory_full,
+                    flow_events=flow_events,
                 )
 
             overlays = set(branch.state.overlays)
@@ -227,8 +283,7 @@ class BlackMarketFlow:
                             initial_gold,
                             attempted,
                             verified,
-                            insufficient,
-                            inventory_full,
+                            flow_events=flow_events,
                             event="black_market.purchase_unverified",
                         )
                     return self._abort(
@@ -236,8 +291,7 @@ class BlackMarketFlow:
                         initial_gold,
                         attempted,
                         verified,
-                        insufficient,
-                        inventory_full,
+                        flow_events=flow_events,
                     )
                 except RuntimeWaitAborted as error:
                     return self._abort(
@@ -245,16 +299,14 @@ class BlackMarketFlow:
                         initial_gold,
                         attempted,
                         verified,
-                        insufficient,
-                        inventory_full,
+                        flow_events=flow_events,
                     )
                 verified.append(slot)
                 market = completed
                 continue
 
             if overlays == {POPUP_INSUFFICIENT_GOLD}:
-                insufficient += 1
-                self.events.record("black_market.low_gold")
+                flow_events.append(FlowEvent("low_gold"))
                 self.actions.execute(RejectInsufficientGold(), branch.geometry)
                 try:
                     market = self.observer.wait_until(
@@ -271,13 +323,11 @@ class BlackMarketFlow:
                         initial_gold,
                         attempted,
                         verified,
-                        insufficient,
-                        inventory_full,
+                        flow_events=flow_events,
                     )
                 continue
 
-            inventory_full += 1
-            self.events.record("black_market.inventory_full")
+            flow_events.append(FlowEvent("inventory_full"))
             acknowledged = acknowledge_inventory_full(
                 self.verified_transition,
                 branch,
@@ -290,34 +340,29 @@ class BlackMarketFlow:
                     initial_gold,
                     attempted,
                     verified,
-                    insufficient,
-                    inventory_full,
+                    flow_events=flow_events,
                 )
             market = acknowledged.final_snapshot
 
         return self._finish(
             market,
-            FlowOutcome.SUCCESS,
             initial_gold=initial_gold,
             initial_purchased=initial_purchased,
             attempted=attempted,
             verified=verified,
-            insufficient=insufficient,
-            inventory_full=inventory_full,
+            flow_events=flow_events,
         )
 
     def _finish(
         self,
         market: RuntimeSnapshot,
-        outcome: FlowOutcome,
         *,
         initial_gold: tuple[int, ...],
         initial_purchased: tuple[int, ...],
         attempted: list[int] | tuple[int, ...] = (),
         verified: list[int] | tuple[int, ...] = (),
-        insufficient: int = 0,
-        inventory_full: int = 0,
-    ) -> FlowResult:
+        flow_events: list[FlowEvent] | tuple[FlowEvent, ...] = (),
+    ) -> BlackMarketFlowResult:
         """Close Black Market and require a fresh clean Lobby postcondition."""
 
         self.actions.execute(CloseBlackMarket(), market.geometry)
@@ -334,19 +379,17 @@ class BlackMarketFlow:
                 initial_gold,
                 attempted,
                 verified,
-                insufficient,
-                inventory_full,
                 initial_purchased=initial_purchased,
+                flow_events=flow_events,
             )
 
-        return FlowResult(
-            outcome=outcome,
+        return BlackMarketFlowResult(
+            status=FlowStatus.COMPLETED,
+            events=tuple(flow_events),
             initial_gold_slots=initial_gold,
             initial_purchased_slots=initial_purchased,
             attempted_slots=tuple(attempted),
             verified_purchases=tuple(verified),
-            insufficient_gold_count=insufficient,
-            inventory_full_count=inventory_full,
         )
 
     def _abort(
@@ -355,21 +398,19 @@ class BlackMarketFlow:
         initial_gold: tuple[int, ...] = (),
         attempted: list[int] | tuple[int, ...] = (),
         verified: list[int] | tuple[int, ...] = (),
-        insufficient: int = 0,
-        inventory_full: int = 0,
         *,
         initial_purchased: tuple[int, ...] = (),
+        flow_events: list[FlowEvent] | tuple[FlowEvent, ...] = (),
         event: str = "black_market.unexpected_state",
-    ) -> FlowResult:
+    ) -> BlackMarketFlowResult:
         self._record_best_effort(event)
-        return FlowResult(
-            outcome=FlowOutcome.ABORTED,
+        return BlackMarketFlowResult(
+            status=FlowStatus.FAILED,
+            events=tuple(flow_events),
             initial_gold_slots=tuple(initial_gold),
             initial_purchased_slots=tuple(initial_purchased),
             attempted_slots=tuple(attempted),
             verified_purchases=tuple(verified),
-            insufficient_gold_count=insufficient,
-            inventory_full_count=inventory_full,
             error=reason,
         )
 
@@ -387,6 +428,23 @@ def _is_clean_base(snapshot: RuntimeSnapshot, base: str) -> bool:
         state.status is ResolutionStatus.RESOLVED
         and state.base_context == base
         and not state.overlays
+    )
+
+
+def _can_wait_for_lobby_precondition(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return state.status is ResolutionStatus.UNKNOWN and not state.overlays
+
+
+def _has_incompatible_lobby_precondition(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.AMBIGUOUS
+        or bool(state.overlays)
+        or (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context != SCREEN_LOBBY
+        )
     )
 
 
@@ -467,4 +525,4 @@ def _attempt_limit(value: int | None) -> int | None:
     return int(value)
 
 
-__all__ = ("BlackMarketFlow", "FlowOutcome", "FlowResult")
+__all__ = ("BlackMarketFlow", "BlackMarketFlowResult")

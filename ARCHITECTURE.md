@@ -110,13 +110,15 @@ Todo efecto de una acción que tenga una postcondición observable fiable se ver
 
 `bot/character_select_scroll.py` sólo aporta el perfil específico de Character Select: ROI, thresholds, gestos de progreso/confirmación, settle y policy bounded. `StandardRotation` navega, delega `scroll_to_edge` y sólo intenta seleccionar si el resultado confirma edge; no contiene medición A/T/B ni detección de bounce. Después verifica la selección de la tarjeta con `bot/character_selection.py`, un detector local del marco amarillo de la posición target que no identifica personajes.
 
-`bot/verified_transition.py` verifica acciones discretas contra una postcondición, tanto transiciones de contexto como efectos intra-screen: input, espera nominal, ventana de gracia sin input y, sólo cuando el consumidor aporta un guard que acepta el estado fresco actual, retry bounded. Distingue éxito inicial, retrasado o posterior a retry, rechazo del guard, agotamiento, estado inesperado, timeout y fallo. No implementa recovery ni decide qué estados son seguros; Rotation o el Flow aportan precondición, postcondición y `retryable_from`.
+`bot/verified_transition.py` verifica acciones discretas contra una postcondición, tanto transiciones de contexto como efectos intra-screen: input, espera nominal, ventana de gracia sin input y, sólo cuando el consumidor aporta un guard que acepta el estado fresco actual, retry bounded. Una policy opcional puede esperar pasivamente que un guard inicialmente inconcluso se estabilice; nunca repite input desde `UNKNOWN`. Distingue éxito inicial, retrasado o posterior a retry, rechazo del guard, agotamiento, estado inesperado, timeout y fallo. No implementa recovery ni decide qué estados son seguros; Rotation o el Flow aportan precondición, postcondición y `retryable_from`.
 
 ## Flows
 
 Los flows contienen intención y reglas de negocio deterministas. Declaran scope, prerequisites y outcomes; reaccionan a `RuntimeSnapshot` y emiten semantic actions.
 
-`BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, Purchase Confirmation, Insufficient Gold, Inventory Full, GOLD y Purchased; Quick Menu no es prerequisite. Inventory Full es un impedimento de compra no fatal: el flow lo registra y reconoce mediante una transición verificada, pero no identifica ni libera inventarios. La policy funcional detallada está en `CONTEXT.md`.
+`bot/flow_contracts.py` define el contrato transversal `FlowResult(status, events)`. `COMPLETED` garantiza que el flow terminó y recuperó Lobby; `FAILED` indica que continuar no es seguro. `FlowEvent(kind, detail=None)` representa resultados de negocio extensibles y no controla la sesión.
+
+`BlackMarketFlow` es `PER_CHARACTER`, comienza y termina en Lobby y no cambia de personaje. Su closure semántico incluye Black Market, Purchase Confirmation, Insufficient Gold, Inventory Full, GOLD y Purchased; Quick Menu no es prerequisite. Low Gold e Inventory Full producen business events no fatales; este último se reconoce mediante una transición verificada, pero el flow no identifica ni libera inventarios. La policy funcional detallada está en `CONTEXT.md`.
 
 Los support operations futuros seguirán `check → bounded support operation → recheck → continue/skip/fail`; no se permiten llamadas recursivas arbitrarias entre flows.
 
@@ -126,7 +128,7 @@ Los intents modelan acciones del dominio y primitives físicas tipadas. El slice
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
 
-El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas observables | ObservedScroll para operaciones continuas} → RuntimeObserver + ActionExecutor → AdbClient`. `ActionExecutor` sólo emite input físico; la interacción observada comprueba su efecto. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery queda reservado para estados inesperados o fallos que no resuelve una interacción local, y SessionRunner permanece en una capa futura de mayor nivel.
+El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas observables | ObservedScroll para operaciones continuas} → RuntimeObserver + ActionExecutor → AdbClient`. `ActionExecutor` sólo emite input físico; la interacción observada comprueba su efecto. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery queda reservado para estados inesperados o fallos que no resuelve una interacción local. `SessionRunner` está por encima de flows y Rotation y sólo consume sus contratos.
 
 ## Device / ADB
 
@@ -149,7 +151,7 @@ La evidencia de una interacción es observacional. Sólo una confirmación human
 
 El protocolo conversacional y las restricciones de hardware están centralizados en `AGENTS.md`.
 
-## Orquestación futura
+## Orquestación de sesión
 
 El producto objetivo es un orquestador configurable, no un agente general:
 
@@ -157,13 +159,28 @@ El producto objetivo es un orquestador configurable, no un agente general:
 User Control Panel
   → SessionPlan
     → SessionRunner
-      ├── RotationStrategy
-      └── Selected PER_CHARACTER Flow(s)
+      ├── Selected PER_CHARACTER Flow(s)
+      └── RotationStrategy.advance()
 ```
 
-`SessionRunner` compondrá en el futuro Rotation y flows. El contrato `RotationStrategy` y el primer `StandardRotation.advance()` ya existen; cada flow sigue operando sólo sobre el personaje activo. Ninguno conoce la implementación interna del otro.
+`SessionPlan` expresa intención: `character_count`, flows ordenados y strategy. `SessionRunner` ejecuta todos los flows del personaje activo, verifica el boundary contractual Lobby mediante una sonda semántica inyectada y sólo entonces solicita un advance. El composition root productivo espera Lobby estable de forma pasiva para no confundir frames `UNKNOWN` de carga con una contradicción. Repite el bloque exactamente `character_count` veces, incluido el advance final que cierra el ciclo; no trata 27 como caso especial ni reprocesa el personaje inicial después del retorno.
 
-El primitive de `rotation.standard` usa Quick Menu → Character Select → bottom confirmado → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita. La captura transitoria concurrente no cambia los límites: Rotation solicita un intent semántico y `ActionExecutor` sigue siendo quien ejecuta el input físico. El loop aislado 28/28 y el regreso final al personaje inicial están validados; la composición con flows sigue pendiente. MAIN/SUBS quedan para estrategias futuras.
+Business events se agregan y registran sin interpretación específica. Un `FlowResult.FAILED`, una postcondición contradictoria o un `RotationResult` fallido abortan la sesión sin intentar el siguiente personaje. La cancelación se observa únicamente antes/después de componentes completos. `SessionCharacterResult` y `SessionResult` preservan el progreso parcial.
+
+El primitive de `rotation.standard` usa Quick Menu → Character Select → bottom confirmado → última posición → Lobby. El comportamiento MRU permite recorrer personajes sin identidad visual y `character_count = 28` es configuración explícita compartida. La captura transitoria concurrente no cambia los límites: Rotation solicita un intent semántico y `ActionExecutor` sigue siendo quien ejecuta el input físico. El loop aislado 28/28 y el regreso final al personaje inicial están validados; MAIN/SUBS quedan para strategies futuras.
+
+La identidad futura sigue un boundary independiente:
+
+```text
+OCR / Perception extractors
+  → CharacterContextProvider
+    → CharacterContext
+      → SessionRunner / logging / flows
+```
+
+`SessionRunner` coordinará como máximo una adquisición opcional desde Lobby por personaje. Identidad ausente no es fatal cuando sólo alimenta logging. `StandardRotation` no identifica personajes y una strategy futura identity-aware será otra implementación de `RotationStrategy`, no una modificación de la standard.
+
+`CharacterContext` contiene identidad y metadata estable. Los datos dinámicos —stamina, recursos u otros runtime facts— se adquieren cuando un flow los solicita y no se almacenan como identidad. OCR pertenece a Perception/extractors; ni el runner ni los flows lo implementan. En este checkpoint el contexto queda en `name=None` y no existe provider productivo.
 
 El runtime unattended futuro necesita timeouts, recovery transversal, logging, aislamiento de fallos, cleanup y policy de continuación. Hasta entonces, el vertical slice aborta ante errores técnicos después de registrar y limpiar.
 

@@ -17,6 +17,7 @@ from dotenv import dotenv_values
 
 DEFAULT_ADB_EXECUTABLE = "adb"
 DEFAULT_GAME_PACKAGE = "com.gamevil.kritikamobile.android.google.global.normal"
+DEFAULT_CHARACTER_COUNT = 28
 
 
 @dataclass(frozen=True)

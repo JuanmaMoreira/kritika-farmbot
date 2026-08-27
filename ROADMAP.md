@@ -2,7 +2,7 @@
 
 ## Estado
 
-El primer vertical slice de runtime está cerrado. `BlackMarketFlow` cubre `low_gold + inventory_full` como resultados de negocio no fatales y `rotation.standard` quedó validada end-to-end en un ciclo live 28/28; la composición mínima de sesión es el siguiente trabajo.
+El primer vertical slice de runtime está cerrado. `BlackMarketFlow` cubre `low_gold + inventory_full` como resultados de negocio no fatales, `rotation.standard` quedó validada en un ciclo live 28/28 y la composición mínima de sesión pasó un smoke live N=2.
 
 ## Completado
 
@@ -38,9 +38,12 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 ### Composición mínima de sesión
 
-- [ ] Implementar `SessionPlan / SessionRunner → RotationStrategy + Selected PER_CHARACTER Flow(s)`.
-- [ ] Impedir que un flow invoque Rotation o ADB directamente.
-- [ ] Definir outcomes y cleanup mínimos para componer el slice existente.
+- [x] Implementar `SessionPlan / SessionRunner → Selected PER_CHARACTER Flow(s) + RotationStrategy`.
+- [x] Definir `FlowResult / FlowEvent`, resultados parciales, cancelación segura y abort conservador ante fallos técnicos.
+- [x] Mantener flows, Rotation y ADB separados y exigir Lobby entre componentes.
+- [x] Preparar `CharacterContext(name=None)` para identidad futura sin implementar OCR.
+- [x] Validar live N=2: 2/2 flows, 2/2 advances y Lobby estable entre componentes; smokes incrementales acumularon tres `inventory_full` no fatales.
+- [ ] Validar la sesión Black Market completa de 28 personajes sin reprocesar al inicial tras el advance final.
 
 ## Después
 

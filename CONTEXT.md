@@ -1,9 +1,9 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2; `BlackMarketFlow` y `rotation.standard` cerrados aisladamente y validados live.
-**Unidad funcional vigente:** `BlackMarketFlow` opera el personaje activo y `StandardRotation.advance()` realiza un único cambio de personaje verificado.
-**Baseline conocido:** 574/574 tests hardware-free verdes; regresión productiva 102/102 sin estados ambiguos ni errores.
-**Siguiente trabajo funcional:** composición mínima `SessionPlan / SessionRunner`, todavía no implementada.
+**Estado:** rediseño híbrido 0.2; composición mínima `BlackMarketFlow + rotation.standard` implementada y validada en smoke live N=2.
+**Unidad funcional vigente:** `SessionRunner` ejecuta flows `PER_CHARACTER` en orden y hace exactamente un `RotationStrategy.advance()` después de completarlos.
+**Baseline conocido:** 597/597 tests hardware-free verdes; smoke final de sesión 2/2 personajes y 2/2 advances.
+**Siguiente trabajo funcional:** validación completa de la sesión Black Market de 28 personajes, todavía no autorizada ni ejecutada.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -19,6 +19,7 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - `ActionExecutor` traduce esos intents a taps ADB normalizados contra `frame.shape`; no decide gameplay.
 - `BlackMarketFlow` es un flow 0.2 `PER_CHARACTER` implementado y separado del runtime legacy.
 - `StandardRotation` es transversal, implementa un solo `advance()` y no conoce flows ni ADB.
+- `SessionPlan` expresa `character_count + flows PER_CHARACTER + RotationStrategy`; `SessionRunner` los compone sin conocer navegación ni negocio interno.
 
 El data flow y los límites vigentes se describen en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -75,6 +76,20 @@ La entrada espera estabilidad visual de Black Market durante 0,75 s porque el t�
 
 La validación live incremental confirmó un one-slot smoke, un full smoke con dos compras verificadas, el cierre final a Lobby y `popup.inventory_full → OK → screen.black_market` al primer intento, sin grace ni retry. Todos los sources hicieron cleanup.
 
+## Composición mínima de sesión
+
+`bot/flow_contracts.py` separa `FlowStatus.COMPLETED/FAILED` de `FlowEvent(kind, detail=None)`. `low_gold` e `inventory_full` son eventos de negocio acumulables y no fatales; un resultado técnico `FAILED` aborta la sesión sin hacer advance. Los counts útiles se derivan de eventos, no son campos estructurales del runner.
+
+`bot/session.py` ejecuta todos los flows seleccionados en orden para el personaje activo, exige su postcondición semántica Lobby, hace un advance y repite exactamente `character_count` veces. Por eso el plan productivo de 28 realiza 28 ejecuciones por flow y 28 advances: el último retorno al personaje inicial no vuelve a procesarlo. Fallos de flow, contradicciones de postcondición o fallos de Rotation preservan progreso parcial y abortan conservadoramente; la cancelación se consulta sólo entre componentes seguros y produce `CANCELLED`.
+
+Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `CharacterContext(name=None, name_confidence=None)`, resultados de flows y resultado de advance. El índice no es identidad. No existe OCR ni provider productivo: un futuro provider opcional podrá enriquecer una vez por personaje el contexto desde Lobby sin hacer fatal la identidad usada sólo para observabilidad.
+
+`CharacterContext` contiene identidad o metadata estable. Stamina, recursos y otros datos cambiantes son runtime facts que un flow solicitará cuando los necesite; no pertenecen al contexto estable y los flows no implementarán OCR directamente.
+
+Los smokes incrementales expusieron latencia de carga entre Lobby y Black Market. Un tap de apertura no registrado abortó correctamente sin advance; `black_market.open` pasó a `VerifiedTransition` con grace sin input, espera pasiva de un guard inconcluso y retry sólo desde Lobby fresco. La precondición del flow y la sonda Lobby del composition root también esperan estabilidad pasivamente y rechazan estados incompatibles.
+
+La revisión humana detectó además un falso `no GOLD`: el personaje tenía GOLD que el primer snapshot de facts no había mostrado. El probe sin compras confirmó slots `[2,3,5,8]`; el flow ahora espera una ventana fresca adicional antes de aceptar ausencia, y una validación posterior detectó y compró los cuatro. El smoke final, después de 597 tests verdes, completó 2/2 flows y 2/2 advances: el primer personaje mostró como Purchased los slots `[1,9]` comprados en un intento incremental, y el segundo detectó y compró GOLD `[1,5]`. No hubo business events en la corrida final; un smoke incremental anterior acumuló tres `inventory_full` no fatales. Todos los resultados conservaron `CharacterContext.name=None` y Lobby entre componentes.
+
 ## Primitive Rotation standard
 
 `bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, verifica visualmente la selección de la última tarjeta del layout final, confirma y exige un Lobby fresco. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente Lobby fresco; una pantalla resuelta incompatible, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente.
@@ -107,7 +122,7 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Limitaciones y deferred
 
-- `StandardRotation` aislado está cerrado con ciclo live 28/28 y retorno al inicial confirmado; `SessionPlan` y `SessionRunner` siguen pendientes.
+- `StandardRotation` aislado está cerrado con ciclo live 28/28 y retorno al inicial confirmado; la composición pasó smoke live pequeño, pero la sesión productiva completa sigue sin ejecutarse.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
 - `inventory_kind` e identidad de personaje permanecen desconocidos; liberar, vender o mover inventario pertenece a futuros flows especializados.
@@ -118,4 +133,4 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Próximo trabajo
 
-Implementar la composición mínima `SessionPlan / SessionRunner` para intercalar los flows `PER_CHARACTER` seleccionados con `RotationStrategy.advance()`, sin mover lógica de flows dentro de Rotation ni viceversa.
+Ejecutar, cuando se autorice explícitamente, la validación completa `BlackMarketFlow + StandardRotation` de 28 personajes. El smoke truncado no intentó ni necesitó regresar al personaje inicial.

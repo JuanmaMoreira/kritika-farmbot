@@ -93,7 +93,13 @@ class Actions:
             raise self.error
 
 
-def _run(observer, *, retryable=True, max_attempts=2):
+def _run(
+    observer,
+    *,
+    retryable=True,
+    max_attempts=2,
+    retry_guard_timeout=0.0,
+):
     actions = Actions()
     operation = VerifiedTransition(observer, actions)
     before = _snapshot(1, BEFORE)
@@ -113,6 +119,7 @@ def _run(observer, *, retryable=True, max_attempts=2):
         policy=VerifiedTransitionPolicy(
             normal_timeout=6.0,
             grace_timeout=2.0,
+            retry_guard_timeout=retry_guard_timeout,
             max_attempts=max_attempts,
         ),
     )
@@ -187,6 +194,41 @@ def test_retry_guard_rejected_never_repeats_action():
     assert result.outcome is VerifiedTransitionOutcome.RETRY_GUARD_REJECTED
     assert result.attempt_count == 1
     assert len(actions.calls) == 1
+
+
+def test_inconclusive_retry_state_can_settle_passively_before_safe_retry():
+    unknown = _snapshot(4, OTHER)
+    unknown = RuntimeSnapshot(
+        frame=unknown.frame,
+        observations=unknown.observations,
+        state=ResolvedState(
+            status=ResolutionStatus.UNKNOWN,
+            sequence=4,
+            timestamp=4.0,
+        ),
+        facts=unknown.facts,
+        geometry=unknown.geometry,
+    )
+    observer = ScriptedObserver(
+        [
+            _timeout(1, _snapshot(2, BEFORE)),
+            _timeout(2, _snapshot(3, BEFORE), timeout=2.0),
+            _snapshot(5, BEFORE),
+            _snapshot(6, EXPECTED),
+        ],
+        observes=[unknown],
+    )
+
+    result, actions = _run(observer, retry_guard_timeout=1.0)
+
+    assert result.outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
+    assert len(actions.calls) == 2
+    assert observer.wait_calls == [
+        (1, 6.0, 0.0),
+        (2, 2.0, 0.0),
+        (4, 1.0, 0.0),
+        (5, 6.0, 0.0),
+    ]
 
 
 def test_second_failed_attempt_is_bounded_and_explicit():
@@ -289,6 +331,7 @@ def test_action_executor_failure_is_explicit_and_does_not_wait():
     (
         {"normal_timeout": 0},
         {"grace_timeout": -1},
+        {"retry_guard_timeout": -1},
         {"max_attempts": 0},
         {"max_attempts": True},
     ),

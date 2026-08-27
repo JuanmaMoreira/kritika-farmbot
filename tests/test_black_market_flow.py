@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from bot.action_executor import FrameGeometry
-from bot.black_market_flow import BlackMarketFlow, FlowOutcome
+from bot.black_market_flow import BlackMarketFlow
 from bot.capture import FrameSnapshot
 from bot.catalog import (
     POPUP_INSUFFICIENT_GOLD,
@@ -14,6 +14,7 @@ from bot.catalog import (
     SCREEN_LOBBY,
 )
 from bot.observations import ObservationBatch
+from bot.flow_contracts import FlowEvent, FlowStatus
 from bot.runtime_observer import (
     RuntimeFacts,
     RuntimeSnapshot,
@@ -131,10 +132,28 @@ def test_flow_requires_clean_lobby_and_never_navigates_generically():
         [_snapshot(1, base=SCREEN_BLACK_MARKET)], []
     )
 
-    assert result.outcome is FlowOutcome.ABORTED
+    assert result.status is FlowStatus.FAILED
     assert result.error == "precondition_lobby_failed"
     assert actions == []
     assert events == ["black_market.unexpected_state"]
+
+
+def test_transient_unknown_lobby_precondition_settles_without_input():
+    result, actions, events, observer = _run(
+        [_snapshot(1)],
+        [
+            _snapshot(2, base=SCREEN_LOBBY),
+            _snapshot(3, base=SCREEN_BLACK_MARKET, gold={4}),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+        max_slots=0,
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.initial_gold_slots == (4,)
+    assert actions == [OpenBlackMarket(), CloseBlackMarket()]
+    assert events == []
+    assert observer.wait_calls == [(1, 0.25), (2, 0.75), (3, 0.0)]
 
 
 def test_lobby_to_black_market_with_zero_gold_is_successful_noop():
@@ -142,15 +161,78 @@ def test_lobby_to_black_market_with_zero_gold_is_successful_noop():
         [_snapshot(1, base=SCREEN_LOBBY)],
         [
             _snapshot(2, base=SCREEN_BLACK_MARKET),
-            _snapshot(3, base=SCREEN_LOBBY),
+            RuntimeWaitTimeout(
+                after_sequence=2,
+                timeout=2.0,
+                last_snapshot=_snapshot(3, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(4, base=SCREEN_LOBBY),
         ],
     )
 
-    assert result.outcome is FlowOutcome.NOOP
+    assert result.status is FlowStatus.COMPLETED
     assert result.succeeded
     assert actions == [OpenBlackMarket(), CloseBlackMarket()]
     assert events == ["black_market.no_gold"]
-    assert observer.wait_calls == [(1, 0.75), (2, 0.0)]
+    assert observer.wait_calls == [(1, 0.75), (2, 0.0), (3, 0.0)]
+
+
+def test_transient_empty_gold_read_is_confirmed_before_noop_decision():
+    result, actions, events, observer = _run(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET),
+            _snapshot(3, base=SCREEN_BLACK_MARKET, gold={2, 3, 5, 8}),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+        max_slots=0,
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.initial_gold_slots == (2, 3, 5, 8)
+    assert result.attempted_slots == ()
+    assert actions == [OpenBlackMarket(), CloseBlackMarket()]
+    assert events == []
+    assert observer.wait_calls == [(1, 0.75), (2, 0.0), (3, 0.0)]
+
+
+def test_open_black_market_retries_only_from_fresh_clean_lobby():
+    result, actions, events, observer = _run(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+        [
+            RuntimeWaitTimeout(
+                after_sequence=1,
+                timeout=5.0,
+                last_snapshot=_snapshot(2, base=SCREEN_LOBBY),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=2,
+                timeout=2.0,
+                last_snapshot=_snapshot(3, base=SCREEN_LOBBY),
+            ),
+            _snapshot(5, base=SCREEN_BLACK_MARKET),
+            RuntimeWaitTimeout(
+                after_sequence=5,
+                timeout=2.0,
+                last_snapshot=_snapshot(6, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert actions == [OpenBlackMarket(), OpenBlackMarket(), CloseBlackMarket()]
+    assert events == ["black_market.no_gold"]
+    assert observer.wait_calls == [
+        (1, 0.75),
+        (2, 0.75),
+        (4, 0.75),
+        (5, 0.0),
+        (6, 0.0),
+    ]
 
 
 def test_purchase_confirmation_yes_and_same_slot_purchased_are_verified():
@@ -171,7 +253,7 @@ def test_purchase_confirmation_yes_and_same_slot_purchased_are_verified():
         ],
     )
 
-    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.status is FlowStatus.COMPLETED
     assert result.initial_gold_slots == (4,)
     assert result.attempted_slots == (4,)
     assert result.verified_purchases == (4,)
@@ -251,11 +333,12 @@ def test_insufficient_gold_logs_no_slot_rejects_and_continues():
         ],
     )
 
-    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.status is FlowStatus.COMPLETED
     assert result.attempted_slots == (1, 8)
     assert result.verified_purchases == (8,)
     assert result.insufficient_gold_count == 1
-    assert events == ["black_market.low_gold"]
+    assert result.events == (FlowEvent("low_gold"),)
+    assert events == []
     assert actions == [
         OpenBlackMarket(),
         SelectBlackMarketSlot(1),
@@ -291,11 +374,12 @@ def test_inventory_full_logs_ok_and_continues_without_retrying_same_slot():
         ],
     )
 
-    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.status is FlowStatus.COMPLETED
     assert result.attempted_slots == (1, 8)
     assert result.verified_purchases == (8,)
     assert result.inventory_full_count == 1
-    assert events == ["black_market.inventory_full"]
+    assert result.events == (FlowEvent("inventory_full"),)
+    assert events == []
     assert actions == [
         OpenBlackMarket(),
         SelectBlackMarketSlot(1),
@@ -331,13 +415,14 @@ def test_multiple_inventory_full_results_are_nonfatal_business_events():
         ],
     )
 
-    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.status is FlowStatus.COMPLETED
     assert result.attempted_slots == (2, 5)
     assert result.inventory_full_count == 2
-    assert events == [
-        "black_market.inventory_full",
-        "black_market.inventory_full",
-    ]
+    assert result.events == (
+        FlowEvent("inventory_full"),
+        FlowEvent("inventory_full"),
+    )
+    assert events == []
     assert actions.count(AcknowledgeInventoryFull()) == 2
 
 
@@ -366,10 +451,11 @@ def test_low_gold_and_inventory_full_can_both_happen_for_one_character():
         ],
     )
 
-    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.status is FlowStatus.COMPLETED
     assert result.insufficient_gold_count == 1
     assert result.inventory_full_count == 1
-    assert events == ["black_market.low_gold", "black_market.inventory_full"]
+    assert result.events == (FlowEvent("low_gold"), FlowEvent("inventory_full"))
+    assert events == []
     assert RejectInsufficientGold() in actions
     assert AcknowledgeInventoryFull() in actions
 
@@ -407,14 +493,12 @@ def test_inventory_full_ack_technical_failure_aborts_before_next_slot():
         ],
     )
 
-    assert result.outcome is FlowOutcome.ABORTED
+    assert result.status is FlowStatus.FAILED
     assert result.error.startswith("inventory_full_ack_failed")
     assert result.inventory_full_count == 1
     assert SelectBlackMarketSlot(8) not in actions
-    assert events == [
-        "black_market.inventory_full",
-        "black_market.unexpected_state",
-    ]
+    assert result.events == (FlowEvent("inventory_full"),)
+    assert events == ["black_market.unexpected_state"]
 
 
 def test_flow_uses_initial_gold_read_once_and_ignores_later_changes():
@@ -485,7 +569,7 @@ def test_zero_attempt_debug_limit_opens_market_and_reports_initial_gold_only():
         max_slots=0,
     )
 
-    assert result.outcome is FlowOutcome.SUCCESS
+    assert result.status is FlowStatus.COMPLETED
     assert result.initial_gold_slots == (1, 6)
     assert result.initial_purchased_slots == ()
     assert result.attempted_slots == ()
@@ -494,20 +578,28 @@ def test_zero_attempt_debug_limit_opens_market_and_reports_initial_gold_only():
 
 def test_return_to_lobby_is_a_required_fresh_postcondition():
     timeout = RuntimeWaitTimeout(
-        after_sequence=2,
+        after_sequence=3,
         timeout=5.0,
-        last_snapshot=_snapshot(3, base=SCREEN_BLACK_MARKET),
+        last_snapshot=_snapshot(4, base=SCREEN_BLACK_MARKET),
     )
     result, actions, events, observer = _run(
         [_snapshot(1, base=SCREEN_LOBBY)],
-        [_snapshot(2, base=SCREEN_BLACK_MARKET), timeout],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET),
+            RuntimeWaitTimeout(
+                after_sequence=2,
+                timeout=2.0,
+                last_snapshot=_snapshot(3, base=SCREEN_BLACK_MARKET),
+            ),
+            timeout,
+        ],
     )
 
-    assert result.outcome is FlowOutcome.ABORTED
+    assert result.status is FlowStatus.FAILED
     assert result.error.startswith("return_to_lobby_failed")
     assert actions == [OpenBlackMarket(), CloseBlackMarket()]
     assert events == ["black_market.no_gold", "black_market.unexpected_state"]
-    assert observer.wait_calls == [(1, 0.75), (2, 0.0)]
+    assert observer.wait_calls == [(1, 0.75), (2, 0.0), (3, 0.0)]
 
 
 def test_purchase_unverified_logs_and_aborts_entire_flow():
@@ -530,7 +622,7 @@ def test_purchase_unverified_logs_and_aborts_entire_flow():
         ],
     )
 
-    assert result.outcome is FlowOutcome.ABORTED
+    assert result.status is FlowStatus.FAILED
     assert result.error == "purchase_unverified"
     assert result.attempted_slots == (4,)
     assert events == ["black_market.purchase_unverified"]
@@ -548,7 +640,7 @@ def test_unexpected_branch_timeout_aborts_without_recovery_or_extra_taps():
         [_snapshot(2, base=SCREEN_BLACK_MARKET, gold={0}), timeout],
     )
 
-    assert result.outcome is FlowOutcome.ABORTED
+    assert result.status is FlowStatus.FAILED
     assert result.attempted_slots == (0,)
     assert actions == [OpenBlackMarket(), SelectBlackMarketSlot(0)]
     assert events == ["black_market.unexpected_state"]
@@ -570,7 +662,7 @@ def test_simultaneous_incompatible_purchase_overlays_abort_immediately():
         ],
     )
 
-    assert result.outcome is FlowOutcome.ABORTED
+    assert result.status is FlowStatus.FAILED
     assert actions == [OpenBlackMarket(), SelectBlackMarketSlot(0)]
     assert events == ["black_market.unexpected_state"]
 

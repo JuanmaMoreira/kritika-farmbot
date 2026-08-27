@@ -36,6 +36,7 @@ class VerifiedTransitionPolicy:
 
     normal_timeout: float = 6.0
     grace_timeout: float = 2.0
+    retry_guard_timeout: float = 0.0
     max_attempts: int = 1
 
     def __post_init__(self) -> None:
@@ -48,6 +49,13 @@ class VerifiedTransitionPolicy:
             self,
             "grace_timeout",
             _positive_duration(self.grace_timeout, "grace_timeout"),
+        )
+        object.__setattr__(
+            self,
+            "retry_guard_timeout",
+            _non_negative_duration(
+                self.retry_guard_timeout, "retry_guard_timeout"
+            ),
         )
         object.__setattr__(
             self,
@@ -295,14 +303,57 @@ class VerifiedTransition:
                     "expected_state_not_reached",
                 )
             if not retryable_from(observed):
-                return self._result(
-                    name,
-                    VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
-                    attempt,
-                    grace_wait_count,
-                    observed,
-                    "retry_guard_rejected",
+                if policy.retry_guard_timeout == 0:
+                    return self._result(
+                        name,
+                        VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
+                        attempt,
+                        grace_wait_count,
+                        observed,
+                        "retry_guard_rejected",
+                    )
+                guarded = self._wait(
+                    lambda snapshot: (
+                        expected(snapshot) or retryable_from(snapshot)
+                    ),
+                    after_sequence=observed.sequence,
+                    timeout=policy.retry_guard_timeout,
+                    abort_if=abort_if,
+                    stable_for=0.0,
                 )
+                if isinstance(guarded, RuntimeSnapshot):
+                    observed = guarded
+                    if expected(observed):
+                        outcome = (
+                            VerifiedTransitionOutcome.SUCCESS_AFTER_GRACE
+                            if attempt == 1
+                            else VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
+                        )
+                        return self._result(
+                            name,
+                            outcome,
+                            attempt,
+                            grace_wait_count,
+                            observed,
+                        )
+                elif isinstance(guarded, RuntimeWaitAborted):
+                    return self._result(
+                        name,
+                        VerifiedTransitionOutcome.UNEXPECTED_STATE,
+                        attempt,
+                        grace_wait_count,
+                        guarded.snapshot,
+                        str(guarded),
+                    )
+                else:
+                    return self._result(
+                        name,
+                        VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
+                        attempt,
+                        grace_wait_count,
+                        guarded.last_snapshot or observed,
+                        "retry_guard_rejected",
+                    )
             if attempt >= policy.max_attempts:
                 return self._result(
                     name,
