@@ -34,6 +34,11 @@ from bot.semantic_actions import (
     SelectLastVisibleCharacter,
 )
 from bot.state import ResolutionStatus
+from bot.verified_transition import (
+    VerifiedTransition,
+    VerifiedTransitionPolicy,
+    VerifiedTransitionResult,
+)
 
 
 class RotationOutcome(str, Enum):
@@ -51,10 +56,19 @@ class RotationResult:
     error: str | None = None
     scroll_attempts: tuple[ScrollAttemptMeasurement, ...] = ()
     scroll_attempt_kinds: tuple[ScrollAttemptKind, ...] = ()
+    transitions: tuple["RotationTransitionTrace", ...] = ()
 
     @property
     def succeeded(self) -> bool:
         return self.outcome is RotationOutcome.SUCCESS
+
+
+@dataclass(frozen=True)
+class RotationTransitionTrace:
+    name: str
+    outcome: str
+    attempt_count: int
+    grace_wait_count: int
 
 
 @runtime_checkable
@@ -93,10 +107,13 @@ class StandardRotation:
         timeout: float = 6.0,
         precondition_settle_for: float = 0.25,
         selection_settle_for: float = 0.25,
+        transition_grace_timeout: float = 2.0,
+        transition_max_attempts: int = 2,
         scroll_profile: CharacterSelectScrollProfile = (
             DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE
         ),
         observed_scroll: ObservedScroll | None = None,
+        verified_transition: VerifiedTransition | None = None,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -114,17 +131,27 @@ class StandardRotation:
         self.selection_settle_for = _non_negative_duration(
             selection_settle_for, "selection_settle_for"
         )
+        self.transition_policy = VerifiedTransitionPolicy(
+            normal_timeout=self.timeout,
+            grace_timeout=transition_grace_timeout,
+            max_attempts=transition_max_attempts,
+        )
         if not isinstance(scroll_profile, CharacterSelectScrollProfile):
             raise ValueError("scroll_profile must be CharacterSelectScrollProfile")
         if observed_scroll is None:
             observed_scroll = ObservedScroll(observer, actions)
         if not callable(getattr(observed_scroll, "scroll_to_edge", None)):
             raise ValueError("observed_scroll must provide scroll_to_edge()")
+        if verified_transition is None:
+            verified_transition = VerifiedTransition(observer, actions)
+        if not callable(getattr(verified_transition, "execute", None)):
+            raise ValueError("verified_transition must provide execute()")
         self.observer: _Observer = observer
         self.actions = actions
         self.events = events
         self.scroll_profile = scroll_profile
         self.observed_scroll = observed_scroll
+        self.verified_transition = verified_transition
 
     def advance(self) -> RotationResult:
         """Perform exactly one Lobby -> different character -> Lobby change."""
@@ -137,6 +164,7 @@ class StandardRotation:
             return self._abort(f"{type(error).__name__}: {error}")
 
     def _advance(self) -> RotationResult:
+        transitions: list[RotationTransitionTrace] = []
         initial = self.observer.observe()
         if not _is_clean_base(initial, SCREEN_LOBBY):
             if not _can_wait_for_lobby_precondition(initial):
@@ -152,30 +180,49 @@ class StandardRotation:
             except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
                 return self._abort(f"precondition_lobby_failed: {error}")
 
-        self.actions.execute(OpenQuickMenu(), initial.geometry)
-        try:
-            quick_menu = self.observer.wait_until(
-                _has_quick_menu,
-                after_sequence=initial.sequence,
-                timeout=self.timeout,
-                abort_if=_has_unexpected_quick_menu_state,
+        quick_menu_result = self.verified_transition.execute(
+            "rotation.open_quick_menu",
+            OpenQuickMenu(),
+            initial,
+            expected=_has_quick_menu,
+            precondition=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_LOBBY
+            ),
+            abort_if=_has_unexpected_quick_menu_state,
+            policy=self.transition_policy,
+        )
+        transitions.append(_transition_trace(quick_menu_result))
+        if not quick_menu_result.succeeded:
+            return self._abort(
+                "quick_menu_navigation_failed: "
+                f"{quick_menu_result.outcome.value}: {quick_menu_result.error}",
+                transitions=tuple(transitions),
             )
-        except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
-            return self._abort(f"quick_menu_navigation_failed: {error}")
+        quick_menu = quick_menu_result.final_snapshot
 
-        self.actions.execute(OpenCharacterSelect(), quick_menu.geometry)
-        try:
-            character_select = self.observer.wait_until(
-                lambda snapshot: _is_clean_base(
-                    snapshot, SCREEN_CHARACTER_SELECT
-                ),
-                after_sequence=quick_menu.sequence,
-                timeout=self.timeout,
-                abort_if=_has_unexpected_character_select_transition,
-                stable_for=self.scroll_profile.settle_for,
+        character_select_result = self.verified_transition.execute(
+            "rotation.open_character_select",
+            OpenCharacterSelect(),
+            quick_menu,
+            expected=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_CHARACTER_SELECT
+            ),
+            precondition=_has_quick_menu,
+            retryable_from=_has_quick_menu,
+            abort_if=_has_unexpected_character_select_transition,
+            stable_for=self.scroll_profile.settle_for,
+            policy=self.transition_policy,
+        )
+        transitions.append(_transition_trace(character_select_result))
+        if not character_select_result.succeeded:
+            return self._abort(
+                "character_select_navigation_failed: "
+                f"{character_select_result.outcome.value}: "
+                f"{character_select_result.error}",
+                transitions=tuple(transitions),
             )
-        except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
-            return self._abort(f"character_select_navigation_failed: {error}")
+        character_select = character_select_result.final_snapshot
 
         scroll_result = self.observed_scroll.scroll_to_edge(
             character_select,
@@ -208,6 +255,7 @@ class StandardRotation:
                 end_difference=end_difference,
                 scroll_attempts=scroll_attempts,
                 scroll_attempt_kinds=scroll_attempt_kinds,
+                transitions=tuple(transitions),
             )
         character_select = scroll_result.final_snapshot
 
@@ -233,25 +281,36 @@ class StandardRotation:
                 end_difference=end_difference,
                 scroll_attempts=tuple(scroll_attempts),
                 scroll_attempt_kinds=tuple(scroll_attempt_kinds),
+                transitions=tuple(transitions),
             )
 
-        self.actions.execute(ConfirmCharacterSelection(), selected.geometry)
-        try:
-            self.observer.wait_until(
-                lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
-                after_sequence=selected.sequence,
-                timeout=self.timeout,
-                abort_if=_has_incompatible_clean_screen,
-            )
-        except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
+        confirmation_result = self.verified_transition.execute(
+            "rotation.confirm_character_selection",
+            ConfirmCharacterSelection(),
+            selected,
+            expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+            precondition=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_CHARACTER_SELECT
+            ),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_CHARACTER_SELECT
+            ),
+            abort_if=_has_incompatible_clean_screen,
+            policy=self.transition_policy,
+        )
+        transitions.append(_transition_trace(confirmation_result))
+        if not confirmation_result.succeeded:
             return self._abort(
-                f"return_to_lobby_failed: {error}",
+                "return_to_lobby_failed: "
+                f"{confirmation_result.outcome.value}: "
+                f"{confirmation_result.error}",
                 swipe_count=swipe_count,
                 effective_swipe_count=effective_swipe_count,
                 bottom_confirmation_count=bottom_confirmation_count,
                 end_difference=end_difference,
                 scroll_attempts=tuple(scroll_attempts),
                 scroll_attempt_kinds=tuple(scroll_attempt_kinds),
+                transitions=tuple(transitions),
             )
 
         return RotationResult(
@@ -262,6 +321,7 @@ class StandardRotation:
             end_difference=end_difference,
             scroll_attempts=tuple(scroll_attempts),
             scroll_attempt_kinds=tuple(scroll_attempt_kinds),
+            transitions=tuple(transitions),
         )
 
     def _abort(
@@ -274,6 +334,7 @@ class StandardRotation:
         end_difference: float | None = None,
         scroll_attempts: tuple[ScrollAttemptMeasurement, ...] = (),
         scroll_attempt_kinds: tuple[ScrollAttemptKind, ...] = (),
+        transitions: tuple[RotationTransitionTrace, ...] = (),
     ) -> RotationResult:
         try:
             self.events.record("rotation.standard.unexpected_state")
@@ -288,7 +349,19 @@ class StandardRotation:
             error=reason,
             scroll_attempts=scroll_attempts,
             scroll_attempt_kinds=scroll_attempt_kinds,
+            transitions=transitions,
         )
+
+
+def _transition_trace(
+    result: VerifiedTransitionResult,
+) -> RotationTransitionTrace:
+    return RotationTransitionTrace(
+        name=result.name,
+        outcome=result.outcome.value,
+        attempt_count=result.attempt_count,
+        grace_wait_count=result.grace_wait_count,
+    )
 
 
 def _is_clean_base(snapshot: RuntimeSnapshot, base: str) -> bool:
@@ -384,5 +457,6 @@ __all__ = (
     "RotationOutcome",
     "RotationResult",
     "RotationStrategy",
+    "RotationTransitionTrace",
     "StandardRotation",
 )

@@ -324,6 +324,17 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
         ConfirmCharacterSelection(),
     ]
     assert events.events == []
+    assert [trace.name for trace in result.transitions] == [
+        "rotation.open_quick_menu",
+        "rotation.open_character_select",
+        "rotation.confirm_character_selection",
+    ]
+    assert all(
+        trace.outcome == "success_first_attempt"
+        and trace.attempt_count == 1
+        and trace.grace_wait_count == 0
+        for trace in result.transitions
+    )
     assert observer.wait_calls == [
         (1, 0.0),
         (2, 1.0),
@@ -335,16 +346,22 @@ def test_advance_accepts_unknown_plus_quick_menu_and_changes_once():
 
 
 def test_unknown_startup_frame_waits_for_fresh_lobby_before_input():
-    timeout = RuntimeWaitTimeout(
+    normal_timeout = RuntimeWaitTimeout(
         after_sequence=2,
         timeout=6.0,
         last_snapshot=_snapshot(3, base=SCREEN_LOBBY),
     )
+    grace_timeout = RuntimeWaitTimeout(
+        after_sequence=3,
+        timeout=2.0,
+        last_snapshot=_snapshot(4, base=SCREEN_LOBBY),
+    )
     rotation, actions, events, observer = _rotation(
-        [_snapshot(1)],
+        [_snapshot(1), _snapshot(5, base="screen.other")],
         [
             _snapshot(2, base=SCREEN_LOBBY),
-            timeout,
+            normal_timeout,
+            grace_timeout,
         ],
     )
 
@@ -352,8 +369,9 @@ def test_unknown_startup_frame_waits_for_fresh_lobby_before_input():
 
     assert result.outcome is RotationOutcome.ABORTED
     assert result.error.startswith("quick_menu_navigation_failed")
+    assert "retry_guard_rejected" in result.error
     assert actions.actions == [OpenQuickMenu()]
-    assert observer.wait_calls == [(1, 0.25), (2, 0.0)]
+    assert observer.wait_calls == [(1, 0.25), (2, 0.0), (3, 0.0)]
     assert events.events == ["rotation.standard.unexpected_state"]
 
 
@@ -536,33 +554,54 @@ def test_scroll_limit_aborts_before_character_selection():
     assert events.events == ["rotation.standard.unexpected_state"]
 
 
-def test_quick_menu_timeout_aborts_without_more_input():
-    timeout = RuntimeWaitTimeout(
-        after_sequence=1,
-        timeout=6.0,
-        last_snapshot=_snapshot(2, base=SCREEN_LOBBY),
-    )
+def test_quick_menu_safe_retry_is_bounded_to_configured_attempts():
     rotation, actions, events, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)], [timeout]
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(4, base=SCREEN_LOBBY),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+        [
+            RuntimeWaitTimeout(
+                after_sequence=1,
+                timeout=6.0,
+                last_snapshot=_snapshot(2, base=SCREEN_LOBBY),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=2,
+                timeout=2.0,
+                last_snapshot=_snapshot(3, base=SCREEN_LOBBY),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=6.0,
+                last_snapshot=_snapshot(5, base=SCREEN_LOBBY),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=5,
+                timeout=2.0,
+                last_snapshot=_snapshot(6, base=SCREEN_LOBBY),
+            ),
+        ],
     )
 
     result = rotation.advance()
 
     assert result.outcome is RotationOutcome.ABORTED
     assert result.error.startswith("quick_menu_navigation_failed")
-    assert actions.actions == [OpenQuickMenu()]
+    assert "attempts_exhausted" in result.error
+    assert actions.actions == [OpenQuickMenu(), OpenQuickMenu()]
+    assert result.transitions[0].attempt_count == 2
     assert events.events == ["rotation.standard.unexpected_state"]
 
 
-def test_fresh_lobby_is_required_after_confirming_selection():
+def test_confirm_character_selection_retries_from_fresh_character_select():
     grid = _frame(grid_fill=80)
-    timeout = RuntimeWaitTimeout(
-        after_sequence=6,
-        timeout=6.0,
-        last_snapshot=_snapshot(7, base=SCREEN_CHARACTER_SELECT, image=grid),
-    )
     rotation, actions, events, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(9, base=SCREEN_CHARACTER_SELECT, image=grid),
+        ],
         [
             _snapshot(2, overlays={MENU_QUICK}),
             _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
@@ -571,16 +610,35 @@ def test_fresh_lobby_is_required_after_confirming_selection():
                 _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
             ],
             _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
-            timeout,
+            RuntimeWaitTimeout(
+                after_sequence=6,
+                timeout=6.0,
+                last_snapshot=_snapshot(
+                    7, base=SCREEN_CHARACTER_SELECT, image=grid
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=7,
+                timeout=2.0,
+                last_snapshot=_snapshot(
+                    8, base=SCREEN_CHARACTER_SELECT, image=grid
+                ),
+            ),
+            _snapshot(10, base=SCREEN_LOBBY),
         ],
     )
 
     result = rotation.advance()
 
-    assert result.outcome is RotationOutcome.ABORTED
-    assert result.error.startswith("return_to_lobby_failed")
-    assert actions.actions[-1] == ConfirmCharacterSelection()
-    assert events.events == ["rotation.standard.unexpected_state"]
+    assert result.outcome is RotationOutcome.SUCCESS
+    assert actions.actions[-2:] == [
+        ConfirmCharacterSelection(),
+        ConfirmCharacterSelection(),
+    ]
+    assert result.transitions[-1].outcome == "success_after_retry"
+    assert result.transitions[-1].attempt_count == 2
+    assert result.transitions[-1].grace_wait_count == 1
+    assert events.events == []
 
 
 def test_rotation_module_never_imports_or_calls_adb_directly():

@@ -78,9 +78,13 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 El algoritmo reusable vive en `bot/observed_scroll.py`: compone `RuntimeObserver + ActionExecutor`, separa A/T/B frescos, clasifica `progress / edge_candidate / ineffective` y devuelve edge, gesto inefectivo, límite, timeout o fallo explícitos. `StandardRotation` delega esta operación y no selecciona sin `edge_reached`. `bot/character_select_scroll.py` conserva únicamente el perfil del menú: ROI `(0.49, 0.19, 0.85, 0.805)`, thresholds de movimiento/settled `0,05`, settle `1,0 s` y policy de hasta tres intentos. Un gesto inefectivo aborta; el tercero sólo se usa si el segundo todavía demuestra progreso real.
 
+Las transiciones discretas retry-safe de Rotation delegan en `bot/verified_transition.py`: espera nominal `6 s`, gracia `2 s` sin repetir input y hasta dos intentos. El segundo input sólo se permite si una observación fresca sigue inequívocamente en la precondición declarada; las acciones verify-only pueden omitir el guard y nunca se repiten. Abrir Quick Menu, abrir Character Select y confirmar Select usan esta operación. `ActionExecutor` continúa limitado a input físico.
+
+La validación live posterior completó 3/3 `advance()` supervisados: scroll 1+1, tarjeta final correcta y Lobby fresco. Las nueve transiciones discretas terminaron en el primer intento, sin grace ni retry real; las rutas delayed/retry permanecen cubiertas por tests hardware-free.
+
 La última posición es la primera columna de la última fila visible, regla confirmada en el layout de tres columnas con el slot `+` inmediatamente después. El target es normalizado y no depende de `character_count`.
 
-La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)` en `188 ms`. El perfil ADB derivado usa progreso `(0.80, 0.80) → (0.80, 0.025)` en `190 ms` y confirmación controlada `(0.68, 0.76) → (0.68, 0.24)` en `200 ms`. En 5/5 entradas independientes produjo `progress → edge_candidate`, confirmó Lobby fresco tras cada una y no necesitó tercer gesto; el movimiento de progreso fue `0,16848–0,17678`, el bounce transitorio `0,14212–0,14684` y su settled `0,01232–0,03733`. ROI y thresholds permanecieron sin cambios. Después del refactor, tres `advance()` supervisados repitieron 2/2 gestos, seleccionaron la última tarjeta y regresaron a Lobby. No se ejecutó el loop de 28.
+La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)` en `188 ms`. El perfil ADB derivado usa progreso `(0.80, 0.80) → (0.80, 0.025)` en `190 ms` y confirmación controlada `(0.68, 0.76) → (0.68, 0.24)` en `200 ms`. En 5/5 entradas independientes produjo `progress → edge_candidate`; ROI y thresholds permanecieron sin cambios. Un smoke completo posterior llegó a 14/28 y se detuvo correctamente en la iteración 15: el scroll y la selección de tarjeta fueron correctos, pero el único tap de Select no produjo transición. El ciclo 28/28 permanece pausado hasta validar live la nueva transición verificada.
 
 ## Decisiones funcionales cerradas
 
@@ -97,7 +101,7 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Limitaciones y deferred
 
-- El primitive `StandardRotation.advance()` está endurecido y validado en tres cambios aislados; la rotación completa de 28 personajes, el retorno final al inicial sin repetir flows, `SessionPlan` y `SessionRunner` siguen pendientes.
+- El primitive `StandardRotation.advance()` está endurecido; el smoke 28/28 está temporalmente pausado tras un tap Select no registrado en la iteración 15. La rotación completa, el retorno final al inicial, `SessionPlan` y `SessionRunner` siguen pendientes.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
 - Battle Mode Select requiere evidencia más diversa o una señal con mejor separación.
@@ -107,4 +111,4 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Próximo trabajo
 
-En una tarea posterior, retomar el smoke aislado de 28 cambios sobre el primitive endurecido y validar el retorno humano al personaje inicial. Esto no implica que el runtime productivo hará 28 cambios seguidos. `SessionPlan / SessionRunner` permanece posterior y fuera del primitive.
+Validar primero `VerifiedTransition` con pocos advances supervisados. Luego retomar el smoke aislado de 28 cambios y validar humanamente el retorno al personaje inicial. Esto no implica que el runtime productivo hará 28 cambios seguidos; un futuro `SessionRunner` intercalará flows con `RotationStrategy.advance()`.

@@ -24,12 +24,14 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Navegar un cambio Quick Menu → Character Select → scroll al final → última posición → Lobby.
 - [x] Endurecer bottom con frames A/T/B, movimiento efectivo y bounce validado sobre ROI de la grilla.
 - [x] Extraer A/T/B y scroll-to-edge a una primitive transversal reusable sobre `RuntimeObserver + ActionExecutor`.
+- [x] Incorporar transición discreta verificada con grace sin input y retry protegido por estado.
 - [x] Calibrar thresholds y gesto en 5/5 entradas scroll-only, sin seleccionar personajes.
 - [x] Validar el perfil 1+1 y reservar un tercer swipe sólo cuando el segundo todavía muestre progreso.
 - [x] Validar tres `advance()` supervisados con bottom confirmado antes de seleccionar y retorno a Lobby.
 - [x] Aprovechar el orden MRU sin identificar personajes y sin lógica especial MAIN/SUBS.
 - [x] Validar hardware-free primero y mantener todo smoke físico explícitamente opt-in.
-- [ ] Completar el loop de 28 y el regreso final al personaje inicial sin repetir flows sobre éste.
+- [x] Validar live la transición discreta en 3 advances supervisados, sin regresión de scroll ni navegación.
+- [ ] Retomar el loop de 28, pausado en 14/28 por un tap Select no registrado, y validar el regreso final al personaje inicial sin repetir flows sobre éste.
 
 ### Composición mínima de sesión
 

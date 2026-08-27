@@ -108,6 +108,8 @@ Las esperas son bounded, rechazan sequences stale posteriores a una acción y pu
 
 `bot/character_select_scroll.py` sólo aporta el perfil específico de Character Select: ROI, thresholds, gestos de progreso/confirmación, settle y policy bounded. `StandardRotation` navega, delega `scroll_to_edge` y sólo selecciona si el resultado confirma edge; no contiene medición A/T/B ni detección de bounce.
 
+`bot/verified_transition.py` verifica acciones discretas contra una postcondición: input, espera nominal, ventana de gracia sin input y, sólo cuando el consumidor aporta un guard que acepta el estado fresco actual, retry bounded. Distingue éxito inicial, retrasado o posterior a retry, rechazo del guard, agotamiento, estado inesperado, timeout y fallo. No implementa recovery ni decide qué estados son seguros; Rotation o el Flow aportan precondición, postcondición y `retryable_from`.
+
 ## Flows
 
 Los flows contienen intención y reglas de negocio deterministas. Declaran scope, prerequisites y outcomes; reaccionan a `RuntimeSnapshot` y emiten semantic actions.
@@ -122,7 +124,7 @@ Los intents modelan acciones del dominio y primitives físicas tipadas. El slice
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
 
-El boundary de scroll queda: `Rotation / Flow → ObservedScroll → ActionExecutor → Swipe genérico → AdbClient`.
+El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas | ObservedScroll para operaciones continuas} → RuntimeObserver + ActionExecutor → AdbClient`. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery y SessionRunner permanecen en capas futuras de mayor nivel.
 
 ## Device / ADB
 
