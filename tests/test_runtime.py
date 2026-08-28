@@ -6,7 +6,9 @@ from unittest.mock import Mock
 
 from bot.adb import AdbClient
 from bot.config import RuntimeConfig
-from bot.runtime import build_adb_client, build_frame_source
+from bot.ocr import OcrResult
+from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
+from bot.runtime_observer import RuntimeObserver
 
 
 def runtime_config():
@@ -64,6 +66,24 @@ def test_build_frame_source_accepts_explicit_stream_quality_limits():
     assert source.max_fps == 30
 
 
+def test_build_runtime_fact_reader_hides_roi_ocr_and_parser_from_consumer():
+    observer = Mock(spec=RuntimeObserver)
+    engine = Mock()
+    engine.recognize.return_value = OcrResult("5", 1.0)
+
+    reader = build_runtime_fact_reader(observer, ocr_engine=engine)
+
+    assert reader.fact_names == (
+        "battle.timer_remaining",
+        "resource.sapphires",
+    )
+    assert not hasattr(reader, "region")
+    assert not hasattr(reader, "parser")
+    assert all(
+        extractor.engine is engine for extractor in reader._extractors.values()
+    )
+
+
 def test_runtime_and_tools_import_without_external_side_effects(tmp_path):
     repository_root = Path(__file__).resolve().parents[1]
     environment = os.environ.copy()
@@ -79,6 +99,7 @@ def test_runtime_and_tools_import_without_external_side_effects(tmp_path):
                 "import bot.runtime; import bot.screen; "
                 "import tools.smoke_capture; import tools.screencap_batch; "
                 "import tools.asset_capture; "
+                "import tools.ocr_fact_live_validation; "
                 "import tools.smoke_black_market_single_character"
             ),
         ],

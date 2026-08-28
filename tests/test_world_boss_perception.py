@@ -113,7 +113,7 @@ def test_world_boss_landmarks_have_no_cross_context_emissions(evaluated_entries)
     assert actual_counts == expected_counts
 
 
-def test_manifest_keeps_future_fact_rois_without_implementing_ocr():
+def test_manifest_keeps_source_rois_for_productive_and_future_facts():
     payload = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     rois = payload["curation"]["candidate_rois"]
     evidence = payload["curation"]["candidate_roi_evidence"]

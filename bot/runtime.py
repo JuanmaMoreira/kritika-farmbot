@@ -5,6 +5,10 @@ from __future__ import annotations
 from bot.adb import AdbClient
 from bot.capture import ScrcpyFrameSource
 from bot.config import RuntimeConfig
+from bot.fact_reader import RuntimeFactReader
+from bot.ocr import OcrEngine, RapidOcrEngine
+from bot.ocr_extractors import build_sapphires_extractor, build_timer_extractor
+from bot.runtime_observer import RuntimeObserver
 
 
 def build_adb_client(config: RuntimeConfig) -> AdbClient:
@@ -28,4 +32,21 @@ def build_frame_source(
         scrcpy_server_path=config.scrcpy_server_path,
         video_bit_rate=video_bit_rate,
         max_fps=max_fps,
+    )
+
+
+def build_runtime_fact_reader(
+    observer: RuntimeObserver,
+    *,
+    ocr_engine: OcrEngine | None = None,
+) -> RuntimeFactReader:
+    """Compose the two productive OCR facts over one shared OCR engine."""
+
+    engine = ocr_engine if ocr_engine is not None else RapidOcrEngine()
+    return RuntimeFactReader(
+        observer,
+        (
+            build_sapphires_extractor(engine),
+            build_timer_extractor(engine),
+        ),
     )

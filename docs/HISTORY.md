@@ -102,7 +102,17 @@ Se curaron 44 frames: 6 Battle Mode, 4 Select Boss, 5 Previous Rewards, 8 World 
 
 Quick Menu abrió y cerró desde World Boss con el target común `(0.1940, 0.0564)`, restaurando la base; el mismo target fue revalidado sobre Lobby antes de ampliar `quick_menu_accessible`. El manifest específico conserva `UNKNOWN + menu.quick` mientras el panel tapa la base, sin inventarla.
 
-La batalla se observó con varios valores del timer y se capturaron secuencias explícitas Auto OFF/ON. En la ROI del control, OFF obtuvo diferencia absoluta consecutiva media `1,672837` y desviación estándar media `6,429503`; ON obtuvo `11,612882` y `38,287155`. Auto quedó restaurado ON. Esto es evidencia candidate, no detector productivo. Los manifests también preservan ROIs normalizados para sapphires, costo, rank/participation, Start, Auto Repeat, Auto Battle, timer y taps seguros. No se implementaron OCR, parsers, acciones World Boss, Auto Repeat, `WorldBossFlow`, integración de sesión ni ConflictResolver.
+La batalla se observó con varios valores del timer y se capturaron secuencias explícitas Auto OFF/ON. En la ROI del control, OFF obtuvo diferencia absoluta consecutiva media `1,672837` y desviación estándar media `6,429503`; ON obtuvo `11,612882` y `38,287155`. Auto quedó restaurado ON. Esto es evidencia candidate, no detector productivo. Los manifests también preservaron ROIs normalizados para sapphires, costo, rank/participation, Start, Auto Repeat, Auto Battle, timer y taps seguros. En ese checkpoint todavía no se implementaron OCR, parsers, acciones World Boss, Auto Repeat, `WorldBossFlow`, integración de sesión ni ConflictResolver.
+
+## OCR transversal y primeros Runtime Facts
+
+Se eligió RapidOCR 3.9.2 con ONNX Runtime 1.29.0: inferencia CPU completamente local, modelos incluidos en el wheel, soporte Python 3.12 y ninguna instalación binaria externa como Tesseract. El import y la inicialización son lazy. `OcrResult` conserva texto, confidence y metadata; los extractors poseen crop/preprocessing/parser y `RuntimeFactReader` exige frames posteriores a la solicitud, contexto correcto, separación temporal y operación bounded/cancelable.
+
+La primera validación de sapphires expuso un error semántico útil: la ROI candidate `[0.845, 0.59, 0.945, 0.68]` leía `32/32`, pero el usuario identificó ese sprite violeta como melee tickets de Battle. La evidencia fue rechazada para sapphires. El contador azul correcto de Survival quedó en `[0.77, 0.43, 0.855, 0.505]`; tres lecturas live independientes produjeron consensos `247/66 → 247` con confidence `0,999435–0,999545`. Tres frames previos human-confirmed aportaron naturalmente `257/66 → 257`; no se gastaron recursos para fabricar variación.
+
+El timer real usa `M:SS.t`, no sólo `MM:SS`. Cinco lecturas de una misma batalla, confirmadas visualmente por el usuario, dieron raw `0:55.4`, `0:52.0`, `0:50.4`, `0.48.8` y `0:47.3`; el parser toleró la confusión OCR colon/punto y emitió por `ceil` `56, 52, 51, 49, 48` segundos, una secuencia plausible y estrictamente decreciente. Formas ambiguas sin separador se rechazan como unreadable. `datasets/ocr_runtime_facts_evidence_manifest.json` preserva provenance, corrección HIL y limitaciones.
+
+No se implementaron reglas de participación, OCR de costo/rank/nombre, CharacterContextProvider, Auto Battle, `WorldBossFlow`, Auto Repeat, acciones ni integración con `ControlledWait`/`SessionRunner`.
 
 ## Decisiones y alternativas reemplazadas
 

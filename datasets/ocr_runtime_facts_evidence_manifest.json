@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-28",
+    "source": "live_scrcpy",
+    "human_ground_truth": "confirmed_in_chat",
+    "sent_device_input": false,
+    "sapphires_roi": [0.77, 0.43, 0.855, 0.505],
+    "timer_roi": [0.36, 0.12, 0.59, 0.23],
+    "sapphires_semantics": "Survival blue current/max counter; Runtime Fact is the current numerator",
+    "timer_semantics": "Displayed M:SS.t countdown; Runtime Fact is conservative ceil seconds remaining",
+    "rejected_sapphires_candidate": {
+      "roi": [0.845, 0.59, 0.945, 0.68],
+      "reason": "Human review identified 32/32 as Battle violet melee tickets, not sapphires"
+    },
+    "dataset_limitation": "Live sapphires validation covered value 247; prior human-confirmed Lobby evidence naturally contains value 257. No resource was spent to manufacture variation."
+  },
+  "sapphires_live": [
+    {
+      "value": 247,
+      "status": "confirmed",
+      "quality": "consensus",
+      "confidence": 0.999545,
+      "raw_texts": ["247/66", "247/66"],
+      "paths": [
+        "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-3.png",
+        "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-20.png"
+      ],
+      "review_status": "human_confirmed"
+    },
+    {
+      "value": 247,
+      "status": "confirmed",
+      "quality": "consensus",
+      "confidence": 0.99946,
+      "raw_texts": ["247/66", "247/66"],
+      "paths": [
+        "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-56.png",
+        "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-57.png"
+      ],
+      "review_status": "human_confirmed"
+    },
+    {
+      "value": 247,
+      "status": "confirmed",
+      "quality": "consensus",
+      "confidence": 0.999435,
+      "raw_texts": ["247/66", "247/66"],
+      "paths": [
+        "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-76.png",
+        "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-78.png"
+      ],
+      "review_status": "human_confirmed"
+    }
+  ],
+  "sapphires_prior_evidence": [
+    {
+      "value": 257,
+      "raw_text": "257/66",
+      "path": "screencaps/semantic/world_boss/lobby_sapphires/20260827T230726_992936Z_01.png",
+      "review_status": "ocr_verified_prior_human_confirmed_frame"
+    },
+    {
+      "value": 257,
+      "raw_text": "257/66",
+      "path": "screencaps/semantic/world_boss/lobby_sapphires/20260827T230727_505620Z_02.png",
+      "review_status": "ocr_verified_prior_human_confirmed_frame"
+    },
+    {
+      "value": 257,
+      "raw_text": "257/66",
+      "path": "screencaps/semantic/world_boss/lobby_sapphires/20260827T230728_023306Z_03.png",
+      "review_status": "ocr_verified_prior_human_confirmed_frame"
+    }
+  ],
+  "timer_live": [
+    {
+      "raw_text": "0:55.4",
+      "value_seconds": 56,
+      "confidence": 0.99723,
+      "path": "screencaps/semantic/ocr_runtime_facts/timer/20260828T003216_894609Z/sequence-3.png",
+      "review_status": "human_confirmed"
+    },
+    {
+      "raw_text": "0:52.0",
+      "value_seconds": 52,
+      "confidence": 0.92434,
+      "path": "screencaps/semantic/ocr_runtime_facts/timer/20260828T003216_894609Z/sequence-55.png",
+      "review_status": "human_confirmed"
+    },
+    {
+      "raw_text": "0:50.4",
+      "value_seconds": 51,
+      "confidence": 0.92608,
+      "path": "screencaps/semantic/ocr_runtime_facts/timer/20260828T003216_894609Z/sequence-78.png",
+      "review_status": "human_confirmed"
+    },
+    {
+      "raw_text": "0.48.8",
+      "value_seconds": 49,
+      "confidence": 0.97298,
+      "path": "screencaps/semantic/ocr_runtime_facts/timer/20260828T003216_894609Z/sequence-102.png",
+      "review_status": "human_confirmed"
+    },
+    {
+      "raw_text": "0:47.3",
+      "value_seconds": 48,
+      "confidence": 0.97636,
+      "path": "screencaps/semantic/ocr_runtime_facts/timer/20260828T003216_894609Z/sequence-125.png",
+      "review_status": "human_confirmed"
+    }
+  ]
+}

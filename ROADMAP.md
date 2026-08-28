@@ -64,12 +64,12 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Preservar ROIs candidates para facts futuros y evidencia temporal OFF/ON sin implementar OCR, parsers ni detector de Auto Battle.
 - [x] Validar live `screen.world_boss` como `quick_menu_accessible`, abrir/cerrar el overlay y restaurar la base antes de ampliar la policy productiva.
 
-### OCR + Runtime Facts
+### OCR + first Runtime Facts — cerrado
 
-- [ ] Evaluar detector entrenado cuando exista dataset suficiente.
-- [ ] Incorporar OCR para valores dinámicos sólo cuando un flow lo requiera.
-- [ ] Incorporar fallback VLM provider-agnostic sólo para casos no cubiertos y guardar evidencia reutilizable.
-- [ ] Adquirir sapphires desde Lobby y battle timer durante batalla mediante extractors específicos.
+- [x] Implementar `OcrEngine → OcrResult → extractor/parser → RuntimeFact` con RapidOCR/ONNX local, lazy y reusable.
+- [x] Exponer adquisición bounded fresca y context-correct mediante `RuntimeFactReader`, con consenso/retry y outcomes explícitos.
+- [x] Productivizar `resource.sapphires` y `battle.timer_remaining` con evidencia live human-confirmed; corregir mediante HIL el ROI inicial que apuntaba a melee tickets.
+- [ ] Evaluar detector entrenado o fallback VLM provider-agnostic sólo cuando un caso no cubierto y evidencia suficiente lo justifiquen.
 
 ### Auto Battle temporal
 

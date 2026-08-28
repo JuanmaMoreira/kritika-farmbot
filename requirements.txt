@@ -11,3 +11,7 @@ uiautomator2
 
 # Tests automatizados sin hardware
 pytest>=8.0
+
+# OCR local/offline (modelos incluidos en el wheel de RapidOCR)
+rapidocr==3.9.2
+onnxruntime==1.29.0

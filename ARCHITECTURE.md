@@ -14,8 +14,11 @@ Semantic Observations
 ContextResolver
   ↓
 RuntimeSnapshot ──────────────┐
-                              ├→ Flow
-OCR Engine → Extractor/Parser ┘   (Semantic Runtime Facts)
+  ↓                           │
+RuntimeFactReader             │
+  ↓                           │
+ROI / preprocessing → OCR Engine → OcrResult → Parser → RuntimeFact
+                                                      └→ Flow
   ↓
 Semantic Actions
   ↓
@@ -69,7 +72,7 @@ El backend actual usa OpenCV local:
 
 Los detectores productivos cubren Lobby, Character Select, Battle Mode Select, Black Market, World Boss, batalla World Boss, Quick Menu y los overlays Purchase Confirmation, Insufficient Gold, Inventory Full, Select Boss, Previous Rewards y Raid Complete. Inventory Full usa el botón `OK` común con gating explícito de Black Market, no el mensaje variable. Select Boss y Raid Complete usan `overlay.*` porque no son popups convencionales; pueden resolver independientemente de la base. Detectores especializados emiten GOLD y Purchased por slot. La lista y evidencia actual están en `CONTEXT.md`; paths, regiones y anchors son verdad de código/tests.
 
-OCR y VLM deberán implementar el mismo límite de detector. VLM será provider-agnostic y ninguna capa superior dependerá de proveedor, modelo o API concretos.
+OCR usa un boundary transversal separado para facts demand-driven. Un futuro VLM seguirá provider-agnostic y ninguna capa superior dependerá de proveedor, modelo o API concretos.
 
 ### Observaciones y facts
 
@@ -81,6 +84,7 @@ Hay dos consumos deliberadamente distintos:
 
 - landmarks de pantalla alimentan `ContextResolver`;
 - facts internos como `currency.black_market.gold(slot)` y `status.black_market.purchased(slot)` son consumidos por el flow correspondiente.
+- facts dinámicos demand-driven usan `RuntimeFact(value, confidence, quality, source, context, evidence)` y nunca se mezclan con `CharacterContext`.
 
 Un fact no se convierte en contexto sólo para facilitar navegación.
 
@@ -100,7 +104,7 @@ Los overlays se resuelven independientemente y pueden coexistir con cualquier es
 
 `RuntimeObserver` une captura, Perception y Resolver sin mezclarlos. Cada `RuntimeSnapshot` conserva el `FrameSnapshot` BGR y garantiza que observations, estado resuelto, runtime facts y geometría proceden de ese mismo frame. La imagen permite comparaciones visuales acotadas sin saltarse el observer.
 
-Las esperas son bounded, rechazan sequences stale posteriores a una acción y pueden exigir estabilidad continua sobre frames distintos. La estabilidad pertenece a la espera del caso de uso, no introduce estado implícito en `ContextResolver`.
+Las esperas son bounded, cancelables, rechazan sequences stale posteriores a una solicitud o acción y pueden exigir estabilidad continua sobre frames distintos. La estabilidad pertenece a la espera del caso de uso, no introduce estado implícito en `ContextResolver`.
 
 Todo efecto de una acción que tenga una postcondición observable fiable se verifica antes de continuar, incluso cuando la pantalla no cambia. Una interacción observada/verificada combina `RuntimeObserver + ActionExecutor`; el Flow o Rotation declara el efecto requerido y los guards, pero no implementa retries físicos manuales. Si no existe una señal robusta, la acción permanece explícitamente no verificable y usa policy conservadora: no se inventan postcondiciones débiles.
 
@@ -190,7 +194,9 @@ OCR / Perception extractors
 
 `CharacterContext` contiene identidad y metadata relativamente estable durante el personaje (`name`, `name_confidence`). Un futuro provider podrá adquirirla una vez desde Lobby para compartirla con flows y logging; en este checkpoint permanece `name=None`.
 
-Los datos dinámicos —sapphires, stamina, recursos, battle timer o rank— son Runtime Facts y se adquieren cuando el contexto o flow los necesita. El boundary es `Frame / RuntimeObserver → OCR Engine → extractor/parser específico → Semantic Runtime Fact → Flow / CharacterContextProvider / logging`. Los flows no recortan screenshots, llaman librerías OCR ni parsean píxeles. El motor tampoco decide si un fact es informativo o decisional: esa importancia pertenece al consumidor. No existe motor OCR productivo ni dependencia nueva en este checkpoint.
+Los datos dinámicos —sapphires, stamina, recursos, battle timer o rank— son Runtime Facts y se adquieren cuando el contexto o flow los necesita. `RuntimeFactReader` registra extractors y expone `read_fact()` más helpers tipados; exige frames posteriores a la solicitud y el contexto resuelto requerido. Cada extractor posee ROI, preprocessing, parser y policy bounded, mientras `RapidOcrEngine` sólo transforma una imagen preparada en `OcrResult(text, confidence, metadata)` mediante modelos ONNX locales. Los flows no recortan screenshots, llaman OCR ni parsean strings.
+
+Los facts productivos iniciales son `resource.sapphires` en `screen.lobby` y `battle.timer_remaining` en `screen.world_boss_battle`. Sapphires usa consenso exacto de dos observaciones independientes dentro de tres intentos; discrepancia, unreadable, cambio de contexto, timeout, cancelación y fallo son outcomes distintos. El timer es dinámico y por eso confirma una observación sintácticamente válida, conservando el raw y convirtiendo `M:SS.t` a segundos restantes con `ceil`. Confidence combina score OCR, validez de parser, contexto correcto y soporte del consenso. La importancia decisional sigue perteneciendo al consumidor.
 
 El slice semántico World Boss ya distingue `screen.battle_mode_select`, `overlay.world_boss_select_boss`, `popup.world_boss_previous_rewards`, `screen.world_boss`, `screen.world_boss_battle` y `overlay.world_boss_raid_complete`. Sólo son percepción estructural: no contienen navegación ni policy de gameplay. Sapphires será inicialmente decisional y rank/participation informativo. La policy extensible partirá de `ALWAYS_PARTICIPATE`: si el futuro flow fue invocado y sapphires alcanza el costo, participa una vez aunque exista ranking; `ONLY_IF_NOT_PARTICIPATED` podrá usar esos facts después. La batalla esperada será `Auto Battle verificado ON → timer inicial como pista/deadline → ControlledWait → Raid Complete visual`. La evidencia temporal actual separa el glow ON/OFF, pero todavía no implementa el detector multiframe `ON/OFF/UNKNOWN`. Auto Repeat tiene menús y modos propios, no es una primitive transversal y el World Boss inicial no lo usará.
 

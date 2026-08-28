@@ -120,6 +120,10 @@ class RuntimeWaitAborted(RuntimeError):
         )
 
 
+class RuntimeWaitCancelled(RuntimeError):
+    """A bounded runtime wait observed an explicit cancellation request."""
+
+
 class RuntimeObserver:
     """Analyze current frames and provide bounded waits that reject stale identity."""
 
@@ -167,6 +171,7 @@ class RuntimeObserver:
         after_sequence: int,
         timeout: float,
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
+        cancel_requested: Callable[[], bool] | None = None,
         stable_for: float = 0.0,
     ) -> RuntimeSnapshot:
         """Wait for a condition only on sequences newer than an action baseline.
@@ -180,6 +185,8 @@ class RuntimeObserver:
             raise ValueError("condition must be callable")
         if abort_if is not None and not callable(abort_if):
             raise ValueError("abort_if must be callable")
+        if cancel_requested is not None and not callable(cancel_requested):
+            raise ValueError("cancel_requested must be callable")
         after = _sequence(after_sequence)
         duration = _positive_duration(timeout, "timeout")
         stability = _non_negative_duration(stable_for, "stable_for")
@@ -189,6 +196,8 @@ class RuntimeObserver:
         last_evaluated_sequence: int | None = None
 
         while True:
+            if cancel_requested is not None and cancel_requested():
+                raise RuntimeWaitCancelled("runtime wait cancelled")
             snapshot = self.observe()
             if snapshot.sequence > after and (
                 last_evaluated_sequence is None
@@ -268,5 +277,6 @@ __all__ = (
     "RuntimeObserver",
     "RuntimeSnapshot",
     "RuntimeWaitAborted",
+    "RuntimeWaitCancelled",
     "RuntimeWaitTimeout",
 )

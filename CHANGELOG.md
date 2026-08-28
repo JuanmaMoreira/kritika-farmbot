@@ -25,6 +25,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se completó la Fase 3H.3 revalidando `menu.quick` live y promoviendo la policy mínima de Black Market `BUY iff currency == GOLD`: detector GOLD por 10 slots con 24/24 TP, cero FP/FN y cero FP sobre KARATS, más `popup.insufficient_gold` como overlay human-confirmed con retorno seguro a Black Market mediante No. No se implementó el flow ni se añadió OCR.
 - Se completó el primer vertical slice de Fase 4: `BlackMarketFlow` single-character con acciones semánticas, waits frescos bounded, facts GOLD/Purchased, logging y abort policy. Los smokes live verificaron tres compras GOLD, ninguna interacción KARATS y el ciclo `Lobby → Black Market → Lobby`; Rotation, SessionRunner, OCR y VLM permanecen diferidos.
 - Se cerró el slice semántico/perceptivo de World Boss con seis contextos human-confirmed, seis landmarks current-season, 44/44 resoluciones del slice y regresión productiva conjunta 146/146 sin FP/FN ni ambigüedades. `screen.world_boss` quedó validado para Quick Menu; se preservaron ROIs y evidencia Auto OFF/ON sin implementar OCR, detector temporal, acciones ni flow.
+- Se incorporó OCR transversal local con RapidOCR/ONNX, `OcrResult`, extractors/preprocessing separados y `RuntimeFactReader` fresco/context-correct. Los primeros facts productivos son sapphires de Survival con consenso y battle timer semántico en segundos; ambos quedaron validados live sin implementar `WorldBossFlow` ni Auto Battle.
 
 ### Changed
 

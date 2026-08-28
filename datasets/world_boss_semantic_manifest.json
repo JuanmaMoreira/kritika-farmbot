@@ -11,7 +11,7 @@
       "overlay.world_boss_raid_complete": "result overlay over the battle HUD; tap restores screen.world_boss"
     },
     "candidate_rois": {
-      "lobby_sapphires": [0.845, 0.59, 0.945, 0.68],
+      "lobby_sapphires": [0.77, 0.43, 0.855, 0.505],
       "battle_mode_world_boss_total_rank": [0.275, 0.515, 0.375, 0.61],
       "world_boss_my_rank": [0.12, 0.56, 0.37, 0.67],
       "world_boss_sapphires_cost": [0.49, 0.78, 0.56, 0.86],

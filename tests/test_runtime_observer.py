@@ -11,6 +11,7 @@ from bot.resolver import ContextResolver
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeWaitAborted,
+    RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
 
@@ -153,6 +154,18 @@ def test_wait_until_can_require_condition_stability_across_fresh_frames():
     )
 
     assert snapshot.sequence == 4
+
+
+def test_wait_until_can_be_cancelled_before_observing_another_frame():
+    observer = _observer([1])
+
+    with pytest.raises(RuntimeWaitCancelled):
+        observer.wait_until(
+            lambda item: True,
+            after_sequence=0,
+            timeout=1.0,
+            cancel_requested=lambda: True,
+        )
 
 
 def test_wait_until_stability_resets_when_condition_becomes_false():

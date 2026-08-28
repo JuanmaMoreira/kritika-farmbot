@@ -2,7 +2,7 @@
 
 **Estado:** rediseño híbrido 0.2; composición `BlackMarketFlow + rotation.standard` validada live en una sesión productiva completa 28/28.
 **Unidad funcional vigente:** `SessionRunner` ejecuta flows `PER_CHARACTER` en orden y hace exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 671/671 tests hardware-free verdes; hardening Black Market/Rotation y slice perceptivo World Boss validados.
+**Baseline conocido:** 720/720 tests hardware-free verdes en el checkpoint OCR; hardening Black Market/Rotation, slice perceptivo World Boss y primeros Runtime Facts validados.
 **Checkpoint operativo:** `SessionResult.COMPLETED`, 28/28 flows, 28/28 advances, Lobby final y retorno al personaje inicial confirmados humanamente.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
@@ -15,6 +15,7 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - `PerceptionEngine` ejecuta detectores locales precargados y produce `ObservationBatch` del mismo frame.
 - `ContextResolver` transforma observaciones en `ResolvedState` determinista (`RESOLVED`, `UNKNOWN` o `AMBIGUOUS`) y resuelve overlays independientemente.
 - `RuntimeObserver` produce `RuntimeSnapshot` coherentes con frame BGR, observations, estado, facts y geometría del mismo frame; sus esperas exigen frames frescos y tienen timeout.
+- `RapidOcrEngine` usa modelos ONNX locales detrás de `OcrResult`; `RuntimeFactReader` oculta ROI, preprocessing, OCR y parsers a consumidores y devuelve outcomes bounded explícitos.
 - Los intents semánticos tipados separan negocio de coordenadas.
 - `ActionExecutor` traduce esos intents a taps ADB normalizados contra `frame.shape`; no decide gameplay.
 - `BlackMarketFlow` es un flow 0.2 `PER_CHARACTER` implementado y separado del runtime legacy.
@@ -59,7 +60,7 @@ Estado de evidencia vigente:
 - World Boss: 44 frames human-confirmed cubren 6 Battle Mode Select, 4 Select Boss, 5 Previous Rewards, 8 World Boss, 13 batalla y 8 Raid Complete. Sus seis detectores cerraron con 0 FP/FN; gaps raw respectivos `0,272674`, `0,709750`, `0,628603`, `0,388257`, `0,357196` y `0,564908`.
 - La regresión productiva conjunta produjo 146/146 estados esperados sin errores ni `AMBIGUOUS`; la validación live confirmó además compras, `Purchased`, Inventory Full y retornos frescos.
 
-Las calibraciones exactas, manifests y antecedentes de repair están en código/tests, datasets versionados y [`docs/HISTORY.md`](docs/HISTORY.md). Los valores dinámicos de World Boss permanecen sólo como ROIs candidates: no hay OCR ni Runtime Facts productivos.
+Las calibraciones exactas, manifests y antecedentes de repair están en código/tests, datasets versionados y [`docs/HISTORY.md`](docs/HISTORY.md). `resource.sapphires` y `battle.timer_remaining` son los primeros Runtime Facts OCR productivos; costo, rank/participation y Auto Battle permanecen deferred.
 
 ## Perception Workbench
 
@@ -94,9 +95,9 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 `bot/session.py` ejecuta los flows en orden, pide a `MinimalPreconditionEnsurer` sólo la precondición del próximo componente y no normaliza todo a Lobby. Un requisito satisfecho no navega; la capability Quick Menu tampoco fuerza Lobby. La única normalización prevista es requisito exacto Lobby desde un contexto Quick Menu-capable, mediante un callback que debe usar navegación verificada. El allow-list incluye ahora Lobby y World Boss, pero este slice sólo validó apertura/cierre y restauración de Quick Menu: no integró ni ejecutó normalización de sesión desde World Boss. Después de cada componente se verifica una salida permitida. El runner hace un advance y repite exactamente `character_count` veces; el último retorno al personaje inicial no lo reprocesa. Fallos de flow, normalización, postcondición o Rotation preservan progreso parcial y abortan conservadoramente; la cancelación se consulta sólo entre componentes seguros y produce `CANCELLED`.
 
-Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `CharacterContext(name=None, name_confidence=None)`, resultados de flows y resultado de advance. El índice no es identidad. No existe OCR ni provider productivo: un futuro provider opcional podrá enriquecer una vez por personaje el contexto desde Lobby sin hacer fatal la identidad usada sólo para observabilidad.
+Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `CharacterContext(name=None, name_confidence=None)`, resultados de flows y resultado de advance. El índice no es identidad. No existe `CharacterContextProvider` productivo ni OCR de nombre: un futuro provider opcional podrá reutilizar el engine transversal para enriquecer una vez por personaje el contexto desde Lobby sin hacer fatal la identidad usada sólo para observabilidad.
 
-`CharacterContext` contiene identidad o metadata estable. Stamina, recursos y otros datos cambiantes son Runtime Facts que un flow solicitará cuando los necesite; no pertenecen al contexto estable. No hay OCR productivo: el boundary futuro queda `RuntimeObserver/Frame → OCR Engine → extractor/parser → Semantic Runtime Fact`, y los flows no procesarán píxeles ni invocarán el engine directamente.
+`CharacterContext` contiene identidad o metadata estable. Stamina, recursos y otros datos cambiantes son Runtime Facts que un flow solicita cuando los necesita; no pertenecen al contexto estable. El boundary productivo queda `RuntimeObserver/Frame → extractor con ROI/preprocessing → OCR Engine/OcrResult → parser → RuntimeFactReader → consumidor`, y los flows no procesan píxeles ni invocan el engine directamente.
 
 `bot/controlled_wait.py` implementa espera de actividad larga con duración o deadline monotónico, polling configurable, condición opcional, cancelación y outcomes `completed/cancelled/timeout/failed`. No depende de `ActionExecutor` ni cubre scheduling de horas.
 
@@ -146,14 +147,14 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 - `StandardRotation` aislado y la composición completa están cerrados con ciclos live 28/28 y retorno al inicial confirmado desde Lobby. World Boss sólo recibió el smoke específico de Quick Menu requerido; no se ejecutó un `advance()` completo desde esa base.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
-- OCR y VLM no están implementados; VLM seguirá provider-agnostic si un caso funcional lo requiere.
+- VLM no está implementado; seguirá provider-agnostic si un caso funcional lo requiere.
 - `inventory_kind` e identidad de personaje permanecen desconocidos; liberar, vender o mover inventario pertenece a futuros flows especializados.
 - Auto Battle sólo conserva evidencia temporal OFF/ON y métricas de movimiento; todavía no existe detector productivo `ON/OFF/UNKNOWN`.
-- No existen `WorldBossFlow`, OCR/parsers, acciones específicas de World Boss, Auto Repeat ni integración del slice en `SessionRunner`.
+- No existen `WorldBossFlow`, OCR de costo/rank/nombre, acciones específicas de World Boss, Auto Repeat ni integración del slice en `SessionRunner`.
 - `landmark.lobby_commerce_pair` permanece como alternativa offline, no detector productivo.
 - `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` legacy conservan imports retirados y no son runtime activo.
 - `bot/constants.py` es conocimiento legacy; `bot/ads_manager.py` permanece standalone mediante UIAutomator2.
 
 ## Próximo trabajo
 
-Implementar OCR + Runtime Facts para sapphires, costo, rank/participation y timer sólo a partir de los ROIs candidates preservados. Después: detector temporal productivo de Auto Battle y `WorldBossFlow`. ConflictResolver, retries escalonados, Auto Repeat y scheduler permanecen deferred.
+Implementar el detector temporal productivo de Auto Battle. Después: `WorldBossFlow + ControlledWait`. Costo, rank/participation, nombre, ConflictResolver, retries escalonados, Auto Repeat y scheduler permanecen deferred.
