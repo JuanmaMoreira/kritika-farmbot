@@ -19,6 +19,7 @@ from bot.semantic_actions import (
     CloseBlackMarket,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
+    DismissWorldBossBagFull,
     OpenBlackMarket,
     OpenBattleModeSelect,
     OpenCharacterSelect,
@@ -145,6 +146,7 @@ class BattleActionTargets:
     toggle_auto_battle: RelativePoint = (0.8625, 0.0480)
     continue_after_raid: RelativePoint = (0.5000, 0.9100)
     reject_world_boss_inventory_full: RelativePoint = (0.5690, 0.6307)
+    dismiss_world_boss_bag_full: RelativePoint = (0.6700, 0.3100)
 
     def __post_init__(self) -> None:
         for point in (
@@ -156,6 +158,7 @@ class BattleActionTargets:
             self.toggle_auto_battle,
             self.continue_after_raid,
             self.reject_world_boss_inventory_full,
+            self.dismiss_world_boss_bag_full,
         ):
             relative_point_to_pixel(point, 1, 1)
 
@@ -267,6 +270,8 @@ class ActionExecutor:
             return self.battle_targets.continue_after_raid
         if isinstance(action, RejectWorldBossInventoryFull):
             return self.battle_targets.reject_world_boss_inventory_full
+        if isinstance(action, DismissWorldBossBagFull):
+            return self.battle_targets.dismiss_world_boss_bag_full
         raise ValueError("unsupported semantic action")
 
     def _execute_swipe(

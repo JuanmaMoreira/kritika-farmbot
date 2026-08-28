@@ -18,6 +18,7 @@ from bot.perception.specs import (
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
+    WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
     WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
@@ -178,6 +179,13 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9941959977149963)
     )
+    assert WORLD_BOSS_BAG_FULL_PROMPT_SPEC.region == (0.28, 0.32, 0.72, 0.62)
+    assert WORLD_BOSS_BAG_FULL_PROMPT_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.34364715218544006)
+    )
+    assert WORLD_BOSS_BAG_FULL_PROMPT_SPEC.calibration.positive_anchor == (
+        pytest.approx(0.9869809746742249)
+    )
     assert WORLD_BOSS_SAPPHIRES_USED_SPEC.region == (0.45, 0.74, 0.64, 0.88)
     assert WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC.region == (
         0.015, 0.22, 0.20, 0.43
@@ -259,6 +267,11 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC,
             (867, 123),
             "06dfb3251fc38c459200c006ee2a02fe55ee2576547c8abee7db3731330b4cc1",
+        ),
+        (
+            WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
+            (755, 170),
+            "c14d92f88f29122a730ea32968d3aa17093fc9bcd20412deb54f4db5c839dd62",
         ),
     ),
 )

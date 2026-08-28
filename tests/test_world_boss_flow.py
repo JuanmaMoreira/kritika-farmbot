@@ -12,6 +12,7 @@ from bot.catalog import (
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
+    POPUP_WORLD_BOSS_BAG_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_WORLD_BOSS_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
@@ -30,6 +31,7 @@ from bot.runtime_facts import (
     RuntimeFact,
 )
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
+from bot.semantic_actions import DismissWorldBossBagFull
 from bot.state import ResolutionStatus, ResolvedState
 from bot.verified_transition import (
     VerifiedTransitionOutcome,
@@ -39,6 +41,7 @@ from bot.world_boss_flow import (
     WORLD_BOSS_INSUFFICIENT_SAPPHIRES,
     WORLD_BOSS_PREVIOUS_REWARDS,
     WORLD_BOSS_INVENTORY_FULL,
+    WORLD_BOSS_BAG_FULL,
     WorldBossFlow,
     WorldBossWaitPolicy,
 )
@@ -423,6 +426,84 @@ def test_inventory_full_after_start_rejects_no_and_completes_for_character():
     assert observer.observes == []
     auto.ensure_on.assert_not_called()
     assert any(name == WORLD_BOSS_INVENTORY_FULL for name, _ in events.records)
+
+
+def test_bag_full_after_start_closes_x_and_completes_for_character():
+    lobby = snapshot(2, base=SCREEN_LOBBY)
+    main = snapshot(6, base=SCREEN_WORLD_BOSS)
+    bag_full = snapshot(
+        7,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_WORLD_BOSS_BAG_FULL,),
+    )
+    returned = snapshot(8, base=SCREEN_WORLD_BOSS)
+    transitions = [
+        snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
+        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(5, base=SCREEN_WORLD_BOSS),
+        bag_full,
+        returned,
+    ]
+    auto = Mock()
+    flow, observer, facts, _, events, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
+        waits=[lobby, main],
+        transitions=transitions,
+        auto=auto,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.bag_full
+    assert result.event_count(WORLD_BOSS_BAG_FULL) == 1
+    assert driver.calls[-1][0] == "world_boss.dismiss_bag_full"
+    assert isinstance(driver.calls[-1][1], DismissWorldBossBagFull)
+    assert all(item[0] != "timer" for item in facts.trace)
+    assert observer.observes == []
+    auto.ensure_on.assert_not_called()
+    assert any(name == WORLD_BOSS_BAG_FULL for name, _ in events.records)
+
+
+def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
+    lobby = snapshot(2, base=SCREEN_LOBBY)
+    main = snapshot(6, base=SCREEN_WORLD_BOSS)
+    bag_full = snapshot(
+        7,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_WORLD_BOSS_BAG_FULL,),
+    )
+    transitions = [
+        snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
+        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(5, base=SCREEN_WORLD_BOSS),
+        bag_full,
+        bag_full,
+    ]
+    outcomes = [
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
+    ]
+    driver = Transitions(transitions, outcomes)
+    events = Events()
+    flow = WorldBossFlow(
+        Observer(waits=[lobby, main]),
+        Mock(),
+        Facts(fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY)),
+        Mock(),
+        events,
+        verified_transition=driver,
+        stable_for=0,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.FAILED
+    assert "world_boss.dismiss_bag_full_failed" in result.error
+    assert not any(name == "world_boss.completed" for name, _ in events.records)
 
 
 @pytest.mark.parametrize(

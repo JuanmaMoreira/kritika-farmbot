@@ -80,8 +80,8 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 - [x] Implementar `WorldBossFlow + ControlledWait` sobre percepción, facts y Auto Battle; Auto Repeat queda fuera del primer slice.
 - [x] Partir de policy `ALWAYS_PARTICIPATE` y reservar `ONLY_IF_NOT_PARTICIPATED` para facts de rank/participation posteriores.
-- [x] Validar live sapphires insuficientes sin input, batalla completa hasta Raid Complete y el cierre conservador `Inventory Full → No → World Boss`.
-- [ ] Diseñar la liberación de inventario y reanudación del mismo personaje; por ahora el evento termina correctamente su flow.
+- [x] Validar live sapphires insuficientes sin input, batalla completa hasta Raid Complete y los cierres conservadores `Inventory Full → No → World Boss` y `Bag Full → X → World Boss`.
+- [ ] Diseñar la liberación de inventario y reanudación del mismo personaje; por ahora ambos eventos terminan correctamente su flow.
 - [x] Componer y validar live 2/2 `WorldBossFlow + rotation.standard` y 2/2 `BlackMarketFlow + WorldBossFlow + rotation.standard`, sin normalizaciones redundantes.
 - [x] Exponer la composición mediante registry explícito, runtime manual compartido, launchers de flow/sesión, cancelación y event stream persistente/debug.
 - [x] Construir la mini GUI Tkinter como frontend fino del registry, runtime worker, cancelación y event stream compartidos.

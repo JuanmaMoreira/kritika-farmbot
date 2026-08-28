@@ -15,6 +15,7 @@ from bot.catalog import (
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
+    LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
     LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
@@ -29,6 +30,7 @@ from bot.catalog import (
     POPUP_PURCHASE_CONFIRMATION,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_WORLD_BOSS_INVENTORY_FULL,
+    POPUP_WORLD_BOSS_BAG_FULL,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
@@ -69,11 +71,10 @@ def test_each_catalog_base_rule_resolves_individually(context_rule):
 def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
     state = build_default_resolver().resolve(batch(*overlay_rule.requires))
 
-    expected_base = (
-        SCREEN_BLACK_MARKET
-        if overlay_rule.name == POPUP_INVENTORY_FULL
-        else None
-    )
+    expected_base = {
+        POPUP_INVENTORY_FULL: SCREEN_BLACK_MARKET,
+        POPUP_WORLD_BOSS_BAG_FULL: SCREEN_WORLD_BOSS,
+    }.get(overlay_rule.name)
     expected_status = (
         ResolutionStatus.RESOLVED
         if expected_base is not None
@@ -198,6 +199,24 @@ def test_world_boss_inventory_full_is_distinct_and_resolves_over_world_boss():
     assert state.overlays == (POPUP_WORLD_BOSS_INVENTORY_FULL,)
 
 
+def test_world_boss_bag_full_requires_world_boss_context_and_resolves_distinctly():
+    resolver = build_default_resolver()
+
+    ungated = resolver.resolve(batch(LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT))
+    gated = resolver.resolve(
+        batch(
+            LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
+            LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
+        )
+    )
+
+    assert ungated.status is ResolutionStatus.UNKNOWN
+    assert ungated.overlays == ()
+    assert gated.status is ResolutionStatus.RESOLVED
+    assert gated.base_context == SCREEN_WORLD_BOSS
+    assert gated.overlays == (POPUP_WORLD_BOSS_BAG_FULL,)
+
+
 def test_catalog_returns_unknown_for_insufficient_evidence():
     state = build_default_resolver().resolve(batch("element.unrelated"))
 
@@ -286,8 +305,8 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
     assert len(BASE_CONTEXT_RULES) == 6
-    assert len(OVERLAY_RULES) == 8
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 14
+    assert len(OVERLAY_RULES) == 9
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 15
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

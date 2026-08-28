@@ -17,6 +17,7 @@ POPUP_INSUFFICIENT_GOLD = "popup.insufficient_gold"
 POPUP_INVENTORY_FULL = "popup.inventory_full"
 POPUP_WORLD_BOSS_PREVIOUS_REWARDS = "popup.world_boss_previous_rewards"
 POPUP_WORLD_BOSS_INVENTORY_FULL = "popup.world_boss_inventory_full"
+POPUP_WORLD_BOSS_BAG_FULL = "popup.world_boss_bag_full"
 OVERLAY_WORLD_BOSS_SELECT_BOSS = "overlay.world_boss_select_boss"
 OVERLAY_WORLD_BOSS_RAID_COMPLETE = "overlay.world_boss_raid_complete"
 MENU_QUICK = "menu.quick"
@@ -43,6 +44,7 @@ LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE = (
 LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT = (
     "landmark.world_boss_inventory_full_prompt"
 )
+LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT = "landmark.world_boss_bag_full_prompt"
 LANDMARK_WORLD_BOSS_SAPPHIRES_USED = "landmark.world_boss_sapphires_used"
 LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE = (
     "landmark.world_boss_battle_current_damage"
@@ -63,6 +65,7 @@ SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
     LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
+    LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
@@ -115,6 +118,14 @@ OVERLAY_RULES = (
     ContextRule(
         name=POPUP_WORLD_BOSS_INVENTORY_FULL,
         requires=(LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_WORLD_BOSS_BAG_FULL,
+        requires=(
+            LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
+            LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
+        ),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(

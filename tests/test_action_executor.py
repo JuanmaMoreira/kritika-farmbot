@@ -17,6 +17,7 @@ from bot.semantic_actions import (
     CloseBlackMarket,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
+    DismissWorldBossBagFull,
     OpenBlackMarket,
     OpenBattleModeSelect,
     OpenCharacterSelect,
@@ -86,6 +87,7 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
         (ToggleAutoBattle(), DEFAULT_BATTLE_ACTION_TARGETS.toggle_auto_battle),
         (ContinueAfterWorldBossRaid(), DEFAULT_BATTLE_ACTION_TARGETS.continue_after_raid),
         (RejectWorldBossInventoryFull(), DEFAULT_BATTLE_ACTION_TARGETS.reject_world_boss_inventory_full),
+        (DismissWorldBossBagFull(), DEFAULT_BATTLE_ACTION_TARGETS.dismiss_world_boss_bag_full),
     ),
 )
 def test_executor_translates_world_boss_route_actions(action, target):

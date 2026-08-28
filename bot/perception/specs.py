@@ -16,6 +16,7 @@ from bot.catalog import (
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
+    LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
     LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
@@ -293,6 +294,22 @@ WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
     ),
 )
 
+# Human-confirmed World Boss Start guard shown when the general bag has no
+# free slots. The literal message separates six live positives from 151
+# reviewed local negatives, including the distinct Yes/No inventory guard.
+# Closing it only dismisses the guard; inventory cleanup remains deferred.
+WORLD_BOSS_BAG_FULL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/world-boss-bag-full-prompt-current.png"
+    ),
+    region=(0.28, 0.32, 0.72, 0.62),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.34364715218544006,
+        positive_anchor=0.9869809746742249,
+    ),
+)
+
 # The fixed cost label is structural World Boss UI. It excludes the rotating
 # boss, current ranking, damage and resource values.
 WORLD_BOSS_SAPPHIRES_USED_SPEC = LocalCvSpec(
@@ -343,6 +360,7 @@ DEFAULT_LOCAL_CV_SPECS = (
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
     WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC,
+    WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
     WORLD_BOSS_SAPPHIRES_USED_SPEC,
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,

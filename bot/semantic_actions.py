@@ -148,6 +148,11 @@ class RejectWorldBossInventoryFull:
     """Request No on the World Boss Start inventory-full guard."""
 
 
+@dataclass(frozen=True)
+class DismissWorldBossBagFull:
+    """Request Close on the World Boss Start bag-full guard."""
+
+
 SemanticAction = (
     OpenBlackMarket
     | CloseBlackMarket
@@ -168,6 +173,7 @@ SemanticAction = (
     | StartWorldBossBattle
     | ContinueAfterWorldBossRaid
     | RejectWorldBossInventoryFull
+    | DismissWorldBossBagFull
 )
 
 
@@ -178,6 +184,7 @@ __all__ = (
     "CloseBlackMarket",
     "ConfirmCharacterSelection",
     "ContinueAfterWorldBossRaid",
+    "DismissWorldBossBagFull",
     "OpenBlackMarket",
     "OpenBattleModeSelect",
     "OpenCharacterSelect",

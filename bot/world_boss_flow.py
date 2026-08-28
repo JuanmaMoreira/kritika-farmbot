@@ -13,6 +13,7 @@ from bot.catalog import (
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
+    POPUP_WORLD_BOSS_BAG_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_WORLD_BOSS_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
@@ -36,6 +37,7 @@ from bot.runtime_observer import RuntimeObserver, RuntimeSnapshot
 from bot.semantic_actions import (
     AcknowledgeWorldBossPreviousRewards,
     ContinueAfterWorldBossRaid,
+    DismissWorldBossBagFull,
     OpenBattleModeSelect,
     OpenWorldBossSelector,
     SelectAvailableWorldBoss,
@@ -53,6 +55,7 @@ from bot.verified_transition import (
 WORLD_BOSS_INSUFFICIENT_SAPPHIRES = "world_boss.insufficient_sapphires"
 WORLD_BOSS_PREVIOUS_REWARDS = "world_boss.previous_rewards"
 WORLD_BOSS_INVENTORY_FULL = "world_boss.inventory_full"
+WORLD_BOSS_BAG_FULL = "world_boss.bag_full"
 
 
 class WorldBossParticipationPolicy(str, Enum):
@@ -92,6 +95,7 @@ class WorldBossFlowResult(FlowResult):
     sapphires: int | None = None
     previous_rewards: bool = False
     inventory_full: bool = False
+    bag_full: bool = False
     auto_battle_initial: AutoBattleState | None = None
     auto_battle_taps: int = 0
     initial_timer: int | None = None
@@ -330,6 +334,7 @@ class WorldBossFlow:
             expected=lambda item: (
                 _is_clean_base(item, SCREEN_WORLD_BOSS_BATTLE)
                 or _is_world_boss_inventory_full(item)
+                or _is_world_boss_bag_full(item)
             ),
             precondition=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
             retryable_from=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
@@ -365,6 +370,36 @@ class WorldBossFlow:
                 sapphires=sapphires,
                 previous_rewards=previous_rewards,
                 inventory_full=True,
+                transition_outcomes=_transition_outcomes(transitions),
+                transition_attempts=_transition_attempts(transitions),
+            )
+
+        if _is_world_boss_bag_full(battle):
+            event = FlowEvent(WORLD_BOSS_BAG_FULL)
+            flow_events.append(event)
+            self._record_best_effort(event.kind)
+            returned = self._transition(
+                transitions,
+                "world_boss.dismiss_bag_full",
+                DismissWorldBossBagFull(),
+                battle,
+                expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
+                precondition=_is_world_boss_bag_full,
+                retryable_from=_is_world_boss_bag_full,
+            )
+            if returned is None:
+                return self._transition_failure(
+                    transitions, sapphires, flow_events, previous_rewards
+                )
+            self._record_best_effort(
+                "world_boss.completed", postcondition=SCREEN_WORLD_BOSS
+            )
+            return WorldBossFlowResult(
+                status=FlowStatus.COMPLETED,
+                events=tuple(flow_events),
+                sapphires=sapphires,
+                previous_rewards=previous_rewards,
+                bag_full=True,
                 transition_outcomes=_transition_outcomes(transitions),
                 transition_attempts=_transition_attempts(transitions),
             )
@@ -786,6 +821,14 @@ def _is_world_boss_inventory_full(snapshot: RuntimeSnapshot) -> bool:
     )
 
 
+def _is_world_boss_bag_full(snapshot: RuntimeSnapshot) -> bool:
+    return (
+        snapshot.state.status is ResolutionStatus.RESOLVED
+        and snapshot.state.base_context == SCREEN_WORLD_BOSS
+        and set(snapshot.state.overlays) == {POPUP_WORLD_BOSS_BAG_FULL}
+    )
+
+
 def _is_known_incompatible(snapshot, expected, retryable_from) -> bool:
     if expected(snapshot) or retryable_from(snapshot):
         return False
@@ -799,6 +842,7 @@ __all__ = (
     "WORLD_BOSS_INSUFFICIENT_SAPPHIRES",
     "WORLD_BOSS_PREVIOUS_REWARDS",
     "WORLD_BOSS_INVENTORY_FULL",
+    "WORLD_BOSS_BAG_FULL",
     "WorldBossFlow",
     "WorldBossFlowResult",
     "WorldBossParticipationPolicy",

@@ -2,7 +2,7 @@
 
 **Estado:** rediseño híbrido 0.2; `BlackMarketFlow`, `WorldBossFlow` y `rotation.standard` implementados sobre contratos 0.2.
 **Unidad funcional vigente:** los entrypoints productivos construyen `SessionRunner` desde un registry explícito, ejecutan flows `PER_CHARACTER` en orden y hacen exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 854/854 tests hardware-free verdes con CLI y GUI operacional sobre el runtime compartido.
+**Baseline conocido:** 864/864 tests hardware-free verdes con CLI y GUI operacional sobre el runtime compartido.
 **Checkpoint operativo:** CLI y mini GUI comparten Black Market, World Boss, sesiones ordenadas, cancelación, debug y log persistente; los ciclos 28/28 futuros se ejecutarán por el usuario desde estos launchers.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
@@ -64,7 +64,7 @@ Estado de evidencia vigente:
 - Insufficient Gold: 1/1 TP, 0 FP/FN frente a 95 negativos; su muestra positiva todavía es pequeña.
 - Inventory Full: 6/6 TP, 0 FP/FN frente a 96 negativos confirmados. El botón común dio positivos `0,983645–0,999941`; el máximo negativo revisado con otro `OK` fue `0,894897`, threshold raw efectivo `0,965896` y gap `0,088749`. La conjunción productiva tuvo 6 matches positivos y cero conflictos al recorrer 252 capturas locales.
 - World Boss: 44 frames human-confirmed cubren 6 Battle Mode Select, 4 Select Boss, 5 Previous Rewards, 8 World Boss, 13 batalla y 8 Raid Complete. Sus seis detectores cerraron con 0 FP/FN; gaps raw respectivos `0,272674`, `0,709750`, `0,628603`, `0,388257`, `0,357196` y `0,564908`.
-- Inventory Full de World Boss: dos capturas live resolvieron `screen.world_boss + popup.world_boss_inventory_full`; el landmark del prompt obtuvo `0,994196–0,999981` frente al anchor negativo curado `0,224220`.
+- Inventory Full de World Boss: dos capturas live resolvieron `screen.world_boss + popup.world_boss_inventory_full`; el landmark del prompt obtuvo `0,994196–0,999981` frente al anchor negativo curado `0,224220`. El guard distinto `popup.world_boss_bag_full` quedó confirmado con seis frames live: su literal obtuvo `0,986981–0,999987` frente a 151 negativos con máximo `0,343647`, y seis frames posteriores verificaron `X → screen.world_boss` limpio.
 - La regresión productiva conjunta produjo 146/146 estados esperados sin errores ni `AMBIGUOUS`; la validación live confirmó además compras, `Purchased`, Inventory Full y retornos frescos.
 
 Las calibraciones exactas, manifests y antecedentes de repair están en código/tests, datasets versionados y [`docs/HISTORY.md`](docs/HISTORY.md). `resource.sapphires` y `battle.timer_remaining` son los primeros Runtime Facts OCR productivos; costo, rank/participation y Auto Battle permanecen deferred.
@@ -112,7 +112,7 @@ La primera GUI operacional cerró sus smokes mediante `tools.gui`. Run Flow Once
 
 `WorldBossFlow` aplica `ALWAYS_PARTICIPATE` y declara `screen.lobby` como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación runtime es una lectura OCR fresca de sapphires: la adquisición tolera frames transitorios no resueltos dentro del timeout, pero aborta ante un contexto resuelto distinto; con menos de 5 emite `world_boss.insufficient_sapphires` y termina en Lobby sin input. Con saldo suficiente navega mediante transiciones verificadas `Lobby → Battle Mode Select → Select Boss → World Boss`.
 
-`Previous Rewards` es una bifurcación esperable y potencialmente tardía de `SelectAvailableWorldBoss`: el flow deja estabilizar la entrada entre World Boss limpio y el popup, registra `world_boss.previous_rewards`, pulsa OK y sólo habilita Start después de recuperar World Boss limpio. Tras Start, `popup.world_boss_inventory_full` registra `world_boss.inventory_full`, verifica `No → World Boss` y termina ese personaje sin reintentar Start; liberar inventario y reanudar quedan deferred.
+`Previous Rewards` es una bifurcación esperable y potencialmente tardía de `SelectAvailableWorldBoss`: el flow deja estabilizar la entrada entre World Boss limpio y el popup, registra `world_boss.previous_rewards`, pulsa OK y sólo habilita Start después de recuperar World Boss limpio. Tras Start, `popup.world_boss_inventory_full` registra `world_boss.inventory_full` y verifica `No → World Boss`; el guard distinto `popup.world_boss_bag_full` registra `world_boss.bag_full` y verifica `X → World Boss`. Ambas ramas terminan ese personaje sin reintentar Start; liberar inventario y reanudar quedan deferred.
 
 En la rama de batalla exige Auto Battle ON una sola vez, lee una vez el timer, espera pasivamente `timer + 5 s` sin consultar percepción y después busca Raid Complete cada `1 s` durante un timeout bounded de `25 s`, ampliado por la latencia variable observada al finalizar. Raid Complete es la única condición de éxito y se acepta por presencia del overlay aunque la base esté `UNKNOWN`, en transición o resuelta como otra pantalla; su ausencia continúa sin input y termina en `TIMEOUT`. La implementación está validada hardware-free y su smoke productivo queda a cargo del usuario mediante Run Flow Once/World Boss en la GUI.
 

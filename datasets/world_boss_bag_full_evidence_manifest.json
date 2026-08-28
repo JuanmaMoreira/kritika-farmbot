@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-28",
+    "source": "live_scrcpy",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat",
+    "semantic_state": {
+      "base_context": "screen.world_boss",
+      "overlays": ["popup.world_boss_bag_full"]
+    },
+    "behavior": "Close dismisses the popup, returns to clean screen.world_boss and completes this character without retrying Start",
+    "deferred": "inventory cleanup and resuming WorldBossFlow for the same character",
+    "landmark": {
+      "name": "landmark.world_boss_bag_full_prompt",
+      "asset": "assets/ui/landmarks/world-boss-bag-full-prompt-current.png",
+      "region": [0.28, 0.32, 0.72, 0.62],
+      "positive_raw_range": [0.9869809746742249, 0.9999871850013733],
+      "strongest_reviewed_negative": 0.34364715218544006,
+      "reviewed_negative_count": 151
+    },
+    "action": {
+      "intent": "DismissWorldBossBagFull",
+      "normalized_target": [0.67, 0.31],
+      "pixel_target_at_capture": [1817, 379],
+      "expected": "screen.world_boss"
+    }
+  },
+  "entries": [
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_500454Z_01.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_955670Z_02.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_418364Z_03.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_895470Z_04.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_367520Z_05.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_837378Z_06.png","review_status":"confirmed"}
+  ],
+  "postcondition_entries": [
+    {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222906_501260Z_01.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222906_980000Z_02.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222907_460048Z_03.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222907_936181Z_04.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222908_418375Z_05.png","review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222908_895226Z_06.png","review_status":"confirmed"}
+  ]
+}
