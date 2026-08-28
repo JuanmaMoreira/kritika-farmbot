@@ -700,9 +700,9 @@ def test_persistent_unknown_times_out_without_input_or_recovery():
     result, raid = flow._wait_for_raid_complete(60)
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
-    assert result.elapsed == pytest.approx(80)
+    assert result.elapsed == pytest.approx(90)
     assert observer.observe_times[0] == 65
-    assert observer.observe_times[-1] == 80
+    assert observer.observe_times[-1] == 90
     assert raid is not None and raid.state.status is ResolutionStatus.UNKNOWN
     actions.execute.assert_not_called()
     auto.ensure_on.assert_not_called()
@@ -712,12 +712,12 @@ def test_persistent_unknown_times_out_without_input_or_recovery():
         for name, fields in flow.events.records
         if name == "world_boss.wait.finished"
     ][-1]
-    assert finished["completion_timeout"] == 15
+    assert finished["completion_timeout"] == 25
     assert finished["poll_count"] == len(observer.observe_times)
     assert finished["unknown_count"] == len(observer.observe_times)
     assert finished["last_base_state"] == ResolutionStatus.UNKNOWN.value
     assert finished["last_overlays"] == ()
-    assert finished["last_sequence"] == 801
+    assert finished["last_sequence"] == 901
     assert finished["raid_complete_max_confidence"] == 0
 
 
@@ -726,7 +726,7 @@ def test_wait_policy_exposes_configurable_margin_poll_and_bounded_timeout():
 
     assert policy.post_timer_completion_margin == 5
     assert policy.completion_poll_interval == 1
-    assert policy.bounded_completion_timeout == 15
+    assert policy.bounded_completion_timeout == 25
 
 
 def test_wait_telemetry_records_timer_margin_poll_start_detection_and_elapsed():
@@ -742,7 +742,7 @@ def test_wait_telemetry_records_timer_margin_poll_start_detection_and_elapsed():
     assert finished["post_timer_margin"] == 2
     assert finished["polling_started_at"] == 7
     assert finished["completion_poll_interval"] == 1
-    assert finished["completion_timeout"] == 15
+    assert finished["completion_timeout"] == 25
     assert finished["raid_complete_detected_at"] == 8
     assert finished["actual_elapsed"] == 8
     assert finished["poll_count"] == 2
@@ -779,7 +779,7 @@ def test_known_non_completion_state_also_waits_until_timeout():
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
     assert observer.observe_times[0] == 10
-    assert observer.observe_times[-1] == 25
+    assert observer.observe_times[-1] == 35
     actions.execute.assert_not_called()
 
 

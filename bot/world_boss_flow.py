@@ -65,7 +65,7 @@ class WorldBossWaitPolicy:
 
     post_timer_margin: float = 5.0
     completion_poll_interval: float = 1.0
-    completion_timeout: float = 15.0
+    completion_timeout: float = 25.0
 
     def __post_init__(self) -> None:
         for name in (
