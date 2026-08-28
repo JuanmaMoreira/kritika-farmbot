@@ -85,6 +85,7 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [x] Componer y validar live 2/2 `WorldBossFlow + rotation.standard` y 2/2 `BlackMarketFlow + WorldBossFlow + rotation.standard`, sin normalizaciones redundantes.
 - [x] Exponer la composición mediante registry explícito, runtime manual compartido, launchers de flow/sesión, cancelación y event stream persistente/debug.
 - [x] Construir la mini GUI Tkinter como frontend fino del registry, runtime worker, cancelación y event stream compartidos.
+- [ ] Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su rama bounded de recovery antes de automatizarla; no inferirla mediante red o ping.
 - [ ] Ejecutar smokes largos/28-character desde la GUI, recopilar logs, tunear con evidencia y compactar documentación antes del próximo checkpoint/push.
 
 ### Fase 6 — expansión y operación unattended

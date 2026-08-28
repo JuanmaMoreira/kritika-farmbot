@@ -2,7 +2,7 @@
 
 **Estado:** rediseño híbrido 0.2; `BlackMarketFlow`, `WorldBossFlow` y `rotation.standard` implementados sobre contratos 0.2.
 **Unidad funcional vigente:** los entrypoints productivos construyen `SessionRunner` desde un registry explícito, ejecutan flows `PER_CHARACTER` en orden y hacen exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 846/846 tests hardware-free verdes con CLI y GUI operacional sobre el runtime compartido.
+**Baseline conocido:** 848/848 tests hardware-free verdes con CLI y GUI operacional sobre el runtime compartido.
 **Checkpoint operativo:** CLI y mini GUI comparten Black Market, World Boss, sesiones ordenadas, cancelación, debug y log persistente; los ciclos 28/28 futuros se ejecutarán por el usuario desde estos launchers.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
@@ -20,12 +20,12 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - Los intents semánticos tipados separan negocio de coordenadas.
 - `ActionExecutor` traduce esos intents a taps ADB normalizados contra `frame.shape`; no decide gameplay.
 - `BlackMarketFlow` es un flow 0.2 `PER_CHARACTER` implementado y separado del runtime legacy.
-- `WorldBossFlow` es `PER_CHARACTER`, usa OCR/facts y Auto Battle transversales, y compone su espera mediante `ControlledWait`.
+- `WorldBossFlow` es `PER_CHARACTER`, usa OCR/facts y Auto Battle transversales, y compone una espera inicial pasiva más polling final mediante `ControlledWait`.
 - `FlowContract` declara precondición y estados finales exitosos; `FlowResult.COMPLETED` no implica Lobby universalmente.
 - `quick_menu_accessible` es una capability con allow-list productivo conservador; contiene `screen.lobby` y `screen.world_boss`, ambos validados live con el mismo target del header.
 - `StandardRotation` es transversal, requiere esa capability, implementa un solo `advance()` y no conoce flows ni ADB.
 - `SessionPlan` expresa `character_count + flows PER_CHARACTER + RotationStrategy`; `SessionRunner` asegura el requisito exacto del próximo componente mediante un helper inyectado y valida sus postcondiciones declaradas.
-- `ControlledWait` aporta espera larga monotónica, periódica, cancelable y bounded sin input físico.
+- `ControlledWait` aporta espera larga monotónica, cancelable y bounded sin input físico, retry ni recovery; una condición no observada continúa pasivamente y una terminal explícita tiene outcome propio.
 - `FlowRegistry` declara los flows productivos y sus factories sin discovery; `ProductiveRuntime` compone el mismo grafo para CLI y futura GUI.
 - `RuntimeEventStream` distribuye eventos estructurados a consola, archivo por ejecución y futuros consumidores; `--debug` habilita facts, transiciones y waits en consola.
 - `tools.gui` usa Tkinter/ttk, lista flows sólo desde el registry y delega toda ejecución a un worker único sobre `ProductiveRuntime`; Tk recibe únicamente mensajes encolados.
@@ -114,9 +114,9 @@ La primera GUI operacional cerró sus smokes mediante `tools.gui`. Run Flow Once
 
 `Previous Rewards` es una bifurcación esperable y potencialmente tardía de `SelectAvailableWorldBoss`: el flow deja estabilizar la entrada entre World Boss limpio y el popup, registra `world_boss.previous_rewards`, pulsa OK y sólo habilita Start después de recuperar World Boss limpio. Tras Start, `popup.world_boss_inventory_full` registra `world_boss.inventory_full`, verifica `No → World Boss` y termina ese personaje sin reintentar Start; liberar inventario y reanudar quedan deferred.
 
-En la rama de batalla exige Auto Battle ON, lee una vez el timer como deadline, usa polling disperso y una ventana final activa mediante dos `ControlledWait`, detecta Raid Complete y verifica Continue hacia World Boss. El smoke live cerró: rama de inventario lleno al primer intento; rama completa con Auto Battle ya ON, timer inicial 60 s, 29 checks, Raid Complete y Continue exitoso tras un retry seguro; y sapphires insuficientes con valor 0, cero transiciones y cero taps. `Previous Rewards` fue observado después de un World Boss transitorio y su OK devolvió la base esperada.
+En la rama de batalla exige Auto Battle ON una sola vez, lee una vez el timer, espera pasivamente `timer + 5 s` sin consultar percepción y después busca Raid Complete cada `1 s` durante un timeout bounded de `10 s`. Raid Complete es la única condición de éxito; `UNKNOWN` o cualquier observación que simplemente no sea el overlay continúa sin input, y su persistencia termina en `TIMEOUT`. La política corregida está validada hardware-free; su smoke productivo queda a cargo del usuario mediante Run Flow Once/World Boss en la GUI. La evidencia live anterior conserva valor histórico, pero no valida esta corrección.
 
-La policy operacional usa margen post-timer configurable de `5 s`, polling de `1 s` y timeout adicional bounded de `10 s`. Countdown/timer sólo optimizan checks; Raid Complete sigue siendo la postcondición. Las dos primeras muestras del runtime manual detectaron el overlay cerca de `timer_initial + 9,8 s`, por lo que el margen aislado no alcanzó y la cola bounded fue necesaria; se conserva la configuración pedida hasta reunir más sesiones del usuario.
+La telemetría registra `timer_initial`, `initial_wait`, `post_timer_margin`, inicio/intervalo/timeout del polling, detección de Raid Complete, tiempo real, cantidad de polls y `UNKNOWN` agregados. Las muestras live anteriores detectaron el overlay después del margen, razón por la que se conserva la ventana final bounded; no se añadió detector de red ni ping.
 
 Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `CharacterContext(name=None, name_confidence=None)`, resultados de flows y resultado de advance. El índice no es identidad. No existe `CharacterContextProvider` productivo ni OCR de nombre: un futuro provider opcional podrá reutilizar el engine transversal para enriquecer una vez por personaje el contexto desde Lobby sin hacer fatal la identidad usada sólo para observabilidad.
 
@@ -124,7 +124,7 @@ Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `Charac
 
 `setting.auto_battle` es un Runtime Fact temporal tipado, separado de `CharacterContext`. Usa 10 frames en una ventana corta sobre la ROI normalizada `(0.835, 0.018, 0.890, 0.078)`, mide la mediana de diferencia absoluta consecutiva sólo en el borde y clasifica `OFF ≤ 2`, `UNKNOWN (2, 5)` y `ON ≥ 5`. `ensure_auto_battle_on()` no toca desde `UNKNOWN`; desde OFF confirmado solicita `ToggleAutoBattle` a `ActionExecutor`, vuelve a observar frames frescos y permite como máximo dos taps sólo si OFF continúa inequívoco y el contexto sigue siendo batalla sin Raid Complete. Live: ON inicial terminó con 0 taps; OFF `0,226` pasó con un tap a ON `9,265`, sin retry, y el usuario confirmó ON final.
 
-`bot/controlled_wait.py` implementa espera de actividad larga con duración o deadline monotónico, polling configurable, condición opcional, cancelación y outcomes `completed/cancelled/timeout/failed`. No depende de `ActionExecutor` ni cubre scheduling de horas.
+`bot/controlled_wait.py` implementa espera de actividad larga con duración o deadline monotónico, polling configurable, condición de éxito opcional, condición terminal explícita opcional, cancelación y outcomes `completed/terminated/cancelled/timeout/failed`. Un check falso continúa hasta completar o vencer; sólo una excepción de callback produce `failed`. No depende de `ActionExecutor` ni cubre scheduling de horas.
 
 Los smokes incrementales expusieron latencia de carga entre Lobby y Black Market. Un tap de apertura no registrado abortó correctamente sin advance; `black_market.open` pasó a `VerifiedTransition` con grace sin input y retry sólo desde Lobby fresco. La precondición del flow y la sonda Lobby del composition root también esperan estabilidad pasivamente y rechazan estados incompatibles.
 

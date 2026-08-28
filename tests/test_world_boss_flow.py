@@ -185,26 +185,22 @@ def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
     auto = auto or Mock()
     if not hasattr(auto, "ensure_on"):
         auto.ensure_on = Mock(return_value=auto_result())
-    kwargs = {}
-    if fake_time is not None:
-        policy = wait_policy or WorldBossWaitPolicy(
-            active_window=3, final_margin=2,
-            early_check_interval=2, final_check_interval=1,
-        )
-        kwargs.update(
-            wait_policy=policy,
+    fake_time = fake_time or FakeTime()
+    policy = wait_policy or WorldBossWaitPolicy()
+    kwargs = dict(
+        wait_policy=policy,
+        clock=fake_time.clock,
+        initial_wait=ControlledWait(
+            check_interval=1,
             clock=fake_time.clock,
-            early_wait=ControlledWait(
-                check_interval=policy.early_check_interval,
-                clock=fake_time.clock,
-                sleeper=fake_time.sleep,
-            ),
-            final_wait=ControlledWait(
-                check_interval=policy.final_check_interval,
-                clock=fake_time.clock,
-                sleeper=fake_time.sleep,
-            ),
-        )
+            sleeper=fake_time.sleep,
+        ),
+        completion_wait=ControlledWait(
+            check_interval=policy.completion_poll_interval,
+            clock=fake_time.clock,
+            sleeper=fake_time.sleep,
+        ),
+    )
     flow = WorldBossFlow(
         observer, Mock(), facts, auto, events,
         cancel_requested=cancel,
@@ -302,6 +298,40 @@ def test_complete_flow_handles_optional_previous_rewards_and_finishes_world_boss
     assert driver.calls[-1][0] == "world_boss.continue_after_raid"
     assert [item[0] for item in facts.trace].count("timer") == 1
     assert any(name == "world_boss.previous_rewards" for name, _ in events.records) is previous
+
+
+def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle():
+    waits, _, transitions = happy_inputs()
+    unknown_a = snapshot(100)
+    unknown_b = snapshot(101)
+    raid = snapshot(
+        102,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    auto = Mock()
+    auto.ensure_on.return_value = auto_result(AutoBattleState.ON, sequence=8)
+    fake = FakeTime()
+    flow, observer, _, _, _, _ = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 20, 1, SCREEN_LOBBY),
+        timer_read=fact_result(
+            "battle.timer_remaining", 60, 9, SCREEN_WORLD_BOSS_BATTLE
+        ),
+        waits=waits,
+        observes=[unknown_a, unknown_b, raid],
+        transitions=transitions,
+        auto=auto,
+        fake_time=fake,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.wait_elapsed == pytest.approx(67)
+    assert result.wait_checks == 3
+    assert [item[0] for item in observer.trace].count("observe") == 3
+    auto.ensure_on.assert_called_once()
+    flow.actions.execute.assert_not_called()
 
 
 def test_previous_rewards_may_arrive_after_transient_world_boss_main():
@@ -424,6 +454,8 @@ def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():
     outcomes[-1] = VerifiedTransitionOutcome.RETRY_GUARD_REJECTED
     driver = Transitions(snapshots, outcomes)
     auto = Mock(ensure_on=Mock(return_value=auto_result()))
+    fake = FakeTime()
+    policy = WorldBossWaitPolicy()
     flow = WorldBossFlow(
         Observer(waits=waits, observes=observes), Mock(),
         Facts(
@@ -431,6 +463,16 @@ def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():
             fact_result("battle.timer_remaining", 20, 9, SCREEN_WORLD_BOSS_BATTLE),
         ),
         auto, Events(), verified_transition=driver, stable_for=0,
+        wait_policy=policy,
+        clock=fake.clock,
+        initial_wait=ControlledWait(
+            check_interval=1, clock=fake.clock, sleeper=fake.sleep
+        ),
+        completion_wait=ControlledWait(
+            check_interval=policy.completion_poll_interval,
+            clock=fake.clock,
+            sleeper=fake.sleep,
+        ),
     )
 
     result = flow.run()
@@ -533,66 +575,94 @@ def test_unknown_is_not_a_retry_guard_for_any_world_boss_transition():
 
 
 class TimedObserver:
-    def __init__(self, fake, raid_at=None, unexpected_at=None):
+    def __init__(self, fake, raid_at=None, unknown_until=None, always_unknown=False):
         self.fake = fake
         self.raid_at = raid_at
-        self.unexpected_at = unexpected_at
+        self.unknown_until = unknown_until
+        self.always_unknown = always_unknown
+        self.observe_times = []
 
     def observe(self):
+        self.observe_times.append(self.fake.current)
         sequence = int(self.fake.current * 10) + 1
-        if self.unexpected_at is not None and self.fake.current >= self.unexpected_at:
-            return snapshot(sequence, base=SCREEN_LOBBY)
         if self.raid_at is not None and self.fake.current >= self.raid_at:
             return snapshot(sequence, base=SCREEN_WORLD_BOSS_BATTLE,
                             overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+        if self.always_unknown or (
+            self.unknown_until is not None and self.fake.current < self.unknown_until
+        ):
+            return snapshot(sequence)
         return snapshot(sequence, base=SCREEN_WORLD_BOSS_BATTLE)
 
     def wait_until(self, *args, **kwargs):
         raise AssertionError("not used")
 
 
-def raid_wait_flow(*, raid_at=None, unexpected_at=None, cancel=lambda: False):
+def raid_wait_flow(*, raid_at=None, unknown_until=None, always_unknown=False,
+                   cancel=lambda: False, policy=None):
     fake = FakeTime()
-    policy = WorldBossWaitPolicy(
-        active_window=3, final_margin=2,
-        early_check_interval=2, final_check_interval=1,
-    )
-    observer = TimedObserver(fake, raid_at, unexpected_at)
+    policy = policy or WorldBossWaitPolicy()
+    observer = TimedObserver(fake, raid_at, unknown_until, always_unknown)
+    actions = Mock()
+    auto = Mock(ensure_on=Mock())
     flow = WorldBossFlow(
-        observer, Mock(), Mock(read_sapphires=Mock(), read_timer_remaining=Mock()),
-        Mock(ensure_on=Mock()), Events(), cancel_requested=cancel,
+        observer, actions, Mock(read_sapphires=Mock(), read_timer_remaining=Mock()),
+        auto, Events(), cancel_requested=cancel,
         wait_policy=policy, clock=fake.clock,
-        early_wait=ControlledWait(check_interval=2, clock=fake.clock, sleeper=fake.sleep),
-        final_wait=ControlledWait(check_interval=1, clock=fake.clock, sleeper=fake.sleep),
+        initial_wait=ControlledWait(
+            check_interval=1, clock=fake.clock, sleeper=fake.sleep
+        ),
+        completion_wait=ControlledWait(
+            check_interval=policy.completion_poll_interval,
+            clock=fake.clock,
+            sleeper=fake.sleep,
+        ),
         verified_transition=Mock(execute=Mock()),
     )
-    return flow, fake
+    return flow, fake, observer, actions, auto
 
 
-@pytest.mark.parametrize(
-    ("timer", "raid_at", "expected_elapsed"),
-    ((10, 2, 2), (5, 5, 5), (5, 7, 7), (5, 12, 12)),
-)
-def test_controlled_wait_detects_early_deadline_and_post_zero_completion(
-    timer, raid_at, expected_elapsed
-):
-    flow, _ = raid_wait_flow(raid_at=raid_at)
+def test_timer_sixty_waits_sixty_five_without_perception_then_polls_once():
+    flow, fake, observer, actions, auto = raid_wait_flow(raid_at=65)
 
-    result, raid = flow._wait_for_raid_complete(timer)
+    result, raid = flow._wait_for_raid_complete(60)
 
     assert result.outcome is ControlledWaitOutcome.COMPLETED
-    assert result.elapsed == pytest.approx(expected_elapsed)
+    assert result.elapsed == pytest.approx(65)
+    assert observer.observe_times == [65]
     assert raid is not None
+    actions.execute.assert_not_called()
+    auto.ensure_on.assert_not_called()
 
 
-def test_controlled_wait_times_out_after_final_margin():
-    flow, _ = raid_wait_flow()
+def test_final_polling_runs_each_second_and_accepts_late_raid_complete():
+    flow, _, observer, actions, _ = raid_wait_flow(
+        raid_at=68,
+        unknown_until=68,
+    )
 
-    result, raid = flow._wait_for_raid_complete(5)
+    result, raid = flow._wait_for_raid_complete(60)
+
+    assert result.outcome is ControlledWaitOutcome.COMPLETED
+    assert result.elapsed == pytest.approx(68)
+    assert observer.observe_times == [65, 66, 67, 68]
+    assert result.poll_count == 4
+    assert raid is not None
+    actions.execute.assert_not_called()
+
+
+def test_persistent_unknown_times_out_without_input_or_recovery():
+    flow, _, observer, actions, auto = raid_wait_flow(always_unknown=True)
+
+    result, raid = flow._wait_for_raid_complete(60)
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
-    assert result.elapsed == pytest.approx(17)
-    assert raid is not None and raid.state.overlays == ()
+    assert result.elapsed == pytest.approx(75)
+    assert observer.observe_times[0] == 65
+    assert observer.observe_times[-1] == 75
+    assert raid is not None and raid.state.status is ResolutionStatus.UNKNOWN
+    actions.execute.assert_not_called()
+    auto.ensure_on.assert_not_called()
 
 
 def test_wait_policy_exposes_configurable_margin_poll_and_bounded_timeout():
@@ -604,38 +674,45 @@ def test_wait_policy_exposes_configurable_margin_poll_and_bounded_timeout():
 
 
 def test_wait_telemetry_records_timer_margin_poll_start_detection_and_elapsed():
-    flow, _ = raid_wait_flow(raid_at=12)
+    policy = WorldBossWaitPolicy(post_timer_margin=2)
+    flow, _, _, _, _ = raid_wait_flow(raid_at=8, policy=policy)
 
     result, _ = flow._wait_for_raid_complete(5)
 
     finished = [fields for name, fields in flow.events.records if name == "world_boss.wait.finished"][-1]
     assert result.succeeded
     assert finished["timer_initial"] == 5
-    assert finished["expected_wait"] == 7
-    assert finished["margin"] == 2
-    assert finished["polling_started_at"] == 2
-    assert finished["raid_complete_detected_at"] == 12
-    assert finished["actual_elapsed"] == 12
+    assert finished["initial_wait"] == 7
+    assert finished["post_timer_margin"] == 2
+    assert finished["polling_started_at"] == 7
+    assert finished["completion_poll_interval"] == 1
+    assert finished["completion_timeout"] == 10
+    assert finished["raid_complete_detected_at"] == 8
+    assert finished["actual_elapsed"] == 8
+    assert finished["poll_count"] == 2
 
 
 def test_controlled_wait_propagates_cancellation_without_failure():
-    fake = FakeTime()
-    flow, _ = raid_wait_flow(cancel=lambda: fake.current >= 2)
+    flow, _, observer, actions, _ = raid_wait_flow()
     # Bind cancellation to the flow's actual injected clock.
     flow.cancel_requested = lambda: flow.clock() >= 2
 
     result, _ = flow._wait_for_raid_complete(10)
 
     assert result.outcome is ControlledWaitOutcome.CANCELLED
+    assert observer.observe_times == []
+    actions.execute.assert_not_called()
 
 
-def test_controlled_wait_reports_inequivocally_unexpected_state():
-    flow, _ = raid_wait_flow(unexpected_at=1)
+def test_known_non_completion_state_also_waits_until_timeout():
+    flow, _, observer, actions, _ = raid_wait_flow()
 
     result, _ = flow._wait_for_raid_complete(5)
 
-    assert result.outcome is ControlledWaitOutcome.FAILED
-    assert "unexpected battle state" in result.error
+    assert result.outcome is ControlledWaitOutcome.TIMEOUT
+    assert observer.observe_times[0] == 10
+    assert observer.observe_times[-1] == 20
+    actions.execute.assert_not_called()
 
 
 def test_world_boss_contract_and_boundaries_are_explicit():

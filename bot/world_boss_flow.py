@@ -59,21 +59,17 @@ class WorldBossParticipationPolicy(str, Enum):
 
 @dataclass(frozen=True)
 class WorldBossWaitPolicy:
-    """Sparse early observation followed by an active bounded final window."""
+    """Passive timer wait followed by a bounded Raid Complete poll."""
 
-    active_window: float = 12.0
-    final_margin: float = 5.0
+    post_timer_margin: float = 5.0
+    completion_poll_interval: float = 1.0
     completion_timeout: float = 10.0
-    early_check_interval: float = 8.0
-    final_check_interval: float = 1.0
 
     def __post_init__(self) -> None:
         for name in (
-            "active_window",
-            "final_margin",
+            "post_timer_margin",
+            "completion_poll_interval",
             "completion_timeout",
-            "early_check_interval",
-            "final_check_interval",
         ):
             value = float(getattr(self, name))
             if value <= 0:
@@ -82,11 +78,7 @@ class WorldBossWaitPolicy:
 
     @property
     def post_timer_completion_margin(self) -> float:
-        return self.final_margin
-
-    @property
-    def completion_poll_interval(self) -> float:
-        return self.final_check_interval
+        return self.post_timer_margin
 
     @property
     def bounded_completion_timeout(self) -> float:
@@ -116,10 +108,6 @@ class _FactReader(Protocol):
 
 class _AutoBattleEnsurer(Protocol):
     def ensure_on(self, *, after_sequence: int, cancel_requested=None): ...
-
-
-class _RaidStateError(RuntimeError):
-    pass
 
 
 class WorldBossFlow:
@@ -152,8 +140,8 @@ class WorldBossFlow:
         stable_for: float = 0.25,
         entry_settle_for: float = 1.0,
         wait_policy: WorldBossWaitPolicy = WorldBossWaitPolicy(),
-        early_wait: ControlledWait | None = None,
-        final_wait: ControlledWait | None = None,
+        initial_wait: ControlledWait | None = None,
+        completion_wait: ControlledWait | None = None,
         clock: Callable[[], float] = time.monotonic,
         verified_transition: VerifiedTransition | None = None,
     ) -> None:
@@ -189,14 +177,14 @@ class WorldBossFlow:
         self.entry_settle_for = float(entry_settle_for)
         self.wait_policy = wait_policy
         self.clock = clock
-        self.early_wait = early_wait or ControlledWait(
-            check_interval=wait_policy.early_check_interval,
+        self.initial_wait = initial_wait or ControlledWait(
+            check_interval=1.0,
             clock=clock,
             events=events,
-            label="world_boss.timer_phase",
+            label="world_boss.initial_wait",
         )
-        self.final_wait = final_wait or ControlledWait(
-            check_interval=wait_policy.final_check_interval,
+        self.completion_wait = completion_wait or ControlledWait(
+            check_interval=wait_policy.completion_poll_interval,
             clock=clock,
             events=events,
             label="world_boss.completion_poll",
@@ -445,7 +433,7 @@ class WorldBossFlow:
             "world_boss.controlled_wait",
             outcome=wait_result.outcome.value,
             elapsed=wait_result.elapsed,
-            checks=wait_result.poll_count,
+            poll_count=wait_result.poll_count,
         )
         common = dict(
             sapphires=sapphires,
@@ -542,96 +530,97 @@ class WorldBossFlow:
     def _wait_for_raid_complete(self, timer: int):
         latest: RuntimeSnapshot | None = None
         detected_at: float | None = None
+        unknown_count = 0
         started_at = self.clock()
-        expected_wait = float(timer) + self.wait_policy.final_margin
+        initial_wait_duration = float(timer) + self.wait_policy.post_timer_margin
         polling_started_at: float | None = None
         self._record_best_effort(
             "world_boss.wait.started",
             timer_initial=timer,
-            expected_wait=expected_wait,
-            margin=self.wait_policy.final_margin,
+            initial_wait=initial_wait_duration,
+            post_timer_margin=self.wait_policy.post_timer_margin,
+            completion_poll_interval=self.wait_policy.completion_poll_interval,
             completion_timeout=self.wait_policy.completion_timeout,
         )
 
         def check() -> bool:
-            nonlocal latest, detected_at
+            nonlocal latest, detected_at, unknown_count
             latest = self.observer.observe()
             if _is_raid_complete(latest):
                 if detected_at is None:
                     detected_at = self.clock()
                 return True
-            if not _is_clean_base(latest, SCREEN_WORLD_BOSS_BATTLE):
-                raise _RaidStateError(
-                    f"unexpected battle state: {latest.state.status.value} "
-                    f"{latest.state.base_context} {latest.state.overlays}"
-                )
+            if latest.state.status is ResolutionStatus.UNKNOWN:
+                unknown_count += 1
             return False
 
-        early_duration = max(0.0, float(timer) - self.wait_policy.active_window)
-        elapsed = 0.0
-        polls = 0
-        if early_duration > 0:
-            early = self.early_wait.wait(
-                expected_duration=early_duration,
-                completion_condition=check,
-                cancel_requested=self.cancel_requested,
+        initial = self.initial_wait.wait(
+            expected_duration=initial_wait_duration,
+            cancel_requested=self.cancel_requested,
+        )
+        if initial.outcome is not ControlledWaitOutcome.COMPLETED:
+            self._record_wait_finished(
+                timer,
+                initial_wait_duration,
+                polling_started_at,
+                detected_at,
+                initial,
+                unknown_count,
             )
-            elapsed += early.elapsed
-            polls += early.poll_count
-            if early.outcome is not ControlledWaitOutcome.TIMEOUT:
-                combined = _combined_wait(early, elapsed, polls)
-                self._record_best_effort(
-                    "world_boss.wait.finished",
-                    timer_initial=timer,
-                    expected_wait=expected_wait,
-                    margin=self.wait_policy.final_margin,
-                    polling_started_at=polling_started_at,
-                    raid_complete_detected_at=detected_at,
-                    actual_elapsed=combined.elapsed,
-                    checks=combined.poll_count,
-                    outcome=combined.outcome.value,
-                )
-                return combined, latest
+            return initial, latest
 
-        final_duration = min(float(timer), self.wait_policy.active_window)
-        final_duration += self.wait_policy.final_margin
         polling_started_at = self.clock()
         self._record_best_effort(
             "world_boss.wait.polling_started",
             timer_initial=timer,
             polling_started_at=polling_started_at,
             elapsed=polling_started_at - started_at,
-            interval=self.wait_policy.final_check_interval,
+            completion_poll_interval=self.wait_policy.completion_poll_interval,
+            completion_timeout=self.wait_policy.completion_timeout,
         )
-        final = self.final_wait.wait(
-            expected_duration=final_duration,
+        completion = self.completion_wait.wait(
+            expected_duration=self.wait_policy.completion_timeout,
             completion_condition=check,
             cancel_requested=self.cancel_requested,
         )
-        elapsed += final.elapsed
-        polls += final.poll_count
-        if final.outcome is ControlledWaitOutcome.TIMEOUT:
-            tail = self.final_wait.wait(
-                expected_duration=self.wait_policy.completion_timeout,
-                completion_condition=check,
-                cancel_requested=self.cancel_requested,
-            )
-            elapsed += tail.elapsed
-            polls += tail.poll_count
-            final = tail
-        combined = _combined_wait(final, elapsed, polls)
+        combined = _combined_wait(
+            completion,
+            initial.elapsed + completion.elapsed,
+            completion.poll_count,
+        )
+        self._record_wait_finished(
+            timer,
+            initial_wait_duration,
+            polling_started_at,
+            detected_at,
+            combined,
+            unknown_count,
+        )
+        return combined, latest
+
+    def _record_wait_finished(
+        self,
+        timer,
+        initial_wait_duration,
+        polling_started_at,
+        detected_at,
+        result,
+        unknown_count,
+    ):
         self._record_best_effort(
             "world_boss.wait.finished",
             timer_initial=timer,
-            expected_wait=expected_wait,
-            margin=self.wait_policy.final_margin,
+            initial_wait=initial_wait_duration,
+            post_timer_margin=self.wait_policy.post_timer_margin,
             polling_started_at=polling_started_at,
+            completion_poll_interval=self.wait_policy.completion_poll_interval,
+            completion_timeout=self.wait_policy.completion_timeout,
             raid_complete_detected_at=detected_at,
-            actual_elapsed=combined.elapsed,
-            checks=combined.poll_count,
-            outcome=combined.outcome.value,
+            actual_elapsed=result.elapsed,
+            poll_count=result.poll_count,
+            unknown_count=unknown_count,
+            outcome=result.outcome.value,
         )
-        return combined, latest
 
     def _transition_failure(
         self,

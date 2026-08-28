@@ -88,6 +88,8 @@ Si la documentación contradice al código, no inventar una resolución: señala
 - Los tests normales deben funcionar sin teléfono; toda prueba física es separada, identificada y opt-in.
 - No iniciar el juego ni enviar taps, swipes, keyevents u otro input físico sin autorización expresa dentro de la tarea.
 - Una prueba autorizada debe detenerse antes de una acción con efecto no requerido y asegurar cleanup al finalizar o fallar.
+- Los smokes rutinarios de runtime/hardware los ejecuta el usuario desde la GUI productiva después de que Codex implemente, valide con tests dirigidos, ejecute la suite hardware-free completa, haga commit local y entregue instrucciones mínimas.
+- Codex reserva las pruebas live guiadas para adquisición semántica, ground truth humano, diagnóstico difícil o pedido explícito del usuario; no repite de oficio un smoke rutinario ya delegable a la GUI.
 
 ### Protocolo human-in-the-loop
 

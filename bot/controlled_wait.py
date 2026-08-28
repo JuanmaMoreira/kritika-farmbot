@@ -14,6 +14,7 @@ from bot.event_log import EventSink
 
 class ControlledWaitOutcome(str, Enum):
     COMPLETED = "completed"
+    TERMINATED = "terminated"
     CANCELLED = "cancelled"
     TIMEOUT = "timeout"
     FAILED = "failed"
@@ -63,12 +64,15 @@ class ControlledWait:
         expected_duration: float | None = None,
         deadline: float | None = None,
         completion_condition: Callable[[], bool] | None = None,
+        terminal_condition: Callable[[], bool] | None = None,
         cancel_requested: Callable[[], bool] = lambda: False,
     ) -> ControlledWaitResult:
-        """Wait until duration/deadline, an optional condition, or cancellation.
+        """Wait until a bound, completion, explicit terminal state, or cancellation.
 
         With no completion condition, reaching the bound is successful elapsed
         activity. With a condition, reaching the bound without it is a timeout.
+        A false condition is passive: it only means the requested outcome has
+        not been observed yet. Callback errors are reported distinctly.
         ``deadline`` is expressed on the injected monotonic clock.
         """
 
@@ -76,6 +80,8 @@ class ControlledWait:
             raise ValueError("provide exactly one of expected_duration or deadline")
         if completion_condition is not None and not callable(completion_condition):
             raise ValueError("completion_condition must be callable or None")
+        if terminal_condition is not None and not callable(terminal_condition):
+            raise ValueError("terminal_condition must be callable or None")
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
 
@@ -93,7 +99,7 @@ class ControlledWait:
             deadline=bound,
             check_interval=self.check_interval,
         )
-        if completion_condition is not None:
+        if completion_condition is not None or terminal_condition is not None:
             self._record(
                 "controlled_wait.polling_started",
                 wait=self.label,
@@ -106,11 +112,18 @@ class ControlledWait:
                     return self._result(
                         ControlledWaitOutcome.CANCELLED, started, polls
                     )
-                if completion_condition is not None:
+                if completion_condition is not None or terminal_condition is not None:
                     polls += 1
-                    if completion_condition() is True:
+                    if (
+                        completion_condition is not None
+                        and completion_condition() is True
+                    ):
                         return self._result(
                             ControlledWaitOutcome.COMPLETED, started, polls
+                        )
+                    if terminal_condition is not None and terminal_condition() is True:
+                        return self._result(
+                            ControlledWaitOutcome.TERMINATED, started, polls
                         )
             except (KeyboardInterrupt, SystemExit):
                 raise
@@ -127,7 +140,7 @@ class ControlledWait:
             if remaining <= 0:
                 outcome = (
                     ControlledWaitOutcome.COMPLETED
-                    if completion_condition is None
+                    if completion_condition is None and terminal_condition is None
                     else ControlledWaitOutcome.TIMEOUT
                 )
                 return self._result(outcome, started, polls)
@@ -148,6 +161,7 @@ class ControlledWait:
         )
         event = {
             ControlledWaitOutcome.COMPLETED: "controlled_wait.completed",
+            ControlledWaitOutcome.TERMINATED: "controlled_wait.terminated",
             ControlledWaitOutcome.CANCELLED: "controlled_wait.cancelled",
             ControlledWaitOutcome.TIMEOUT: "controlled_wait.timeout",
             ControlledWaitOutcome.FAILED: "controlled_wait.failed",
