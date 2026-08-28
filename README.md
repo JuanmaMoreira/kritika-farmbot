@@ -6,7 +6,7 @@ El runtime híbrido 0.2 productivo ejecuta actualmente Black Market, World Boss 
 
 ## Dirección 0.2
 
-El runtime usa scrcpy como fuente de frames, percepción local/OCR, flows deterministas y ADB como único límite de input. `FlowRegistry`, `SessionPlan`, la composición productiva, la cancelación y el event stream son compartidos por los entrypoints y por la futura GUI; esa GUI no está implementada todavía.
+El runtime usa scrcpy como fuente de frames, percepción local/OCR, flows deterministas y ADB como único límite de input. `FlowRegistry`, `SessionPlan`, la composición productiva, la cancelación y el event stream son compartidos por CLI y GUI; ningún frontend contiene business logic.
 
 ## Plataforma y requisitos básicos
 
@@ -16,9 +16,23 @@ El runtime usa scrcpy como fuente de frames, percepción local/OCR, flows determ
 - `.env` configurado con el serial del dispositivo.
 - `AGENT_LOCAL.md` configurado con Python, ADB y scrcpy-server locales.
 
-La preparación del entorno está documentada en [docs/setup.md](docs/setup.md). `main.py` sigue siendo legacy; los comandos productivos son los siguientes.
+La preparación del entorno está documentada en [docs/setup.md](docs/setup.md). `main.py` sigue siendo legacy; la GUI y los comandos manuales son los entrypoints productivos.
 
-## Ejecución manual
+## GUI operacional
+
+Abrir desde la raíz del repositorio:
+
+```powershell
+.\tools\agent_run.ps1 tools.gui
+```
+
+La lista de flows procede directamente de `FlowRegistry`. Seleccionar una fila y usar `Enable / Disable`, `↑ Up` y `↓ Down`; una sesión conserva exactamente el orden visible de los flows activos. `Run Flow Once` exige un único flow activo y no rota. `Run Session` usa todos los flows activos, `SessionPlan`, `SessionRunner` y el número positivo de Characters; el default es 28.
+
+`Stop Safely` solicita el mismo token de cancelación que la CLI y no mata threads. Durante una ejecución, los controles de configuración quedan bloqueados. Si se intenta cerrar la ventana, la GUI ofrece solicitar la parada segura y espera el boundary antes de salir.
+
+La Debug Console muestra eventos en vivo con timestamp, nivel, componente y campos estructurados; Debug Mode agrega facts OCR, transiciones, retries y telemetría de waits. `Clear`, `Copy selected` y `Copy all` sólo modifican la vista. El log persistente completo siempre queda bajo `logs/` y su path aparece en Status / Progress.
+
+## Ejecución manual por CLI
 
 Ejecutar desde la raíz del repositorio. El wrapper resuelve el Python, ADB y scrcpy-server registrados localmente, sin asumir que están en `PATH`.
 

@@ -49,7 +49,7 @@ ActionExecutor ≠ Perception
 
 `bot/productive_runtime.py` es el composition root operacional compartido: adquiere configuración, ADB, captura, percepción, observer, OCR facts, executor, flows, rotation y runner con cleanup explícito. `bot/flow_registry.py` contiene la única lista productiva de flows (`black_market`, `world_boss`) con metadata, contrato y factory explícitos; no hay discovery, reflection ni plugin system.
 
-`RuntimeEventStream` emite eventos estructurados (`timestamp`, level, component, event y fields) hacia consola, log persistente y consumidores suscriptos. Los entrypoints `tools.run_flow` y `tools.run_session` son adaptadores finos sobre esta misma composición. La futura GUI consumirá registry, plan, cancelación y stream; no contendrá business logic.
+`RuntimeEventStream` emite eventos estructurados (`timestamp`, level, component, event y fields) hacia consola, log persistente y consumidores suscriptos. Los entrypoints `tools.run_flow`, `tools.run_session` y `tools.gui` son adaptadores finos sobre esta misma composición. La GUI obtiene selección/orden de `FlowRegistry`; un único worker llama `ProductiveRuntime`, encola eventos/resultados y nunca toca Tk. El main thread drena por `after()`, deriva progreso de eventos y activa el mismo `CancellationToken`. No contiene business logic ni una segunda state machine del juego.
 
 Toda geometría visual deriva de `frame.shape` en orden `(height, width, ...)`. Los puntos normalizados representan índices de píxel; las regiones usan límite final exclusivo. `adb wm size` puede ser diagnóstico, nunca fuente de geometría de captura.
 

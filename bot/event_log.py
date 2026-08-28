@@ -75,15 +75,7 @@ class ConsoleEventConsumer:
     def __call__(self, item: RuntimeEvent) -> None:
         if item.level < self.minimum_level:
             return
-        timestamp = item.timestamp.astimezone().strftime("%H:%M:%S.%f")[:-3]
-        level = "WARN" if item.level is EventLevel.WARNING else item.level.name
-        fields = " ".join(
-            f"{name}={_human_value(value)}" for name, value in item.fields.items()
-            if value is not None
-        )
-        detail = item.message or item.event
-        suffix = f" {fields}" if fields else ""
-        print(f"{timestamp} {level:<5} {item.component:<16} {detail}{suffix}", file=self.stream, flush=True)
+        print(format_runtime_event(item), file=self.stream, flush=True)
 
 
 class JsonLineEventConsumer:
@@ -199,13 +191,32 @@ def build_runtime_event_stream(
     path: str | Path,
     *,
     debug: bool = False,
-    console: TextIO = sys.stdout,
+    console: TextIO | None = sys.stdout,
+    consumers: tuple[RuntimeEventConsumer, ...] = (),
 ) -> RuntimeEventStream:
     minimum = EventLevel.DEBUG if debug else EventLevel.INFO
-    return RuntimeEventStream((
-        ConsoleEventConsumer(minimum_level=minimum, stream=console),
-        JsonLineEventConsumer(path),
-    ))
+    configured: list[RuntimeEventConsumer] = []
+    if console is not None:
+        configured.append(ConsoleEventConsumer(minimum_level=minimum, stream=console))
+    configured.append(JsonLineEventConsumer(path))
+    configured.extend(consumers)
+    return RuntimeEventStream(tuple(configured))
+
+
+def format_runtime_event(item: RuntimeEvent) -> str:
+    """Render one structured event consistently for console and GUI views."""
+
+    if not isinstance(item, RuntimeEvent):
+        raise ValueError("item must be RuntimeEvent")
+    timestamp = item.timestamp.astimezone().strftime("%H:%M:%S.%f")[:-3]
+    level = "WARN" if item.level is EventLevel.WARNING else item.level.name
+    fields = " ".join(
+        f"{name}={_human_value(value)}" for name, value in item.fields.items()
+        if value is not None
+    )
+    detail = item.message or item.event
+    suffix = f" {fields}" if fields else ""
+    return f"{timestamp} {level:<5} {item.component:<16} {detail}{suffix}"
 
 
 def _event_metadata(event: str) -> tuple[EventLevel, str]:
@@ -250,6 +261,8 @@ __all__ = (
     "JsonLineEventConsumer",
     "JsonLineEventLog",
     "RuntimeEvent",
+    "RuntimeEventConsumer",
     "RuntimeEventStream",
     "build_runtime_event_stream",
+    "format_runtime_event",
 )

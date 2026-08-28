@@ -8,6 +8,7 @@ from bot.event_log import (
     EventLevel,
     JsonLineEventConsumer,
     RuntimeEventStream,
+    build_runtime_event_stream,
 )
 
 
@@ -78,3 +79,20 @@ def test_controlled_wait_emits_start_polling_and_completion_telemetry():
         "controlled_wait.completed",
     ]
     assert records[-1].fields["actual_elapsed"] == 2
+
+
+def test_gui_consumer_receives_each_event_once_while_file_keeps_debug(tmp_path):
+    captured = []
+    path = tmp_path / "gui.log"
+    stream = build_runtime_event_stream(
+        path,
+        debug=False,
+        console=None,
+        consumers=(captured.append,),
+    )
+
+    stream.record("transition.retry", transition="purchase", attempt=2)
+
+    assert len(captured) == 1
+    assert captured[0].level is EventLevel.DEBUG
+    assert '"event": "transition.retry"' in path.read_text(encoding="utf-8")

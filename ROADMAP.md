@@ -84,7 +84,8 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 - [ ] Diseñar la liberación de inventario y reanudación del mismo personaje; por ahora el evento termina correctamente su flow.
 - [x] Componer y validar live 2/2 `WorldBossFlow + rotation.standard` y 2/2 `BlackMarketFlow + WorldBossFlow + rotation.standard`, sin normalizaciones redundantes.
 - [x] Exponer la composición mediante registry explícito, runtime manual compartido, launchers de flow/sesión, cancelación y event stream persistente/debug.
-- [ ] Construir la mini GUI como frontend fino de la misma infraestructura; ejecutar allí los futuros ciclos 28-character bajo revisión del usuario.
+- [x] Construir la mini GUI Tkinter como frontend fino del registry, runtime worker, cancelación y event stream compartidos.
+- [ ] Ejecutar smokes largos/28-character desde la GUI, recopilar logs, tunear con evidencia y compactar documentación antes del próximo checkpoint/push.
 
 ### Fase 6 — expansión y operación unattended
 

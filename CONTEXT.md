@@ -2,8 +2,8 @@
 
 **Estado:** rediseño híbrido 0.2; `BlackMarketFlow`, `WorldBossFlow` y `rotation.standard` implementados sobre contratos 0.2.
 **Unidad funcional vigente:** los entrypoints productivos construyen `SessionRunner` desde un registry explícito, ejecutan flows `PER_CHARACTER` en orden y hacen exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 830/830 tests hardware-free verdes con registry, launchers, event stream, cancelación y tuning de World Boss.
-**Checkpoint operativo:** el runtime manual expone Black Market, World Boss y sesiones ordenadas con cancelación, debug y log persistente; la GUI queda como próximo frontend y los ciclos 28/28 futuros se ejecutarán desde estos launchers.
+**Baseline conocido:** 846/846 tests hardware-free verdes con CLI y GUI operacional sobre el runtime compartido.
+**Checkpoint operativo:** CLI y mini GUI comparten Black Market, World Boss, sesiones ordenadas, cancelación, debug y log persistente; los ciclos 28/28 futuros se ejecutarán por el usuario desde estos launchers.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -28,6 +28,7 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - `ControlledWait` aporta espera larga monotónica, periódica, cancelable y bounded sin input físico.
 - `FlowRegistry` declara los flows productivos y sus factories sin discovery; `ProductiveRuntime` compone el mismo grafo para CLI y futura GUI.
 - `RuntimeEventStream` distribuye eventos estructurados a consola, archivo por ejecución y futuros consumidores; `--debug` habilita facts, transiciones y waits en consola.
+- `tools.gui` usa Tkinter/ttk, lista flows sólo desde el registry y delega toda ejecución a un worker único sobre `ProductiveRuntime`; Tk recibe únicamente mensajes encolados.
 
 El data flow y los límites vigentes se describen en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -105,6 +106,8 @@ Los smokes live acotados cerraron la composición real. `flows=[WorldBossFlow]` 
 
 Los entrypoints productivos nuevos cerraron su primer smoke. `tools.run_flow black_market --debug` verificó ocho compras, volvió a Lobby y produjo 41 eventos sin retries ni errores. `tools.run_session black_market world_boss --characters 2 --debug` completó 4/4 flows y 2/2 advances con 153 eventos, cero warnings/errors y tres retries seguros observables: un GOLD y los dos Continue. El log registró sapphires `245/15`, timer inicial `60/60`, espera esperada `65/65 s` (`margin=5`) y Raid Complete a `69,797/69,844 s`; la cola bounded detectó ambos overlays tardíos sin convertir el vencimiento temporal en success. Los archivos quedaron bajo `logs/`, gitignored.
 
+La primera GUI operacional cerró sus smokes mediante `tools.gui`. Run Flow Once/Black Market produjo 21 eventos, cero errores/retries y retorno humano-confirmado a Lobby. Run Session `Black Market → World Boss`, N=2 y Debug ON completó 4/4 flows y 2/2 advances en orden, con consola/progreso responsive y log de 137 eventos; acumuló dos `black_market.inventory_full`, un `world_boss.inventory_full`, un retry seguro de Continue y cero errores. La única batalla completa midió timer `60`, expected `65`, Raid Complete a `70,91 s` y 30 checks. La revisión humana pidió hacer más visible el resultado; el label final quedó como `Status` + `Result` explícitos.
+
 ## Runtime y flow World Boss
 
 `WorldBossFlow` aplica `ALWAYS_PARTICIPATE` y declara `screen.lobby` como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación runtime es una lectura OCR fresca de sapphires: con menos de 5 emite `world_boss.insufficient_sapphires` y termina en Lobby sin input. Con saldo suficiente navega mediante transiciones verificadas `Lobby → Battle Mode Select → Select Boss → World Boss`.
@@ -178,4 +181,4 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Próximo trabajo
 
-Construir la GUI como frontend del registry, `SessionPlan`, composition root, token de cancelación y event stream ya disponibles, sin business logic propia. Los futuros smokes 28-character se delegan al runtime manual y revisión del usuario; costo, rank/participation, identidad, limpieza de inventario, Auto Repeat y scheduler permanecen deferred.
+El usuario ejecutará smokes largos/28-character desde la GUI, compartirá logs para tuning y después se compactará documentación antes del checkpoint/push. Costo, rank/participation, identidad, limpieza de inventario, Auto Repeat y scheduler permanecen deferred.

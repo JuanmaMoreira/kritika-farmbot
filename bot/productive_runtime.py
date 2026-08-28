@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, TextIO
 from uuid import uuid4
 
 from bot.action_executor import ActionExecutor
 from bot.auto_battle import AutoBattleDetector, AutoBattleEnsurer
 from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS, build_default_resolver
 from bot.config import RuntimeConfig
-from bot.event_log import RuntimeEventStream, build_runtime_event_stream
+from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtime_event_stream
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry
 from bot.perception import build_default_perception
@@ -181,11 +182,18 @@ def open_productive_runtime(
     debug: bool = False,
     cancel_token: CancellationToken | None = None,
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY,
+    event_consumers: tuple[RuntimeEventConsumer, ...] = (),
+    console: TextIO | None = sys.stdout,
 ) -> Iterator[ProductiveRuntime]:
     """Acquire every productive runtime dependency and guarantee source cleanup."""
 
     token = cancel_token or CancellationToken()
-    events = build_runtime_event_stream(log_path, debug=debug)
+    events = build_runtime_event_stream(
+        log_path,
+        debug=debug,
+        console=console,
+        consumers=event_consumers,
+    )
     events.record("runtime.started", log_path=str(log_path), debug=debug)
     try:
         config = RuntimeConfig.from_env(dotenv_path=dotenv_path)
