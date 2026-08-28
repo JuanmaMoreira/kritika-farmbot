@@ -2,7 +2,7 @@
 
 **Estado:** rediseño híbrido 0.2; `BlackMarketFlow`, `WorldBossFlow` y `rotation.standard` implementados sobre contratos 0.2.
 **Unidad funcional vigente:** los entrypoints productivos construyen `SessionRunner` desde un registry explícito, ejecutan flows `PER_CHARACTER` en orden y hacen exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 851/851 tests hardware-free verdes con CLI y GUI operacional sobre el runtime compartido.
+**Baseline conocido:** 854/854 tests hardware-free verdes con CLI y GUI operacional sobre el runtime compartido.
 **Checkpoint operativo:** CLI y mini GUI comparten Black Market, World Boss, sesiones ordenadas, cancelación, debug y log persistente; los ciclos 28/28 futuros se ejecutarán por el usuario desde estos launchers.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
@@ -123,6 +123,8 @@ Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `Charac
 `CharacterContext` contiene identidad o metadata estable. Stamina, recursos y otros datos cambiantes son Runtime Facts que un flow solicita cuando los necesita; no pertenecen al contexto estable. El boundary productivo queda `RuntimeObserver/Frame → extractor con ROI/preprocessing → OCR Engine/OcrResult → parser → RuntimeFactReader → consumidor`, y los flows no procesan píxeles ni invocan el engine directamente.
 
 `setting.auto_battle` es un Runtime Fact temporal tipado, separado de `CharacterContext`. Usa 10 frames en una ventana corta sobre la ROI normalizada `(0.835, 0.018, 0.890, 0.078)`, mide la mediana de diferencia absoluta consecutiva sólo en el borde y clasifica `OFF ≤ 2`, `UNKNOWN (2, 5)` y `ON ≥ 5`. `ensure_auto_battle_on()` no toca desde `UNKNOWN`; desde OFF confirmado solicita `ToggleAutoBattle` a `ActionExecutor`, vuelve a observar frames frescos y permite como máximo dos taps sólo si OFF continúa inequívoco y el contexto sigue siendo batalla sin Raid Complete. Live: ON inicial terminó con 0 taps; OFF `0,226` pasó con un tap a ON `9,265`, sin retry, y el usuario confirmó ON final.
+
+La adquisición temporal de esos 10 frames conserva intervalo `0,1 s` y usa un budget de `4 s`. El límite anterior de `2 s` quedó sin margen frente a tiempos live exitosos de `1,24–1,81 s` y produjo dos expiraciones a `2,05–2,06 s` antes de clasificar, tanto al inicio como durante una sesión GUI. Un timeout ahora informa frames reunidos, última sequence, span temporal y elapsed sin cambiar thresholds ni habilitar input.
 
 `bot/controlled_wait.py` implementa espera de actividad larga con duración o deadline monotónico, polling configurable, condición de éxito opcional, condición terminal explícita opcional, cancelación y outcomes `completed/terminated/cancelled/timeout/failed`. Un check falso continúa hasta completar o vencer; sólo una excepción de callback produce `failed`. No depende de `ActionExecutor` ni cubre scheduling de horas.
 

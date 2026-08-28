@@ -73,7 +73,8 @@ class TemporalObserver:
         count = _frame_count(frame_count)
         interval = _non_negative(sample_interval, "sample_interval")
         duration = _positive(timeout, "timeout")
-        deadline = self._clock() + duration
+        started = self._clock()
+        deadline = started + duration
         snapshots: list[RuntimeSnapshot] = []
         cursor = after
         try:
@@ -83,7 +84,13 @@ class TemporalObserver:
                     return TemporalWindow(
                         TemporalWindowStatus.TIMEOUT,
                         tuple(snapshots),
-                        "temporal observation deadline expired",
+                        _timeout_detail(
+                            "temporal observation deadline expired",
+                            snapshots,
+                            count,
+                            duration,
+                            self._clock() - started,
+                        ),
                     )
                 snapshot = self.observer.wait_until(
                     lambda item: (
@@ -115,7 +122,13 @@ class TemporalObserver:
             return TemporalWindow(
                 TemporalWindowStatus.TIMEOUT,
                 tuple(snapshots),
-                "no fresh frame arrived before the deadline",
+                _timeout_detail(
+                    "no fresh frame arrived before the deadline",
+                    snapshots,
+                    count,
+                    duration,
+                    self._clock() - started,
+                ),
             )
         except Exception as error:
             return TemporalWindow(
@@ -134,6 +147,26 @@ def _sequence(value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, Integral) or value < 0:
         raise ValueError("after_sequence must be a non-negative integer")
     return int(value)
+
+
+def _timeout_detail(
+    reason: str,
+    snapshots: list[RuntimeSnapshot],
+    expected_count: int,
+    timeout: float,
+    elapsed: float,
+) -> str:
+    last_sequence = snapshots[-1].sequence if snapshots else None
+    frame_span = (
+        snapshots[-1].timestamp - snapshots[0].timestamp
+        if len(snapshots) >= 2
+        else 0.0
+    )
+    return (
+        f"{reason}; frames_collected={len(snapshots)}/{expected_count}; "
+        f"last_sequence={last_sequence}; frame_span={frame_span:.3f}; "
+        f"elapsed={max(0.0, elapsed):.3f}; timeout={timeout:.3f}"
+    )
 
 
 def _frame_count(value: object) -> int:

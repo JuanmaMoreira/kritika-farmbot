@@ -86,3 +86,69 @@ def test_timeout_is_bounded_and_preserves_partial_window():
 
     assert result.status is TemporalWindowStatus.TIMEOUT
     assert result.last_sequence == 11
+    assert "frames_collected=1/3" in result.detail
+    assert "last_sequence=11" in result.detail
+    assert "timeout=2.000" in result.detail
+
+
+def test_four_second_budget_collects_ten_frames_under_observed_processing_latency():
+    class FakeClock:
+        current = 0.0
+
+        def __call__(self):
+            return self.current
+
+    fake = FakeClock()
+    observer = Mock(spec=RuntimeObserver)
+
+    def next_snapshot(*args, **kwargs):
+        sequence = observer.wait_until.call_count + 10
+        fake.current += 0.3
+        return snapshot(sequence)
+
+    observer.wait_until.side_effect = next_snapshot
+    temporal = TemporalObserver(observer, clock=fake)
+
+    result = temporal.collect(
+        after_sequence=10,
+        context="screen.world_boss_battle",
+        frame_count=10,
+        sample_interval=0.1,
+        timeout=4.0,
+    )
+
+    assert result.status is TemporalWindowStatus.COMPLETE
+    assert len(result.snapshots) == 10
+    assert round(fake.current, 3) == 3.0
+
+
+def test_elapsed_deadline_diagnostic_reports_partial_collection():
+    class FakeClock:
+        current = 0.0
+
+        def __call__(self):
+            return self.current
+
+    fake = FakeClock()
+    observer = Mock(spec=RuntimeObserver)
+
+    def next_snapshot(*args, **kwargs):
+        sequence = observer.wait_until.call_count + 20
+        fake.current += 0.7
+        return snapshot(sequence)
+
+    observer.wait_until.side_effect = next_snapshot
+    result = TemporalObserver(observer, clock=fake).collect(
+        after_sequence=20,
+        context="screen.world_boss_battle",
+        frame_count=10,
+        sample_interval=0.1,
+        timeout=2.0,
+    )
+
+    assert result.status is TemporalWindowStatus.TIMEOUT
+    assert len(result.snapshots) == 3
+    assert "temporal observation deadline expired" in result.detail
+    assert "frames_collected=3/10" in result.detail
+    assert "last_sequence=23" in result.detail
+    assert "elapsed=2.100" in result.detail
