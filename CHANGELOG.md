@@ -28,6 +28,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se incorporó OCR transversal local con RapidOCR/ONNX, `OcrResult`, extractors/preprocessing separados y `RuntimeFactReader` fresco/context-correct. Los primeros facts productivos son sapphires de Survival con consenso y battle timer semántico en segundos; ambos quedaron validados live sin implementar `WorldBossFlow` ni Auto Battle.
 - Se productivizó `setting.auto_battle = ON/OFF/UNKNOWN` mediante observación temporal fresca del glow y se añadió `ensure_auto_battle_on()` con toggle semántico, verificación posterior y retries conservadores. La calibración live obtuvo 0 FP/FN; ON inicial usó 0 taps y OFF pasó a ON confirmado con un tap, sin implementar `WorldBossFlow`.
 - Se completó el primer `WorldBossFlow` productivo: sapphires-first, navegación y popups verificados, Auto Battle + timer + `ControlledWait`, Raid Complete y salidas Lobby/World Boss. Los smokes live validaron batalla completa, sapphires insuficientes sin input e inventario lleno con terminación conservadora; Rotation desde World Boss incorporó el offset lateral real de Quick Menu.
+- Se cerró el primer checkpoint operativo combinado: runtime manual y GUI Tkinter comparten registry, sesiones, cancelación y logging; una sesión GUI `Black Market → World Boss → Rotation` completó 28/28 personajes y 28 advances con business events conservadores, retries state-guarded y cero fallos técnicos.
 
 ### Changed
 

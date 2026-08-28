@@ -1,101 +1,58 @@
 # Instrucciones operativas
 
-Estas reglas son permanentes para cualquier trabajo de Codex en este repositorio.
+Reglas permanentes para cualquier trabajo de Codex en este repositorio.
 
-## Lectura documental eficiente
+## Fuentes y lectura
 
-1. Leer siempre `AGENTS.md`.
-2. No cargar automáticamente completos `CONTEXT.md`, `ROADMAP.md` y `ARCHITECTURE.md`.
-3. Antes de leer un documento largo, inspeccionar headings, buscar los términos de la tarea y abrir sólo las secciones necesarias.
-4. Usar `CONTEXT.md` para el estado técnico actual y las decisiones funcionales vigentes.
-5. Usar `ROADMAP.md` principalmente para trabajo activo, siguiente y dependencias relacionadas.
-6. Consultar `ARCHITECTURE.md` sólo cuando la tarea afecte componentes, contratos, data flow o límites entre capas.
-7. Consultar `docs/HISTORY.md`, `docs/legacy/` u otros documentos históricos únicamente cuando hagan falta antecedentes.
-8. No cargar cronología histórica cuando el código y los contratos actuales basten.
-9. Antes de editar un archivo largo, localizar el heading/rango vigente y aplicar patches pequeños sobre texto verificado. Si falla el contexto, releer sólo esa región y reintentar de forma acotada; no construir patches grandes desde texto recordado.
+- Leer siempre `AGENTS.md`.
+- Código y tests determinan qué está implementado. `CONTEXT.md` resume el estado actual, `ARCHITECTURE.md` los contratos vigentes, `ROADMAP.md` el trabajo próximo y `docs/HISTORY.md` los antecedentes.
+- No cargar completos `CONTEXT.md`, `ROADMAP.md` o `ARCHITECTURE.md` por defecto: inspeccionar headings, buscar términos y leer sólo las secciones necesarias. Consultar historia únicamente cuando haga falta trazabilidad.
+- Si documentación y código discrepan, señalar la contradicción y corregirla cuando esté dentro del alcance; no inventar una resolución.
+- Antes de editar un archivo largo, localizar y releer el rango vigente. Aplicar patches pequeños sobre texto verificado.
 
-## Fuentes de verdad
+## Entorno local
 
-- El código y los tests determinan qué está implementado.
-- `CONTEXT.md` resume estado real y decisiones cerradas.
-- `ARCHITECTURE.md` define diseño, contratos y responsabilidades vigentes.
-- `ROADMAP.md` concentra trabajo activo y futuro; lo completado aparece sólo como índice breve.
-- `docs/HISTORY.md` conserva etapas, experimentos y evidencia anteriores; no se lee por defecto.
-- `CHANGELOG.md` registra milestones, migraciones y capacidades importantes, no actividad diaria.
+- Consultar `AGENT_LOCAL.md` antes de redescubrir Python, ADB o scrcpy-server. No asumir que están en `PATH`.
+- `AGENT_LOCAL.md` es machine-local, no contiene secretos ni seriales y nunca se versiona; `AGENT_LOCAL.example.md` documenta su formato.
+- Ejecutar tools Python que importan módulos internos desde la raíz y como módulos, preferentemente con `./tools/agent_run.ps1 tools.nombre <args>`. No usar `python path/to/tool.py` salvo que la tool declare un import path independiente.
+- No hardcodear resoluciones, device IDs ni paths absolutos portables. Derivar geometría de `frame.shape` y mantener lifecycle/cleanup explícitos para sources, procesos, sockets y forwards.
 
-Si la documentación contradice al código, no inventar una resolución: señalar la discrepancia y corregirla cuando entre en el alcance.
-
-## Entorno local de agentes
-
-- Consultar `AGENT_LOCAL.md` antes de redescubrir Python, ADB o scrcpy-server.
-- Usar las rutas registradas allí y redescubrir una herramienta sólo si su ruta deja de funcionar.
-- `AGENT_LOCAL.md` es machine-local, no contiene secretos ni device serials y nunca se versiona.
-- `AGENT_LOCAL.example.md` documenta el formato portable.
-- No asumir que `python` o `adb` están en `PATH`.
-- Desde la raíz, ejecutar las tools Python que importan módulos internos como módulos: `& <PYTHON_EXE> -m tools.nombre <args>`, preferentemente mediante `.\tools\agent_run.ps1 tools.nombre <args>`. No usar `python path/to/tool.py` salvo que la tool declare explícitamente un import path independiente.
-
-## Límites de arquitectura 0.2
+## Límites de arquitectura
 
 - Perception observa y emite semántica; no navega ni decide gameplay.
-- `ContextResolver` resuelve observaciones; no captura, no ejecuta acciones y no conserva policy de flows.
-- Los flows contienen intención de negocio y solicitan acciones semánticas; no hacen matching ni llaman ADB directamente.
-- `ActionExecutor` traduce intents validados a input físico; no reconoce pantallas ni decide qué jugar o comprar.
-- `AdbClient` es el único límite activo de comandos ADB.
-- Al implementar o modificar un camino de interacción, auditar también sus acciones preexistentes afectadas: buscar toda postcondición observable fiable y verificarla antes de continuar; no asumir éxito sólo porque se envió input ni inventar señales débiles. Si el efecto no es verificable, documentarlo explícitamente y aplicar policy conservadora.
-- Rotation es transversal al orquestador y no pertenece a ningún flow.
-- `AdsManager` permanece desacoplado de la percepción normal del juego.
-- No volver a concentrar configuración, percepción y acciones en `constants.py` ni en otro archivo monolítico.
-- Tratar el código legacy como conocimiento preservado, no como arquitectura runtime objetivo.
-- Derivar geometría desde `frame.shape`; no hardcodear resoluciones, device IDs ni paths absolutos portables.
-- Mantener lifecycle y cleanup explícitos para sources, procesos, sockets y forwards adquiridos.
+- `ContextResolver` resuelve observaciones; no captura, ejecuta acciones ni conserva policy de flows.
+- Los flows contienen intención de negocio y solicitan operaciones semánticas; no hacen matching ni llaman ADB directamente.
+- `ActionExecutor` traduce intents validados a input físico; no reconoce pantallas ni decide qué jugar o comprar. `AdbClient` es el único límite activo de comandos ADB.
+- Rotation es transversal al orquestador y no pertenece a ningún flow. `AdsManager` permanece desacoplado de la percepción normal del juego.
+- Toda acción con postcondición observable fiable debe verificarse antes de continuar. Si no existe una señal robusta, documentarlo y usar policy conservadora.
+- Todo retry debe estar bounded y protegido por un estado fresco (`state-guarded`) que autorice exactamente repetir esa acción. `UNKNOWN` nunca autoriza input ni retry.
+- No volver a concentrar configuración, percepción y acciones en `constants.py` ni otro archivo monolítico. Tratar legacy como conocimiento preservado, no como arquitectura runtime objetivo.
 
-## Alcance y cambios
+## Alcance y diseño
 
-- No expandir el alcance ni implementar features fuera del trabajo activo sin necesidad concreta.
-- No introducir dependencias sin justificación.
-- Preferir componentes deterministas y testeables sin hardware.
-- Actualizar `CONTEXT.md` cuando cambie el estado real o se cierre una decisión importante.
-- Actualizar `ARCHITECTURE.md` cuando cambien diseño o responsabilidades.
-- Actualizar `ROADMAP.md` al completar o repriorizar trabajo.
-- Actualizar `CHANGELOG.md` sólo para milestones, migraciones, releases o capacidades importantes.
+- No expandir el alcance ni implementar features fuera del trabajo activo sin una necesidad concreta. Evitar abstracciones, configurabilidad y recovery anticipados sin consumidor o evidencia.
+- Discutir intención de negocio, outcomes y policy con el usuario antes de una implementación grande de flows o gameplay.
+- Preferir componentes deterministas, pequeños y testeables sin hardware. No introducir dependencias sin justificación.
+- Actualizar `CONTEXT.md` cuando cambie el estado real, `ARCHITECTURE.md` cuando cambien contratos o responsabilidades y `ROADMAP.md` al completar o repriorizar trabajo. Reservar `CHANGELOG.md` para milestones, migraciones, releases o capacidades importantes.
 
-## Git y datos
+## Git, datos y salida
 
 - Verificar referencias antes de borrar datos, capturas o assets potencialmente valiosos.
-- No versionar datasets grandes, `screencaps/`, `artifacts/`, logs, caches, `.env` ni `AGENT_LOCAL.md`.
-- Los manifests curados y los assets runtime bajo `assets/` sí pueden versionarse.
-- No hardcodear ni persistir identidad de dispositivo o usuario cuando no sea parte necesaria del dato.
-- No hacer push salvo instrucción explícita y no reescribir historia Git salvo instrucción explícita.
-- El tag `legacy-pre-hybrid` preserva el estado anterior al rediseño 0.2.
+- No versionar datasets grandes, `screencaps/`, `artifacts/`, logs, caches, `.env` ni `AGENT_LOCAL.md`. Los manifests curados y assets runtime bajo `assets/` sí pueden versionarse.
+- No persistir identidad de dispositivo o usuario salvo necesidad del dato. No hacer push sin instrucción explícita ni reescribir historia. El tag `legacy-pre-hybrid` preserva el runtime anterior.
+- Preservar cambios ajenos. Antes de commit, revisar `git status --short` y diff acotado; después confirmar tree limpio.
+- Preferir output conciso (`pytest -q`, `git status --short`, `git diff --stat`, `git log --oneline`, `rg` acotado). Ampliar sólo el error y contexto necesarios.
 
-## Salida de herramientas
+## Tests y hardware
 
-- Preferir output conciso: `pytest -q`, `git status --short`, `git diff --stat`, `git log --oneline` y búsquedas `rg` acotadas.
-- No imprimir por defecto archivos, logs, diffs, árboles del repo ni output exitoso completos.
-- Ante un fallo, ampliar sólo el error y el contexto necesarios.
-- Para documentos largos, buscar heading o término y leer el rango relevante.
+- Durante implementación, ejecutar primero tests dirigidos. Antes de commitear código, ejecutar una vez la suite hardware-free completa y las regresiones productivas relevantes.
+- Para docs-only o tooling que no importa runtime, validar formato, referencias y comportamiento dirigido; no repetir la suite completa sólo por Markdown. Si HEAD ya coincide con un checkpoint validado, el tree está limpio y no hubo código posterior, no volver a probar ese baseline.
+- Los tests normales deben funcionar sin teléfono. Toda prueba física es separada, explícita y opt-in; no iniciar el juego ni enviar input sin autorización dentro de la tarea.
+- Los smokes rutinarios de runtime/hardware los ejecuta el usuario desde la GUI productiva después de tests y commit local. Codex hace validación live guiada sólo cuando adquisición semántica, diagnóstico difícil, ground truth o un pedido explícito lo requieren.
+- Una prueba física autorizada debe detenerse antes de efectos no requeridos y asegurar cleanup al finalizar o fallar.
 
-## Política de tests
+### Human-in-the-loop
 
-- Durante implementación, ejecutar primero tests dirigidos y ampliar según el área modificada.
-- Antes de commitear cambios de código, ejecutar una vez la suite hardware-free completa y las regresiones productivas relevantes.
-- Para cambios docs-only o tooling que no importa runtime, validar formato, referencias y comportamiento dirigido; no ejecutar automáticamente cientos de tests sin razón técnica.
-- Si `HEAD` coincide con un checkpoint ya validado, el tree está limpio y no hubo cambios, no repetir la suite sólo para volver a demostrar ese baseline.
-- La optimización de ejecuciones redundantes no reduce la cobertura exigida al cerrar cambios de código.
-
-## Trabajo con hardware
-
-- Los tests normales deben funcionar sin teléfono; toda prueba física es separada, identificada y opt-in.
-- No iniciar el juego ni enviar taps, swipes, keyevents u otro input físico sin autorización expresa dentro de la tarea.
-- Una prueba autorizada debe detenerse antes de una acción con efecto no requerido y asegurar cleanup al finalizar o fallar.
-- Los smokes rutinarios de runtime/hardware los ejecuta el usuario desde la GUI productiva después de que Codex implemente, valide con tests dirigidos, ejecute la suite hardware-free completa, haga commit local y entregue instrucciones mínimas.
-- Codex reserva las pruebas live guiadas para adquisición semántica, ground truth humano, diagnóstico difícil o pedido explícito del usuario; no repite de oficio un smoke rutinario ya delegable a la GUI.
-
-### Protocolo human-in-the-loop
-
-- En pruebas físicas, chat + `steer` es el canal principal con el usuario.
-- Si hace falta navegación, confirmación de pantalla, ground truth o una decisión humana, detenerse en un punto seguro, pedir la acción semánticamente por chat y continuar sólo tras la respuesta.
-- No usar `stdin`, menús de terminal, códigos numéricos ni secuencias abstractas de teclas como canal principal.
-- Workbench y su teclado son instrumentación; exigir interacción directa sólo cuando sea lo validado o sea necesaria para registrar ground truth, explicándolo antes por chat.
-- Preferir navegación normal del usuario en el dispositivo mientras Codex observa y registra evidencia.
+- En pruebas físicas, chat + `steer` es el canal principal. Si hace falta navegación, confirmación de pantalla, ground truth o una decisión humana, detenerse en un punto seguro, pedir la acción semánticamente y continuar sólo tras la respuesta.
+- Preferir navegación normal del usuario mientras Codex observa y registra evidencia. Workbench y su teclado son instrumentación, no el canal conversacional.
 - Nunca inferir confirmación humana, ground truth, causalidad o destino semántico desde un tap, una predicción o una transición visual.

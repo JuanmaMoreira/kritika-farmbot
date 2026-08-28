@@ -61,9 +61,10 @@ El usuario debe dejar el personaje actual en la precondición declarada. Los flo
 
 ## Documentación
 
-- [CONTEXT.md](CONTEXT.md): estado real, decisiones cerradas y limitaciones vigentes.
-- [ARCHITECTURE.md](ARCHITECTURE.md): arquitectura legacy y dirección objetivo 0.2.
-- [ROADMAP.md](ROADMAP.md): trabajo futuro por fases.
+- [CONTEXT.md](CONTEXT.md): snapshot del sistema productivo actual y limitaciones vigentes.
+- [ARCHITECTURE.md](ARCHITECTURE.md): componentes, contratos y límites 0.2 vigentes.
+- [ROADMAP.md](ROADMAP.md): próximo trabajo y futuro conocido.
+- [docs/HISTORY.md](docs/HISTORY.md): cronología, calibraciones y checkpoints cerrados (cold context).
 - [CHANGELOG.md](CHANGELOG.md): milestones relevantes.
 - [AGENTS.md](AGENTS.md): reglas operativas permanentes para Codex.
 - [docs/legacy/](docs/legacy/): documentación e instrumentos históricos preservados.

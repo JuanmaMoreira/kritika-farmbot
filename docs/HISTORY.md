@@ -128,6 +128,44 @@ Start expuso además un popup Yes/No de inventario lleno específico de World Bo
 
 Los smokes finales sobre el mismo personaje cerraron tres ramas: inventario lleno con todas las transiciones al primer intento; batalla completa con Auto Battle ON, timer inicial 60 s, 29 checks, Raid Complete y Continue exitoso tras un retry seguro; y sapphires `0`, que emitió `world_boss.insufficient_sapphires` sin ninguna transición ni input. Previous Rewards se reconoció y cerró manualmente sobre la evidencia que motivó la corrección; su secuencia tardía quedó cubierta por regresión determinista.
 
+## Rotation, sesiones y frontends productivos
+
+`StandardRotation` quedó validada primero de forma aislada: 28/28 advances, 56 swipes, 28 selecciones visuales y 112 interacciones discretas al primer intento, con retorno humano-confirmado al personaje inicial. La composición Black Market posterior completó 28/28 flows y 28/28 advances; acumuló 14 `inventory_full` no fatales, diez retries seguros y cero fallos técnicos.
+
+`SessionRunner` evolucionó de una secuencia ligada a Lobby a contratos explícitos por componente. `WorldBossFlow` pudo terminar en World Boss, `StandardRotation` consumir la capability Quick Menu desde ese contexto y el runner verificar la salida real antes de continuar. Los smokes N=2 cerraron tanto `World Boss → Rotation` como `Black Market → World Boss → Rotation`, sin normalizaciones redundantes.
+
+Los commits `fac9f6a` y `df4a0ad` añadieron el runtime manual y la GUI Tkinter sobre el mismo `FlowRegistry`, composition root, cancellation token y event stream. `a7e34f0` añadió el launcher Windows de doble clic. Run Flow Once y Run Session quedaron como adaptadores: la GUI mantiene selección/progreso y un worker encolado, pero ninguna business logic.
+
+## Raid Complete, ControlledWait y hardening previo al 28/28
+
+El primer smoke de la espera final agotó el timeout aunque Raid Complete estaba visible: el consumer exigía simultáneamente la base de batalla y el overlay, pero el resolver preservaba correctamente overlays con base no resuelta. Los fixes posteriores a la GUI cerraron los gaps encontrados en sesiones reales:
+
+- `4ad891f`: espera inicial pasiva sin capturar; después polling bounded, donde un check falso sólo continúa.
+- `d5346f1`: Raid Complete se detecta por el overlay independientemente de la base resuelta.
+- `9aa578c`: timeout final ampliado a 25 s por latencia post-timer observada.
+- `f4443d2`: budget de adquisición temporal de Auto Battle ampliado sin cambiar thresholds.
+- `6554369`: Runtime Facts toleran frames transitorios no resueltos dentro del mismo timeout.
+- `e3aa5c5`: nuevo guard `popup.world_boss_bag_full`, con `X → World Boss` verificado y fin conservador del flow.
+- `1814ddc`: la sonda de postcondición de sesión tolera frames transitorios, exige contexto limpio estable y sigue rechazando estados contradictorios.
+
+Los cambios conservaron el principio común: espera/grace puede ser pasiva, pero ningún `UNKNOWN` habilita input o retry. Todo segundo input de las transiciones discretas permaneció protegido por una precondición fresca específica.
+
+## Primer 28/28 combinado desde GUI
+
+La sesión GUI con debug quedó en `logs/20260828T230015.529054Z_session_53bc461e.log` (archivo local gitignored). Se inició el 28 de agosto de 2026 a las 20:00:15 -03:00 y terminó a las 20:28:25 con `session.completed`, `runtime.completed` y cleanup `runtime.closed`.
+
+Hechos derivados del log estructurado:
+
+- 28/28 personajes iniciados y completados; 28/28 advances.
+- 28 ejecuciones completas de Black Market y 28 de World Boss; cero `flow.failed`, `session.failed`, `runtime.failed` o eventos level `ERROR`.
+- 38 business events agregados por los resultados: 23 `black_market.inventory_full`; World Boss produjo 10 `inventory_full`, 3 `bag_full` y 2 `insufficient_sapphires`.
+- Black Market informó además 12 `black_market.no_gold` informativos. Trece personajes ejecutaron batalla World Boss completa con Auto Battle confirmado, espera completada, Raid Complete y Continue; los otros quince cerraron por un resultado de negocio conservador.
+- Las 410 transiciones verificadas terminaron exitosas: 394 al primer intento y 16 después de un retry state-guarded. Los retries fueron Black Market `accept_purchase` ×6, `select_slot` ×3, `open` ×1 y `close` ×1; World Boss `open_selector` ×1, `open_battle_mode_select` ×1 y `continue_after_raid` ×2; Rotation `open_character_select` ×1.
+- Las trece esperas finales de batalla terminaron `completed`; no hubo timeout, cancelación ni recovery no estructurado.
+- Resultado final: `SessionStatus.COMPLETED`, `characters_processed=28`, `advances_completed=28`, technical failures = 0.
+
+Este checkpoint quedó sobre `1814ddc` con la última suite hardware-free conocida en 921/921 tests verdes. No hubo código posterior antes del cierre documental.
+
 ## Decisiones y alternativas reemplazadas
 
 - El icono de oro de Lobby describe un shell persistente, no una pantalla base exclusiva.
