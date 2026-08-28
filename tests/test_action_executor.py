@@ -110,6 +110,10 @@ def test_executor_translates_rotation_taps_from_frame_geometry(action, target):
     assert receipt.pixel_target == expected
 
 
+def test_quick_menu_uses_the_shared_live_confirmed_header_target():
+    assert DEFAULT_ROTATION_ACTION_TARGETS.open_quick_menu == (0.1940, 0.0564)
+
+
 def test_executor_translates_generic_normalized_swipe_to_one_adb_swipe():
     adb = Mock()
     executor = ActionExecutor(adb)

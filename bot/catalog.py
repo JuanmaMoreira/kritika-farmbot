@@ -10,9 +10,14 @@ SCREEN_LOBBY = "screen.lobby"
 SCREEN_CHARACTER_SELECT = "screen.character_select"
 SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
+SCREEN_WORLD_BOSS = "screen.world_boss"
+SCREEN_WORLD_BOSS_BATTLE = "screen.world_boss_battle"
 POPUP_PURCHASE_CONFIRMATION = "popup.purchase_confirmation"
 POPUP_INSUFFICIENT_GOLD = "popup.insufficient_gold"
 POPUP_INVENTORY_FULL = "popup.inventory_full"
+POPUP_WORLD_BOSS_PREVIOUS_REWARDS = "popup.world_boss_previous_rewards"
+OVERLAY_WORLD_BOSS_SELECT_BOSS = "overlay.world_boss_select_boss"
+OVERLAY_WORLD_BOSS_RAID_COMPLETE = "overlay.world_boss_raid_complete"
 MENU_QUICK = "menu.quick"
 
 LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
@@ -20,6 +25,7 @@ LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
 )
 LANDMARK_CHARACTER_SELECT_HEADER = "landmark.character_select_header"
 LANDMARK_MONSTER_WAVE_ENTRY_TITLE = "landmark.monster_wave_entry_title"
+LANDMARK_BATTLE_MODE_SELECT_HEADER = "landmark.battle_mode_select_header"
 LANDMARK_BLACK_MARKET_TITLE = "landmark.black_market_title"
 LANDMARK_PURCHASE_CONFIRMATION_PROMPT = (
     "landmark.purchase_confirmation_prompt"
@@ -27,16 +33,34 @@ LANDMARK_PURCHASE_CONFIRMATION_PROMPT = (
 LANDMARK_INSUFFICIENT_GOLD_PROMPT = "landmark.insufficient_gold_prompt"
 LANDMARK_INVENTORY_FULL_OK_BUTTON = "landmark.inventory_full_ok_button"
 LANDMARK_QUICK_MENU_LOBBY_TILE = "landmark.quick_menu_lobby_tile"
+LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER = (
+    "landmark.world_boss_select_boss_header"
+)
+LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE = (
+    "landmark.world_boss_previous_rewards_notice"
+)
+LANDMARK_WORLD_BOSS_SAPPHIRES_USED = "landmark.world_boss_sapphires_used"
+LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE = (
+    "landmark.world_boss_battle_current_damage"
+)
+LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE = (
+    "landmark.world_boss_raid_complete_title"
+)
 
 SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_BLACK_MARKET_TITLE,
+    LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
-    LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
+    LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
+    LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
+    LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
+    LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
+    LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
 )
 
 BASE_CONTEXT_RULES = (
@@ -57,12 +81,37 @@ BASE_CONTEXT_RULES = (
     ),
     ContextRule(
         name=SCREEN_BATTLE_MODE_SELECT,
-        requires=(LANDMARK_MONSTER_WAVE_ENTRY_TITLE,),
+        requires=(LANDMARK_BATTLE_MODE_SELECT_HEADER,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_WORLD_BOSS,
+        requires=(LANDMARK_WORLD_BOSS_SAPPHIRES_USED,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_WORLD_BOSS_BATTLE,
+        requires=(LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
 )
 
 OVERLAY_RULES = (
+    ContextRule(
+        name=OVERLAY_WORLD_BOSS_SELECT_BOSS,
+        requires=(LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
+        requires=(LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=OVERLAY_WORLD_BOSS_RAID_COMPLETE,
+        requires=(LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
     ContextRule(
         name=POPUP_INVENTORY_FULL,
         requires=(

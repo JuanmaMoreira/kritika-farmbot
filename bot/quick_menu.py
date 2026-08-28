@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from bot.catalog import SCREEN_LOBBY
+from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
 from bot.observations import validate_semantic_name
 
@@ -25,9 +25,11 @@ class QuickMenuPolicy:
         return semantic_context in self.accessible_from
 
 
-# Only contexts with productive evidence belong here. World Boss is intentionally
-# absent until its semantic acquisition and Quick Menu behavior are validated live.
-DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(frozenset({SCREEN_LOBBY}))
+# Both contexts opened and safely closed the same Quick Menu overlay live using
+# the shared header target. No other context is inferred from legacy metadata.
+DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(
+    frozenset({SCREEN_LOBBY, SCREEN_WORLD_BOSS})
+)
 
 
 def quick_menu_accessible(

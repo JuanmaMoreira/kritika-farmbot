@@ -92,11 +92,23 @@ Una adquisición live read-only preservó seis frames frescos del popup real de 
 
 `popup.inventory_full` reemplazó el candidate semántico `popup.bag_full_alert`. `BlackMarketFlow` lo registra como `black_market.inventory_full`, ejecuta un intent `AcknowledgeInventoryFull` mediante `VerifiedTransition`, exige un Black Market fresco y continúa con el siguiente GOLD sin reintentar el slot. No se añadió OCR, `inventory_kind`, limpieza de inventario ni composición de sesión. La prueba live sobre el popup adquirido cerró al primer tap, sin grace ni retry, y el usuario confirmó visualmente el Black Market normal. El cierre quedó en 574/574 tests hardware-free.
 
+## World Boss — adquisición y percepción semántica
+
+La auditoría legacy localizó `select-boss-id.png`, `world-boss-id.png`, `world-boss-auto-repeat-id.png`, `battle-id.png` y targets históricos, pero no los promovió por sí sola. El primer probe live entró al selector PvP mediante Battle; la corrección humana identificó que World Boss está bajo Survival. Esa pantalla negativa no se convirtió en un contexto del slice.
+
+La navegación supervisada adquirió y el usuario confirmó por chat seis estados: `screen.battle_mode_select`, `overlay.world_boss_select_boss`, `popup.world_boss_previous_rewards`, `screen.world_boss`, `screen.world_boss_battle` y `overlay.world_boss_raid_complete`. Select Boss preserva la base atenuada y Close la restaura, por lo que es overlay. Previous Rewards corresponde al boss anterior y no demuestra participación actual. Raid Complete conserva visible el HUD productivo de batalla y resuelve base + overlay.
+
+Se curaron 44 frames: 6 Battle Mode, 4 Select Boss, 5 Previous Rewards, 8 World Boss, 13 batalla y 8 Raid Complete. Se promovieron seis crops current-season que excluyen números, boss, rewards y otros datos variables. La evaluación productiva conjunta recorrió 146 labels con 146 correctos, cero wrong/ambiguous y 0 FP/FN para los 13 detectores. Los nuevos gaps raw fueron `0,272674`, `0,709750`, `0,628603`, `0,388257`, `0,357196` y `0,564908`; Lobby y Black Market se recalibraron contra el corpus global ampliado sin cambiar su semántica.
+
+Quick Menu abrió y cerró desde World Boss con el target común `(0.1940, 0.0564)`, restaurando la base; el mismo target fue revalidado sobre Lobby antes de ampliar `quick_menu_accessible`. El manifest específico conserva `UNKNOWN + menu.quick` mientras el panel tapa la base, sin inventarla.
+
+La batalla se observó con varios valores del timer y se capturaron secuencias explícitas Auto OFF/ON. En la ROI del control, OFF obtuvo diferencia absoluta consecutiva media `1,672837` y desviación estándar media `6,429503`; ON obtuvo `11,612882` y `38,287155`. Auto quedó restaurado ON. Esto es evidencia candidate, no detector productivo. Los manifests también preservan ROIs normalizados para sapphires, costo, rank/participation, Start, Auto Repeat, Auto Battle, timer y taps seguros. No se implementaron OCR, parsers, acciones World Boss, Auto Repeat, `WorldBossFlow`, integración de sesión ni ConflictResolver.
+
 ## Decisiones y alternativas reemplazadas
 
 - El icono de oro de Lobby describe un shell persistente, no una pantalla base exclusiva.
 - `landmark.lobby_commerce_pair` quedó alternativa offline; producción usa Trading Center.
-- Battle Mode Select no se promovió por evidencia insuficiente.
+- El candidate anterior de Monster Wave no bastaba para Battle Mode Select; el slice World Boss lo reemplazó por un header current-season con corpus ampliado.
 - La calibración empírica expresa posición dentro del gap observado, no probabilidad.
 - Las sesiones raw o diagnósticas nunca se promueven automáticamente.
 - La policy temprana del vertical slice aborta errores técnicos; no representa la policy unattended final.

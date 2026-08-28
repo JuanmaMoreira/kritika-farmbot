@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-27",
+    "source_context": "screen.world_boss",
+    "interaction": "OpenQuickMenu",
+    "normalized_target": [0.194, 0.0564],
+    "result": "menu.quick",
+    "restoration": "same target closed the overlay and restored screen.world_boss",
+    "base_resolution_required_while_open": false,
+    "human_ground_truth": "confirmed_in_chat"
+  },
+  "entries": [
+    {"path":"screencaps/semantic/world_boss/quick_menu/20260827T231126_760280Z_01.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/quick_menu/20260827T231127_757631Z_03.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/quick_menu/20260827T231128_737455Z_05.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/quick_menu/20260827T231129_223095Z_06.png","base_context":"unknown","overlays":["menu.quick"],"review_status":"confirmed"}
+  ]
+}

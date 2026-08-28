@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from bot.perception.specs import (
+    BATTLE_MODE_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
@@ -16,6 +17,11 @@ from bot.perception.specs import (
     LinearGapCalibration,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
+    WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
+    WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
+    WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
+    WORLD_BOSS_SAPPHIRES_USED_SPEC,
+    WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
 )
 
 
@@ -82,6 +88,9 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
         0.29761061946902656,
         0.9822222222222222,
     )
+    assert LOBBY_TRADING_CENTER_LABEL_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.47562649846076965)
+    )
     assert CHARACTER_SELECT_HEADER_SPEC.asset_path.as_posix() == (
         "assets/ui/landmarks/character-select-header.png"
     )
@@ -99,10 +108,10 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     )
     assert BLACK_MARKET_TITLE_SPEC.variant_asset_paths == ()
     assert BLACK_MARKET_TITLE_SPEC.calibration.negative_anchor == pytest.approx(
-        0.2230203002691269
+        0.301844984292984
     )
     assert BLACK_MARKET_TITLE_SPEC.calibration.positive_anchor == pytest.approx(
-        0.3993116021156311
+        0.39833250641822815
     )
     assert INSUFFICIENT_GOLD_PROMPT_SPEC.asset_path.as_posix() == (
         "assets/ui/landmarks/insufficient-gold-prompt-current.png"
@@ -154,6 +163,18 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert QUICK_MENU_LOBBY_TILE_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9826233983039856)
     )
+    assert BATTLE_MODE_SELECT_HEADER_SPEC.region == (0.36, 0.08, 0.64, 0.20)
+    assert WORLD_BOSS_SELECT_BOSS_HEADER_SPEC.region == (0.33, 0.01, 0.67, 0.15)
+    assert WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC.region == (
+        0.25, 0.78, 0.75, 0.91
+    )
+    assert WORLD_BOSS_SAPPHIRES_USED_SPEC.region == (0.45, 0.74, 0.64, 0.88)
+    assert WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC.region == (
+        0.015, 0.22, 0.20, 0.43
+    )
+    assert WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC.region == (
+        0.32, 0.14, 0.68, 0.36
+    )
     assert all(
         spec.calibration.negative_anchor
         < spec.calibration.positive_anchor
@@ -193,6 +214,36 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             QUICK_MENU_LOBBY_TILE_SPEC,
             (126, 140),
             "314fdc69d94e252c75c96428ef450bbf6c7044934cdda76872b6ac39378af180",
+        ),
+        (
+            BATTLE_MODE_SELECT_HEADER_SPEC,
+            (595, 80),
+            "d1bd18ec8121e4f6ba1c8e7ef4465e5158a824e6129c2575409f786b5c2c14c6",
+        ),
+        (
+            WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
+            (680, 110),
+            "6bcf85d1d91b33889c0965e66b55ed4cf680e3914322e3e563c53200cce9f21d",
+        ),
+        (
+            WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
+            (915, 75),
+            "981d41283ddcf78e13646183ad3a80e2b9050cc6063e6480a94f81d7952fe3fb",
+        ),
+        (
+            WORLD_BOSS_SAPPHIRES_USED_SPEC,
+            (265, 55),
+            "5c1a95f07c729fc03cf053a11ec801e5c871a72c238ca3e1356573505f76f892",
+        ),
+        (
+            WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
+            (290, 65),
+            "f3e5e5e0ab898a3e19531213b85dbb893ae667a0b70101e9f05947568e924e6f",
+        ),
+        (
+            WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
+            (700, 95),
+            "b5f87a11d6b42c067820ddf3c7d101ed7d325141bad5d71398ca847419ddb132",
         ),
     ),
 )

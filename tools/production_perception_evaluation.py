@@ -15,6 +15,7 @@ from typing import Iterable
 import cv2
 
 from bot.catalog import (
+    LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
@@ -22,14 +23,24 @@ from bot.catalog import (
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
+    LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
+    LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
+    LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
+    LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
+    LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
     MENU_QUICK,
+    OVERLAY_WORLD_BOSS_RAID_COMPLETE,
+    OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_INSUFFICIENT_GOLD,
     POPUP_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
+    POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
     SCREEN_LOBBY,
+    SCREEN_WORLD_BOSS,
+    SCREEN_WORLD_BOSS_BATTLE,
     build_default_resolver,
 )
 from bot.capture import FrameSnapshot
@@ -49,6 +60,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/workbench_evidence_manifest.json",
     "datasets/quick_menu_evidence_manifest.json",
     "datasets/black_market_interruptions_manifest.json",
+    "datasets/world_boss_semantic_manifest.json",
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
@@ -398,6 +410,7 @@ def evaluate_production_perception(
     entries = tuple(indexed[path] for path in sorted(indexed))
     engine = build_default_perception(repository_root)
     resolver = build_default_resolver()
+    production_base_contexts = frozenset(rule.name for rule in resolver.base_rules)
 
     detector_accumulators = {
         spec.name: {
@@ -437,13 +450,7 @@ def evaluate_production_perception(
             key: 0
             for key in ("count", "correct", "unknown", "ambiguous", "wrong")
         }
-        for name in (
-            SCREEN_LOBBY,
-            SCREEN_CHARACTER_SELECT,
-            SCREEN_BLACK_MARKET,
-            SCREEN_BATTLE_MODE_SELECT,
-            "other_or_unknown",
-        )
+        for name in (*sorted(production_base_contexts), "other_or_unknown")
     }
     frame_results: list[FrameResult] = []
 
@@ -485,7 +492,7 @@ def evaluate_production_perception(
         expected_base = (
             entry.base_context
             if entry.base_context
-            in {SCREEN_LOBBY, SCREEN_CHARACTER_SELECT, SCREEN_BLACK_MARKET}
+            in production_base_contexts
             else None
         )
         expected_status = (
@@ -550,12 +557,7 @@ def evaluate_production_perception(
         context_name = (
             entry.base_context
             if entry.base_context
-            in {
-                SCREEN_LOBBY,
-                SCREEN_CHARACTER_SELECT,
-                SCREEN_BLACK_MARKET,
-                SCREEN_BATTLE_MODE_SELECT,
-            }
+            in production_base_contexts
             else "other_or_unknown"
         )
         context = context_accumulators[context_name]
@@ -645,6 +647,8 @@ def evaluate_production_perception(
 
 
 def _is_positive(name: str, entry: ManifestEntry) -> bool:
+    if name == LANDMARK_BATTLE_MODE_SELECT_HEADER:
+        return entry.base_context == SCREEN_BATTLE_MODE_SELECT
     if name == LANDMARK_LOBBY_TRADING_CENTER_LABEL:
         return entry.base_context == SCREEN_LOBBY
     if name == LANDMARK_CHARACTER_SELECT_HEADER:
@@ -659,6 +663,16 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return POPUP_INVENTORY_FULL in entry.overlays
     if name == LANDMARK_QUICK_MENU_LOBBY_TILE:
         return MENU_QUICK in entry.overlays
+    if name == LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER:
+        return OVERLAY_WORLD_BOSS_SELECT_BOSS in entry.overlays
+    if name == LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE:
+        return POPUP_WORLD_BOSS_PREVIOUS_REWARDS in entry.overlays
+    if name == LANDMARK_WORLD_BOSS_SAPPHIRES_USED:
+        return entry.base_context == SCREEN_WORLD_BOSS
+    if name == LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE:
+        return entry.base_context == SCREEN_WORLD_BOSS_BATTLE
+    if name == LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE:
+        return OVERLAY_WORLD_BOSS_RAID_COMPLETE in entry.overlays
     raise ValueError(f"Unsupported production detector: {name}")
 
 

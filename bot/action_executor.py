@@ -102,7 +102,9 @@ class RotationActionTargets:
     number of characters.
     """
 
-    open_quick_menu: RelativePoint = (0.0520, 0.1110)
+    # Shared live-confirmed hit target inside the player header. It opens and
+    # closes Quick Menu from both Lobby and World Boss at the current geometry.
+    open_quick_menu: RelativePoint = (0.1940, 0.0564)
     open_character_select: RelativePoint = (0.0704, 0.7835)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
     confirm_character_selection: RelativePoint = (0.6855, 0.9101)

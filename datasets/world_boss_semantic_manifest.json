@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-27",
+    "source": "live_scrcpy",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat",
+    "classifications": {
+      "overlay.world_boss_select_boss": "overlay over screen.battle_mode_select; Close restores the base",
+      "popup.world_boss_previous_rewards": "optional popup over the loaded World Boss screen",
+      "overlay.world_boss_raid_complete": "result overlay over the battle HUD; tap restores screen.world_boss"
+    },
+    "candidate_rois": {
+      "lobby_sapphires": [0.845, 0.59, 0.945, 0.68],
+      "battle_mode_world_boss_total_rank": [0.275, 0.515, 0.375, 0.61],
+      "world_boss_my_rank": [0.12, 0.56, 0.37, 0.67],
+      "world_boss_sapphires_cost": [0.49, 0.78, 0.56, 0.86],
+      "world_boss_start": [0.70, 0.89, 0.83, 0.97],
+      "world_boss_auto_repeat": [0.70, 0.78, 0.83, 0.87],
+      "world_boss_battle_auto": [0.83, 0.01, 0.925, 0.105],
+      "world_boss_battle_timer": [0.36, 0.12, 0.59, 0.23],
+      "previous_rewards_ok": [0.43, 0.87, 0.57, 0.96],
+      "raid_complete_safe_tap": [0.38, 0.85, 0.62, 0.97]
+    },
+    "candidate_roi_evidence": {
+      "lobby_sapphires": [
+        "screencaps/semantic/world_boss/lobby_sapphires/20260827T230726_992936Z_01.png",
+        "screencaps/semantic/world_boss/lobby_sapphires/20260827T230727_505620Z_02.png",
+        "screencaps/semantic/world_boss/lobby_sapphires/20260827T230728_023306Z_03.png"
+      ],
+      "battle_mode_world_boss_total_rank": [
+        "screencaps/semantic/world_boss/battle_mode/20260827T230905_545895Z_01.png",
+        "screencaps/semantic/world_boss/battle_mode/20260827T230906_089202Z_02.png",
+        "screencaps/semantic/world_boss/battle_mode/20260827T230906_628075Z_03.png"
+      ],
+      "world_boss_main_controls_and_facts": [
+        "screencaps/semantic/world_boss/main/20260827T231011_209632Z_01.png",
+        "screencaps/semantic/world_boss/main/20260827T231012_159017Z_03.png",
+        "screencaps/semantic/world_boss/main/20260827T231013_113521Z_05.png"
+      ],
+      "previous_rewards_ok": [
+        "screencaps/semantic/world_boss/previous_rewards/20260827T230947_372077Z_01.png",
+        "screencaps/semantic/world_boss/previous_rewards/20260827T230948_265650Z_03.png",
+        "screencaps/semantic/world_boss/previous_rewards/20260827T230949_169425Z_05.png"
+      ],
+      "world_boss_battle_timer": [
+        "screencaps/semantic/world_boss/battle/20260827T231243_178966Z_01.png",
+        "screencaps/semantic/world_boss/battle/20260827T231244_245403Z_05.png",
+        "screencaps/semantic/world_boss/battle/20260827T231245_636651Z_10.png",
+        "screencaps/semantic/world_boss/battle/20260827T231246_985498Z_15.png",
+        "screencaps/semantic/world_boss/battle/20260827T231248_361404Z_20.png"
+      ],
+      "raid_complete_safe_tap": [
+        "screencaps/semantic/world_boss/raid_complete/20260827T231407_697094Z_01.png",
+        "screencaps/semantic/world_boss/raid_complete/20260827T231409_054951Z_04.png",
+        "screencaps/semantic/world_boss/raid_complete/20260827T231411_378599Z_09.png"
+      ]
+    },
+    "temporal_evidence": {
+      "auto_battle_off": "battle entries 06-09 after explicit ON-to-OFF tap; static border",
+      "auto_battle_on": "battle entries 10-13 after explicit OFF-to-ON tap; animated border glow",
+      "timer": "battle entries 01-13 contain multiple countdown values from two battles"
+    }
+  },
+  "entries": [
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230905_545895Z_01.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_089202Z_02.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_628075Z_03.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_314994Z_01.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_806451Z_02.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231734_295455Z_03.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/world_boss/select_boss/20260827T230927_858806Z_01.png","base_context":"unknown","overlays":["overlay.world_boss_select_boss"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/select_boss/20260827T230928_786264Z_03.png","base_context":"unknown","overlays":["overlay.world_boss_select_boss"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/select_boss/20260827T230929_715124Z_05.png","base_context":"unknown","overlays":["overlay.world_boss_select_boss"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/select_boss/20260827T230930_176475Z_06.png","base_context":"unknown","overlays":["overlay.world_boss_select_boss"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/world_boss/previous_rewards/20260827T230947_372077Z_01.png","base_context":"unknown","overlays":["popup.world_boss_previous_rewards"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/previous_rewards/20260827T230948_265650Z_03.png","base_context":"unknown","overlays":["popup.world_boss_previous_rewards"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/previous_rewards/20260827T230949_169425Z_05.png","base_context":"unknown","overlays":["popup.world_boss_previous_rewards"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/previous_rewards/20260827T230950_076879Z_07.png","base_context":"unknown","overlays":["popup.world_boss_previous_rewards"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/previous_rewards/20260827T230950_526284Z_08.png","base_context":"unknown","overlays":["popup.world_boss_previous_rewards"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/world_boss/main/20260827T231011_209632Z_01.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/main/20260827T231012_159017Z_03.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/main/20260827T231013_113521Z_05.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/main/20260827T231014_552859Z_08.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/main/20260827T231451_532358Z_01.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/main/20260827T231452_953121Z_04.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/main/20260827T231453_908154Z_06.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/main/20260827T231454_874297Z_08.png","base_context":"screen.world_boss","overlays":[],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231243_178966Z_01.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231244_245403Z_05.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231245_636651Z_10.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231246_985498Z_15.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231248_361404Z_20.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231550_882542Z_01.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231552_579070Z_07.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231554_331762Z_13.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231556_425071Z_20.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231618_388239Z_01.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231620_241961Z_08.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231621_842286Z_14.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle/20260827T231623_262677Z_20.png","base_context":"screen.world_boss_battle","overlays":[],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231407_697094Z_01.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231409_054951Z_04.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231411_378599Z_09.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231412_780014Z_12.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231708_990633Z_01.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231709_876455Z_03.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231710_787249Z_05.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/raid_complete/20260827T231711_246595Z_06.png","base_context":"screen.world_boss_battle","overlays":["overlay.world_boss_raid_complete"],"review_status":"confirmed"}
+  ]
+}

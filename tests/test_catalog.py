@@ -8,19 +8,31 @@ import pytest
 
 from bot.catalog import (
     BASE_CONTEXT_RULES,
+    LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
+    LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
+    LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
+    LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
+    LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
+    LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
     MENU_QUICK,
+    OVERLAY_WORLD_BOSS_RAID_COMPLETE,
+    OVERLAY_WORLD_BOSS_SELECT_BOSS,
     OVERLAY_RULES,
     POPUP_INSUFFICIENT_GOLD,
     POPUP_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
+    POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
+    SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
     SCREEN_LOBBY,
+    SCREEN_WORLD_BOSS,
+    SCREEN_WORLD_BOSS_BATTLE,
     SEMANTIC_CONFIDENCE_THRESHOLD,
     SEMANTIC_OBSERVATION_NAMES,
     build_default_resolver,
@@ -248,9 +260,9 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 4
-    assert len(OVERLAY_RULES) == 4
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 8
+    assert len(BASE_CONTEXT_RULES) == 6
+    assert len(OVERLAY_RULES) == 7
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 13
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 
@@ -276,6 +288,40 @@ def test_character_select_keeps_its_single_header_requirement():
     )
 
     assert character_rule.requires == (LANDMARK_CHARACTER_SELECT_HEADER,)
+
+
+@pytest.mark.parametrize(
+    ("context", "landmark"),
+    (
+        (SCREEN_BATTLE_MODE_SELECT, LANDMARK_BATTLE_MODE_SELECT_HEADER),
+        (SCREEN_WORLD_BOSS, LANDMARK_WORLD_BOSS_SAPPHIRES_USED),
+        (SCREEN_WORLD_BOSS_BATTLE, LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE),
+    ),
+)
+def test_world_boss_base_contexts_use_one_structural_landmark(context, landmark):
+    rule = next(item for item in BASE_CONTEXT_RULES if item.name == context)
+
+    assert rule.requires == (landmark,)
+
+
+@pytest.mark.parametrize(
+    ("context", "landmark"),
+    (
+        (OVERLAY_WORLD_BOSS_SELECT_BOSS, LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER),
+        (
+            POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
+            LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
+        ),
+        (
+            OVERLAY_WORLD_BOSS_RAID_COMPLETE,
+            LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
+        ),
+    ),
+)
+def test_world_boss_overlays_use_one_specific_landmark(context, landmark):
+    rule = next(item for item in OVERLAY_RULES if item.name == context)
+
+    assert rule.requires == (landmark,)
 
 
 def test_default_resolver_builder_does_not_create_a_singleton():

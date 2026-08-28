@@ -48,14 +48,14 @@ en `constants.py`, `context.py`, `actions.py` o `flows.py`).
 | 17 | `stage-elite-chest-rush` | `popup.elite_chest_rush` | overlay | `stage-elite-chest-rush-id.png` | legacy / legacy-only | FUTURE | Confirmación por gold/karats. |
 | 18 | `stage-paused` | `menu.pause` | overlay | `paused-id.png` | legacy / legacy-only | FUTURE | Menú de pausa, no pantalla base. |
 | 19 | `buffs` | `screen.buffs` | base | `buffs-id.png` | legacy / legacy-only | FUTURE | Tabs astrologer/alchemist; apariencia actual no revisada. |
-| 20 | `survival` | `screen.battle_mode_select` | base | `survival-id.png` | current / production | FUTURE | Regla semántica existe; detector sigue fuera de producción. Nombre legacy describe sólo una entrada. |
+| 20 | `survival` | `screen.battle_mode_select` | base | `survival-id.png` | current / production | FUTURE | Landmark current-season promovido con evidencia World Boss; es el selector Survival, no el selector PvP observado por separado. |
 | 21 | `monster-wave` | `screen.monster_wave` | base | `monster-wave-id.png` | legacy / legacy-only | FUTURE | Quick Menu; dificultad `penance`. |
 | 22 | `monster-wave-results` | `screen.monster_wave_results` | internal | `monster-wave-results-id.png` | legacy / legacy-only | FUTURE | Resultado modal/full-screen; evidencia insuficiente para elegir overlay/base. |
 | 23 | `monster-wave-skip-confirmation` | `popup.monster_wave_skip` | overlay | `monster-wave-skip-confirmation-id.png` | legacy / legacy-only | FUTURE | Incluye alertas de slots llenos como subcontextos. |
 | 24 | `monster-wave-points-reward` | `popup.monster_wave_points_reward` | overlay | `monster-wave-points-reward-id.png` | legacy / legacy-only | FUTURE | Reward transitorio. |
 | 25 | `monster-wave-skip-completed` | `popup.monster_wave_skip_completed` | overlay | `monster-wave-skip-completed-id.png` | legacy / legacy-only | FUTURE | Resultado transitorio. |
-| 26 | `select-boss` | `screen.boss_select` | unclear | `select-boss-id.png` | legacy / unresolved | FUTURE | Código no demuestra si reemplaza la base o es modal. |
-| 27 | `world-boss` | `screen.world_boss` | base | `world-boss-id.png` | legacy / legacy-only | FUTURE | Quick Menu. |
+| 26 | `select-boss` | `overlay.world_boss_select_boss` | overlay | `select-boss-id.png` | current / production | FUTURE | Live confirmó que preserva la base atenuada y Close la restaura; el landmark productivo es current-season. |
+| 27 | `world-boss` | `screen.world_boss` | base | `world-boss-id.png` | current / production | FUTURE | Base human-confirmed; Quick Menu abierto/cerrado live con restauración de la base. |
 | 28 | `world-boss-auto-repeat` | `popup.world_boss_auto_repeat` | overlay | `world-boss-auto-repeat-id.png` | legacy / legacy-only | FUTURE | Configuración/estado auto-repeat. |
 | 29 | `expedition` | `screen.expedition` | base | `expedition-id.png` | legacy / legacy-only | FUTURE | Quick Menu. |
 | 30 | `black-market` | `screen.black_market` | base | `black-market-id.png` | current / production | BLACK_MARKET_FLOW | Detector current-season validado; slots legacy son targets, no contextos. |
@@ -152,7 +152,10 @@ El menú tapa el landmark inferior de Lobby, por lo que esos frames resuelven
 correctamente `UNKNOWN + menu.quick`; esto no convierte el menú en base ni inventa
 la pantalla oculta. No hubo un segundo smoke streaming post-promoción porque el
 dispositivo ya no figuraba en ADB; la evaluación productiva se hizo sobre los PNG
-intactos adquiridos live en esa sesión.
+intactos adquiridos live en esa sesión. La adquisición World Boss del 2026-08-27
+validó además `screen.world_boss`: el target común `(0.1940, 0.0564)` abrió y cerró
+el mismo overlay, restauró la base, y también fue revalidado sobre Lobby. Su evidencia
+permanece en un manifest separado con base `unknown` mientras el panel la oculta.
 
 ## Cobertura semántica disponible para Black Market y Rotation
 
@@ -171,6 +174,22 @@ de personaje transversal de Rotation. Dentro de `screen.black_market`, 3H.3 prom
 `currency.black_market.gold` con índice row-major para el grid 5×2. El futuro flow no
 necesita identidad/tipo de item, precio, balance, OCR ni VLM: compra únicamente slots
 GOLD. Ningún item/slot se convierte en contexto.
+
+## Cobertura semántica disponible para World Boss
+
+| Estado disponible | Estado 0.2 | Validación / límite |
+|---|---|---|
+| `screen.battle_mode_select` | production | 6 frames nuevos más corpus previo; distinguido explícitamente del selector PvP. |
+| `overlay.world_boss_select_boss` | production overlay | 4 frames; la base queda deliberadamente `unknown` mientras el modal la tapa. |
+| `popup.world_boss_previous_rewards` | production popup | 5 frames de la recompensa opcional del boss anterior; no implica participación actual. |
+| `screen.world_boss` | production | 8 frames; el landmark excluye boss, rank, daño y valores variables. |
+| `screen.world_boss_battle` | production | 21 frames, incluidos 8 con Raid Complete; landmark estructural de daño sin números. |
+| `overlay.world_boss_raid_complete` | production overlay | 8 frames sobre la base de batalla todavía visible. |
+
+La curación conserva ROIs normalizados candidates para sapphires, costo, rank,
+Start, Auto Repeat, Auto Battle, timer y taps seguros. Una segunda evidencia registra
+Auto OFF/ON y sus métricas temporales, pero no promueve OCR, facts, parsers, acciones,
+detector temporal ni flow.
 
 ## Ciclo de incorporación 0.2
 

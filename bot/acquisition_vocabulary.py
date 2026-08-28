@@ -37,7 +37,9 @@ class AcquisitionVocabulary:
 
     def __post_init__(self) -> None:
         _validate_labels(self.bases, prefixes=("screen.",))
-        _validate_labels(self.overlays, prefixes=("popup.", "menu."))
+        _validate_labels(
+            self.overlays, prefixes=("popup.", "menu.", "overlay.")
+        )
 
     @property
     def base_names(self) -> tuple[str, ...]:

@@ -57,7 +57,7 @@ class AcknowledgeInventoryFull:
 
 @dataclass(frozen=True)
 class OpenQuickMenu:
-    """Request opening Quick Menu from Lobby."""
+    """Request opening Quick Menu from a capability-approved context."""
 
 
 @dataclass(frozen=True)

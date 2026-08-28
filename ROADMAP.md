@@ -56,11 +56,13 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 ## Siguiente
 
-### World Boss semantic acquisition / perception slice
+### World Boss semantic acquisition / perception slice — cerrado
 
-- [ ] Promover semántica sólo ante una necesidad funcional y evidencia curada.
-- [ ] Adquirir y validar contextos, landmarks y acciones de World Boss sin inferir soporte desde datos legacy.
-- [ ] Validar live qué contextos World Boss son `quick_menu_accessible` antes de ampliar la policy productiva.
+- [x] Promover semántica sólo ante una necesidad funcional y evidencia curada.
+- [x] Adquirir y validar live Battle Mode Select, Select Boss, Previous Rewards, World Boss, batalla y Raid Complete, con múltiples frames human-confirmed y sin inferir GT desde taps.
+- [x] Promover seis landmarks CV y resolver 44/44 frames del slice sin errores ni ambigüedad; cerrar la regresión productiva conjunta 146/146 y 0 FP/FN por detector.
+- [x] Preservar ROIs candidates para facts futuros y evidencia temporal OFF/ON sin implementar OCR, parsers ni detector de Auto Battle.
+- [x] Validar live `screen.world_boss` como `quick_menu_accessible`, abrir/cerrar el overlay y restaurar la base antes de ampliar la policy productiva.
 
 ### OCR + Runtime Facts
 

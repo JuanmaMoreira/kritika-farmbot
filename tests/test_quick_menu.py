@@ -1,4 +1,4 @@
-from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY
+from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, SCREEN_WORLD_BOSS
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
 from bot.quick_menu import (
     DEFAULT_QUICK_MENU_POLICY,
@@ -9,6 +9,7 @@ from bot.quick_menu import (
 
 def test_declared_context_has_quick_menu_capability():
     assert quick_menu_accessible(SCREEN_LOBBY)
+    assert quick_menu_accessible(SCREEN_WORLD_BOSS)
 
 
 def test_undeclared_context_has_no_quick_menu_capability():

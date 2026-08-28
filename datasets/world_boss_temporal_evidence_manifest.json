@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-27",
+    "source_context": "screen.world_boss_battle",
+    "human_ground_truth": "confirmed_in_chat",
+    "scope": "temporal evidence only; no product detector or OCR",
+    "auto_control_roi": [0.8278, 0.0098, 0.9329, 0.0981],
+    "timer_candidate_roi": [0.36, 0.12, 0.59, 0.23],
+    "sequence_metrics": {
+      "auto_off": {
+        "raw_frame_count": 20,
+        "mean_consecutive_absolute_difference": 1.6728372263,
+        "mean_per_pixel_standard_deviation": 6.4295025
+      },
+      "auto_on": {
+        "raw_frame_count": 20,
+        "mean_consecutive_absolute_difference": 11.6128820264,
+        "mean_per_pixel_standard_deviation": 38.287155
+      }
+    },
+    "interpretation": "The live-confirmed ON sequence has substantially more motion in the Auto control ROI than OFF. Auto was restored to ON after the probe."
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231550_882542Z_01.png",
+      "state": "auto_off",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231552_579070Z_07.png",
+      "state": "auto_off",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231554_331762Z_13.png",
+      "state": "auto_off",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231556_425071Z_20.png",
+      "state": "auto_off",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231618_388239Z_01.png",
+      "state": "auto_on",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231620_241961Z_08.png",
+      "state": "auto_on",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231621_842286Z_14.png",
+      "state": "auto_on",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/battle/20260827T231623_262677Z_20.png",
+      "state": "auto_on",
+      "review_status": "confirmed"
+    }
+  ]
+}

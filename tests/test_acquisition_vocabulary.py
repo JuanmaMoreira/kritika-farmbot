@@ -4,7 +4,12 @@ from bot.acquisition_vocabulary import (
     DEFAULT_CANDIDATE_OVERLAY_LABELS,
     build_acquisition_vocabulary,
 )
-from bot.catalog import MENU_QUICK, POPUP_INVENTORY_FULL, build_default_resolver
+from bot.catalog import (
+    MENU_QUICK,
+    OVERLAY_WORLD_BOSS_SELECT_BOSS,
+    POPUP_INVENTORY_FULL,
+    build_default_resolver,
+)
 
 
 def test_acquisition_candidates_are_separate_from_production_rules():
@@ -43,6 +48,10 @@ def test_promoted_quick_menu_is_exposed_as_production():
     assert vocabulary.origin_for(MENU_QUICK) is AcquisitionLabelOrigin.PRODUCTION
     assert (
         vocabulary.origin_for(POPUP_INVENTORY_FULL)
+        is AcquisitionLabelOrigin.PRODUCTION
+    )
+    assert (
+        vocabulary.origin_for(OVERLAY_WORLD_BOSS_SELECT_BOSS)
         is AcquisitionLabelOrigin.PRODUCTION
     )
 
