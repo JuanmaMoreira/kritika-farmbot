@@ -110,7 +110,7 @@ La primera GUI operacional cerró sus smokes mediante `tools.gui`. Run Flow Once
 
 ## Runtime y flow World Boss
 
-`WorldBossFlow` aplica `ALWAYS_PARTICIPATE` y declara `screen.lobby` como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación runtime es una lectura OCR fresca de sapphires: con menos de 5 emite `world_boss.insufficient_sapphires` y termina en Lobby sin input. Con saldo suficiente navega mediante transiciones verificadas `Lobby → Battle Mode Select → Select Boss → World Boss`.
+`WorldBossFlow` aplica `ALWAYS_PARTICIPATE` y declara `screen.lobby` como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación runtime es una lectura OCR fresca de sapphires: la adquisición tolera frames transitorios no resueltos dentro del timeout, pero aborta ante un contexto resuelto distinto; con menos de 5 emite `world_boss.insufficient_sapphires` y termina en Lobby sin input. Con saldo suficiente navega mediante transiciones verificadas `Lobby → Battle Mode Select → Select Boss → World Boss`.
 
 `Previous Rewards` es una bifurcación esperable y potencialmente tardía de `SelectAvailableWorldBoss`: el flow deja estabilizar la entrada entre World Boss limpio y el popup, registra `world_boss.previous_rewards`, pulsa OK y sólo habilita Start después de recuperar World Boss limpio. Tras Start, `popup.world_boss_inventory_full` registra `world_boss.inventory_full`, verifica `No → World Boss` y termina ese personaje sin reintentar Start; liberar inventario y reanudar quedan deferred.
 

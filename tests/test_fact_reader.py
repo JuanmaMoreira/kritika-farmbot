@@ -50,6 +50,30 @@ class Perception:
         )
 
 
+class ChangingPerception:
+    def __init__(self, contexts):
+        self.contexts = iter(contexts)
+
+    def analyze(self, snapshot):
+        context = next(self.contexts)
+        if context is None:
+            observations = ()
+        else:
+            name = (
+                LANDMARK_LOBBY_TRADING_CENTER_LABEL
+                if context == SCREEN_LOBBY
+                else "landmark.other_context"
+            )
+            observations = (
+                Observation(name, 1.0, ObservationSource.LOCAL_CV),
+            )
+        return ObservationBatch(
+            sequence=snapshot.sequence,
+            timestamp=snapshot.timestamp,
+            observations=observations,
+        )
+
+
 class Engine:
     def __init__(self, texts):
         self.texts = list(texts)
@@ -189,6 +213,50 @@ def test_fresh_wrong_context_aborts_before_ocr():
 
     assert result.status is FactReadStatus.CONTEXT_MISMATCH
     assert result.fact is None
+
+
+def test_transient_unresolved_frame_is_skipped_before_context_correct_ocr():
+    clock = Clock()
+    resolver = ContextResolver(
+        base_rules=(
+            ContextRule(
+                SCREEN_LOBBY,
+                (LANDMARK_LOBBY_TRADING_CENTER_LABEL,),
+                0.8,
+            ),
+            ContextRule(
+                SCREEN_WORLD_BOSS_BATTLE,
+                ("landmark.other_context",),
+                0.8,
+            ),
+        )
+    )
+    observer = RuntimeObserver(
+        Source([1, 2, 3]),
+        ChangingPerception((None, SCREEN_LOBBY, SCREEN_LOBBY)),
+        resolver,
+        poll_interval=0.1,
+        clock=clock,
+        sleeper=clock.sleep,
+    )
+    events = Events()
+    fact_reader = RuntimeFactReader(
+        observer,
+        (build_sapphires_extractor(Engine(["25", "25"])),),
+        clock=clock,
+        events=events,
+    )
+
+    result = fact_reader.read_sapphires(after_sequence=0, timeout=1.0)
+
+    assert result.status is FactReadStatus.CONFIRMED
+    observed = [
+        fields
+        for event, fields in events.records
+        if event == "fact.observed"
+    ]
+    assert [fields["sequence"] for fields in observed] == [2, 3]
+    assert all(fields["resolution_status"] == "resolved" for fields in observed)
 
 
 def test_cancellation_is_reported_distinctly():

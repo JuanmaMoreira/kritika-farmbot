@@ -29,6 +29,7 @@ from bot.runtime_observer import (
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
+from bot.state import ResolutionStatus
 
 
 class RuntimeFactReader:
@@ -93,9 +94,12 @@ class RuntimeFactReader:
             try:
                 snapshot = self.observer.wait_until(
                     lambda item: (
-                        not evidence
-                        or item.timestamp - evidence[-1].timestamp
-                        >= extractor.sample_interval
+                        item.state.status is ResolutionStatus.RESOLVED
+                        and (
+                            not evidence
+                            or item.timestamp - evidence[-1].timestamp
+                            >= extractor.sample_interval
+                        )
                     ),
                     after_sequence=cursor,
                     timeout=remaining,
@@ -110,7 +114,7 @@ class RuntimeFactReader:
                 return FactReadResult(
                     FactReadStatus.TIMEOUT,
                     evidence=tuple(evidence),
-                    detail="no fresh frame arrived before the deadline",
+                    detail="no fresh resolved frame arrived before the deadline",
                 )
             cursor = snapshot.sequence
 
@@ -130,6 +134,10 @@ class RuntimeFactReader:
                 extraction_status=extracted.status.value,
                 confidence=extracted.evidence.ocr_confidence,
                 observation_count=len(evidence),
+                sequence=snapshot.sequence,
+                resolution_status=snapshot.state.status.value,
+                base_context=snapshot.state.base_context,
+                overlays=snapshot.state.overlays,
             )
             if extracted.status == ExtractionStatus.CONTEXT_MISMATCH:
                 return FactReadResult(
