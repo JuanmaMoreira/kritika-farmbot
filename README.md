@@ -26,6 +26,8 @@ Abrir desde la raíz del repositorio:
 .\tools\agent_run.ps1 tools.gui
 ```
 
+En Windows también se puede abrir con doble clic sobre `Kritika FarmBot.cmd` en la raíz del proyecto. Es un launcher provisional mínimo: inicia el mismo `tools.gui` mediante el entorno local configurado y no contiene lógica del bot.
+
 La lista de flows procede directamente de `FlowRegistry`. Seleccionar una fila y usar `Enable / Disable`, `↑ Up` y `↓ Down`; una sesión conserva exactamente el orden visible de los flows activos. `Run Flow Once` exige un único flow activo y no rota. `Run Session` usa todos los flows activos, `SessionPlan`, `SessionRunner` y el número positivo de Characters; el default es 28.
 
 `Stop Safely` solicita el mismo token de cancelación que la CLI y no mata threads. Durante una ejecución, los controles de configuración quedan bloqueados. Si se intenta cerrar la ventana, la GUI ofrece solicitar la parada segura y espera el boundary antes de salir.
