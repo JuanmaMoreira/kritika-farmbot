@@ -9,6 +9,8 @@ from enum import Enum
 from numbers import Real
 from typing import Callable
 
+from bot.event_log import EventSink
+
 
 class ControlledWaitOutcome(str, Enum):
     COMPLETED = "completed"
@@ -38,6 +40,8 @@ class ControlledWait:
         check_interval: float = 1.0,
         clock: Callable[[], float] = time.monotonic,
         sleeper: Callable[[float], None] = time.sleep,
+        events: EventSink | None = None,
+        label: str = "controlled_wait",
     ) -> None:
         self.check_interval = _positive_duration(
             check_interval, "check_interval"
@@ -48,6 +52,10 @@ class ControlledWait:
             raise ValueError("sleeper must be callable")
         self._clock = clock
         self._sleeper = sleeper
+        self.events = events
+        if not isinstance(label, str) or not label.strip():
+            raise ValueError("label must be a non-empty string")
+        self.label = label.strip()
 
     def wait(
         self,
@@ -78,6 +86,19 @@ class ControlledWait:
             else _finite_time(deadline, "deadline")
         )
         polls = 0
+        self._record(
+            "controlled_wait.started",
+            wait=self.label,
+            expected_duration=max(0.0, bound - started),
+            deadline=bound,
+            check_interval=self.check_interval,
+        )
+        if completion_condition is not None:
+            self._record(
+                "controlled_wait.polling_started",
+                wait=self.label,
+                deadline=bound,
+            )
 
         while True:
             try:
@@ -119,12 +140,34 @@ class ControlledWait:
         polls: int,
         error: str | None = None,
     ) -> ControlledWaitResult:
-        return ControlledWaitResult(
+        result = ControlledWaitResult(
             outcome,
             elapsed=max(0.0, self._clock() - started),
             poll_count=polls,
             error=error,
         )
+        event = {
+            ControlledWaitOutcome.COMPLETED: "controlled_wait.completed",
+            ControlledWaitOutcome.CANCELLED: "controlled_wait.cancelled",
+            ControlledWaitOutcome.TIMEOUT: "controlled_wait.timeout",
+            ControlledWaitOutcome.FAILED: "controlled_wait.failed",
+        }[outcome]
+        self._record(
+            event,
+            wait=self.label,
+            actual_elapsed=result.elapsed,
+            poll_count=result.poll_count,
+            error=error,
+        )
+        return result
+
+    def _record(self, event: str, **fields: object) -> None:
+        if self.events is None:
+            return
+        try:
+            self.events.record(event, **fields)
+        except Exception:
+            pass
 
 
 def _positive_duration(value: object, name: str) -> float:

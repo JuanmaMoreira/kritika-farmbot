@@ -1,9 +1,9 @@
 # Contexto actual — Kritika FarmBot
 
 **Estado:** rediseño híbrido 0.2; `BlackMarketFlow`, `WorldBossFlow` y `rotation.standard` implementados sobre contratos 0.2.
-**Unidad funcional vigente:** `SessionRunner` ejecuta flows `PER_CHARACTER` en orden y hace exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 809/809 tests hardware-free verdes con composición World Boss integrada.
-**Checkpoint operativo:** World Boss cerró `SessionRunner` 2/2 y la composición `BlackMarketFlow → WorldBossFlow → rotation.standard` cerró 2/2; los ciclos 28/28 futuros quedan para el runtime manual del usuario.
+**Unidad funcional vigente:** los entrypoints productivos construyen `SessionRunner` desde un registry explícito, ejecutan flows `PER_CHARACTER` en orden y hacen exactamente un `RotationStrategy.advance()` después de completarlos.
+**Baseline conocido:** 830/830 tests hardware-free verdes con registry, launchers, event stream, cancelación y tuning de World Boss.
+**Checkpoint operativo:** el runtime manual expone Black Market, World Boss y sesiones ordenadas con cancelación, debug y log persistente; la GUI queda como próximo frontend y los ciclos 28/28 futuros se ejecutarán desde estos launchers.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -26,6 +26,8 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - `StandardRotation` es transversal, requiere esa capability, implementa un solo `advance()` y no conoce flows ni ADB.
 - `SessionPlan` expresa `character_count + flows PER_CHARACTER + RotationStrategy`; `SessionRunner` asegura el requisito exacto del próximo componente mediante un helper inyectado y valida sus postcondiciones declaradas.
 - `ControlledWait` aporta espera larga monotónica, periódica, cancelable y bounded sin input físico.
+- `FlowRegistry` declara los flows productivos y sus factories sin discovery; `ProductiveRuntime` compone el mismo grafo para CLI y futura GUI.
+- `RuntimeEventStream` distribuye eventos estructurados a consola, archivo por ejecución y futuros consumidores; `--debug` habilita facts, transiciones y waits en consola.
 
 El data flow y los límites vigentes se describen en [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -101,6 +103,8 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 Los smokes live acotados cerraron la composición real. `flows=[WorldBossFlow]` completó 2/2 flows y 2/2 advances desde salidas World Boss, con sapphires `10/30`, cero normalizaciones y Quick Menu desplazado directo. `flows=[BlackMarketFlow, WorldBossFlow]` completó 4/4 flows y 2/2 advances: verificó compras `3 + 4`, sapphires `200/104` y un `world_boss.previous_rewards` no fatal. Todas las precondiciones ya estaban satisfechas; no hubo navegación redundante a Lobby. Las cuatro rotaciones terminaron en Lobby y sus interacciones discretas pasaron al primer intento. Tres `ContinueAfterRaid` requirieron un retry seguro y uno pasó al primer intento; no hubo fallos técnicos.
 
+Los entrypoints productivos nuevos cerraron su primer smoke. `tools.run_flow black_market --debug` verificó ocho compras, volvió a Lobby y produjo 41 eventos sin retries ni errores. `tools.run_session black_market world_boss --characters 2 --debug` completó 4/4 flows y 2/2 advances con 153 eventos, cero warnings/errors y tres retries seguros observables: un GOLD y los dos Continue. El log registró sapphires `245/15`, timer inicial `60/60`, espera esperada `65/65 s` (`margin=5`) y Raid Complete a `69,797/69,844 s`; la cola bounded detectó ambos overlays tardíos sin convertir el vencimiento temporal en success. Los archivos quedaron bajo `logs/`, gitignored.
+
 ## Runtime y flow World Boss
 
 `WorldBossFlow` aplica `ALWAYS_PARTICIPATE` y declara `screen.lobby` como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación runtime es una lectura OCR fresca de sapphires: con menos de 5 emite `world_boss.insufficient_sapphires` y termina en Lobby sin input. Con saldo suficiente navega mediante transiciones verificadas `Lobby → Battle Mode Select → Select Boss → World Boss`.
@@ -108,6 +112,8 @@ Los smokes live acotados cerraron la composición real. `flows=[WorldBossFlow]` 
 `Previous Rewards` es una bifurcación esperable y potencialmente tardía de `SelectAvailableWorldBoss`: el flow deja estabilizar la entrada entre World Boss limpio y el popup, registra `world_boss.previous_rewards`, pulsa OK y sólo habilita Start después de recuperar World Boss limpio. Tras Start, `popup.world_boss_inventory_full` registra `world_boss.inventory_full`, verifica `No → World Boss` y termina ese personaje sin reintentar Start; liberar inventario y reanudar quedan deferred.
 
 En la rama de batalla exige Auto Battle ON, lee una vez el timer como deadline, usa polling disperso y una ventana final activa mediante dos `ControlledWait`, detecta Raid Complete y verifica Continue hacia World Boss. El smoke live cerró: rama de inventario lleno al primer intento; rama completa con Auto Battle ya ON, timer inicial 60 s, 29 checks, Raid Complete y Continue exitoso tras un retry seguro; y sapphires insuficientes con valor 0, cero transiciones y cero taps. `Previous Rewards` fue observado después de un World Boss transitorio y su OK devolvió la base esperada.
+
+La policy operacional usa margen post-timer configurable de `5 s`, polling de `1 s` y timeout adicional bounded de `10 s`. Countdown/timer sólo optimizan checks; Raid Complete sigue siendo la postcondición. Las dos primeras muestras del runtime manual detectaron el overlay cerca de `timer_initial + 9,8 s`, por lo que el margen aislado no alcanzó y la cola bounded fue necesaria; se conserva la configuración pedida hasta reunir más sesiones del usuario.
 
 Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `CharacterContext(name=None, name_confidence=None)`, resultados de flows y resultado de advance. El índice no es identidad. No existe `CharacterContextProvider` productivo ni OCR de nombre: un futuro provider opcional podrá reutilizar el engine transversal para enriquecer una vez por personaje el contexto desde Lobby sin hacer fatal la identidad usada sólo para observabilidad.
 
@@ -165,11 +171,11 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - VLM no está implementado; seguirá provider-agnostic si un caso funcional lo requiere.
 - `inventory_kind` e identidad de personaje permanecen desconocidos; liberar, vender o mover inventario pertenece a futuros flows especializados.
-- No existen OCR de costo/rank/nombre, Auto Repeat, resolución/limpieza de inventario de World Boss ni composition root de una sesión multi-flow completa.
+- No existen OCR de costo/rank/nombre, Auto Repeat ni resolución/limpieza de inventario de World Boss.
 - `landmark.lobby_commerce_pair` permanece como alternativa offline, no detector productivo.
 - `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` legacy conservan imports retirados y no son runtime activo.
 - `bot/constants.py` es conocimiento legacy; `bot/ads_manager.py` permanece standalone mediante UIAutomator2.
 
 ## Próximo trabajo
 
-Construir el runtime manual configurable —registry, launcher y mini GUI— para que el usuario ejecute y supervise ciclos completos. Los futuros smokes 28-character se delegan a ese runtime y revisión manual; costo, rank/participation, identidad, limpieza de inventario, Auto Repeat y scheduler permanecen deferred.
+Construir la GUI como frontend del registry, `SessionPlan`, composition root, token de cancelación y event stream ya disponibles, sin business logic propia. Los futuros smokes 28-character se delegan al runtime manual y revisión del usuario; costo, rank/participation, identidad, limpieza de inventario, Auto Repeat y scheduler permanecen deferred.

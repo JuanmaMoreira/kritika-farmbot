@@ -571,7 +571,7 @@ def raid_wait_flow(*, raid_at=None, unexpected_at=None, cancel=lambda: False):
 
 @pytest.mark.parametrize(
     ("timer", "raid_at", "expected_elapsed"),
-    ((10, 2, 2), (5, 5, 5), (5, 7, 7)),
+    ((10, 2, 2), (5, 5, 5), (5, 7, 7), (5, 12, 12)),
 )
 def test_controlled_wait_detects_early_deadline_and_post_zero_completion(
     timer, raid_at, expected_elapsed
@@ -591,8 +591,31 @@ def test_controlled_wait_times_out_after_final_margin():
     result, raid = flow._wait_for_raid_complete(5)
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
-    assert result.elapsed == pytest.approx(7)
+    assert result.elapsed == pytest.approx(17)
     assert raid is not None and raid.state.overlays == ()
+
+
+def test_wait_policy_exposes_configurable_margin_poll_and_bounded_timeout():
+    policy = WorldBossWaitPolicy()
+
+    assert policy.post_timer_completion_margin == 5
+    assert policy.completion_poll_interval == 1
+    assert policy.bounded_completion_timeout == 10
+
+
+def test_wait_telemetry_records_timer_margin_poll_start_detection_and_elapsed():
+    flow, _ = raid_wait_flow(raid_at=12)
+
+    result, _ = flow._wait_for_raid_complete(5)
+
+    finished = [fields for name, fields in flow.events.records if name == "world_boss.wait.finished"][-1]
+    assert result.succeeded
+    assert finished["timer_initial"] == 5
+    assert finished["expected_wait"] == 7
+    assert finished["margin"] == 2
+    assert finished["polling_started_at"] == 2
+    assert finished["raid_complete_detected_at"] == 12
+    assert finished["actual_elapsed"] == 12
 
 
 def test_controlled_wait_propagates_cancellation_without_failure():

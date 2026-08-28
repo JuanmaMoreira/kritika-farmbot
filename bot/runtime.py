@@ -6,6 +6,7 @@ from bot.adb import AdbClient
 from bot.capture import ScrcpyFrameSource
 from bot.config import RuntimeConfig
 from bot.fact_reader import RuntimeFactReader
+from bot.event_log import EventSink
 from bot.ocr import OcrEngine, RapidOcrEngine
 from bot.ocr_extractors import build_sapphires_extractor, build_timer_extractor
 from bot.runtime_observer import RuntimeObserver
@@ -39,6 +40,7 @@ def build_runtime_fact_reader(
     observer: RuntimeObserver,
     *,
     ocr_engine: OcrEngine | None = None,
+    events: EventSink | None = None,
 ) -> RuntimeFactReader:
     """Compose the two productive OCR facts over one shared OCR engine."""
 
@@ -49,4 +51,5 @@ def build_runtime_fact_reader(
             build_sapphires_extractor(engine),
             build_timer_extractor(engine),
         ),
+        events=events,
     )

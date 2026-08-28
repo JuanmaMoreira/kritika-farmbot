@@ -182,6 +182,7 @@ class SessionRunner:
             self._record(
                 "session.character.started",
                 character_index=index,
+                character_count=self.plan.character_count,
                 character_name=context.name,
             )
             flow_results: list[FlowResult] = []
@@ -208,15 +209,35 @@ class SessionRunner:
                         ),
                     )
 
+                self._record(
+                    "flow.started",
+                    component=flow.name,
+                    flow=flow.name,
+                    character_index=index,
+                    character_name=context.name,
+                )
                 result = self._run_flow(flow)
                 flow_results.append(result)
                 self._record_flow_events(flow.name, result.events, index, context)
                 if result.status is FlowStatus.CANCELLED:
+                    self._record(
+                        "flow.cancelled",
+                        component=flow.name,
+                        flow=flow.name,
+                        character_index=index,
+                    )
                     character_results.append(
                         SessionCharacterResult(index, context, tuple(flow_results))
                     )
                     return self._cancel(character_results, advances_completed)
                 if result.status is FlowStatus.FAILED:
+                    self._record(
+                        "flow.failed",
+                        component=flow.name,
+                        flow=flow.name,
+                        character_index=index,
+                        error=result.error,
+                    )
                     character_results.append(
                         SessionCharacterResult(index, context, tuple(flow_results))
                     )
@@ -240,6 +261,13 @@ class SessionRunner:
                         flow=flow.name,
                         cause="flow_completed_outside_successful_postconditions",
                     )
+                self._record(
+                    "flow.completed",
+                    component=flow.name,
+                    flow=flow.name,
+                    character_index=index,
+                    business_event_count=len(result.events),
+                )
                 if self._cancelled():
                     character_results.append(
                         SessionCharacterResult(index, context, tuple(flow_results))
@@ -262,8 +290,19 @@ class SessionRunner:
                     ),
                 )
 
+            self._record(
+                "rotation.started",
+                component="rotation",
+                character_index=index,
+            )
             rotation_result = self._advance()
             if not rotation_result.succeeded:
+                self._record(
+                    "rotation.failed",
+                    component="rotation",
+                    character_index=index,
+                    error=rotation_result.error,
+                )
                 character_results.append(
                     SessionCharacterResult(
                         index,
@@ -297,6 +336,12 @@ class SessionRunner:
                 )
 
             advances_completed += 1
+            self._record(
+                "rotation.completed",
+                component="rotation",
+                character_index=index,
+                advances_completed=advances_completed,
+            )
             character_results.append(
                 SessionCharacterResult(
                     index,
@@ -417,7 +462,12 @@ class SessionRunner:
             }
             if event.detail is not None:
                 fields["detail"] = event.detail
-            self._record(f"{flow_name}.{event.kind}", **fields)
+            event_name = (
+                event.kind
+                if event.kind.startswith(f"{flow_name}.")
+                else f"{flow_name}.{event.kind}"
+            )
+            self._record(event_name, **fields)
 
     def _cancel(
         self,

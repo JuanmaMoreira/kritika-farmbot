@@ -93,6 +93,42 @@ class Actions:
             raise self.error
 
 
+class Events:
+    def __init__(self):
+        self.records = []
+
+    def record(self, event, **fields):
+        self.records.append((event, fields))
+
+
+def test_transition_emits_nominal_grace_retry_and_outcome_telemetry():
+    before = _snapshot(1, BEFORE)
+    retryable = _snapshot(4, BEFORE)
+    expected = _snapshot(5, EXPECTED)
+    observer = ScriptedObserver(
+        [_timeout(1, before), _timeout(1, before), expected],
+        observes=[retryable],
+    )
+    events = Events()
+    transition = VerifiedTransition(observer, Actions(), events)
+
+    result = transition.execute(
+        "test.retry",
+        OpenQuickMenu(),
+        before,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        retryable_from=lambda item: item.state.base_context == BEFORE,
+        policy=VerifiedTransitionPolicy(normal_timeout=1, grace_timeout=1, max_attempts=2),
+    )
+
+    assert result.outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
+    names = [name for name, _ in events.records]
+    assert "transition.nominal_timeout" in names
+    assert "transition.grace_started" in names
+    assert "transition.retry" in names
+    assert events.records[-1][1]["outcome"] == "success_after_retry"
+
+
 def _run(
     observer,
     *,

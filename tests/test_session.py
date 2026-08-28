@@ -178,6 +178,27 @@ def test_business_events_are_aggregated_logged_and_do_not_abort():
     assert ("black_market.inventory_full", {"character_index": 1, "character_name": None}) in events.records
 
 
+def test_already_qualified_business_event_is_not_double_prefixed():
+    trace = []
+    flow = Flow(
+        "world_boss",
+        [
+            FlowResult(
+                FlowStatus.COMPLETED,
+                events=(FlowEvent("world_boss.insufficient_sapphires"),),
+            )
+        ],
+        trace,
+    )
+    runner, events = _runner(1, [flow], Rotation(1, trace))
+
+    runner.run()
+
+    names = [name for name, _ in events.records]
+    assert "world_boss.insufficient_sapphires" in names
+    assert "world_boss.world_boss.insufficient_sapphires" not in names
+
+
 def test_flow_failure_aborts_without_advance_or_next_character():
     trace = []
     flow = Flow(

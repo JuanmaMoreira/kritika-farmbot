@@ -72,7 +72,7 @@ class Clock:
         self.value += duration
 
 
-def reader(sequences, texts, *, context=SCREEN_LOBBY):
+def reader(sequences, texts, *, context=SCREEN_LOBBY, events=None):
     clock = Clock()
     resolver = ContextResolver(
         base_rules=(
@@ -97,7 +97,31 @@ def reader(sequences, texts, *, context=SCREEN_LOBBY):
         sleeper=clock.sleep,
     )
     extractor = build_sapphires_extractor(Engine(texts))
-    return RuntimeFactReader(observer, (extractor,), clock=clock)
+    return RuntimeFactReader(observer, (extractor,), clock=clock, events=events)
+
+
+class Events:
+    def __init__(self):
+        self.records = []
+
+    def record(self, event, **fields):
+        self.records.append((event, fields))
+
+
+def test_confirmed_fact_emits_debug_ready_value_consensus_quality_and_confidence():
+    events = Events()
+    fact_reader = reader([1, 2], ["25", "25"], events=events)
+
+    result = fact_reader.read_sapphires(after_sequence=0, timeout=3)
+
+    assert result.status is FactReadStatus.CONFIRMED
+    name, fields = events.records[-1]
+    assert name == "fact.confirmed"
+    assert fields["fact"] == RESOURCE_SAPPHIRES
+    assert fields["parsed_value"] == 25
+    assert fields["consensus"] == 2
+    assert fields["quality"] == FactQuality.CONSENSUS.value
+    assert fields["confidence"] > 0
 
 
 def test_same_fresh_readings_confirm_a_zero_value_without_defaulting():

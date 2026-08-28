@@ -8,6 +8,7 @@ from collections import Counter
 from numbers import Integral, Real
 from typing import Callable, Iterable, cast
 
+from bot.event_log import EventSink
 from bot.observations import ObservationSource, validate_semantic_name
 from bot.ocr import OcrEngineError
 from bot.ocr_extractors import (
@@ -39,6 +40,7 @@ class RuntimeFactReader:
         extractors: Iterable[OcrFactExtractor],
         *,
         clock: Callable[[], float] = time.monotonic,
+        events: EventSink | None = None,
     ) -> None:
         if not isinstance(observer, RuntimeObserver):
             raise ValueError("observer must be a RuntimeObserver")
@@ -54,6 +56,7 @@ class RuntimeFactReader:
         self.observer = observer
         self._extractors = registry
         self._clock = clock
+        self.events = events
 
     @property
     def fact_names(self) -> tuple[str, ...]:
@@ -120,6 +123,14 @@ class RuntimeFactReader:
                     detail=str(error),
                 )
             evidence.append(extracted.evidence)
+            self._record(
+                "fact.observed",
+                fact=name,
+                parsed_value=extracted.value,
+                extraction_status=extracted.status.value,
+                confidence=extracted.evidence.ocr_confidence,
+                observation_count=len(evidence),
+            )
             if extracted.status == ExtractionStatus.CONTEXT_MISMATCH:
                 return FactReadResult(
                     FactReadStatus.CONTEXT_MISMATCH,
@@ -156,6 +167,15 @@ class RuntimeFactReader:
                     context=extractor.context,
                     evidence=selected,
                 )
+                self._record(
+                    "fact.confirmed",
+                    fact=name,
+                    parsed_value=value,
+                    consensus=support,
+                    observations=len(evidence),
+                    quality=quality.value,
+                    confidence=confidence,
+                )
                 return FactReadResult(
                     FactReadStatus.CONFIRMED,
                     fact=fact,
@@ -179,6 +199,14 @@ class RuntimeFactReader:
 
     def read_timer_remaining(self, **kwargs) -> FactReadResult[int]:
         return self.read_fact(BATTLE_TIMER_REMAINING, **kwargs)
+
+    def _record(self, event: str, **fields: object) -> None:
+        if self.events is None:
+            return
+        try:
+            self.events.record(event, **fields)
+        except Exception:
+            pass
 
 
 def _sequence(value: object) -> int:

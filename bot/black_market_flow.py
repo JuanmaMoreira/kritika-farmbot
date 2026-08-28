@@ -100,6 +100,7 @@ class BlackMarketFlow:
         transition_grace_timeout: float = 2.0,
         transition_max_attempts: int = 2,
         verified_transition: VerifiedTransition | None = None,
+        cancel_requested: Callable[[], bool] = lambda: False,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -125,6 +126,9 @@ class BlackMarketFlow:
         self.actions = actions
         self.events = events
         self.timeout = float(timeout)
+        if not callable(cancel_requested):
+            raise ValueError("cancel_requested must be callable")
+        self.cancel_requested = cancel_requested
         self.lobby_precondition_settle_for = float(
             lobby_precondition_settle_for
         )
@@ -179,6 +183,8 @@ class BlackMarketFlow:
             )
 
     def _run(self, limit: int | None) -> BlackMarketFlowResult:
+        if self._cancelled():
+            return BlackMarketFlowResult(status=FlowStatus.CANCELLED)
         initial = self.observer.observe()
         if not _is_clean_base(initial, SCREEN_LOBBY):
             if not _can_wait_for_lobby_precondition(initial):
@@ -209,6 +215,8 @@ class BlackMarketFlow:
             stable_for=0.75,
             policy=self.navigation_policy,
         )
+        if self._cancelled():
+            return BlackMarketFlowResult(status=FlowStatus.CANCELLED)
         if not opened.succeeded:
             return self._abort(
                 "navigation_failed: "
@@ -253,6 +261,15 @@ class BlackMarketFlow:
         flow_events: list[FlowEvent] = []
 
         for slot in selected:
+            if self._cancelled():
+                return BlackMarketFlowResult(
+                    status=FlowStatus.CANCELLED,
+                    events=tuple(flow_events),
+                    initial_gold_slots=initial_gold,
+                    initial_purchased_slots=initial_purchased,
+                    attempted_slots=tuple(attempted),
+                    verified_purchases=tuple(verified),
+                )
             current = market
             if not _is_actionable_gold_slot(current, slot):
                 return self._abort(
@@ -461,6 +478,12 @@ class BlackMarketFlow:
         except Exception:
             # A logging failure must not trigger gameplay recovery or more input.
             pass
+
+    def _cancelled(self) -> bool:
+        try:
+            return self.cancel_requested() is True
+        except Exception:
+            return False
 
 
 def _is_clean_base(snapshot: RuntimeSnapshot, base: str) -> bool:

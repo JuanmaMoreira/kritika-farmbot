@@ -9,6 +9,7 @@ from numbers import Integral, Real
 from typing import Callable, Protocol
 
 from bot.action_executor import ActionExecutor
+from bot.event_log import EventSink
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
@@ -121,6 +122,7 @@ class VerifiedTransition:
         self,
         observer: RuntimeObserver,
         actions: ActionExecutor,
+        events: EventSink | None = None,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -130,6 +132,7 @@ class VerifiedTransition:
             raise ValueError("actions must provide execute(intent, geometry)")
         self.observer: _Observer = observer
         self.actions = actions
+        self.events = events
 
     def execute(
         self,
@@ -160,6 +163,14 @@ class VerifiedTransition:
             if predicate is not None and not callable(predicate):
                 raise ValueError(f"{predicate_name} must be callable or None")
         stability = _non_negative_duration(stable_for, "stable_for")
+        self._record(
+            "transition.started",
+            transition=name,
+            attempt=1,
+            nominal_timeout=policy.normal_timeout,
+            grace=policy.grace_timeout,
+            max_attempts=policy.max_attempts,
+        )
         if precondition is not None and not precondition(before):
             return self._result(
                 name,
@@ -217,7 +228,19 @@ class VerifiedTransition:
                     str(normal),
                 )
 
+            self._record(
+                "transition.nominal_timeout",
+                transition=name,
+                attempt=attempt,
+                nominal_timeout=policy.normal_timeout,
+            )
             grace_wait_count += 1
+            self._record(
+                "transition.grace_started",
+                transition=name,
+                attempt=attempt,
+                grace=policy.grace_timeout,
+            )
             grace_anchor = normal.last_snapshot or current
             grace = self._wait(
                 expected,
@@ -363,6 +386,11 @@ class VerifiedTransition:
                     observed,
                     "attempts_exhausted",
                 )
+            self._record(
+                "transition.retry",
+                transition=name,
+                attempt=attempt + 1,
+            )
             current = observed
 
         raise AssertionError("bounded transition loop exited unexpectedly")
@@ -387,8 +415,8 @@ class VerifiedTransition:
         except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
             return error
 
-    @staticmethod
     def _result(
+        self,
         name: str,
         outcome: VerifiedTransitionOutcome,
         attempt_count: int,
@@ -396,7 +424,7 @@ class VerifiedTransition:
         final_snapshot: RuntimeSnapshot,
         error: str | None = None,
     ) -> VerifiedTransitionResult:
-        return VerifiedTransitionResult(
+        result = VerifiedTransitionResult(
             name=name,
             outcome=outcome,
             attempt_count=attempt_count,
@@ -404,6 +432,23 @@ class VerifiedTransition:
             final_snapshot=final_snapshot,
             error=error,
         )
+        self._record(
+            "transition.completed",
+            transition=name,
+            attempt=attempt_count,
+            grace_count=grace_wait_count,
+            outcome=outcome.value,
+            error=error,
+        )
+        return result
+
+    def _record(self, event: str, **fields: object) -> None:
+        if self.events is None:
+            return
+        try:
+            self.events.record(event, **fields)
+        except Exception:
+            pass
 
 
 def _positive_integer(value: object, name: str) -> int:
