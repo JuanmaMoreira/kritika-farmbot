@@ -21,10 +21,11 @@ from bot.semantic_actions import (
     OpenCharacterSelect,
     OpenQuickMenu,
     RejectInsufficientGold,
-    Swipe,
     SelectLastVisibleCharacter,
     SelectBlackMarketSlot,
     SemanticAction,
+    Swipe,
+    ToggleAutoBattle,
 )
 
 
@@ -123,6 +124,19 @@ DEFAULT_ROTATION_ACTION_TARGETS = RotationActionTargets()
 
 
 @dataclass(frozen=True)
+class BattleActionTargets:
+    """Normalized targets acquired from the live World Boss battle layout."""
+
+    toggle_auto_battle: RelativePoint = (0.8625, 0.0480)
+
+    def __post_init__(self) -> None:
+        relative_point_to_pixel(self.toggle_auto_battle, 1, 1)
+
+
+DEFAULT_BATTLE_ACTION_TARGETS = BattleActionTargets()
+
+
+@dataclass(frozen=True)
 class ActionExecution:
     """Diagnostic receipt for one physical action already sent to ADB."""
 
@@ -152,6 +166,7 @@ class ActionExecutor:
         *,
         targets: BlackMarketActionTargets = DEFAULT_BLACK_MARKET_ACTION_TARGETS,
         rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
+        battle_targets: BattleActionTargets = DEFAULT_BATTLE_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
             raise ValueError("adb must provide tap(x, y)")
@@ -159,9 +174,12 @@ class ActionExecutor:
             raise ValueError("targets must be BlackMarketActionTargets")
         if not isinstance(rotation_targets, RotationActionTargets):
             raise ValueError("rotation_targets must be RotationActionTargets")
+        if not isinstance(battle_targets, BattleActionTargets):
+            raise ValueError("battle_targets must be BattleActionTargets")
         self.adb = adb
         self.targets = targets
         self.rotation_targets = rotation_targets
+        self.battle_targets = battle_targets
 
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
@@ -202,6 +220,8 @@ class ActionExecutor:
             return self.rotation_targets.last_visible_character
         if isinstance(action, ConfirmCharacterSelection):
             return self.rotation_targets.confirm_character_selection
+        if isinstance(action, ToggleAutoBattle):
+            return self.battle_targets.toggle_auto_battle
         raise ValueError("unsupported semantic action")
 
     def _execute_swipe(
@@ -232,6 +252,8 @@ __all__ = (
     "ActionExecution",
     "ActionExecutor",
     "BlackMarketActionTargets",
+    "BattleActionTargets",
+    "DEFAULT_BATTLE_ACTION_TARGETS",
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "FrameGeometry",

@@ -114,6 +114,12 @@ El timer real usa `M:SS.t`, no sólo `MM:SS`. Cinco lecturas de una misma batall
 
 No se implementaron reglas de participación, OCR de costo/rank/nombre, CharacterContextProvider, Auto Battle, `WorldBossFlow`, Auto Repeat, acciones ni integración con `ControlledWait`/`SessionRunner`.
 
+## Auto Battle temporal
+
+La recalibración live human-confirmed estrechó la ROI candidate para excluir Pause y fondo móvil: `(0.835, 0.018, 0.890, 0.078)`. Diez frames frescos por ventana, separados nominalmente `0,1 s`, se agregan por mediana de nueve diferencias absolutas consecutivas sobre el borde. Ocho ventanas OFF alcanzaron como máximo `1,253144`; nueve ON como mínimo `7,385336`. Los thresholds productivos `OFF ≤ 2` y `ON ≥ 5` dejan gap UNKNOWN `2–5`, con 0 FP/FN en el corpus curado.
+
+`setting.auto_battle` quedó como Runtime Fact tipado con evidencia temporal y `ensure_auto_battle_on()` como operación transversal sobre `RuntimeObserver + ActionExecutor`. Live, ON inicial terminó sin input; OFF `0,226251` produjo un tap normalizado `(0.8625, 0.0480)` y la ventana fresca posterior confirmó ON `9,265052`. No hubo retries y el usuario confirmó visualmente ON final. Una consulta durante Raid Complete abortó sin clasificar ni tocar. No se implementaron `WorldBossFlow`, `ControlledWait` integrado, Auto Repeat, SessionRunner World Boss ni ConflictResolver.
+
 ## Decisiones y alternativas reemplazadas
 
 - El icono de oro de Lobby describe un shell persistente, no una pantalla base exclusiva.

@@ -6,6 +6,7 @@ import pytest
 from bot.action_executor import (
     ActionExecutor,
     DEFAULT_BLACK_MARKET_ACTION_TARGETS,
+    DEFAULT_BATTLE_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
     FrameGeometry,
 )
@@ -21,6 +22,7 @@ from bot.semantic_actions import (
     SelectLastVisibleCharacter,
     SelectBlackMarketSlot,
     Swipe,
+    ToggleAutoBattle,
 )
 
 
@@ -112,6 +114,26 @@ def test_executor_translates_rotation_taps_from_frame_geometry(action, target):
 
 def test_quick_menu_uses_the_shared_live_confirmed_header_target():
     assert DEFAULT_ROTATION_ACTION_TARGETS.open_quick_menu == (0.1940, 0.0564)
+
+
+def test_executor_translates_auto_battle_toggle_from_frame_geometry():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    geometry = FrameGeometry(width=2712, height=1224)
+
+    receipt = executor.execute(ToggleAutoBattle(), geometry)
+
+    target = DEFAULT_BATTLE_ACTION_TARGETS.toggle_auto_battle
+    expected = (int(target[0] * 2712), int(target[1] * 1224))
+    adb.tap.assert_called_once_with(*expected)
+    assert receipt.normalized_target == target
+
+
+def test_auto_battle_target_is_centered_in_live_calibrated_control_roi():
+    x, y = DEFAULT_BATTLE_ACTION_TARGETS.toggle_auto_battle
+
+    assert x == pytest.approx((0.8350 + 0.8900) / 2)
+    assert y == pytest.approx((0.0180 + 0.0780) / 2)
 
 
 def test_executor_translates_generic_normalized_swipe_to_one_adb_swipe():

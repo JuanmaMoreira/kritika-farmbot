@@ -85,6 +85,7 @@ Hay dos consumos deliberadamente distintos:
 - landmarks de pantalla alimentan `ContextResolver`;
 - facts internos como `currency.black_market.gold(slot)` y `status.black_market.purchased(slot)` son consumidos por el flow correspondiente.
 - facts dinámicos demand-driven usan `RuntimeFact(value, confidence, quality, source, context, evidence)` y nunca se mezclan con `CharacterContext`.
+- facts temporales conservan evidencia multiframe `(sequence, timestamp, activity, region)`; `UNKNOWN` puede ser un valor tipado seguro y no se convierte en permiso para actuar.
 
 Un fact no se convierte en contexto sólo para facilitar navegación.
 
@@ -105,6 +106,8 @@ Los overlays se resuelven independientemente y pueden coexistir con cualquier es
 `RuntimeObserver` une captura, Perception y Resolver sin mezclarlos. Cada `RuntimeSnapshot` conserva el `FrameSnapshot` BGR y garantiza que observations, estado resuelto, runtime facts y geometría proceden de ese mismo frame. La imagen permite comparaciones visuales acotadas sin saltarse el observer.
 
 Las esperas son bounded, cancelables, rechazan sequences stale posteriores a una solicitud o acción y pueden exigir estabilidad continua sobre frames distintos. La estabilidad pertenece a la espera del caso de uso, no introduce estado implícito en `ContextResolver`.
+
+`TemporalObserver` es una primitive pequeña sobre `RuntimeObserver`: reúne un número fijo de snapshots frescos, separados por intervalo, dentro de un timeout y un único contexto, y aborta ante overlays incompatibles declarados. No clasifica ni ejecuta input. `AutoBattleDetector` es su primer extractor: recorta el control, limita la métrica al borde, agrega por mediana y emite `setting.auto_battle` como `ON/OFF/UNKNOWN` sin OCR.
 
 Todo efecto de una acción que tenga una postcondición observable fiable se verifica antes de continuar, incluso cuando la pantalla no cambia. Una interacción observada/verificada combina `RuntimeObserver + ActionExecutor`; el Flow o Rotation declara el efecto requerido y los guards, pero no implementa retries físicos manuales. Si no existe una señal robusta, la acción permanece explícitamente no verificable y usa policy conservadora: no se inventan postcondiciones débiles.
 
@@ -134,11 +137,11 @@ Los support operations futuros seguirán `check → bounded support operation �
 
 ## Semantic Actions y ActionExecutor
 
-Los intents modelan acciones del dominio y primitives físicas tipadas. El slice actual define acciones de Black Market —incluido el `OK` de Inventory Full— y las mínimas de Rotation: abrir Quick Menu, entrar a Character Select, elegir la última tarjeta visible y confirmar selección. `Swipe(start, end, duration)` es genérico y no contiene policy de scroll, bounce ni conocimiento de pantallas.
+Los intents modelan acciones del dominio y primitives físicas tipadas. El slice actual define acciones de Black Market —incluido el `OK` de Inventory Full—, las mínimas de Rotation y `ToggleAutoBattle`. `Swipe(start, end, duration)` es genérico y no contiene policy de scroll, bounce ni conocimiento de pantallas.
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
 
-El boundary de interacción queda: `Rotation / Flow → {VerifiedTransition para acciones discretas observables | ObservedScroll para operaciones continuas | ControlledWait para actividad larga sin input} → RuntimeObserver + ActionExecutor → AdbClient`. `ActionExecutor` sólo emite input físico; la interacción observada comprueba su efecto. Retry y verificación no pertenecen a `ActionExecutor`; Conflict/Recovery queda reservado para estados inesperados o fallos que no resuelve una interacción local. `SessionRunner` está por encima de flows y Rotation y sólo consume sus contratos.
+El boundary de interacción queda: `Rotation / Flow / operación transversal → RuntimeObserver + ActionExecutor → AdbClient`, con la primitive observada adecuada. `AutoBattleEnsurer` sólo toca desde OFF temporal confirmado, exige ON en una ventana posterior y suprime retry desde UNKNOWN, cambio de contexto o Raid Complete. `ActionExecutor` sólo emite input físico; retry y verificación permanecen en la operación observada. Conflict/Recovery queda reservado para estados inesperados no resueltos localmente.
 
 ## Device / ADB
 
@@ -198,7 +201,7 @@ Los datos dinámicos —sapphires, stamina, recursos, battle timer o rank— son
 
 Los facts productivos iniciales son `resource.sapphires` en `screen.lobby` y `battle.timer_remaining` en `screen.world_boss_battle`. Sapphires usa consenso exacto de dos observaciones independientes dentro de tres intentos; discrepancia, unreadable, cambio de contexto, timeout, cancelación y fallo son outcomes distintos. El timer es dinámico y por eso confirma una observación sintácticamente válida, conservando el raw y convirtiendo `M:SS.t` a segundos restantes con `ceil`. Confidence combina score OCR, validez de parser, contexto correcto y soporte del consenso. La importancia decisional sigue perteneciendo al consumidor.
 
-El slice semántico World Boss ya distingue `screen.battle_mode_select`, `overlay.world_boss_select_boss`, `popup.world_boss_previous_rewards`, `screen.world_boss`, `screen.world_boss_battle` y `overlay.world_boss_raid_complete`. Sólo son percepción estructural: no contienen navegación ni policy de gameplay. Sapphires será inicialmente decisional y rank/participation informativo. La policy extensible partirá de `ALWAYS_PARTICIPATE`: si el futuro flow fue invocado y sapphires alcanza el costo, participa una vez aunque exista ranking; `ONLY_IF_NOT_PARTICIPATED` podrá usar esos facts después. La batalla esperada será `Auto Battle verificado ON → timer inicial como pista/deadline → ControlledWait → Raid Complete visual`. La evidencia temporal actual separa el glow ON/OFF, pero todavía no implementa el detector multiframe `ON/OFF/UNKNOWN`. Auto Repeat tiene menús y modos propios, no es una primitive transversal y el World Boss inicial no lo usará.
+El slice semántico World Boss ya distingue `screen.battle_mode_select`, `overlay.world_boss_select_boss`, `popup.world_boss_previous_rewards`, `screen.world_boss`, `screen.world_boss_battle` y `overlay.world_boss_raid_complete`. `setting.auto_battle` usa 10 frames, ROI `(0.835, 0.018, 0.890, 0.078)`, mediana de actividad del borde y thresholds `OFF ≤ 2`, `ON ≥ 5`, conservando la zona intermedia como UNKNOWN. La evidencia live curada separó 8 ventanas OFF y 9 ON con 0 FP/FN; ON inicial usó 0 taps y OFF pasó a ON confirmado con un tap. El futuro flow compondrá `Auto Battle verificado ON → timer inicial como pista/deadline → ControlledWait → Raid Complete visual`. Auto Repeat tiene menús y modos propios, no es una primitive transversal y el World Boss inicial no lo usará.
 
 El runtime unattended futuro necesita timeouts, recovery transversal, logging, aislamiento de fallos, cleanup y policy de continuación. Hasta entonces, el vertical slice aborta ante errores técnicos después de registrar y limpiar.
 

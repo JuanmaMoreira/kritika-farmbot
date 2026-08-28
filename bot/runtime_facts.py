@@ -8,6 +8,7 @@ from enum import Enum
 from numbers import Integral, Real
 from typing import Generic, TypeVar
 
+from bot.geometry import RelativeRegion, normalize_relative_region
 from bot.observations import ObservationSource, validate_semantic_name
 
 
@@ -17,6 +18,7 @@ T = TypeVar("T")
 class FactQuality(str, Enum):
     CONSENSUS = "consensus"
     VALIDATED_SINGLE = "validated_single"
+    TEMPORAL = "temporal"
 
 
 class FactReadStatus(str, Enum):
@@ -55,6 +57,39 @@ class FactEvidence:
 
 
 @dataclass(frozen=True)
+class TemporalFactEvidence:
+    """One frame participating in a bounded visual temporal measurement."""
+
+    sequence: int
+    timestamp: float
+    activity: float
+    region: RelativeRegion
+
+    def __post_init__(self) -> None:
+        if isinstance(self.sequence, bool) or not isinstance(self.sequence, Integral):
+            raise ValueError("sequence must be a non-negative integer")
+        if self.sequence < 0:
+            raise ValueError("sequence must be a non-negative integer")
+        if isinstance(self.timestamp, bool) or not isinstance(self.timestamp, Real):
+            raise ValueError("timestamp must be a non-negative finite real number")
+        timestamp = float(self.timestamp)
+        if not math.isfinite(timestamp) or timestamp < 0.0:
+            raise ValueError("timestamp must be a non-negative finite real number")
+        if isinstance(self.activity, bool) or not isinstance(self.activity, Real):
+            raise ValueError("activity must be a non-negative finite real number")
+        activity = float(self.activity)
+        if not math.isfinite(activity) or activity < 0.0:
+            raise ValueError("activity must be a non-negative finite real number")
+        object.__setattr__(self, "sequence", int(self.sequence))
+        object.__setattr__(self, "timestamp", timestamp)
+        object.__setattr__(self, "activity", activity)
+        object.__setattr__(self, "region", normalize_relative_region(self.region))
+
+
+RuntimeFactEvidence = FactEvidence | TemporalFactEvidence
+
+
+@dataclass(frozen=True)
 class RuntimeFact(Generic[T]):
     name: str
     value: T
@@ -62,7 +97,7 @@ class RuntimeFact(Generic[T]):
     quality: FactQuality
     source: ObservationSource
     context: str
-    evidence: tuple[FactEvidence, ...]
+    evidence: tuple[RuntimeFactEvidence, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "name", validate_semantic_name(self.name))
@@ -73,8 +108,10 @@ class RuntimeFact(Generic[T]):
         if not isinstance(self.source, ObservationSource):
             raise ValueError("source must be an ObservationSource")
         evidence = tuple(self.evidence)
-        if not evidence or not all(isinstance(item, FactEvidence) for item in evidence):
-            raise ValueError("evidence must contain at least one FactEvidence")
+        if not evidence or not all(
+            isinstance(item, (FactEvidence, TemporalFactEvidence)) for item in evidence
+        ):
+            raise ValueError("evidence must contain at least one runtime evidence item")
         if any(
             current.sequence <= previous.sequence
             for previous, current in zip(evidence, evidence[1:])
@@ -95,7 +132,7 @@ class RuntimeFact(Generic[T]):
 class FactReadResult(Generic[T]):
     status: FactReadStatus
     fact: RuntimeFact[T] | None = None
-    evidence: tuple[FactEvidence, ...] = ()
+    evidence: tuple[RuntimeFactEvidence, ...] = ()
     detail: str | None = None
 
     def __post_init__(self) -> None:
@@ -106,8 +143,10 @@ class FactReadResult(Generic[T]):
         if self.status is not FactReadStatus.CONFIRMED and self.fact is not None:
             raise ValueError("only CONFIRMED may contain a fact")
         evidence = tuple(self.evidence)
-        if not all(isinstance(item, FactEvidence) for item in evidence):
-            raise ValueError("evidence must contain only FactEvidence instances")
+        if not all(
+            isinstance(item, (FactEvidence, TemporalFactEvidence)) for item in evidence
+        ):
+            raise ValueError("evidence must contain only runtime evidence instances")
         object.__setattr__(self, "evidence", evidence)
 
 
@@ -126,4 +165,6 @@ __all__ = (
     "FactReadResult",
     "FactReadStatus",
     "RuntimeFact",
+    "RuntimeFactEvidence",
+    "TemporalFactEvidence",
 )

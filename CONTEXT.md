@@ -15,6 +15,7 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - `PerceptionEngine` ejecuta detectores locales precargados y produce `ObservationBatch` del mismo frame.
 - `ContextResolver` transforma observaciones en `ResolvedState` determinista (`RESOLVED`, `UNKNOWN` o `AMBIGUOUS`) y resuelve overlays independientemente.
 - `RuntimeObserver` produce `RuntimeSnapshot` coherentes con frame BGR, observations, estado, facts y geometría del mismo frame; sus esperas exigen frames frescos y tienen timeout.
+- `TemporalObserver` adquiere ventanas multiframe frescas, bounded y context-correct; el primer consumidor productivo es `setting.auto_battle` `ON/OFF/UNKNOWN` por actividad del glow, sin OCR.
 - `RapidOcrEngine` usa modelos ONNX locales detrás de `OcrResult`; `RuntimeFactReader` oculta ROI, preprocessing, OCR y parsers a consumidores y devuelve outcomes bounded explícitos.
 - Los intents semánticos tipados separan negocio de coordenadas.
 - `ActionExecutor` traduce esos intents a taps ADB normalizados contra `frame.shape`; no decide gameplay.
@@ -99,6 +100,8 @@ Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `Charac
 
 `CharacterContext` contiene identidad o metadata estable. Stamina, recursos y otros datos cambiantes son Runtime Facts que un flow solicita cuando los necesita; no pertenecen al contexto estable. El boundary productivo queda `RuntimeObserver/Frame → extractor con ROI/preprocessing → OCR Engine/OcrResult → parser → RuntimeFactReader → consumidor`, y los flows no procesan píxeles ni invocan el engine directamente.
 
+`setting.auto_battle` es un Runtime Fact temporal tipado, separado de `CharacterContext`. Usa 10 frames en una ventana corta sobre la ROI normalizada `(0.835, 0.018, 0.890, 0.078)`, mide la mediana de diferencia absoluta consecutiva sólo en el borde y clasifica `OFF ≤ 2`, `UNKNOWN (2, 5)` y `ON ≥ 5`. `ensure_auto_battle_on()` no toca desde `UNKNOWN`; desde OFF confirmado solicita `ToggleAutoBattle` a `ActionExecutor`, vuelve a observar frames frescos y permite como máximo dos taps sólo si OFF continúa inequívoco y el contexto sigue siendo batalla sin Raid Complete. Live: ON inicial terminó con 0 taps; OFF `0,226` pasó con un tap a ON `9,265`, sin retry, y el usuario confirmó ON final.
+
 `bot/controlled_wait.py` implementa espera de actividad larga con duración o deadline monotónico, polling configurable, condición opcional, cancelación y outcomes `completed/cancelled/timeout/failed`. No depende de `ActionExecutor` ni cubre scheduling de horas.
 
 Los smokes incrementales expusieron latencia de carga entre Lobby y Black Market. Un tap de apertura no registrado abortó correctamente sin advance; `black_market.open` pasó a `VerifiedTransition` con grace sin input y retry sólo desde Lobby fresco. La precondición del flow y la sonda Lobby del composition root también esperan estabilidad pasivamente y rechazan estados incompatibles.
@@ -149,12 +152,11 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - VLM no está implementado; seguirá provider-agnostic si un caso funcional lo requiere.
 - `inventory_kind` e identidad de personaje permanecen desconocidos; liberar, vender o mover inventario pertenece a futuros flows especializados.
-- Auto Battle sólo conserva evidencia temporal OFF/ON y métricas de movimiento; todavía no existe detector productivo `ON/OFF/UNKNOWN`.
-- No existen `WorldBossFlow`, OCR de costo/rank/nombre, acciones específicas de World Boss, Auto Repeat ni integración del slice en `SessionRunner`.
+- No existen `WorldBossFlow`, OCR de costo/rank/nombre, Auto Repeat ni integración del slice en `ControlledWait` o `SessionRunner`.
 - `landmark.lobby_commerce_pair` permanece como alternativa offline, no detector productivo.
 - `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` legacy conservan imports retirados y no son runtime activo.
 - `bot/constants.py` es conocimiento legacy; `bot/ads_manager.py` permanece standalone mediante UIAutomator2.
 
 ## Próximo trabajo
 
-Implementar el detector temporal productivo de Auto Battle. Después: `WorldBossFlow + ControlledWait`. Costo, rank/participation, nombre, ConflictResolver, retries escalonados, Auto Repeat y scheduler permanecen deferred.
+Implementar `WorldBossFlow + ControlledWait`. Costo, rank/participation, nombre, ConflictResolver, retries escalonados, Auto Repeat y scheduler permanecen deferred.

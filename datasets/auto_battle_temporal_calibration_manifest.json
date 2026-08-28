@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "fact": "setting.auto_battle",
+  "context": "screen.world_boss_battle",
+  "human_ground_truth": "confirmed_in_chat",
+  "source": "live_scrcpy",
+  "metric": "median consecutive grayscale absolute difference over the control border",
+  "roi": [0.835, 0.018, 0.89, 0.078],
+  "border_fraction": 0.22,
+  "frame_count": 10,
+  "window_duration_seconds": [1.188, 1.875],
+  "sample_interval_seconds": 0.1,
+  "thresholds": {
+    "off_maximum": 2.0,
+    "on_minimum": 5.0,
+    "unknown_gap": [2.0, 5.0]
+  },
+  "curated_results": {
+    "off_windows": 8,
+    "on_windows": 9,
+    "maximum_off_activity": 1.2531442333,
+    "minimum_on_activity": 7.3853358309,
+    "empirical_class_gap": 6.1321915976,
+    "threshold_gap": 3.0,
+    "false_positives": 0,
+    "false_negatives": 0
+  },
+  "ensure_validation": {
+    "initial_on_taps": 0,
+    "off_to_on_taps": 1,
+    "tap_retries": 0,
+    "off_activity": 0.2262510035,
+    "post_tap_on_activity": 9.2650521809,
+    "final_state_human_confirmed": "ON"
+  },
+  "interruption_validation": {
+    "overlay": "overlay.world_boss_raid_complete",
+    "outcome": "context_mismatch",
+    "sent_input": false
+  },
+  "local_reports": [
+    "artifacts/auto-battle-live/20260828T005550_661236Z-detect-off/report.json",
+    "artifacts/auto-battle-live/20260828T005723_738336Z-detect-on/report.json",
+    "artifacts/auto-battle-live/20260828T010154_082761Z-detect-on/report.json",
+    "artifacts/auto-battle-live/20260828T010353_825724Z-ensure-on/report.json",
+    "artifacts/auto-battle-live/20260828T010451_726627Z-detect-off/report.json",
+    "artifacts/auto-battle-live/20260828T010515_175076Z-ensure-off/report.json"
+  ]
+}

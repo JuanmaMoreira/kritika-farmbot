@@ -96,6 +96,11 @@ class ConfirmCharacterSelection:
     """Request the Select button after choosing a character card."""
 
 
+@dataclass(frozen=True)
+class ToggleAutoBattle:
+    """Request one toggle tap after Auto Battle was confirmed OFF."""
+
+
 SemanticAction = (
     OpenBlackMarket
     | CloseBlackMarket
@@ -108,6 +113,7 @@ SemanticAction = (
     | Swipe
     | SelectLastVisibleCharacter
     | ConfirmCharacterSelection
+    | ToggleAutoBattle
 )
 
 
@@ -124,4 +130,5 @@ __all__ = (
     "SelectLastVisibleCharacter",
     "SelectBlackMarketSlot",
     "SemanticAction",
+    "ToggleAutoBattle",
 )

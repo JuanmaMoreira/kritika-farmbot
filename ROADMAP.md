@@ -73,11 +73,12 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 ### Auto Battle temporal
 
-- [ ] Detectar `ON/OFF/UNKNOWN` mediante variación temporal del glow en varios frames y exigir verificación por cada flow consumidor.
+- [x] Detectar `setting.auto_battle = ON/OFF/UNKNOWN` mediante una ventana fresca de 10 frames y variación robusta del borde del glow, con zona insegura explícita.
+- [x] Validar live detección OFF/ON con 0 FP/FN sobre evidencia curada y `ensure_auto_battle_on`: ON inicial 0 taps, OFF → un tap → ON fresco confirmado, sin retry.
 
 ### WorldBossFlow
 
-- [ ] Implementar el flow sólo después de cerrar percepción, facts, acciones y Auto Battle; Auto Repeat queda fuera del primer slice.
+- [ ] Implementar `WorldBossFlow + ControlledWait` sobre percepción, facts y Auto Battle ya cerrados; Auto Repeat queda fuera del primer slice.
 - [ ] Partir de policy `ALWAYS_PARTICIPATE` y reservar `ONLY_IF_NOT_PARTICIPATED` para facts de rank/participation posteriores.
 
 ### Fase 6 — expansión y operación unattended

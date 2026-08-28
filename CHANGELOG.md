@@ -26,6 +26,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se completó el primer vertical slice de Fase 4: `BlackMarketFlow` single-character con acciones semánticas, waits frescos bounded, facts GOLD/Purchased, logging y abort policy. Los smokes live verificaron tres compras GOLD, ninguna interacción KARATS y el ciclo `Lobby → Black Market → Lobby`; Rotation, SessionRunner, OCR y VLM permanecen diferidos.
 - Se cerró el slice semántico/perceptivo de World Boss con seis contextos human-confirmed, seis landmarks current-season, 44/44 resoluciones del slice y regresión productiva conjunta 146/146 sin FP/FN ni ambigüedades. `screen.world_boss` quedó validado para Quick Menu; se preservaron ROIs y evidencia Auto OFF/ON sin implementar OCR, detector temporal, acciones ni flow.
 - Se incorporó OCR transversal local con RapidOCR/ONNX, `OcrResult`, extractors/preprocessing separados y `RuntimeFactReader` fresco/context-correct. Los primeros facts productivos son sapphires de Survival con consenso y battle timer semántico en segundos; ambos quedaron validados live sin implementar `WorldBossFlow` ni Auto Battle.
+- Se productivizó `setting.auto_battle = ON/OFF/UNKNOWN` mediante observación temporal fresca del glow y se añadió `ensure_auto_battle_on()` con toggle semántico, verificación posterior y retries conservadores. La calibración live obtuvo 0 FP/FN; ON inicial usó 0 taps y OFF pasó a ON confirmado con un tap, sin implementar `WorldBossFlow`.
 
 ### Changed
 
