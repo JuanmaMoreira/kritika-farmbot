@@ -16,6 +16,7 @@ class FlowScope(str, Enum):
 class FlowStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 @dataclass(frozen=True)

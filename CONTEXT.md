@@ -1,9 +1,9 @@
 # Contexto actual — Kritika FarmBot
 
-**Estado:** rediseño híbrido 0.2; composición `BlackMarketFlow + rotation.standard` validada live en una sesión productiva completa 28/28.
+**Estado:** rediseño híbrido 0.2; `BlackMarketFlow`, `WorldBossFlow` y `rotation.standard` implementados sobre contratos 0.2.
 **Unidad funcional vigente:** `SessionRunner` ejecuta flows `PER_CHARACTER` en orden y hace exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 720/720 tests hardware-free verdes en el checkpoint OCR; hardening Black Market/Rotation, slice perceptivo World Boss y primeros Runtime Facts validados.
-**Checkpoint operativo:** `SessionResult.COMPLETED`, 28/28 flows, 28/28 advances, Lobby final y retorno al personaje inicial confirmados humanamente.
+**Baseline conocido:** 803/803 tests hardware-free verdes con `WorldBossFlow` productivo.
+**Checkpoint operativo:** Black Market cerró su sesión 28/28; World Boss cerró smokes live de batalla, inventario lleno, sapphires insuficientes y Rotation desde su salida.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -20,6 +20,7 @@ La cronología, calibraciones reemplazadas y evidencia detallada están en [`doc
 - Los intents semánticos tipados separan negocio de coordenadas.
 - `ActionExecutor` traduce esos intents a taps ADB normalizados contra `frame.shape`; no decide gameplay.
 - `BlackMarketFlow` es un flow 0.2 `PER_CHARACTER` implementado y separado del runtime legacy.
+- `WorldBossFlow` es `PER_CHARACTER`, usa OCR/facts y Auto Battle transversales, y compone su espera mediante `ControlledWait`.
 - `FlowContract` declara precondición y estados finales exitosos; `FlowResult.COMPLETED` no implica Lobby universalmente.
 - `quick_menu_accessible` es una capability con allow-list productivo conservador; contiene `screen.lobby` y `screen.world_boss`, ambos validados live con el mismo target del header.
 - `StandardRotation` es transversal, requiere esa capability, implementa un solo `advance()` y no conoce flows ni ADB.
@@ -44,6 +45,7 @@ Contextos base y overlays disponibles:
 - `popup.inventory_full`, acotado a Black Market mediante el landmark común del botón `OK` + `landmark.black_market_title`
 - `overlay.world_boss_select_boss`
 - `popup.world_boss_previous_rewards`
+- `popup.world_boss_inventory_full`, específico del aviso Yes/No posterior a Start
 - `overlay.world_boss_raid_complete`, coexistiendo con `screen.world_boss_battle`
 
 Facts internos de Black Market:
@@ -59,6 +61,7 @@ Estado de evidencia vigente:
 - Insufficient Gold: 1/1 TP, 0 FP/FN frente a 95 negativos; su muestra positiva todavía es pequeña.
 - Inventory Full: 6/6 TP, 0 FP/FN frente a 96 negativos confirmados. El botón común dio positivos `0,983645–0,999941`; el máximo negativo revisado con otro `OK` fue `0,894897`, threshold raw efectivo `0,965896` y gap `0,088749`. La conjunción productiva tuvo 6 matches positivos y cero conflictos al recorrer 252 capturas locales.
 - World Boss: 44 frames human-confirmed cubren 6 Battle Mode Select, 4 Select Boss, 5 Previous Rewards, 8 World Boss, 13 batalla y 8 Raid Complete. Sus seis detectores cerraron con 0 FP/FN; gaps raw respectivos `0,272674`, `0,709750`, `0,628603`, `0,388257`, `0,357196` y `0,564908`.
+- Inventory Full de World Boss: dos capturas live resolvieron `screen.world_boss + popup.world_boss_inventory_full`; el landmark del prompt obtuvo `0,994196–0,999981` frente al anchor negativo curado `0,224220`.
 - La regresión productiva conjunta produjo 146/146 estados esperados sin errores ni `AMBIGUOUS`; la validación live confirmó además compras, `Purchased`, Inventory Full y retornos frescos.
 
 Las calibraciones exactas, manifests y antecedentes de repair están en código/tests, datasets versionados y [`docs/HISTORY.md`](docs/HISTORY.md). `resource.sapphires` y `battle.timer_remaining` son los primeros Runtime Facts OCR productivos; costo, rank/participation y Auto Battle permanecen deferred.
@@ -94,7 +97,15 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 `bot/flow_contracts.py` separa `FlowContract(precondition, successful_postconditions)`, `FlowStatus.COMPLETED/FAILED` y `FlowEvent(kind, detail=None)`. `BlackMarketFlow` declara `screen.lobby → screen.lobby`; un `COMPLETED` sólo es componible si el estado actual pertenece a las salidas permitidas. `low_gold` e `inventory_full` son eventos de negocio acumulables y no fatales; un resultado técnico `FAILED` aborta la sesión sin hacer advance. Los counts útiles se derivan de eventos, no son campos estructurales del runner.
 
-`bot/session.py` ejecuta los flows en orden, pide a `MinimalPreconditionEnsurer` sólo la precondición del próximo componente y no normaliza todo a Lobby. Un requisito satisfecho no navega; la capability Quick Menu tampoco fuerza Lobby. La única normalización prevista es requisito exacto Lobby desde un contexto Quick Menu-capable, mediante un callback que debe usar navegación verificada. El allow-list incluye ahora Lobby y World Boss, pero este slice sólo validó apertura/cierre y restauración de Quick Menu: no integró ni ejecutó normalización de sesión desde World Boss. Después de cada componente se verifica una salida permitida. El runner hace un advance y repite exactamente `character_count` veces; el último retorno al personaje inicial no lo reprocesa. Fallos de flow, normalización, postcondición o Rotation preservan progreso parcial y abortan conservadoramente; la cancelación se consulta sólo entre componentes seguros y produce `CANCELLED`.
+`bot/session.py` ejecuta los flows en orden, pide a `MinimalPreconditionEnsurer` sólo la precondición del próximo componente y no normaliza todo a Lobby. Un requisito satisfecho no navega; la capability Quick Menu tampoco fuerza Lobby. La única normalización prevista es requisito exacto Lobby desde un contexto Quick Menu-capable, mediante un callback que debe usar navegación verificada. El allow-list incluye Lobby y World Boss. Después de cada componente se verifica una salida permitida. El runner hace un advance y repite exactamente `character_count` veces; el último retorno al personaje inicial no lo reprocesa. Fallos de flow, normalización, postcondición o Rotation preservan progreso parcial y abortan conservadoramente; `FlowStatus.CANCELLED` se propaga como cancelación de sesión y no como fallo técnico.
+
+## Runtime y flow World Boss
+
+`WorldBossFlow` aplica `ALWAYS_PARTICIPATE` y declara `screen.lobby` como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación runtime es una lectura OCR fresca de sapphires: con menos de 5 emite `world_boss.insufficient_sapphires` y termina en Lobby sin input. Con saldo suficiente navega mediante transiciones verificadas `Lobby → Battle Mode Select → Select Boss → World Boss`.
+
+`Previous Rewards` es una bifurcación esperable y potencialmente tardía de `SelectAvailableWorldBoss`: el flow deja estabilizar la entrada entre World Boss limpio y el popup, registra `world_boss.previous_rewards`, pulsa OK y sólo habilita Start después de recuperar World Boss limpio. Tras Start, `popup.world_boss_inventory_full` registra `world_boss.inventory_full`, verifica `No → World Boss` y termina ese personaje sin reintentar Start; liberar inventario y reanudar quedan deferred.
+
+En la rama de batalla exige Auto Battle ON, lee una vez el timer como deadline, usa polling disperso y una ventana final activa mediante dos `ControlledWait`, detecta Raid Complete y verifica Continue hacia World Boss. El smoke live cerró: rama de inventario lleno al primer intento; rama completa con Auto Battle ya ON, timer inicial 60 s, 29 checks, Raid Complete y Continue exitoso tras un retry seguro; y sapphires insuficientes con valor 0, cero transiciones y cero taps. `Previous Rewards` fue observado después de un World Boss transitorio y su OK devolvió la base esperada.
 
 Cada `SessionCharacterResult` usa un índice de sesión `1..N`, conserva `CharacterContext(name=None, name_confidence=None)`, resultados de flows y resultado de advance. El índice no es identidad. No existe `CharacterContextProvider` productivo ni OCR de nombre: un futuro provider opcional podrá reutilizar el engine transversal para enriquecer una vez por personaje el contexto desde Lobby sin hacer fatal la identidad usada sólo para observabilidad.
 
@@ -118,7 +129,7 @@ La siguiente ejecución productiva cerró el checkpoint completo: `28/28` flows 
 
 ## Primitive Rotation standard
 
-`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. Su requisito declarado es `quick_menu_accessible`; Lobby y World Boss son las capabilities productivas habilitadas. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, verifica visualmente la selección de la última tarjeta del layout final, confirma y exige un Lobby fresco. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente un contexto capable fresco; una pantalla no declarada, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente. La navegación interna de Rotation no cambió; su recorrido completo desde World Boss no formó parte de este smoke.
+`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. Su requisito declarado es `quick_menu_accessible`; Lobby y World Boss son las capabilities productivas habilitadas. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, verifica visualmente la selección de la última tarjeta del layout final, confirma y exige un Lobby fresco. El botón Character usa el layout Lobby o el offset lateral validado para bases no-Lobby. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente un contexto capable fresco; una pantalla no declarada, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente. Un `advance()` completo desde World Boss quedó validado live: Quick Menu desplazado, dos swipes efectivos, selección y retorno al Lobby del personaje siguiente.
 
 El algoritmo reusable vive en `bot/observed_scroll.py`: compone `RuntimeObserver + ActionExecutor`, separa A/T/B frescos, clasifica `progress / edge_candidate / ineffective` y devuelve edge, gesto inefectivo, límite, timeout o fallo explícitos. `StandardRotation` delega esta operación y no selecciona sin `edge_reached`. `bot/character_select_scroll.py` conserva únicamente el perfil del menú: ROI `(0.49, 0.19, 0.85, 0.805)`, thresholds de movimiento/settled `0,05`, settle `1,0 s` y policy de hasta tres intentos. Un gesto inefectivo aborta; el tercero sólo se usa si el segundo todavía demuestra progreso real.
 
@@ -148,15 +159,15 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Limitaciones y deferred
 
-- `StandardRotation` aislado y la composición completa están cerrados con ciclos live 28/28 y retorno al inicial confirmado desde Lobby. World Boss sólo recibió el smoke específico de Quick Menu requerido; no se ejecutó un `advance()` completo desde esa base.
+- `StandardRotation` aislado y la composición completa están cerrados con ciclos live 28/28 y retorno al inicial confirmado desde Lobby; también pasó un `advance()` completo aislado desde World Boss.
 - Recovery transversal, conflict resolver, aislamiento de fallos y policy unattended de continuación siguen deferred.
 - VLM no está implementado; seguirá provider-agnostic si un caso funcional lo requiere.
 - `inventory_kind` e identidad de personaje permanecen desconocidos; liberar, vender o mover inventario pertenece a futuros flows especializados.
-- No existen `WorldBossFlow`, OCR de costo/rank/nombre, Auto Repeat ni integración del slice en `ControlledWait` o `SessionRunner`.
+- No existen OCR de costo/rank/nombre, Auto Repeat, resolución/limpieza de inventario de World Boss ni composition root de una sesión multi-flow completa.
 - `landmark.lobby_commerce_pair` permanece como alternativa offline, no detector productivo.
 - `main.py`, `bot/context.py`, `bot/actions.py` y `bot/flows.py` legacy conservan imports retirados y no son runtime activo.
 - `bot/constants.py` es conocimiento legacy; `bot/ads_manager.py` permanece standalone mediante UIAutomator2.
 
 ## Próximo trabajo
 
-Implementar `WorldBossFlow + ControlledWait`. Costo, rank/participation, nombre, ConflictResolver, retries escalonados, Auto Repeat y scheduler permanecen deferred.
+Componer y validar una sesión configurable con `BlackMarketFlow + WorldBossFlow + rotation.standard`. Costo, rank/participation, nombre, ConflictResolver, limpieza de inventario, Auto Repeat y scheduler permanecen deferred.

@@ -38,6 +38,7 @@ from bot.semantic_actions import (
     ConfirmCharacterSelection,
     OpenCharacterSelect,
     OpenQuickMenu,
+    QuickMenuLayout,
     SelectLastVisibleCharacter,
     Swipe,
 )
@@ -364,7 +365,11 @@ def test_advance_accepts_declared_quick_menu_capable_context_and_changes_once(
     )
     assert actions.actions == [
         OpenQuickMenu(),
-        OpenCharacterSelect(),
+        OpenCharacterSelect(
+            QuickMenuLayout.LOBBY
+            if initial_context == SCREEN_LOBBY
+            else QuickMenuLayout.SHIFTED
+        ),
         CharacterSelectScrollProfile().progress_swipe,
         CharacterSelectScrollProfile().confirmation_swipe,
         SelectLastVisibleCharacter(),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from numbers import Integral
 
 from bot.geometry import RelativePoint, relative_point_to_pixel
@@ -55,6 +56,11 @@ class AcknowledgeInventoryFull:
     """Request the common OK action on an Inventory Full popup."""
 
 
+class QuickMenuLayout(str, Enum):
+    LOBBY = "lobby"
+    SHIFTED = "shifted"
+
+
 @dataclass(frozen=True)
 class OpenQuickMenu:
     """Request opening Quick Menu from a capability-approved context."""
@@ -63,6 +69,12 @@ class OpenQuickMenu:
 @dataclass(frozen=True)
 class OpenCharacterSelect:
     """Request the Character tile inside an already-open Quick Menu."""
+
+    layout: QuickMenuLayout = QuickMenuLayout.LOBBY
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.layout, QuickMenuLayout):
+            raise ValueError("layout must be QuickMenuLayout")
 
 
 @dataclass(frozen=True)
@@ -101,6 +113,41 @@ class ToggleAutoBattle:
     """Request one toggle tap after Auto Battle was confirmed OFF."""
 
 
+@dataclass(frozen=True)
+class OpenBattleModeSelect:
+    """Request Lobby -> Survival/Battle Mode Select."""
+
+
+@dataclass(frozen=True)
+class OpenWorldBossSelector:
+    """Request the World Boss tile from Battle Mode Select."""
+
+
+@dataclass(frozen=True)
+class SelectAvailableWorldBoss:
+    """Request the available boss from the Select Boss overlay."""
+
+
+@dataclass(frozen=True)
+class AcknowledgeWorldBossPreviousRewards:
+    """Request OK on the optional Previous Rewards popup."""
+
+
+@dataclass(frozen=True)
+class StartWorldBossBattle:
+    """Request one World Boss participation from the clean main screen."""
+
+
+@dataclass(frozen=True)
+class ContinueAfterWorldBossRaid:
+    """Request the safe tap-anywhere action after Raid Complete."""
+
+
+@dataclass(frozen=True)
+class RejectWorldBossInventoryFull:
+    """Request No on the World Boss Start inventory-full guard."""
+
+
 SemanticAction = (
     OpenBlackMarket
     | CloseBlackMarket
@@ -114,21 +161,36 @@ SemanticAction = (
     | SelectLastVisibleCharacter
     | ConfirmCharacterSelection
     | ToggleAutoBattle
+    | OpenBattleModeSelect
+    | OpenWorldBossSelector
+    | SelectAvailableWorldBoss
+    | AcknowledgeWorldBossPreviousRewards
+    | StartWorldBossBattle
+    | ContinueAfterWorldBossRaid
+    | RejectWorldBossInventoryFull
 )
 
 
 __all__ = (
     "AcceptPurchaseConfirmation",
+    "AcknowledgeWorldBossPreviousRewards",
     "AcknowledgeInventoryFull",
     "CloseBlackMarket",
     "ConfirmCharacterSelection",
+    "ContinueAfterWorldBossRaid",
     "OpenBlackMarket",
+    "OpenBattleModeSelect",
     "OpenCharacterSelect",
     "OpenQuickMenu",
+    "QuickMenuLayout",
+    "OpenWorldBossSelector",
     "RejectInsufficientGold",
+    "RejectWorldBossInventoryFull",
     "Swipe",
     "SelectLastVisibleCharacter",
+    "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",
     "SemanticAction",
     "ToggleAutoBattle",
+    "StartWorldBossBattle",
 )

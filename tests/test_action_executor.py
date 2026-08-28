@@ -13,16 +13,24 @@ from bot.action_executor import (
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
     AcknowledgeInventoryFull,
+    AcknowledgeWorldBossPreviousRewards,
     CloseBlackMarket,
     ConfirmCharacterSelection,
+    ContinueAfterWorldBossRaid,
     OpenBlackMarket,
+    OpenBattleModeSelect,
     OpenCharacterSelect,
     OpenQuickMenu,
+    QuickMenuLayout,
+    OpenWorldBossSelector,
     RejectInsufficientGold,
+    RejectWorldBossInventoryFull,
     SelectLastVisibleCharacter,
+    SelectAvailableWorldBoss,
     SelectBlackMarketSlot,
     Swipe,
     ToggleAutoBattle,
+    StartWorldBossBattle,
 )
 
 
@@ -65,6 +73,29 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
     adb.tap.assert_called_once_with(*expected)
     assert receipt.normalized_target == target
     assert receipt.pixel_target == expected
+
+
+@pytest.mark.parametrize(
+    ("action", "target"),
+    (
+        (OpenBattleModeSelect(), DEFAULT_BATTLE_ACTION_TARGETS.open_battle_mode_select),
+        (OpenWorldBossSelector(), DEFAULT_BATTLE_ACTION_TARGETS.open_world_boss_selector),
+        (SelectAvailableWorldBoss(), DEFAULT_BATTLE_ACTION_TARGETS.select_available_world_boss),
+        (AcknowledgeWorldBossPreviousRewards(), DEFAULT_BATTLE_ACTION_TARGETS.acknowledge_previous_rewards),
+        (StartWorldBossBattle(), DEFAULT_BATTLE_ACTION_TARGETS.start_world_boss_battle),
+        (ToggleAutoBattle(), DEFAULT_BATTLE_ACTION_TARGETS.toggle_auto_battle),
+        (ContinueAfterWorldBossRaid(), DEFAULT_BATTLE_ACTION_TARGETS.continue_after_raid),
+        (RejectWorldBossInventoryFull(), DEFAULT_BATTLE_ACTION_TARGETS.reject_world_boss_inventory_full),
+    ),
+)
+def test_executor_translates_world_boss_route_actions(action, target):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert receipt.normalized_target == target
 
 
 @pytest.mark.parametrize("slot_index", range(10))
@@ -110,6 +141,18 @@ def test_executor_translates_rotation_taps_from_frame_geometry(action, target):
     adb.tap.assert_called_once_with(*expected)
     assert receipt.normalized_target == target
     assert receipt.pixel_target == expected
+
+
+def test_shifted_quick_menu_uses_non_lobby_character_target():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    action = OpenCharacterSelect(QuickMenuLayout.SHIFTED)
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    target = DEFAULT_ROTATION_ACTION_TARGETS.open_character_select_shifted
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert target[0] - DEFAULT_ROTATION_ACTION_TARGETS.open_character_select[0] == pytest.approx(0.1296)
 
 
 def test_quick_menu_uses_the_shared_live_confirmed_header_target():

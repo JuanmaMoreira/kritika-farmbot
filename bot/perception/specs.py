@@ -18,6 +18,7 @@ from bot.catalog import (
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
+    LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
@@ -275,6 +276,23 @@ WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC = LocalCvSpec(
     ),
 )
 
+# Human-confirmed World Boss Start guard. This Yes/No prompt is intentionally
+# distinct from Black Market's OK-only inventory-cap popup. The literal prompt
+# excludes buttons and the underlying boss/rank data. Two live positives score
+# 0.994195998..0.999982059; the strongest reviewed World Boss negative scores
+# 0.224219561. Resolving inventory and resuming remains deferred policy.
+WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/world-boss-inventory-full-prompt-current.png"
+    ),
+    region=(0.31, 0.38, 0.69, 0.54),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.22421956062316895,
+        positive_anchor=0.9941959977149963,
+    ),
+)
+
 # The fixed cost label is structural World Boss UI. It excludes the rotating
 # boss, current ranking, damage and resource values.
 WORLD_BOSS_SAPPHIRES_USED_SPEC = LocalCvSpec(
@@ -324,6 +342,7 @@ DEFAULT_LOCAL_CV_SPECS = (
     QUICK_MENU_LOBBY_TILE_SPEC,
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
+    WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_SAPPHIRES_USED_SPEC,
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,

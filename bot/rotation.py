@@ -47,6 +47,7 @@ from bot.semantic_actions import (
     ConfirmCharacterSelection,
     OpenCharacterSelect,
     OpenQuickMenu,
+    QuickMenuLayout,
     SelectLastVisibleCharacter,
 )
 from bot.state import ResolutionStatus
@@ -254,10 +255,15 @@ class StandardRotation:
                 transitions=tuple(transitions),
             )
         quick_menu = quick_menu_result.final_snapshot
+        quick_menu_layout = (
+            QuickMenuLayout.LOBBY
+            if initial.state.base_context == SCREEN_LOBBY
+            else QuickMenuLayout.SHIFTED
+        )
 
         character_select_result = self.verified_transition.execute(
             "rotation.open_character_select",
-            OpenCharacterSelect(),
+            OpenCharacterSelect(quick_menu_layout),
             quick_menu,
             expected=lambda snapshot: _is_clean_base(
                 snapshot, SCREEN_CHARACTER_SELECT

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-28",
+    "source": "live_scrcpy",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat",
+    "semantic_state": {
+      "base_context": "screen.world_boss",
+      "overlays": ["popup.world_boss_inventory_full"]
+    },
+    "behavior": "No returns to screen.world_boss and completes this character without retrying Start",
+    "deferred": "inventory resolution and resuming WorldBossFlow for the same character",
+    "landmark": {
+      "name": "landmark.world_boss_inventory_full_prompt",
+      "asset": "assets/ui/landmarks/world-boss-inventory-full-prompt-current.png",
+      "region": [0.31, 0.38, 0.69, 0.54],
+      "positive_raw_range": [0.9941959977149963, 0.9999820590019226],
+      "strongest_reviewed_negative": 0.22421956062316895
+    },
+    "action": {
+      "intent": "RejectWorldBossInventoryFull",
+      "normalized_target": [0.569, 0.6307],
+      "expected": "screen.world_boss"
+    }
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/world_boss/inventory_full/20260828T114407_020995Z_01.png",
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/world_boss/inventory_full/20260828T114407_472240Z_02.png",
+      "review_status": "confirmed"
+    }
+  ]
+}

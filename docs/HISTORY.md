@@ -120,6 +120,14 @@ La recalibración live human-confirmed estrechó la ROI candidate para excluir P
 
 `setting.auto_battle` quedó como Runtime Fact tipado con evidencia temporal y `ensure_auto_battle_on()` como operación transversal sobre `RuntimeObserver + ActionExecutor`. Live, ON inicial terminó sin input; OFF `0,226251` produjo un tap normalizado `(0.8625, 0.0480)` y la ventana fresca posterior confirmó ON `9,265052`. No hubo retries y el usuario confirmó visualmente ON final. Una consulta durante Raid Complete abortó sin clasificar ni tocar. No se implementaron `WorldBossFlow`, `ControlledWait` integrado, Auto Repeat, SessionRunner World Boss ni ConflictResolver.
 
+## WorldBossFlow productivo
+
+Se implementó el flow single-character con policy `ALWAYS_PARTICIPATE`, OCR inicial de sapphires, navegación semántica verificada, Previous Rewards opcional, Start, Auto Battle, timer, espera controlada en dos fases, Raid Complete y salida World Boss. La primera ejecución expuso que Previous Rewards puede aparecer después de que `screen.world_boss` resuelva transitoriamente; la rama quedó ligada a `SelectAvailableWorldBoss` con un settle explícito antes de habilitar Start.
+
+Start expuso además un popup Yes/No de inventario lleno específico de World Boss. Dos frames live se curaron para `popup.world_boss_inventory_full`; temporalmente el flow registra el evento, verifica `No → World Boss` y termina ese personaje, sin reintentar Start ni intentar liberar inventario. El layout interno de Quick Menu fuera de Lobby mostró un offset lateral: Character se validó en `(0.2000, 0.7835)`. Con esa corrección, un `StandardRotation.advance()` real desde World Boss hizo dos swipes efectivos y llegó al Lobby del personaje siguiente.
+
+Los smokes finales sobre el mismo personaje cerraron tres ramas: inventario lleno con todas las transiciones al primer intento; batalla completa con Auto Battle ON, timer inicial 60 s, 29 checks, Raid Complete y Continue exitoso tras un retry seguro; y sapphires `0`, que emitió `world_boss.insufficient_sapphires` sin ninguna transición ni input. Previous Rewards se reconoció y cerró manualmente sobre la evidencia que motivó la corrección; su secuencia tardía quedó cubierta por regresión determinista.
+
 ## Decisiones y alternativas reemplazadas
 
 - El icono de oro de Lobby describe un shell persistente, no una pantalla base exclusiva.

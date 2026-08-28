@@ -15,17 +15,25 @@ from bot.geometry import (
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
     AcknowledgeInventoryFull,
+    AcknowledgeWorldBossPreviousRewards,
     CloseBlackMarket,
     ConfirmCharacterSelection,
+    ContinueAfterWorldBossRaid,
     OpenBlackMarket,
+    OpenBattleModeSelect,
     OpenCharacterSelect,
     OpenQuickMenu,
+    QuickMenuLayout,
+    OpenWorldBossSelector,
     RejectInsufficientGold,
+    RejectWorldBossInventoryFull,
     SelectLastVisibleCharacter,
+    SelectAvailableWorldBoss,
     SelectBlackMarketSlot,
     SemanticAction,
     Swipe,
     ToggleAutoBattle,
+    StartWorldBossBattle,
 )
 
 
@@ -107,6 +115,7 @@ class RotationActionTargets:
     # closes Quick Menu from both Lobby and World Boss at the current geometry.
     open_quick_menu: RelativePoint = (0.1940, 0.0564)
     open_character_select: RelativePoint = (0.0704, 0.7835)
+    open_character_select_shifted: RelativePoint = (0.2000, 0.7835)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
     confirm_character_selection: RelativePoint = (0.6855, 0.9101)
 
@@ -114,6 +123,7 @@ class RotationActionTargets:
         for point in (
             self.open_quick_menu,
             self.open_character_select,
+            self.open_character_select_shifted,
             self.last_visible_character,
             self.confirm_character_selection,
         ):
@@ -125,12 +135,29 @@ DEFAULT_ROTATION_ACTION_TARGETS = RotationActionTargets()
 
 @dataclass(frozen=True)
 class BattleActionTargets:
-    """Normalized targets acquired from the live World Boss battle layout."""
+    """Normalized targets acquired from the live World Boss route."""
 
+    open_battle_mode_select: RelativePoint = (0.8097, 0.4297)
+    open_world_boss_selector: RelativePoint = (0.3514, 0.7843)
+    select_available_world_boss: RelativePoint = (0.4974, 0.5449)
+    acknowledge_previous_rewards: RelativePoint = (0.5000, 0.9200)
+    start_world_boss_battle: RelativePoint = (0.7740, 0.9346)
     toggle_auto_battle: RelativePoint = (0.8625, 0.0480)
+    continue_after_raid: RelativePoint = (0.5000, 0.9100)
+    reject_world_boss_inventory_full: RelativePoint = (0.5690, 0.6307)
 
     def __post_init__(self) -> None:
-        relative_point_to_pixel(self.toggle_auto_battle, 1, 1)
+        for point in (
+            self.open_battle_mode_select,
+            self.open_world_boss_selector,
+            self.select_available_world_boss,
+            self.acknowledge_previous_rewards,
+            self.start_world_boss_battle,
+            self.toggle_auto_battle,
+            self.continue_after_raid,
+            self.reject_world_boss_inventory_full,
+        ):
+            relative_point_to_pixel(point, 1, 1)
 
 
 DEFAULT_BATTLE_ACTION_TARGETS = BattleActionTargets()
@@ -215,13 +242,31 @@ class ActionExecutor:
         if isinstance(action, OpenQuickMenu):
             return self.rotation_targets.open_quick_menu
         if isinstance(action, OpenCharacterSelect):
-            return self.rotation_targets.open_character_select
+            return (
+                self.rotation_targets.open_character_select
+                if action.layout is QuickMenuLayout.LOBBY
+                else self.rotation_targets.open_character_select_shifted
+            )
         if isinstance(action, SelectLastVisibleCharacter):
             return self.rotation_targets.last_visible_character
         if isinstance(action, ConfirmCharacterSelection):
             return self.rotation_targets.confirm_character_selection
         if isinstance(action, ToggleAutoBattle):
             return self.battle_targets.toggle_auto_battle
+        if isinstance(action, OpenBattleModeSelect):
+            return self.battle_targets.open_battle_mode_select
+        if isinstance(action, OpenWorldBossSelector):
+            return self.battle_targets.open_world_boss_selector
+        if isinstance(action, SelectAvailableWorldBoss):
+            return self.battle_targets.select_available_world_boss
+        if isinstance(action, AcknowledgeWorldBossPreviousRewards):
+            return self.battle_targets.acknowledge_previous_rewards
+        if isinstance(action, StartWorldBossBattle):
+            return self.battle_targets.start_world_boss_battle
+        if isinstance(action, ContinueAfterWorldBossRaid):
+            return self.battle_targets.continue_after_raid
+        if isinstance(action, RejectWorldBossInventoryFull):
+            return self.battle_targets.reject_world_boss_inventory_full
         raise ValueError("unsupported semantic action")
 
     def _execute_swipe(

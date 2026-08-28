@@ -38,6 +38,13 @@ def test_failed_status_is_independent_from_prior_business_events():
     assert result.event_count("inventory_full") == 1
 
 
+def test_cancelled_flow_is_neither_completed_nor_failed():
+    result = FlowResult(FlowStatus.CANCELLED)
+
+    assert not result.succeeded
+    assert result.status is FlowStatus.CANCELLED
+
+
 def test_completed_flow_cannot_carry_a_technical_error():
     with pytest.raises(ValueError, match="completed flow"):
         FlowResult(FlowStatus.COMPLETED, error="contradiction")

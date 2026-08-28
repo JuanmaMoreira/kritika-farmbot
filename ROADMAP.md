@@ -78,8 +78,11 @@ La cronología de subfases y evidencia está en [`docs/HISTORY.md`](docs/HISTORY
 
 ### WorldBossFlow
 
-- [ ] Implementar `WorldBossFlow + ControlledWait` sobre percepción, facts y Auto Battle ya cerrados; Auto Repeat queda fuera del primer slice.
-- [ ] Partir de policy `ALWAYS_PARTICIPATE` y reservar `ONLY_IF_NOT_PARTICIPATED` para facts de rank/participation posteriores.
+- [x] Implementar `WorldBossFlow + ControlledWait` sobre percepción, facts y Auto Battle; Auto Repeat queda fuera del primer slice.
+- [x] Partir de policy `ALWAYS_PARTICIPATE` y reservar `ONLY_IF_NOT_PARTICIPATED` para facts de rank/participation posteriores.
+- [x] Validar live sapphires insuficientes sin input, batalla completa hasta Raid Complete y el cierre conservador `Inventory Full → No → World Boss`.
+- [ ] Diseñar la liberación de inventario y reanudación del mismo personaje; por ahora el evento termina correctamente su flow.
+- [ ] Componer y validar una sesión seleccionable `BlackMarketFlow + WorldBossFlow + rotation.standard`.
 
 ### Fase 6 — expansión y operación unattended
 

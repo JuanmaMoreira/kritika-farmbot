@@ -211,6 +211,11 @@ class SessionRunner:
                 result = self._run_flow(flow)
                 flow_results.append(result)
                 self._record_flow_events(flow.name, result.events, index, context)
+                if result.status is FlowStatus.CANCELLED:
+                    character_results.append(
+                        SessionCharacterResult(index, context, tuple(flow_results))
+                    )
+                    return self._cancel(character_results, advances_completed)
                 if result.status is FlowStatus.FAILED:
                     character_results.append(
                         SessionCharacterResult(index, context, tuple(flow_results))

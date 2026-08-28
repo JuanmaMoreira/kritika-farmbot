@@ -19,6 +19,7 @@ from bot.preconditions import MinimalPreconditionEnsurer
 from bot.quick_menu import QuickMenuPolicy
 from bot.rotation import RotationOutcome, RotationResult
 from bot.session import CharacterContext, SessionPlan, SessionRunner, SessionStatus
+from bot.world_boss_flow import WorldBossFlow
 
 
 class Events:
@@ -292,6 +293,19 @@ def test_cancel_between_flow_and_advance_preserves_flow_result():
     assert rotation.calls == 0
 
 
+def test_flow_cancelled_result_propagates_as_session_cancellation():
+    trace = []
+    flow = Flow("world_boss", [FlowResult(FlowStatus.CANCELLED)], trace)
+    rotation = Rotation(1, trace)
+    runner, _ = _runner(1, [flow], rotation)
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.CANCELLED
+    assert result.failure_cause is None
+    assert rotation.calls == 0
+
+
 def test_character_context_factory_runs_once_per_processed_character():
     trace = []
     requested = []
@@ -360,6 +374,36 @@ def test_session_does_not_normalize_lobby_when_rotation_only_needs_capability():
 
     assert result.status is SessionStatus.COMPLETED
     assert navigation_calls == []
+    assert rotation.calls == 1
+
+
+@pytest.mark.parametrize("successful_context", [SCREEN_LOBBY, "screen.world_boss"])
+def test_session_accepts_both_declared_world_boss_success_postconditions(
+    successful_context,
+):
+    trace = []
+    flow = Flow(
+        "world_boss",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+        WorldBossFlow.contract,
+    )
+    rotation = Rotation(1, trace)
+    runner, _ = _runner(
+        1,
+        [flow],
+        rotation,
+        context_values=[
+            SCREEN_LOBBY,
+            successful_context,
+            successful_context,
+            SCREEN_LOBBY,
+        ],
+    )
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.COMPLETED
     assert rotation.calls == 1
 
 
