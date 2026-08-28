@@ -30,6 +30,8 @@ from bot.verified_transition import VerifiedTransition
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _CLEAN_CONTEXTS = frozenset({SCREEN_LOBBY, SCREEN_WORLD_BOSS})
+_CLEAN_CONTEXT_TIMEOUT = 5.0
+_CLEAN_CONTEXT_STABLE_FOR = 0.25
 
 
 class CancellationToken:
@@ -165,12 +167,30 @@ class ProductiveRuntime:
             settled = self.observer.wait_until(
                 _is_clean_known_context,
                 after_sequence=initial.sequence,
-                timeout=2.0,
-                stable_for=0.25,
+                timeout=_CLEAN_CONTEXT_TIMEOUT,
+                stable_for=_CLEAN_CONTEXT_STABLE_FOR,
                 cancel_requested=self.cancel_requested,
             )
             return settled.state.base_context
-        except (RuntimeWaitTimeout, RuntimeWaitCancelled):
+        except RuntimeWaitTimeout as error:
+            latest = error.last_snapshot
+            self.events.record(
+                "runtime.context_probe_timeout",
+                timeout=error.timeout,
+                after_sequence=error.after_sequence,
+                last_sequence=latest.sequence if latest is not None else None,
+                resolution_status=(
+                    latest.state.status.value if latest is not None else None
+                ),
+                base_context=(
+                    latest.state.base_context if latest is not None else None
+                ),
+                overlays=(
+                    sorted(latest.state.overlays) if latest is not None else []
+                ),
+            )
+            return None
+        except RuntimeWaitCancelled:
             return None
 
 

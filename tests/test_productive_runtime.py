@@ -1,9 +1,49 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 import bot.productive_runtime as productive
+from bot.catalog import SCREEN_LOBBY
 from bot.event_log import RuntimeEventStream
+from bot.productive_runtime import ProductiveRuntime
+from bot.runtime_observer import RuntimeWaitTimeout
+from bot.state import ResolutionStatus
+
+
+def _snapshot(sequence, *, status, base=None, overlays=()):
+    return SimpleNamespace(
+        sequence=sequence,
+        state=SimpleNamespace(
+            status=status,
+            base_context=base,
+            overlays=frozenset(overlays),
+        ),
+    )
+
+
+class Observer:
+    def __init__(self, initial, wait_result):
+        self.initial = initial
+        self.wait_result = wait_result
+        self.wait_calls = []
+
+    def observe(self):
+        return self.initial
+
+    def wait_until(self, predicate, **kwargs):
+        self.wait_calls.append((predicate, kwargs))
+        if isinstance(self.wait_result, Exception):
+            raise self.wait_result
+        return self.wait_result
+
+
+class Events:
+    def __init__(self):
+        self.items = []
+
+    def record(self, event, **fields):
+        self.items.append((event, fields))
 
 
 class Source:
@@ -22,6 +62,18 @@ class Source:
 class Adb:
     def get_state(self):
         return "device"
+
+
+def _runtime(observer, events):
+    return ProductiveRuntime(
+        config=object(),
+        observer=observer,
+        actions=object(),
+        facts=object(),
+        auto_battle=object(),
+        events=events,
+        cancel_token=SimpleNamespace(is_requested=lambda: False),
+    )
 
 
 def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monkeypatch):
@@ -72,3 +124,55 @@ def test_runtime_configuration_failure_is_persisted_to_session_log(monkeypatch, 
     assert '"event": "runtime.started"' in content
     assert '"event": "runtime.failed"' in content
     assert '"event": "runtime.closed"' in content
+
+
+def test_clean_context_probe_tolerates_transient_unresolved_frames_for_five_seconds():
+    observer = Observer(
+        _snapshot(17, status=ResolutionStatus.UNKNOWN),
+        _snapshot(21, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY),
+    )
+    runtime = _runtime(observer, Events())
+
+    assert runtime._current_clean_context() == SCREEN_LOBBY
+    predicate, kwargs = observer.wait_calls[0]
+    assert predicate(observer.wait_result)
+    assert kwargs == {
+        "after_sequence": 17,
+        "timeout": 5.0,
+        "stable_for": 0.25,
+        "cancel_requested": runtime.cancel_requested,
+    }
+
+
+def test_clean_context_probe_timeout_records_last_observed_state():
+    latest = _snapshot(
+        29,
+        status=ResolutionStatus.AMBIGUOUS,
+        base=SCREEN_LOBBY,
+        overlays={"popup.example"},
+    )
+    observer = Observer(
+        _snapshot(24, status=ResolutionStatus.UNKNOWN),
+        RuntimeWaitTimeout(
+            after_sequence=24,
+            timeout=5.0,
+            last_snapshot=latest,
+        ),
+    )
+    events = Events()
+    runtime = _runtime(observer, events)
+
+    assert runtime._current_clean_context() is None
+    assert events.items == [
+        (
+            "runtime.context_probe_timeout",
+            {
+                "timeout": 5.0,
+                "after_sequence": 24,
+                "last_sequence": 29,
+                "resolution_status": ResolutionStatus.AMBIGUOUS.value,
+                "base_context": SCREEN_LOBBY,
+                "overlays": ["popup.example"],
+            },
+        )
+    ]
