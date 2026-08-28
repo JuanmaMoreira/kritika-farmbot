@@ -9,6 +9,7 @@ from bot.action_executor import FrameGeometry
 from bot.auto_battle import AutoBattleState, EnsureAutoBattleStatus
 from bot.capture import FrameSnapshot
 from bot.catalog import (
+    LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
@@ -20,7 +21,7 @@ from bot.catalog import (
 )
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
 from bot.flow_contracts import FlowStatus
-from bot.observations import ObservationBatch, ObservationSource
+from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.runtime_facts import (
     FactEvidence,
     FactQuality,
@@ -43,14 +44,21 @@ from bot.world_boss_flow import (
 )
 
 
-def snapshot(sequence, *, base=None, overlays=(), status=None):
+def snapshot(
+    sequence,
+    *,
+    base=None,
+    overlays=(),
+    status=None,
+    semantic_observations=(),
+):
     if status is None:
         status = ResolutionStatus.RESOLVED if base else ResolutionStatus.UNKNOWN
     timestamp = float(sequence)
     image = np.zeros((120, 240, 3), dtype=np.uint8)
     return RuntimeSnapshot(
         FrameSnapshot(image, timestamp, sequence),
-        ObservationBatch(sequence, timestamp),
+        ObservationBatch(sequence, timestamp, tuple(semantic_observations)),
         ResolvedState(
             status,
             sequence,
@@ -306,7 +314,6 @@ def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle(
     unknown_b = snapshot(101)
     raid = snapshot(
         102,
-        base=SCREEN_WORLD_BOSS_BATTLE,
         overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
     )
     auto = Mock()
@@ -575,19 +582,36 @@ def test_unknown_is_not_a_retry_guard_for_any_world_boss_transition():
 
 
 class TimedObserver:
-    def __init__(self, fake, raid_at=None, unknown_until=None, always_unknown=False):
+    def __init__(
+        self,
+        fake,
+        raid_at=None,
+        unknown_until=None,
+        always_unknown=False,
+        raid_base=SCREEN_WORLD_BOSS_BATTLE,
+    ):
         self.fake = fake
         self.raid_at = raid_at
         self.unknown_until = unknown_until
         self.always_unknown = always_unknown
+        self.raid_base = raid_base
         self.observe_times = []
 
     def observe(self):
         self.observe_times.append(self.fake.current)
         sequence = int(self.fake.current * 10) + 1
         if self.raid_at is not None and self.fake.current >= self.raid_at:
-            return snapshot(sequence, base=SCREEN_WORLD_BOSS_BATTLE,
-                            overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+            evidence = Observation(
+                LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
+                0.95,
+                ObservationSource.LOCAL_CV,
+            )
+            return snapshot(
+                sequence,
+                base=self.raid_base,
+                overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+                semantic_observations=(evidence,),
+            )
         if self.always_unknown or (
             self.unknown_until is not None and self.fake.current < self.unknown_until
         ):
@@ -599,10 +623,13 @@ class TimedObserver:
 
 
 def raid_wait_flow(*, raid_at=None, unknown_until=None, always_unknown=False,
-                   cancel=lambda: False, policy=None):
+                   cancel=lambda: False, policy=None,
+                   raid_base=SCREEN_WORLD_BOSS_BATTLE):
     fake = FakeTime()
     policy = policy or WorldBossWaitPolicy()
-    observer = TimedObserver(fake, raid_at, unknown_until, always_unknown)
+    observer = TimedObserver(
+        fake, raid_at, unknown_until, always_unknown, raid_base
+    )
     actions = Mock()
     auto = Mock(ensure_on=Mock())
     flow = WorldBossFlow(
@@ -651,18 +678,47 @@ def test_final_polling_runs_each_second_and_accepts_late_raid_complete():
     actions.execute.assert_not_called()
 
 
+@pytest.mark.parametrize("raid_base", [None, SCREEN_LOBBY])
+def test_raid_complete_overlay_succeeds_independently_of_base_state(raid_base):
+    flow, _, observer, actions, _ = raid_wait_flow(
+        raid_at=65,
+        raid_base=raid_base,
+    )
+
+    result, raid = flow._wait_for_raid_complete(60)
+
+    assert result.outcome is ControlledWaitOutcome.COMPLETED
+    assert raid is not None
+    assert OVERLAY_WORLD_BOSS_RAID_COMPLETE in raid.state.overlays
+    assert observer.observe_times == [65]
+    actions.execute.assert_not_called()
+
+
 def test_persistent_unknown_times_out_without_input_or_recovery():
     flow, _, observer, actions, auto = raid_wait_flow(always_unknown=True)
 
     result, raid = flow._wait_for_raid_complete(60)
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
-    assert result.elapsed == pytest.approx(75)
+    assert result.elapsed == pytest.approx(80)
     assert observer.observe_times[0] == 65
-    assert observer.observe_times[-1] == 75
+    assert observer.observe_times[-1] == 80
     assert raid is not None and raid.state.status is ResolutionStatus.UNKNOWN
     actions.execute.assert_not_called()
     auto.ensure_on.assert_not_called()
+
+    finished = [
+        fields
+        for name, fields in flow.events.records
+        if name == "world_boss.wait.finished"
+    ][-1]
+    assert finished["completion_timeout"] == 15
+    assert finished["poll_count"] == len(observer.observe_times)
+    assert finished["unknown_count"] == len(observer.observe_times)
+    assert finished["last_base_state"] == ResolutionStatus.UNKNOWN.value
+    assert finished["last_overlays"] == ()
+    assert finished["last_sequence"] == 801
+    assert finished["raid_complete_max_confidence"] == 0
 
 
 def test_wait_policy_exposes_configurable_margin_poll_and_bounded_timeout():
@@ -670,7 +726,7 @@ def test_wait_policy_exposes_configurable_margin_poll_and_bounded_timeout():
 
     assert policy.post_timer_completion_margin == 5
     assert policy.completion_poll_interval == 1
-    assert policy.bounded_completion_timeout == 10
+    assert policy.bounded_completion_timeout == 15
 
 
 def test_wait_telemetry_records_timer_margin_poll_start_detection_and_elapsed():
@@ -686,10 +742,22 @@ def test_wait_telemetry_records_timer_margin_poll_start_detection_and_elapsed():
     assert finished["post_timer_margin"] == 2
     assert finished["polling_started_at"] == 7
     assert finished["completion_poll_interval"] == 1
-    assert finished["completion_timeout"] == 10
+    assert finished["completion_timeout"] == 15
     assert finished["raid_complete_detected_at"] == 8
     assert finished["actual_elapsed"] == 8
     assert finished["poll_count"] == 2
+    assert finished["last_base_state"] == SCREEN_WORLD_BOSS_BATTLE
+    assert finished["last_overlays"] == (OVERLAY_WORLD_BOSS_RAID_COMPLETE,)
+    assert finished["raid_complete_max_confidence"] == pytest.approx(0.95)
+
+    polls = [
+        fields
+        for name, fields in flow.events.records
+        if name == "world_boss.wait.poll"
+    ]
+    assert [item["poll_index"] for item in polls] == [1, 2]
+    assert polls[-1]["raid_complete_detected"] is True
+    assert polls[-1]["raid_complete_confidence"] == pytest.approx(0.95)
 
 
 def test_controlled_wait_propagates_cancellation_without_failure():
@@ -711,7 +779,7 @@ def test_known_non_completion_state_also_waits_until_timeout():
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
     assert observer.observe_times[0] == 10
-    assert observer.observe_times[-1] == 20
+    assert observer.observe_times[-1] == 25
     actions.execute.assert_not_called()
 
 

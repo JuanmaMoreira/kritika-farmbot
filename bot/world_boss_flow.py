@@ -10,6 +10,7 @@ from typing import Callable, Protocol
 from bot.action_executor import ActionExecutor
 from bot.auto_battle import AutoBattleState, EnsureAutoBattleStatus
 from bot.catalog import (
+    LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
@@ -18,6 +19,7 @@ from bot.catalog import (
     SCREEN_LOBBY,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
+    SEMANTIC_CONFIDENCE_THRESHOLD,
 )
 from bot.component_contracts import ComponentRequirement
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
@@ -63,7 +65,7 @@ class WorldBossWaitPolicy:
 
     post_timer_margin: float = 5.0
     completion_poll_interval: float = 1.0
-    completion_timeout: float = 10.0
+    completion_timeout: float = 15.0
 
     def __post_init__(self) -> None:
         for name in (
@@ -531,6 +533,8 @@ class WorldBossFlow:
         latest: RuntimeSnapshot | None = None
         detected_at: float | None = None
         unknown_count = 0
+        poll_index = 0
+        raid_complete_max_confidence = 0.0
         started_at = self.clock()
         initial_wait_duration = float(timer) + self.wait_policy.post_timer_margin
         polling_started_at: float | None = None
@@ -545,8 +549,31 @@ class WorldBossFlow:
 
         def check() -> bool:
             nonlocal latest, detected_at, unknown_count
+            nonlocal poll_index, raid_complete_max_confidence
+            poll_index += 1
             latest = self.observer.observe()
-            if _is_raid_complete(latest):
+            raid_complete = _is_raid_complete(latest)
+            landmark = latest.observations.best(
+                LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE
+            )
+            confidence = landmark.confidence if landmark is not None else 0.0
+            raid_complete_max_confidence = max(
+                raid_complete_max_confidence, confidence
+            )
+            self._record_best_effort(
+                "world_boss.wait.poll",
+                poll_index=poll_index,
+                sequence=latest.frame.sequence,
+                resolution_status=latest.state.status.value,
+                base_state=(
+                    latest.state.base_context or latest.state.status.value
+                ),
+                overlays=latest.state.overlays,
+                raid_complete_detected=raid_complete,
+                raid_complete_confidence=confidence,
+                semantic_confidence_threshold=SEMANTIC_CONFIDENCE_THRESHOLD,
+            )
+            if raid_complete:
                 if detected_at is None:
                     detected_at = self.clock()
                 return True
@@ -566,6 +593,8 @@ class WorldBossFlow:
                 detected_at,
                 initial,
                 unknown_count,
+                latest,
+                raid_complete_max_confidence,
             )
             return initial, latest
 
@@ -595,6 +624,8 @@ class WorldBossFlow:
             detected_at,
             combined,
             unknown_count,
+            latest,
+            raid_complete_max_confidence,
         )
         return combined, latest
 
@@ -606,6 +637,8 @@ class WorldBossFlow:
         detected_at,
         result,
         unknown_count,
+        latest,
+        raid_complete_max_confidence,
     ):
         self._record_best_effort(
             "world_boss.wait.finished",
@@ -619,6 +652,15 @@ class WorldBossFlow:
             actual_elapsed=result.elapsed,
             poll_count=result.poll_count,
             unknown_count=unknown_count,
+            last_base_state=(
+                latest.state.base_context or latest.state.status.value
+                if latest is not None
+                else None
+            ),
+            last_overlays=(latest.state.overlays if latest is not None else ()),
+            last_sequence=(latest.frame.sequence if latest is not None else None),
+            raid_complete_max_confidence=raid_complete_max_confidence,
+            semantic_confidence_threshold=SEMANTIC_CONFIDENCE_THRESHOLD,
             outcome=result.outcome.value,
         )
 
@@ -733,11 +775,7 @@ def _is_previous_rewards(snapshot: RuntimeSnapshot) -> bool:
 
 
 def _is_raid_complete(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_WORLD_BOSS_BATTLE
-        and set(snapshot.state.overlays) == {OVERLAY_WORLD_BOSS_RAID_COMPLETE}
-    )
+    return OVERLAY_WORLD_BOSS_RAID_COMPLETE in snapshot.state.overlays
 
 
 def _is_world_boss_inventory_full(snapshot: RuntimeSnapshot) -> bool:

@@ -84,6 +84,16 @@ def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
     assert state.overlays == (overlay_rule.name,)
 
 
+def test_raid_complete_overlay_is_preserved_without_a_resolved_base():
+    state = build_default_resolver().resolve(
+        batch(LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE)
+    )
+
+    assert state.status is ResolutionStatus.UNKNOWN
+    assert state.base_context is None
+    assert state.overlays == (OVERLAY_WORLD_BOSS_RAID_COMPLETE,)
+
+
 @pytest.mark.parametrize("context_rule", (*BASE_CONTEXT_RULES, *OVERLAY_RULES))
 def test_missing_a_catalog_requirement_does_not_match(context_rule):
     assert match_rule(
