@@ -139,7 +139,7 @@ Los support operations futuros seguirán `check → bounded support operation �
 
 ## Semantic Actions y ActionExecutor
 
-Los intents modelan acciones del dominio y primitives físicas tipadas. El slice actual define acciones de Black Market, World Boss, las mínimas de Rotation y `ToggleAutoBattle`. `OpenCharacterSelect` recibe el layout de Quick Menu porque el menú se desplaza lateralmente fuera de Lobby; la policy de origen pertenece a Rotation y las coordenadas permanecen en `ActionExecutor`. `Swipe(start, end, duration)` es genérico y no contiene policy de scroll, bounce ni conocimiento de pantallas.
+Los intents modelan acciones del dominio y primitives físicas tipadas. El slice actual define acciones de Black Market, World Boss, las mínimas de Rotation y `ToggleAutoBattle`. `bot/quick_menu.py` selecciona transversalmente el intent `OpenCharacterSelect` con layout base para Lobby o desplazado para cualquier otro contexto permitido; los consumidores sólo aportan el contexto de origen y las coordenadas permanecen en `ActionExecutor`. `Swipe(start, end, duration)` es genérico y no contiene policy de scroll, bounce ni conocimiento de pantallas.
 
 `ActionExecutor` es el único traductor de intent a input físico. Valida taps o swipes normalizados, deriva pixels desde la geometría del frame y delega en `AdbClient`. No consulta Perception, no interpreta movimiento/bounce, no espera postcondiciones y no decide gameplay.
 

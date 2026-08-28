@@ -22,7 +22,11 @@ from bot.observed_scroll import (
     ScrollAttemptMeasurement,
 )
 from bot.observations import ObservationBatch
-from bot.quick_menu import DEFAULT_QUICK_MENU_POLICY, QuickMenuPolicy
+from bot.quick_menu import (
+    DEFAULT_QUICK_MENU_POLICY,
+    QuickMenuPolicy,
+    open_character_select_action,
+)
 from bot.rotation import (
     RotationOutcome,
     RotationStrategy,
@@ -36,9 +40,7 @@ from bot.runtime_observer import (
 )
 from bot.semantic_actions import (
     ConfirmCharacterSelection,
-    OpenCharacterSelect,
     OpenQuickMenu,
-    QuickMenuLayout,
     SelectLastVisibleCharacter,
     Swipe,
 )
@@ -365,10 +367,8 @@ def test_advance_accepts_declared_quick_menu_capable_context_and_changes_once(
     )
     assert actions.actions == [
         OpenQuickMenu(),
-        OpenCharacterSelect(
-            QuickMenuLayout.LOBBY
-            if initial_context == SCREEN_LOBBY
-            else QuickMenuLayout.SHIFTED
+        open_character_select_action(
+            initial_context, policy=quick_menu_policy
         ),
         CharacterSelectScrollProfile().progress_swipe,
         CharacterSelectScrollProfile().confirmation_swipe,

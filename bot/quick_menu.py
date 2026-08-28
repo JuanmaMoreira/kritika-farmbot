@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
 from bot.observations import validate_semantic_name
+from bot.semantic_actions import OpenCharacterSelect, QuickMenuLayout
 
 
 @dataclass(frozen=True)
@@ -40,9 +41,33 @@ def quick_menu_accessible(
     return policy.allows(semantic_context)
 
 
+def open_character_select_action(
+    origin_context: str | None,
+    *,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> OpenCharacterSelect:
+    """Select the Quick Menu geometry for a capability-approved origin.
+
+    Lobby owns the base layout. Every other explicitly allowed screen uses
+    the laterally shifted layout observed outside Lobby.
+    """
+
+    if not policy.allows(origin_context):
+        raise ValueError(
+            "origin_context must be allowed by the Quick Menu policy"
+        )
+    layout = (
+        QuickMenuLayout.LOBBY
+        if origin_context == SCREEN_LOBBY
+        else QuickMenuLayout.SHIFTED
+    )
+    return OpenCharacterSelect(layout)
+
+
 __all__ = (
     "DEFAULT_QUICK_MENU_POLICY",
     "QUICK_MENU_ACCESSIBLE",
     "QuickMenuPolicy",
+    "open_character_select_action",
     "quick_menu_accessible",
 )

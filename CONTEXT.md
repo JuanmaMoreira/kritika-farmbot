@@ -2,8 +2,8 @@
 
 **Estado:** rediseño híbrido 0.2; `BlackMarketFlow`, `WorldBossFlow` y `rotation.standard` implementados sobre contratos 0.2.
 **Unidad funcional vigente:** `SessionRunner` ejecuta flows `PER_CHARACTER` en orden y hace exactamente un `RotationStrategy.advance()` después de completarlos.
-**Baseline conocido:** 803/803 tests hardware-free verdes con `WorldBossFlow` productivo.
-**Checkpoint operativo:** Black Market cerró su sesión 28/28; World Boss cerró smokes live de batalla, inventario lleno, sapphires insuficientes y Rotation desde su salida.
+**Baseline conocido:** 809/809 tests hardware-free verdes con composición World Boss integrada.
+**Checkpoint operativo:** World Boss cerró `SessionRunner` 2/2 y la composición `BlackMarketFlow → WorldBossFlow → rotation.standard` cerró 2/2; los ciclos 28/28 futuros quedan para el runtime manual del usuario.
 
 La cronología, calibraciones reemplazadas y evidencia detallada están en [`docs/HISTORY.md`](docs/HISTORY.md). El código y los tests siguen siendo la verdad de implementación.
 
@@ -99,6 +99,8 @@ La validación live incremental confirmó un one-slot smoke, un full smoke con d
 
 `bot/session.py` ejecuta los flows en orden, pide a `MinimalPreconditionEnsurer` sólo la precondición del próximo componente y no normaliza todo a Lobby. Un requisito satisfecho no navega; la capability Quick Menu tampoco fuerza Lobby. La única normalización prevista es requisito exacto Lobby desde un contexto Quick Menu-capable, mediante un callback que debe usar navegación verificada. El allow-list incluye Lobby y World Boss. Después de cada componente se verifica una salida permitida. El runner hace un advance y repite exactamente `character_count` veces; el último retorno al personaje inicial no lo reprocesa. Fallos de flow, normalización, postcondición o Rotation preservan progreso parcial y abortan conservadoramente; `FlowStatus.CANCELLED` se propaga como cancelación de sesión y no como fallo técnico.
 
+Los smokes live acotados cerraron la composición real. `flows=[WorldBossFlow]` completó 2/2 flows y 2/2 advances desde salidas World Boss, con sapphires `10/30`, cero normalizaciones y Quick Menu desplazado directo. `flows=[BlackMarketFlow, WorldBossFlow]` completó 4/4 flows y 2/2 advances: verificó compras `3 + 4`, sapphires `200/104` y un `world_boss.previous_rewards` no fatal. Todas las precondiciones ya estaban satisfechas; no hubo navegación redundante a Lobby. Las cuatro rotaciones terminaron en Lobby y sus interacciones discretas pasaron al primer intento. Tres `ContinueAfterRaid` requirieron un retry seguro y uno pasó al primer intento; no hubo fallos técnicos.
+
 ## Runtime y flow World Boss
 
 `WorldBossFlow` aplica `ALWAYS_PARTICIPATE` y declara `screen.lobby` como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación runtime es una lectura OCR fresca de sapphires: con menos de 5 emite `world_boss.insufficient_sapphires` y termina en Lobby sin input. Con saldo suficiente navega mediante transiciones verificadas `Lobby → Battle Mode Select → Select Boss → World Boss`.
@@ -129,7 +131,7 @@ La siguiente ejecución productiva cerró el checkpoint completo: `28/28` flows 
 
 ## Primitive Rotation standard
 
-`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. Su requisito declarado es `quick_menu_accessible`; Lobby y World Boss son las capabilities productivas habilitadas. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, verifica visualmente la selección de la última tarjeta del layout final, confirma y exige un Lobby fresco. El botón Character usa el layout Lobby o el offset lateral validado para bases no-Lobby. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente un contexto capable fresco; una pantalla no declarada, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente. Un `advance()` completo desde World Boss quedó validado live: Quick Menu desplazado, dos swipes efectivos, selección y retorno al Lobby del personaje siguiente.
+`bot/rotation.py` define el contrato mínimo `RotationStrategy` y `StandardRotation(character_count=28)`. Su requisito declarado es `quick_menu_accessible`; Lobby y World Boss son las capabilities productivas habilitadas. El primitive abre Quick Menu, acepta `UNKNOWN + menu.quick`, entra a Character Select, hace swipes bounded, verifica visualmente la selección de la última tarjeta del layout final, confirma y exige un Lobby fresco. `bot/quick_menu.py` encapsula la elección transversal de geometría: Lobby usa layout base y cualquier otro contexto allow-listed usa offset lateral; Rotation sólo entrega el contexto de origen y `ActionExecutor` conserva las coordenadas. La precondición tolera sólo un `UNKNOWN` transitorio de startup esperando pasivamente un contexto capable fresco; una pantalla no declarada, overlay o ambigüedad abortan sin input. No identifica personajes, no usa OCR, no ejecuta flows y no llama ADB directamente.
 
 El algoritmo reusable vive en `bot/observed_scroll.py`: compone `RuntimeObserver + ActionExecutor`, separa A/T/B frescos, clasifica `progress / edge_candidate / ineffective` y devuelve edge, gesto inefectivo, límite, timeout o fallo explícitos. `StandardRotation` delega esta operación y no selecciona sin `edge_reached`. `bot/character_select_scroll.py` conserva únicamente el perfil del menú: ROI `(0.49, 0.19, 0.85, 0.805)`, thresholds de movimiento/settled `0,05`, settle `1,0 s` y policy de hasta tres intentos. Un gesto inefectivo aborta; el tercero sólo se usa si el segundo todavía demuestra progreso real.
 
@@ -170,4 +172,4 @@ La demostración humana observada fue `(0.67054, 0.81337) → (0.69375, 0.02433)
 
 ## Próximo trabajo
 
-Componer y validar una sesión configurable con `BlackMarketFlow + WorldBossFlow + rotation.standard`. Costo, rank/participation, nombre, ConflictResolver, limpieza de inventario, Auto Repeat y scheduler permanecen deferred.
+Construir el runtime manual configurable —registry, launcher y mini GUI— para que el usuario ejecute y supervise ciclos completos. Los futuros smokes 28-character se delegan a ese runtime y revisión manual; costo, rank/participation, identidad, limpieza de inventario, Auto Repeat y scheduler permanecen deferred.
