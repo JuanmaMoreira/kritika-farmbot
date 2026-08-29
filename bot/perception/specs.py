@@ -8,6 +8,10 @@ from numbers import Real
 from pathlib import Path
 
 from bot.catalog import (
+    ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
+    INDICATOR_COMBINE_ROW_BOTTOM,
+    INDICATOR_COMBINE_ROWS,
+    INDICATOR_COMBINE_ROWS_UPPER,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
@@ -22,12 +26,20 @@ from bot.catalog import (
     LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
     LANDMARK_SOCKET_SELL_BULK_BUTTON,
     LANDMARK_SOCKET_TAB,
-    LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
+    LANDMARK_COMBINE_ALL_TITLE,
+    LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,
+    LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,
+    LANDMARK_COMBINE_ETHEREAL_NO_MATERIAL_PROMPT,
+    LANDMARK_COMBINE_ETHEREAL_RANDOM_PART_TITLE,
+    LANDMARK_COMBINE_FUSE_ACTIVE,
+    LANDMARK_COMBINE_FUSE_TAB,
+    LANDMARK_COMBINE_TRANSMUTE_ACTIVE,
+    LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,
 )
 from bot.geometry import RelativeRegion, normalize_relative_region
 from bot.observations import validate_semantic_name
@@ -380,19 +392,23 @@ SOCKET_EQUIPMENT_HOME_ACTIVE_SPEC = LocalCvSpec(
     ),
 )
 
-# Human-confirmed World Boss Start guard shown when the general bag has no
-# free slots. The literal message separates six live positives from 151
-# reviewed local negatives, including the distinct Yes/No inventory guard.
-# Closing it only dismisses the guard; inventory cleanup remains deferred.
-WORLD_BOSS_BAG_FULL_PROMPT_SPEC = LocalCvSpec(
-    name=LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
+# Global Equipment Full prompt, first acquired from World Boss and later
+# reconfirmed while promoting its Combine branch. The caller remains a separate
+# base observation; popup semantics do not imply navigation or cleanup policy.
+EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,
     asset_path=Path(
         "assets/ui/landmarks/world-boss-bag-full-prompt-current.png"
     ),
+    variant_asset_paths=(
+        Path(
+            "assets/ui/landmarks/equipment-inventory-full-prompt-current.png"
+        ),
+    ),
     region=(0.28, 0.32, 0.72, 0.62),
     calibration=LinearGapCalibration(
-        negative_anchor=0.34364715218544006,
-        positive_anchor=0.9869809746742249,
+        negative_anchor=0.3778718113899231,
+        positive_anchor=0.9870349764823914,
     ),
 )
 
@@ -434,6 +450,164 @@ WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC = LocalCvSpec(
     ),
 )
 
+# The left Fuse tab persists throughout the acquired Combine states and sits
+# left of the observed dynamic chat band. Variants cover selected/unselected
+# plus both dimmed confirmation-modal renderings.
+COMBINE_FUSE_TAB_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_FUSE_TAB,
+    asset_path=Path("assets/ui/landmarks/combine-fuse-tab-selected-current.png"),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/combine-fuse-tab-unselected-current.png"),
+        Path("assets/ui/landmarks/combine-fuse-tab-selected-dimmed-current.png"),
+        Path("assets/ui/landmarks/combine-fuse-tab-unselected-dimmed-current.png"),
+    ),
+    region=(0.16, 0.13, 0.29, 0.25),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7059454321861267,
+        positive_anchor=0.9540939927101135,
+    ),
+)
+
+COMBINE_FUSE_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_FUSE_ACTIVE,
+    asset_path=Path("assets/ui/landmarks/combine-fuse-tab-selected-current.png"),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/combine-fuse-tab-selected-dimmed-current.png"),
+    ),
+    region=(0.16, 0.13, 0.29, 0.25),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6654080152511597,
+        positive_anchor=0.956794261932373,
+    ),
+)
+
+COMBINE_TRANSMUTE_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_TRANSMUTE_ACTIVE,
+    asset_path=Path("assets/ui/landmarks/combine-transmute-active-current.png"),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/combine-transmute-active-dimmed-current.png"),
+    ),
+    region=(0.23, 0.13, 0.38, 0.25),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5096800327301025,
+        positive_anchor=0.9519771337509155,
+    ),
+)
+
+# One literal N rendering is searched in three deliberately different strips.
+# Resolver conjunction with the active tab assigns Transmute/Fuse meaning;
+# the bottom strip is the independent Ethereal guard/postcondition.
+COMBINE_ROWS_INDICATOR_SPEC = LocalCvSpec(
+    name=INDICATOR_COMBINE_ROWS,
+    asset_path=Path("assets/ui/landmarks/combine-new-indicator-current.png"),
+    region=(0.19, 0.55, 0.24, 0.96),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.49021828174591064,
+        positive_anchor=0.9251843690872192,
+    ),
+)
+
+COMBINE_ROWS_UPPER_INDICATOR_SPEC = LocalCvSpec(
+    name=INDICATOR_COMBINE_ROWS_UPPER,
+    asset_path=Path("assets/ui/landmarks/combine-new-indicator-current.png"),
+    region=(0.19, 0.55, 0.24, 0.84),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.47429946064949036,
+        positive_anchor=0.917724609375,
+    ),
+)
+
+COMBINE_ROW_BOTTOM_INDICATOR_SPEC = LocalCvSpec(
+    name=INDICATOR_COMBINE_ROW_BOTTOM,
+    asset_path=Path("assets/ui/landmarks/combine-new-indicator-current.png"),
+    region=(0.19, 0.84, 0.24, 0.96),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.4776187241077423,
+        positive_anchor=0.9251841902732849,
+    ),
+)
+
+COMBINE_AWAKENED_TRANSMUTE_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,
+    asset_path=Path(
+        "assets/ui/landmarks/combine-awakened-transmute-title-current.png"
+    ),
+    region=(0.25, 0.20, 0.45, 0.34),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.8416112065315247,
+        positive_anchor=0.9864535927772522,
+    ),
+)
+
+COMBINE_ETHEREAL_RANDOM_PART_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_ETHEREAL_RANDOM_PART_TITLE,
+    asset_path=Path(
+        "assets/ui/landmarks/combine-ethereal-random-part-title-current.png"
+    ),
+    region=(0.25, 0.20, 0.45, 0.34),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7984787821769714,
+        positive_anchor=0.8355317711830139,
+    ),
+)
+
+COMBINE_ALL_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_ALL_TITLE,
+    asset_path=Path(
+        "assets/ui/landmarks/combine-all-identical-title-current.png"
+    ),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/combine-all-higher-title-current.png"),
+    ),
+    region=(0.34, 0.18, 0.66, 0.32),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.46529796719551086,
+        positive_anchor=0.9927960634231567,
+    ),
+)
+
+COMBINE_ETHEREAL_MASS_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/combine-ethereal-mass-confirm-prompt-current.png"
+    ),
+    region=(0.35, 0.35, 0.65, 0.58),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.4805524945259094,
+        positive_anchor=0.9861894249916077,
+    ),
+)
+
+COMBINE_ETHEREAL_NO_MATERIAL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_COMBINE_ETHEREAL_NO_MATERIAL_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/combine-ethereal-no-material-prompt-current.png"
+    ),
+    region=(0.32, 0.35, 0.68, 0.58),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5516853928565979,
+        positive_anchor=0.9879307746887207,
+    ),
+)
+
+# Transmute, Ethereal Mass Combine and Fuse share one acquired tappable emblem.
+# Variants describe operation backgrounds, not separate gameplay semantics.
+COMBINE_ANIMATION_TAPPABLE_SPEC = LocalCvSpec(
+    name=ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
+    asset_path=Path(
+        "assets/ui/landmarks/combine-animation-transmute-current.png"
+    ),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/combine-animation-ethereal-current.png"),
+        Path("assets/ui/landmarks/combine-animation-fuse-current.png"),
+    ),
+    region=(0.40, 0.55, 0.60, 0.94),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7061792016029358,
+        positive_anchor=0.9999794363975525,
+    ),
+)
+
 DEFAULT_LOCAL_CV_SPECS = (
     LOBBY_TRADING_CENTER_LABEL_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
@@ -451,8 +625,20 @@ DEFAULT_LOCAL_CV_SPECS = (
     SOCKET_SELL_BULK_BUTTON_SPEC,
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
-    WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
     WORLD_BOSS_SAPPHIRES_USED_SPEC,
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
+    EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC,
+    COMBINE_FUSE_TAB_SPEC,
+    COMBINE_FUSE_ACTIVE_SPEC,
+    COMBINE_TRANSMUTE_ACTIVE_SPEC,
+    COMBINE_ROWS_INDICATOR_SPEC,
+    COMBINE_ROWS_UPPER_INDICATOR_SPEC,
+    COMBINE_ROW_BOTTOM_INDICATOR_SPEC,
+    COMBINE_AWAKENED_TRANSMUTE_TITLE_SPEC,
+    COMBINE_ETHEREAL_RANDOM_PART_TITLE_SPEC,
+    COMBINE_ALL_TITLE_SPEC,
+    COMBINE_ETHEREAL_MASS_PROMPT_SPEC,
+    COMBINE_ETHEREAL_NO_MATERIAL_PROMPT_SPEC,
+    COMBINE_ANIMATION_TAPPABLE_SPEC,
 )

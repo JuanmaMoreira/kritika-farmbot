@@ -10,6 +10,18 @@ from bot.perception.specs import (
     BATTLE_MODE_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
+    COMBINE_ALL_TITLE_SPEC,
+    COMBINE_ANIMATION_TAPPABLE_SPEC,
+    COMBINE_AWAKENED_TRANSMUTE_TITLE_SPEC,
+    COMBINE_ETHEREAL_MASS_PROMPT_SPEC,
+    COMBINE_ETHEREAL_NO_MATERIAL_PROMPT_SPEC,
+    COMBINE_ETHEREAL_RANDOM_PART_TITLE_SPEC,
+    COMBINE_FUSE_ACTIVE_SPEC,
+    COMBINE_FUSE_TAB_SPEC,
+    COMBINE_ROW_BOTTOM_INDICATOR_SPEC,
+    COMBINE_ROWS_INDICATOR_SPEC,
+    COMBINE_ROWS_UPPER_INDICATOR_SPEC,
+    COMBINE_TRANSMUTE_ACTIVE_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
     INSUFFICIENT_GOLD_PROMPT_SPEC,
     INVENTORY_FULL_OK_BUTTON_SPEC,
@@ -18,7 +30,7 @@ from bot.perception.specs import (
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
-    WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
+    EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
     SOCKET_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
@@ -191,13 +203,22 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert SOCKET_INVENTORY_FULL_PROMPT_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9941959977149963)
     )
-    assert WORLD_BOSS_BAG_FULL_PROMPT_SPEC.region == (0.28, 0.32, 0.72, 0.62)
-    assert WORLD_BOSS_BAG_FULL_PROMPT_SPEC.calibration.negative_anchor == (
-        pytest.approx(0.34364715218544006)
+    assert EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC.region == (0.28, 0.32, 0.72, 0.62)
+    assert EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.3778718113899231)
     )
-    assert WORLD_BOSS_BAG_FULL_PROMPT_SPEC.calibration.positive_anchor == (
-        pytest.approx(0.9869809746742249)
+    assert EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC.calibration.positive_anchor == (
+        pytest.approx(0.9870349764823914)
     )
+    assert EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC.variant_asset_paths == (
+        Path("assets/ui/landmarks/equipment-inventory-full-prompt-current.png"),
+    )
+    assert COMBINE_FUSE_TAB_SPEC.region == (0.16, 0.13, 0.29, 0.25)
+    assert COMBINE_TRANSMUTE_ACTIVE_SPEC.region == (0.23, 0.13, 0.38, 0.25)
+    assert COMBINE_ROWS_INDICATOR_SPEC.region == (0.19, 0.55, 0.24, 0.96)
+    assert COMBINE_ROWS_UPPER_INDICATOR_SPEC.region == (0.19, 0.55, 0.24, 0.84)
+    assert COMBINE_ROW_BOTTOM_INDICATOR_SPEC.region == (0.19, 0.84, 0.24, 0.96)
+    assert COMBINE_ANIMATION_TAPPABLE_SPEC.region == (0.40, 0.55, 0.60, 0.94)
     assert WORLD_BOSS_SAPPHIRES_USED_SPEC.region == (0.45, 0.74, 0.64, 0.88)
     assert WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC.region == (
         0.015, 0.22, 0.20, 0.43
@@ -281,7 +302,7 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             "06dfb3251fc38c459200c006ee2a02fe55ee2576547c8abee7db3731330b4cc1",
         ),
         (
-            WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
+            EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC,
             (755, 170),
             "c14d92f88f29122a730ea32968d3aa17093fc9bcd20412deb54f4db5c839dd62",
         ),
@@ -312,6 +333,40 @@ def test_battle_mode_historical_variant_is_the_exact_evaluated_candidate():
     assert hashlib.sha256(payload).hexdigest() == (
         "72bf894aa0955a39ff7397897a9fb88f101b9567818a02e4d6184fe96e49b8d0"
     )
+
+
+@pytest.mark.parametrize(
+    ("name", "dimensions", "sha256"),
+    (
+        ("combine-all-higher-title-current.png", (770, 100), "716fad8eaaf27adc86ab8f6b2ec6de24d55f8ca910b3243371fd42d6e482fbd8"),
+        ("combine-all-identical-title-current.png", (770, 100), "897a4624a79f8ef75b5ac4c098eef239196260d99b3aedc4e2b208f9bd43b0a3"),
+        ("combine-animation-ethereal-current.png", (360, 320), "8d1d66a56782b093714ae2a4ad1b1d5041e8ef28f40345d1ffb552d212192d58"),
+        ("combine-animation-fuse-current.png", (360, 320), "e3e4e0b30d21b995968413e5fa0e4e1c5b8869d2e1b3860e490c01fb8a52f9dc"),
+        ("combine-animation-transmute-current.png", (360, 320), "15967cd56247f5c4f0df01b7a87c3ad9857aaf83cb91c559d8f93bf595d58800"),
+        ("combine-awakened-transmute-title-current.png", (400, 85), "88434f44ff4d1844c02071da7a930834d035e202dd3af328c351fd969d5b53f7"),
+        ("combine-ethereal-mass-confirm-prompt-current.png", (650, 160), "27f5753a610d10d549fc3aaf10934287d935ca856fcd7eb8867d3cf887623a10"),
+        ("combine-ethereal-no-material-prompt-current.png", (840, 160), "ed20098dfb0e07602491dad2d8099eb705939b500e3ec2670e163f1c7d9f7401"),
+        ("combine-ethereal-random-part-title-current.png", (400, 85), "8af627ba477eba277451ba9a734aa52d9fe13225dcc80e70064721c0f058fc31"),
+        ("combine-fuse-tab-selected-current.png", (250, 100), "8813cb0cdddc2e40b3d96edf1e39aa92bbd28c5e7ba180641031b08fa9faecf4"),
+        ("combine-fuse-tab-selected-dimmed-current.png", (250, 100), "680d5f76401bdc36175a153d90ffb944ab72d63e75af5e89e9f08bef0a2b2ad1"),
+        ("combine-fuse-tab-unselected-current.png", (250, 100), "400e502c008f77690106301c876bebe8f2ed0667cf7d8979235bb30b83e8f556"),
+        ("combine-fuse-tab-unselected-dimmed-current.png", (250, 100), "f0fdfaa582acb1e7e566e2fc9bf3e19e515b213dc74d5819d851cd5ee7c3ca1b"),
+        ("combine-new-indicator-current.png", (70, 75), "2d674394d2b7057fef491e160c4cf3f900117572a139fea2c9e24ae3af0ed42a"),
+        ("combine-transmute-active-current.png", (255, 100), "b2e919a8a804c0ade6e3686cdf2ae88045ebc6c9cab0314d7c7c31b3f74e022c"),
+        ("combine-transmute-active-dimmed-current.png", (255, 100), "9ea7512b82649a95206ac1ebf7f2b09b34f7c22b32616c14dfa08f5f4c002b72"),
+        ("equipment-inventory-full-prompt-current.png", (855, 200), "217f2d7d7122d2cdfa922cff20765d6b7a5bb7bb19b0feda44aef04f9f783f2b"),
+    ),
+)
+def test_equipment_inventory_full_assets_are_exact_candidates(
+    name, dimensions, sha256
+):
+    path = Path(__file__).resolve().parents[1] / "assets/ui/landmarks" / name
+    payload = path.read_bytes()
+    image = cv2.imdecode(np.frombuffer(payload, dtype="uint8"), cv2.IMREAD_COLOR)
+
+    assert image is not None
+    assert (image.shape[1], image.shape[0]) == dimensions
+    assert hashlib.sha256(payload).hexdigest() == sha256
 
 
 def test_battle_mode_landmark_avoids_the_known_dynamic_chat_region():

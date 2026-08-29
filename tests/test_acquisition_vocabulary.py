@@ -6,6 +6,7 @@ from bot.acquisition_vocabulary import (
 )
 from bot.catalog import (
     MENU_QUICK,
+    MODE_COMBINE_TRANSMUTE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_INVENTORY_FULL,
     build_default_resolver,
@@ -52,6 +53,10 @@ def test_promoted_quick_menu_is_exposed_as_production():
     )
     assert (
         vocabulary.origin_for(OVERLAY_WORLD_BOSS_SELECT_BOSS)
+        is AcquisitionLabelOrigin.PRODUCTION
+    )
+    assert (
+        vocabulary.origin_for(MODE_COMBINE_TRANSMUTE)
         is AcquisitionLabelOrigin.PRODUCTION
     )
 

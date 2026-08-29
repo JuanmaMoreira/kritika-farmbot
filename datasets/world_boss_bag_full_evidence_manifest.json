@@ -5,14 +5,15 @@
     "source": "live_scrcpy",
     "frame_size": [2712, 1224],
     "human_ground_truth": "confirmed_in_chat",
+    "semantic_scope": "global equipment-full popup; only the World Boss caller and its negative Close branch were confirmed in this acquisition",
     "semantic_state": {
       "base_context": "screen.world_boss",
-      "overlays": ["popup.world_boss_bag_full"]
+      "overlays": ["popup.equipment_inventory_full"]
     },
     "behavior": "Close dismisses the popup, returns to clean screen.world_boss and completes this character without retrying Start",
     "deferred": "inventory cleanup and resuming WorldBossFlow for the same character",
     "landmark": {
-      "name": "landmark.world_boss_bag_full_prompt",
+      "name": "landmark.equipment_inventory_full_prompt",
       "asset": "assets/ui/landmarks/world-boss-bag-full-prompt-current.png",
       "region": [0.28, 0.32, 0.72, 0.62],
       "positive_raw_range": [0.9869809746742249, 0.9999871850013733],
@@ -27,12 +28,12 @@
     }
   },
   "entries": [
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_500454Z_01.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_955670Z_02.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_418364Z_03.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_895470Z_04.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_367520Z_05.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_837378Z_06.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"}
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_500454Z_01.png","base_context":"screen.world_boss","overlays":["popup.equipment_inventory_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_955670Z_02.png","base_context":"screen.world_boss","overlays":["popup.equipment_inventory_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_418364Z_03.png","base_context":"screen.world_boss","overlays":["popup.equipment_inventory_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_895470Z_04.png","base_context":"screen.world_boss","overlays":["popup.equipment_inventory_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_367520Z_05.png","base_context":"screen.world_boss","overlays":["popup.equipment_inventory_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_837378Z_06.png","base_context":"screen.world_boss","overlays":["popup.equipment_inventory_full"],"review_status":"confirmed"}
   ],
   "postcondition_entries": [
     {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222906_501260Z_01.png","review_status":"confirmed"},

@@ -17,6 +17,8 @@ from bot.catalog import (
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
+    MODE_COMBINE_FUSE,
+    MODE_COMBINE_TRANSMUTE,
     MENU_QUICK,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
@@ -28,14 +30,23 @@ from bot.catalog import (
     POPUP_INSUFFICIENT_GOLD,
     POPUP_PURCHASE_CONFIRMATION,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
-    POPUP_WORLD_BOSS_BAG_FULL,
+    POPUP_EQUIPMENT_INVENTORY_FULL,
+    POPUP_COMBINE_ALL,
+    POPUP_ETHEREAL_MASS_COMBINE,
+    POPUP_ETHEREAL_NO_MATERIAL,
+    PANEL_COMBINE_AWAKENED_TRANSMUTE,
+    PANEL_COMBINE_ETHEREAL_RANDOM_PART,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
+    SCREEN_COMBINE,
     SCREEN_LOBBY,
     SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
+    STATUS_COMBINE_ETHEREAL_AVAILABLE,
+    STATUS_COMBINE_FUSE_AVAILABLE,
+    STATUS_COMBINE_TRANSMUTE_AVAILABLE,
 )
 from bot.geometry import RelativeRegion, frame_dimensions
 from bot.observations import validate_semantic_name
@@ -57,6 +68,7 @@ BASE_CONTEXT_LABELS = frozenset(
         SCREEN_CHARACTER_SELECT,
         SCREEN_BATTLE_MODE_SELECT,
         SCREEN_BLACK_MARKET,
+        SCREEN_COMBINE,
         SCREEN_SOCKET,
         SCREEN_WORLD_BOSS,
         SCREEN_WORLD_BOSS_BATTLE,
@@ -76,7 +88,17 @@ OVERLAY_LABELS = frozenset(
         OVERLAY_WORLD_BOSS_SELECT_BOSS,
         OVERLAY_WORLD_BOSS_RAID_COMPLETE,
         POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
-        POPUP_WORLD_BOSS_BAG_FULL,
+        POPUP_EQUIPMENT_INVENTORY_FULL,
+        POPUP_COMBINE_ALL,
+        POPUP_ETHEREAL_MASS_COMBINE,
+        POPUP_ETHEREAL_NO_MATERIAL,
+        MODE_COMBINE_FUSE,
+        MODE_COMBINE_TRANSMUTE,
+        PANEL_COMBINE_AWAKENED_TRANSMUTE,
+        PANEL_COMBINE_ETHEREAL_RANDOM_PART,
+        STATUS_COMBINE_ETHEREAL_AVAILABLE,
+        STATUS_COMBINE_FUSE_AVAILABLE,
+        STATUS_COMBINE_TRANSMUTE_AVAILABLE,
     )
 )
 
@@ -396,16 +418,32 @@ def load_manifest(path: str | Path) -> tuple[ManifestEntry, ...]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("version") != MANIFEST_VERSION:
         raise ValueError("unsupported semantic slice manifest version")
-    entries = tuple(
-        ManifestEntry(
-            path=item["path"],
-            base_context=item.get("base_context"),
-            overlays=tuple(item.get("overlays", ())),
-            review_status=item["review_status"],
-            observations=tuple(item.get("observations", ())),
+    curation = payload.get("curation", {})
+    observation_groups = curation.get("observation_groups", {})
+    overlay_groups = curation.get("overlay_groups", {})
+    entries = []
+    for item in payload.get("entries", ()):
+        group = PurePosixPath(item["path"]).parent.name
+        observations = set(item.get("observations", ()))
+        observations.update(
+            name
+            for name, groups in observation_groups.items()
+            if group in groups
         )
-        for item in payload.get("entries", ())
-    )
+        overlays = set(item.get("overlays", ()))
+        overlays.update(
+            name for name, groups in overlay_groups.items() if group in groups
+        )
+        entries.append(
+            ManifestEntry(
+                path=item["path"],
+                base_context=item.get("base_context"),
+                overlays=tuple(overlays),
+                review_status=item["review_status"],
+                observations=tuple(observations),
+            )
+        )
+    entries = tuple(entries)
     paths = tuple(entry.path for entry in entries)
     if len(paths) != len(set(paths)):
         raise ValueError("manifest paths must be unique")

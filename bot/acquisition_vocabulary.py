@@ -30,7 +30,7 @@ class AcquisitionLabel:
 
 @dataclass(frozen=True)
 class AcquisitionVocabulary:
-    """Explicit base/overlay choices available to a human annotator."""
+    """Explicit base/secondary-state choices available to a human annotator."""
 
     bases: tuple[AcquisitionLabel, ...]
     overlays: tuple[AcquisitionLabel, ...]
@@ -38,7 +38,15 @@ class AcquisitionVocabulary:
     def __post_init__(self) -> None:
         _validate_labels(self.bases, prefixes=("screen.",))
         _validate_labels(
-            self.overlays, prefixes=("popup.", "menu.", "overlay.")
+            self.overlays,
+            prefixes=(
+                "popup.",
+                "menu.",
+                "overlay.",
+                "mode.",
+                "panel.",
+                "status.",
+            ),
         )
 
     @property

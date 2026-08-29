@@ -13,7 +13,7 @@ from bot.catalog import (
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
-    POPUP_WORLD_BOSS_BAG_FULL,
+    POPUP_EQUIPMENT_INVENTORY_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
@@ -899,7 +899,7 @@ def _is_world_boss_bag_full(snapshot: RuntimeSnapshot) -> bool:
     return (
         snapshot.state.status is ResolutionStatus.RESOLVED
         and snapshot.state.base_context == SCREEN_WORLD_BOSS
-        and set(snapshot.state.overlays) == {POPUP_WORLD_BOSS_BAG_FULL}
+        and set(snapshot.state.overlays) == {POPUP_EQUIPMENT_INVENTORY_FULL}
     )
 
 

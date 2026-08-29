@@ -1,0 +1,1083 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-29",
+    "source": "live_scrcpy",
+    "frame_size": [
+      2712,
+      1224
+    ],
+    "human_ground_truth": "confirmed_incrementally_in_chat",
+    "scope": "semantic acquisition and perception promotion only; no EquipmentInventoryRelief or World Boss positive-branch integration",
+    "caller_scope": "Only screen.world_boss was observed. No other caller is generalized.",
+    "layering": {
+      "observed_chat_region": [
+        0.44,
+        0.12,
+        0.85,
+        0.21
+      ],
+      "combine_base_signal": "persistent Fuse tab at [0.16,0.13,0.29,0.25], left of chat",
+      "popup_signal": "equipment-full prompt renders above caller/chat; layering confirmed live"
+    },
+    "guards": {
+      "transmute": "mode.combine_transmute + indicator.combine_rows_upper",
+      "ethereal": "mode.combine_transmute + indicator.combine_row_bottom; verified after returning from Random Part",
+      "fuse": "mode.combine_fuse + indicator.combine_rows",
+      "postcondition": "the corresponding status overlay is absent on a fresh stable screen"
+    },
+    "observation_groups": {
+      "indicator.combine_rows": [
+        "transmute-available",
+        "transmute-popup",
+        "transmute-cleared",
+        "fuse-available",
+        "fuse-entry",
+        "fuse-popup"
+      ],
+      "indicator.combine_rows_upper": [
+        "transmute-available",
+        "transmute-popup",
+        "fuse-available",
+        "fuse-entry",
+        "fuse-popup"
+      ],
+      "indicator.combine_row_bottom": [
+        "transmute-available",
+        "transmute-popup",
+        "transmute-cleared",
+        "fuse-available",
+        "fuse-entry",
+        "fuse-popup"
+      ]
+    },
+    "overlay_groups": {
+      "status.combine_transmute_available": [
+        "transmute-available",
+        "transmute-popup"
+      ],
+      "status.combine_ethereal_available": [
+        "transmute-available",
+        "transmute-popup",
+        "transmute-cleared"
+      ],
+      "status.combine_fuse_available": [
+        "fuse-entry",
+        "fuse-available",
+        "fuse-popup"
+      ]
+    },
+    "acquired_targets": {
+      "equipment_full_close_out_of_scope": [
+        0.67,
+        0.31
+      ],
+      "equipment_full_combine": [
+        0.5,
+        0.63
+      ],
+      "combine_transmute": [
+        0.3,
+        0.18
+      ],
+      "combine_fuse": [
+        0.22,
+        0.18
+      ],
+      "combine_all": [
+        0.45,
+        0.92
+      ],
+      "combine_all_confirm": [
+        0.45,
+        0.72
+      ],
+      "combine_all_cancel": [
+        0.58,
+        0.72
+      ],
+      "ethereal_transmute_partial_border": [
+        0.33,
+        0.93
+      ],
+      "ethereal_random_part": [
+        0.27,
+        0.43
+      ],
+      "ethereal_mass_combine": [
+        0.34,
+        0.64
+      ],
+      "ethereal_confirm_yes": [
+        0.43,
+        0.62
+      ],
+      "ethereal_confirm_no": [
+        0.57,
+        0.62
+      ],
+      "ethereal_no_material_ok": [
+        0.5,
+        0.62
+      ],
+      "animation_tap": [
+        0.5,
+        0.78
+      ],
+      "combine_back": [
+        0.8,
+        0.07
+      ]
+    },
+    "observed_literals": {
+      "ethereal_entry_screen": "[Awakened] Transmute",
+      "ethereal_random_screen": "[Ethereal] Random Part",
+      "ethereal_action": "Mass Combine",
+      "transmute_popup": "Combine All - Identical",
+      "fuse_popup": "Combine All - Higher",
+      "no_material": "Insufficient combine material. (You need sufficient material for at least 1 attempt.)"
+    },
+    "animation": {
+      "semantic": "activity.combine_animation_tappable",
+      "consumers": [
+        "Transmute Combine All",
+        "Ethereal Mass Combine",
+        "Fuse Combine All"
+      ],
+      "primitive": "TapThroughAnimation",
+      "evidence": "one shared tappable emblem with operation-background variants; stable menus are explicit negatives"
+    },
+    "bag_counts": {
+      "initial": 178,
+      "after_transmute": 158,
+      "after_ethereal": 148,
+      "after_fuse": 123
+    }
+  },
+  "transitions": [
+    {
+      "from": "screen.world_boss",
+      "action": "trigger full-bag caller condition",
+      "to": "screen.world_boss + popup.equipment_inventory_full",
+      "verified": true
+    },
+    {
+      "from": "screen.world_boss + popup.equipment_inventory_full",
+      "action": "Combine",
+      "to": "screen.combine + mode.combine_fuse",
+      "verified": true
+    },
+    {
+      "from": "screen.combine + mode.combine_transmute + status.combine_transmute_available",
+      "action": "Combine All -> Combine All -> TapThroughAnimation",
+      "to": "screen.combine + mode.combine_transmute without status.combine_transmute_available",
+      "verified": true
+    },
+    {
+      "from": "screen.combine + mode.combine_transmute + status.combine_ethereal_available",
+      "action": "partial Ethereal border -> Random Part -> Mass Combine -> Yes -> TapThroughAnimation -> Transmute",
+      "to": "screen.combine + mode.combine_transmute without status.combine_ethereal_available",
+      "verified": true
+    },
+    {
+      "from": "screen.combine + panel.combine_ethereal_random_part without material",
+      "action": "Mass Combine",
+      "to": "popup.ethereal_no_material",
+      "verified": true,
+      "meaning": "DEFENSIVE_NO_EFFECT"
+    },
+    {
+      "from": "screen.combine + mode.combine_fuse + status.combine_fuse_available",
+      "action": "Combine All -> Combine All -> TapThroughAnimation",
+      "to": "screen.combine + mode.combine_fuse without status.combine_fuse_available",
+      "verified": true
+    },
+    {
+      "from": "screen.combine",
+      "action": "Back",
+      "to": "screen.world_boss",
+      "verified": true
+    }
+  ],
+  "entries": [
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/animation/ethereal-tappable.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute"
+      ],
+      "review_status": "confirmed",
+      "observations": [
+        "activity.combine_animation_tappable"
+      ]
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/animation/fuse-tappable.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse"
+      ],
+      "review_status": "confirmed",
+      "observations": [
+        "activity.combine_animation_tappable"
+      ]
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/animation/transmute-tappable.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "review_status": "confirmed",
+      "observations": [
+        "activity.combine_animation_tappable",
+        "indicator.combine_rows",
+        "indicator.combine_row_bottom"
+      ]
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-available/20260829T162603_727044Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-available/20260829T162604_197615Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-available/20260829T162604_671505Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-available/20260829T162605_151838Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-available/20260829T162605_626499Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-available/20260829T162606_104440Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-no-indicator/20260829T163053_975478Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-no-indicator/20260829T163054_444543Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-no-indicator/20260829T163054_918649Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-no-indicator/20260829T163055_390023Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-no-indicator/20260829T163055_867284Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-no-indicator/20260829T163056_343518Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_awakened_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-cleared-base/20260829T163004_997709Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-cleared-base/20260829T163005_471529Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-cleared-base/20260829T163005_946983Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-cleared-base/20260829T163006_429264Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-cleared-base/20260829T163006_915029Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-cleared-base/20260829T163007_398036Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-confirm/20260829T162729_230034Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_mass_combine"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-confirm/20260829T162729_742233Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_mass_combine"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-confirm/20260829T162730_214133Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_mass_combine"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-confirm/20260829T162730_685790Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_mass_combine"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-confirm/20260829T162731_154624Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_mass_combine"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-confirm/20260829T162731_631914Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_mass_combine"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-no-material/20260829T163136_178163Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_no_material"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-no-material/20260829T163136_637116Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_no_material"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-no-material/20260829T163137_101728Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_no_material"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-no-material/20260829T163137_577581Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_no_material"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-no-material/20260829T163138_044913Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_no_material"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-no-material/20260829T163138_516307Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part",
+        "popup.ethereal_no_material"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-posteffect/20260829T162936_485202Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-posteffect/20260829T162936_951224Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-posteffect/20260829T162937_420693Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-posteffect/20260829T162937_899265Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-posteffect/20260829T162938_374342Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-posteffect/20260829T162938_860704Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-random-part/20260829T162648_689942Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-random-part/20260829T162649_154993Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-random-part/20260829T162649_624717Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-random-part/20260829T162650_100224Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-random-part/20260829T162650_575656Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-random-part/20260829T162651_048711Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-available/20260829T163226_137005Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-available/20260829T163226_611792Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-available/20260829T163227_086462Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-available/20260829T163227_600821Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-available/20260829T163228_079744Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-available/20260829T163228_561668Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-cleared/20260829T163521_776956Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-cleared/20260829T163522_250860Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-cleared/20260829T163522_723158Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-cleared/20260829T163523_197349Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-cleared/20260829T163523_678804Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-cleared/20260829T163524_158700Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-entry/20260829T162055_308871Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-entry/20260829T162055_784741Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-entry/20260829T162056_263708Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-entry/20260829T162056_752555Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-entry/20260829T162057_238270Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-entry/20260829T162057_727146Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "status.combine_fuse_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-popup/20260829T163301_421192Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-popup/20260829T163301_864640Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-popup/20260829T163302_304825Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-popup/20260829T163302_754953Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-popup/20260829T163303_204430Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/fuse-popup/20260829T163303_653326Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_fuse",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-available/20260829T162159_209478Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available",
+        "status.combine_transmute_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-available/20260829T162159_687004Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available",
+        "status.combine_transmute_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-available/20260829T162200_181059Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available",
+        "status.combine_transmute_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-available/20260829T162200_669091Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available",
+        "status.combine_transmute_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-available/20260829T162201_155778Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available",
+        "status.combine_transmute_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-available/20260829T162201_643375Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available",
+        "status.combine_transmute_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-cleared/20260829T162519_927591Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-cleared/20260829T162520_402578Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-cleared/20260829T162520_888812Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-cleared/20260829T162521_380658Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-cleared/20260829T162521_872580Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-cleared/20260829T162522_363127Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "status.combine_ethereal_available"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-popup/20260829T162244_719553Z_01.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-popup/20260829T162245_163635Z_02.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-popup/20260829T162245_608235Z_03.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-popup/20260829T162246_059760Z_04.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-popup/20260829T162246_512946Z_05.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/transmute-popup/20260829T162246_965506Z_06.png",
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "popup.combine_all"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161955_135179Z_01.png",
+      "base_context": "screen.world_boss",
+      "overlays": [
+        "popup.equipment_inventory_full"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161955_590903Z_02.png",
+      "base_context": "screen.world_boss",
+      "overlays": [
+        "popup.equipment_inventory_full"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161956_074212Z_03.png",
+      "base_context": "screen.world_boss",
+      "overlays": [
+        "popup.equipment_inventory_full"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161956_545178Z_04.png",
+      "base_context": "screen.world_boss",
+      "overlays": [
+        "popup.equipment_inventory_full"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161957_023635Z_05.png",
+      "base_context": "screen.world_boss",
+      "overlays": [
+        "popup.equipment_inventory_full"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161957_506468Z_06.png",
+      "base_context": "screen.world_boss",
+      "overlays": [
+        "popup.equipment_inventory_full"
+      ],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/return/world-boss/20260829T163551_513083Z_01.png",
+      "base_context": "screen.world_boss",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/return/world-boss/20260829T163551_967785Z_02.png",
+      "base_context": "screen.world_boss",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/return/world-boss/20260829T163552_430958Z_03.png",
+      "base_context": "screen.world_boss",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/return/world-boss/20260829T163552_899921Z_04.png",
+      "base_context": "screen.world_boss",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/return/world-boss/20260829T163553_365917Z_05.png",
+      "base_context": "screen.world_boss",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/return/world-boss/20260829T163553_834758Z_06.png",
+      "base_context": "screen.world_boss",
+      "overlays": [],
+      "review_status": "confirmed"
+    }
+  ]
+}

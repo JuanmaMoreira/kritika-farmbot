@@ -6,7 +6,7 @@ import pytest
 
 from bot.capture import FrameSnapshot
 from bot.catalog import (
-    POPUP_WORLD_BOSS_BAG_FULL,
+    POPUP_EQUIPMENT_INVENTORY_FULL,
     SCREEN_WORLD_BOSS,
     build_default_resolver,
 )
@@ -25,7 +25,7 @@ def test_manifest_preserves_human_confirmed_close_branch_and_deferred_cleanup():
     assert len(payload["postcondition_entries"]) == 6
     assert payload["curation"]["semantic_state"] == {
         "base_context": SCREEN_WORLD_BOSS,
-        "overlays": [POPUP_WORLD_BOSS_BAG_FULL],
+        "overlays": [POPUP_EQUIPMENT_INVENTORY_FULL],
     }
     assert payload["curation"]["action"]["normalized_target"] == [0.67, 0.31]
     assert "inventory cleanup" in payload["curation"]["deferred"]
@@ -49,7 +49,7 @@ def test_live_frames_resolve_bag_full_then_clean_world_boss_after_close():
         )
         assert state.status is ResolutionStatus.RESOLVED
         assert state.base_context == SCREEN_WORLD_BOSS
-        assert state.overlays == (POPUP_WORLD_BOSS_BAG_FULL,)
+        assert state.overlays == (POPUP_EQUIPMENT_INVENTORY_FULL,)
 
     offset = len(positive_paths)
     for sequence, path in enumerate(postcondition_paths, start=offset + 1):

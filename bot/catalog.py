@@ -10,6 +10,7 @@ SCREEN_LOBBY = "screen.lobby"
 SCREEN_CHARACTER_SELECT = "screen.character_select"
 SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
+SCREEN_COMBINE = "screen.combine"
 SCREEN_SOCKET = "screen.socket"
 SCREEN_WORLD_BOSS = "screen.world_boss"
 SCREEN_WORLD_BOSS_BATTLE = "screen.world_boss_battle"
@@ -21,10 +22,20 @@ POPUP_SOCKET_INVENTORY_FULL = "popup.socket_inventory_full"
 POPUP_SOCKET_ENHANCE_ALL = "popup.socket_enhance_all"
 POPUP_SOCKET_NO_MATERIAL = "popup.socket_no_material"
 POPUP_SOCKET_SELL = "popup.socket_sell"
-POPUP_WORLD_BOSS_BAG_FULL = "popup.world_boss_bag_full"
+POPUP_EQUIPMENT_INVENTORY_FULL = "popup.equipment_inventory_full"
+POPUP_COMBINE_ALL = "popup.combine_all"
+POPUP_ETHEREAL_MASS_COMBINE = "popup.ethereal_mass_combine"
+POPUP_ETHEREAL_NO_MATERIAL = "popup.ethereal_no_material"
 OVERLAY_WORLD_BOSS_SELECT_BOSS = "overlay.world_boss_select_boss"
 OVERLAY_WORLD_BOSS_RAID_COMPLETE = "overlay.world_boss_raid_complete"
 MENU_QUICK = "menu.quick"
+MODE_COMBINE_FUSE = "mode.combine_fuse"
+MODE_COMBINE_TRANSMUTE = "mode.combine_transmute"
+PANEL_COMBINE_AWAKENED_TRANSMUTE = "panel.combine_awakened_transmute"
+PANEL_COMBINE_ETHEREAL_RANDOM_PART = "panel.combine_ethereal_random_part"
+STATUS_COMBINE_ETHEREAL_AVAILABLE = "status.combine_ethereal_available"
+STATUS_COMBINE_FUSE_AVAILABLE = "status.combine_fuse_available"
+STATUS_COMBINE_TRANSMUTE_AVAILABLE = "status.combine_transmute_available"
 
 LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
     "landmark.lobby_trading_center_label"
@@ -53,7 +64,6 @@ LANDMARK_SOCKET_SELL_BULK_BUTTON = "landmark.socket_sell_bulk_button"
 LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE = (
     "landmark.socket_equipment_home_active"
 )
-LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT = "landmark.world_boss_bag_full_prompt"
 LANDMARK_WORLD_BOSS_SAPPHIRES_USED = "landmark.world_boss_sapphires_used"
 LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE = (
     "landmark.world_boss_battle_current_damage"
@@ -61,8 +71,37 @@ LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE = (
 LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE = (
     "landmark.world_boss_raid_complete_title"
 )
+LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT = (
+    "landmark.equipment_inventory_full_prompt"
+)
+LANDMARK_COMBINE_FUSE_TAB = "landmark.combine_fuse_tab"
+LANDMARK_COMBINE_FUSE_ACTIVE = "landmark.combine_fuse_active"
+LANDMARK_COMBINE_TRANSMUTE_ACTIVE = "landmark.combine_transmute_active"
+INDICATOR_COMBINE_ROWS = "indicator.combine_rows"
+INDICATOR_COMBINE_ROWS_UPPER = "indicator.combine_rows_upper"
+INDICATOR_COMBINE_ROW_BOTTOM = "indicator.combine_row_bottom"
+LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE = (
+    "landmark.combine_awakened_transmute_title"
+)
+LANDMARK_COMBINE_ETHEREAL_RANDOM_PART_TITLE = (
+    "landmark.combine_ethereal_random_part_title"
+)
+LANDMARK_COMBINE_ALL_TITLE = "landmark.combine_all_title"
+LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT = (
+    "landmark.combine_ethereal_mass_prompt"
+)
+LANDMARK_COMBINE_ETHEREAL_NO_MATERIAL_PROMPT = (
+    "landmark.combine_ethereal_no_material_prompt"
+)
+ACTIVITY_COMBINE_ANIMATION_TAPPABLE = (
+    "activity.combine_animation_tappable"
+)
 
 SEMANTIC_OBSERVATION_NAMES = (
+    ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
+    INDICATOR_COMBINE_ROW_BOTTOM,
+    INDICATOR_COMBINE_ROWS,
+    INDICATOR_COMBINE_ROWS_UPPER,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
@@ -79,10 +118,18 @@ SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_SOCKET_TAB,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
-    LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
+    LANDMARK_COMBINE_ALL_TITLE,
+    LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,
+    LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,
+    LANDMARK_COMBINE_ETHEREAL_NO_MATERIAL_PROMPT,
+    LANDMARK_COMBINE_ETHEREAL_RANDOM_PART_TITLE,
+    LANDMARK_COMBINE_FUSE_ACTIVE,
+    LANDMARK_COMBINE_FUSE_TAB,
+    LANDMARK_COMBINE_TRANSMUTE_ACTIVE,
+    LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,
 )
 
 BASE_CONTEXT_RULES = (
@@ -99,6 +146,11 @@ BASE_CONTEXT_RULES = (
     ContextRule(
         name=SCREEN_LOBBY,
         requires=(LANDMARK_LOBBY_TRADING_CENTER_LABEL,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_COMBINE,
+        requires=(LANDMARK_COMBINE_FUSE_TAB,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(
@@ -124,6 +176,67 @@ BASE_CONTEXT_RULES = (
 )
 
 OVERLAY_RULES = (
+    ContextRule(
+        name=POPUP_EQUIPMENT_INVENTORY_FULL,
+        requires=(LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=MODE_COMBINE_FUSE,
+        requires=(LANDMARK_COMBINE_FUSE_ACTIVE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=MODE_COMBINE_TRANSMUTE,
+        requires=(LANDMARK_COMBINE_TRANSMUTE_ACTIVE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_COMBINE_TRANSMUTE_AVAILABLE,
+        requires=(
+            LANDMARK_COMBINE_TRANSMUTE_ACTIVE,
+            INDICATOR_COMBINE_ROWS_UPPER,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_COMBINE_ETHEREAL_AVAILABLE,
+        requires=(
+            LANDMARK_COMBINE_TRANSMUTE_ACTIVE,
+            INDICATOR_COMBINE_ROW_BOTTOM,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_COMBINE_FUSE_AVAILABLE,
+        requires=(LANDMARK_COMBINE_FUSE_ACTIVE, INDICATOR_COMBINE_ROWS),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=PANEL_COMBINE_AWAKENED_TRANSMUTE,
+        requires=(LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=PANEL_COMBINE_ETHEREAL_RANDOM_PART,
+        requires=(LANDMARK_COMBINE_ETHEREAL_RANDOM_PART_TITLE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_COMBINE_ALL,
+        requires=(LANDMARK_COMBINE_ALL_TITLE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_ETHEREAL_MASS_COMBINE,
+        requires=(LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_ETHEREAL_NO_MATERIAL,
+        requires=(LANDMARK_COMBINE_ETHEREAL_NO_MATERIAL_PROMPT,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
     ContextRule(
         name=OVERLAY_WORLD_BOSS_SELECT_BOSS,
         requires=(LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,),
@@ -152,14 +265,6 @@ OVERLAY_RULES = (
     ContextRule(
         name=POPUP_SOCKET_SELL,
         requires=(LANDMARK_SOCKET_SELL_BULK_BUTTON,),
-        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
-    ),
-    ContextRule(
-        name=POPUP_WORLD_BOSS_BAG_FULL,
-        requires=(
-            LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
-            LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
-        ),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(

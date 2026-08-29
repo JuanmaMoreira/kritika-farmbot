@@ -58,6 +58,8 @@ Hay tres usos separados:
 
 Las observaciones intra-Socket de velo rojo y fase oscura de Enhance son operation-scoped: Perception sólo reporta evidencia. No seleccionan estrategia, no autorizan KARATS ni convierten una coincidencia aislada en permiso de venta.
 
+Equipment Inventory Full usa `popup.equipment_inventory_full` como overlay global, separado del caller. `screen.combine` se apoya en el tab Fuse persistente; los modos activos y tres observaciones posicionales de `N` se combinan en el resolver para producir disponibilidad Transmute, Ethereal y Fuse. Los títulos de panel/modal aportan estados intermedios con consumidores futuros concretos. Las tres operaciones comparten `activity.combine_animation_tappable`; Perception no decide el orden ni si debe combinar.
+
 Los landmarks base evitan regiones con oclusión dinámica conocida. En Socket, el tab izquierdo persistente sustituye al encabezado superior derecho; en Battle Mode, el título de la tarjeta World Boss sustituye al encabezado superior. Popups, overlays y el panel Black Market se renderizan por encima del chat, por lo que su layering también forma parte de la auditoría; una ROI base situada en una zona dinámica requiere positivos reales con el overlay antes de considerarse robusta.
 
 Un fact no se convierte en contexto para facilitar navegación.
@@ -132,6 +134,8 @@ No ejecuta input, retry, navegación ni recovery. Esperar disponibilidad futura 
 Las support operations siguen `check → operación bounded → recheck → continue/skip/fail`; no son flows, no entran en GUI/`FlowRegistry` y no permiten llamadas recursivas arbitrarias entre flows. El caller conserva la policy de cuándo invocarlas y entrega un return plan con acción y estado exacto esperado; la operación sólo reporta éxito después de verificar ese retorno.
 
 `SocketInventoryRelief` requiere `screen.socket` limpio, intenta Enhance All sólo con GOLD y, ante No Material, puede buscar de forma bounded un ópalo incompatible visible. Sell in Bulk se autoriza únicamente con velo rojo y un fact de nivel confirmado en `0`; lectura no confirmada o nivel distinto cancela la venta. Sus outcomes explícitos son `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` y `CANCELLED`. `WorldBossFlow` posee tanto el `Yes` inicial como el permiso local de un único intento positivo por ejecución; una segunda aparición usa `No`. El único return plan compuesto productivamente es `ExitSocket → screen.world_boss`.
+
+La futura `EquipmentInventoryRelief` será otra support operation, no una extensión de Socket ni un flow. Su boundary previsto recibe un return plan exacto del caller y recorre siempre Transmute → Ethereal condicional → Fuse, acumulando si hubo efecto sin short-circuit. Cada paso usa el status correspondiente como guard, una transición verificada hacia su modal/panel, `TapThroughAnimation` con la actividad común y una postcondición fresca de desaparición del status. Debe reportar `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` o `CANCELLED`; todavía no existe código ni integración productiva para ese contrato.
 
 Después de Bulk, un frame Socket limpio puede preceder al landmark estable de Equipment Home. Esa fase sólo prolonga pasivamente la espera bounded: no satisface la postcondición, no autoriza retry destructivo y el éxito sigue exigiendo popup ausente, Equipment Home estable y desaparición del candidato previo.
 

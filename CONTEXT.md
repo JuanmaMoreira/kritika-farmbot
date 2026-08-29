@@ -43,12 +43,14 @@ Con recursos suficientes navega Lobby → Battle Mode Select → Select Boss →
 
 - primera `popup.socket_inventory_full`: `Yes → SocketInventoryRelief → Back verificado → World Boss`; el permiso positivo se consume sólo tras confirmar Socket y existe una vez por `run()`;
 - segunda `popup.socket_inventory_full`: `No → World Boss`, evento no fatal y fin del flow, sin una segunda entrada positiva;
-- `popup.world_boss_bag_full`: `X → World Boss`, evento no fatal y fin del flow;
+- `popup.equipment_inventory_full`: la rama productiva actual de World Boss conserva `X → World Boss`, evento no fatal y fin del flow; la semántica del popup ya es global, pero la rama positiva todavía no está integrada;
 - batalla: asegura Auto Battle ON, lee el timer, espera pasivamente timer + margen y luego busca Raid Complete con polling bounded.
 
 Raid Complete se acepta por presencia del overlay, independientemente de que la base esté resuelta, transitoria o `UNKNOWN`. Continue se verifica contra World Boss. Ausencia del overlay termina en timeout, nunca en éxito supuesto. La conexión fallida post-batalla todavía no tiene semántica/recovery productivo.
 
 `SocketInventoryRelief` es una support operation productiva, no un flow ni una entrada del registry. Desde Socket intenta primero Enhance All exclusivamente con GOLD. Una animación positiva usa taps bounded sólo sobre fases inequívocamente tappable y termina al observar Socket; No Material cierra el modal y habilita el fallback. La venta sólo considera ópalos incompatibles con velo rojo y sólo ejecuta Sell in Bulk cuando `item.socket.sell_level == 0` fue confirmado; cualquier nivel no cero o lectura no confirmada cancela. Retorna `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` o `CANCELLED` y siempre exige el estado exacto declarado por el caller. El único return plan productivo actual es `Socket → Back → World Boss`.
+
+La adquisición de Equipment Inventory Full está promovida sólo en Perception. El caller confirmado es World Boss: `caller → popup global → Combine → screen.combine`, y `Back → World Boss`. Combine distingue Fuse/Transmute, disponibilidad Transmute/Ethereal/Fuse mediante el `N` posicional, los paneles `[Awakened] Transmute` y `[Ethereal] Random Part`, las confirmaciones Combine All/Ethereal, el defensivo de material insuficiente y una única actividad tappable compartida por las tres animaciones. No existe aún `EquipmentInventoryRelief`, intents de esta operación ni rama positiva en `WorldBossFlow`.
 
 ### Sesión y Rotation
 
@@ -78,6 +80,7 @@ Contextos base productivos:
 - `screen.character_select`
 - `screen.battle_mode_select`
 - `screen.black_market`
+- `screen.combine`
 - `screen.socket`
 - `screen.world_boss`
 - `screen.world_boss_battle`
@@ -94,13 +97,24 @@ Overlays/popups productivos:
 - `popup.socket_enhance_all`
 - `popup.socket_no_material`
 - `popup.socket_sell`
-- `popup.world_boss_bag_full`
+- `popup.equipment_inventory_full`
+- `mode.combine_fuse`
+- `mode.combine_transmute`
+- `status.combine_transmute_available`
+- `status.combine_ethereal_available`
+- `status.combine_fuse_available`
+- `panel.combine_awakened_transmute`
+- `panel.combine_ethereal_random_part`
+- `popup.combine_all`
+- `popup.ethereal_mass_combine`
+- `popup.ethereal_no_material`
 - `overlay.world_boss_raid_complete`
 
 Facts productivos:
 
 - Black Market internos: `currency.black_market.gold(slot)` y `status.black_market.purchased(slot)`.
 - Socket: Equipment Home activo e `item.socket.incompatible_opal(slot)` sobre el velo rojo seleccionado o no seleccionado; `activity.socket.enhance_animation_tappable` sólo en fases oscuras inequívocas. El flash brillante queda sin autorización.
+- Combine: el tab estructural izquierdo resuelve `screen.combine`; los tabs activos asignan modo. `indicator.combine_rows_upper`, `indicator.combine_row_bottom` e `indicator.combine_rows` son evidencia posicional y sólo su conjunción con el modo deriva disponibilidad. `activity.combine_animation_tappable` es común a Transmute, Ethereal y Fuse. Durante la animación Transmute puede seguir visible el `N` inferior real de Ethereal; sin tab Transmute activo no se deriva un status espurio.
 - La base Socket exige el tab izquierdo persistente en ROI `(0.16, 0.11, 0.26, 0.24)`, con cinco apariencias que cubren selected/unselected y el sombreado más fuerte de Enhance All. El encabezado superior derecho fue retirado como landmark porque el chat dinámico ocupa la banda observada `(0.44, 0.12, 0.85, 0.21)` y puede ocluirlo.
 - Battle Mode Select usa el título fijo de la tarjeta World Boss en ROI `(0.16, 0.58, 0.32, 0.68)`, fuera de esa banda. Sus variantes current/historical sustituyen al encabezado superior ocluible sin cambiar el contrato semántico.
 - Los paneles Black Market, popups y overlays se renderizan por encima del chat; una intersección de sus ROIs no implica oclusión. Las pantallas base no tienen esa protección.
@@ -111,12 +125,13 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free de la rama positiva Socket Inventory Relief: **963/963 tests verdes**. El corpus productivo actual cubre 171 frames × 24 detectores: **4104/4104** pares, 171/171 resoluciones y overlays, cero wrong/ambiguous; la ampliación de apariencias Socket invalidó conservadoramente la cache y produjo un único full audit final.
+- Suite hardware-free: **1010/1010 tests verdes**. El corpus productivo ampliado cubre 270 frames × 36 detectores: **9720/9720** pares, 270/270 resoluciones y overlays, cero wrong/ambiguous. Los 13 detectores promovidos para Equipment/Combine tienen cero falsos positivos y cero falsos negativos en ese corpus; el gap más estrecho es `landmark.combine_ethereal_random_part_title` (`0.037053`).
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
 - World Boss está validado hardware-free en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, una única rama positiva Socket Full, segunda rama negativa, Bag Full y Rotation desde World Boss.
 - Smoke HIL Enhance positivo: `Yes` llegó a Socket, GOLD produjo efecto, `TapThroughAnimation` ejecutó 6 taps guardados, Sell quedó `NOT_RUN` y `Back → World Boss` se verificó. La primera corrida expuso y luego corrigió un abort prematuro durante el frame transitorio World Boss sin popup.
 - Smoke HIL No Material + venta: GOLD confirmó `NO_EFFECT`, Equipment Home seleccionó el slot rojo 3, OCR confirmó `Opal (Skill)+0` 2/2 con confidence `0.958` y el usuario autorizó Bulk sobre el popup visible. La venta dejó popup y candidato ausentes e inventario `1/29 → 1/28`; el primer frame limpio precedió al landmark estable, por lo que esa transición ahora tolera el tránsito pasivo sin habilitar retry. La entrada a Socket fue manual, así que correctamente no se ejecutó ni declaró `Back → World Boss`.
 - La segunda aparición de Socket Full no se forzó live: el usuario confirmó que preparar ese caso extremo no era razonable. La policy queda cubierta hardware-free (`No`, fin no fatal, nunca segundo `Yes`) y los business events permiten auditarla si sucede en producción.
+- La adquisición HIL de Equipment/Combine verificó efectos reales en orden Transmute (`178 → 158`), Ethereal (`158 → 148`) y Fuse (`148 → 123`), desaparición independiente de cada indicador y retorno `Back → World Boss`. La animación común se confirmó en las tres operaciones; no se ejecutó smoke de una implementación inexistente.
 - El landmark chat-safe resuelve los frames Socket live con confidence `1.0`; sus 12 positivos curados quedaron en `0.977370–1.0` frente a máximo de 159 negativos `0.713128`. Una captura legacy Meteorites con chat visible quedó como negativo explícito y dio raw `0.469354`.
 - El landmark chat-safe de Battle Mode separa 17 positivos curados (`0.991948–0.999958`) de 154 negativos (máximo `0.390351`) y mantiene la ROI productiva fuera del chat.
 - `StandardRotation` pasó un loop aislado 28/28 con retorno al personaje inicial.
@@ -126,7 +141,7 @@ Facts productivos:
 ## Deuda y limitaciones relevantes
 
 - Adquirir y diseñar recovery bounded para el popup de conexión post-batalla de World Boss.
-- `popup.world_boss_bag_full` conserva sólo su cierre negativo no fatal; no existe una operación de alivio para ese inventario.
+- `popup.equipment_inventory_full` conserva en World Boss sólo su cierre negativo no fatal. La semántica positiva está adquirida, pero `EquipmentInventoryRelief`, sus intents y su integración permanecen pendientes.
 - No existe `CharacterContextProvider` ni OCR de nombre. Tampoco costo/rank/participation, Auto Repeat o scheduler.
 - `ConflictResolver`, recovery transversal e isolation/continuation unattended siguen futuros. Los retries locales verificados no se trasladan a esa capa.
 - Timings y retries pueden seguir ajustándose sólo a partir de logs productivos; no hay necesidad de tuning preventivo.
@@ -134,4 +149,4 @@ Facts productivos:
 
 ## Próximo trabajo
 
-La rama positiva bounded de Socket Inventory Full quedó implementada. Las prioridades restantes están en [`ROADMAP.md`](ROADMAP.md); no se amplían return plans ni flows sin evidencia específica.
+La promoción semántica de Equipment Inventory Full quedó cerrada sin implementación de gameplay. La próxima frontera es diseñar/implementar la support operation independiente descrita en [`ROADMAP.md`](ROADMAP.md), sin generalizar callers no observados.

@@ -12,7 +12,7 @@ from bot.catalog import (
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
-    POPUP_WORLD_BOSS_BAG_FULL,
+    POPUP_EQUIPMENT_INVENTORY_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
@@ -679,7 +679,7 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
     bag_full = snapshot(
         7,
         base=SCREEN_WORLD_BOSS,
-        overlays=(POPUP_WORLD_BOSS_BAG_FULL,),
+        overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,),
     )
     returned = snapshot(8, base=SCREEN_WORLD_BOSS)
     transitions = [
@@ -716,7 +716,7 @@ def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
     bag_full = snapshot(
         7,
         base=SCREEN_WORLD_BOSS,
-        overlays=(POPUP_WORLD_BOSS_BAG_FULL,),
+        overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,),
     )
     transitions = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),

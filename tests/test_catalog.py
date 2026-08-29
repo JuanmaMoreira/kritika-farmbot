@@ -10,33 +10,38 @@ from bot.catalog import (
     BASE_CONTEXT_RULES,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
-    LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
     LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
     MENU_QUICK,
+    MODE_COMBINE_FUSE,
+    MODE_COMBINE_TRANSMUTE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     OVERLAY_RULES,
     POPUP_INSUFFICIENT_GOLD,
     POPUP_INVENTORY_FULL,
+    POPUP_EQUIPMENT_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_SOCKET_INVENTORY_FULL,
-    POPUP_WORLD_BOSS_BAG_FULL,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
     SCREEN_LOBBY,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
+    STATUS_COMBINE_ETHEREAL_AVAILABLE,
+    STATUS_COMBINE_FUSE_AVAILABLE,
+    STATUS_COMBINE_TRANSMUTE_AVAILABLE,
     SEMANTIC_CONFIDENCE_THRESHOLD,
     SEMANTIC_OBSERVATION_NAMES,
     build_default_resolver,
@@ -73,7 +78,6 @@ def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
 
     expected_base = {
         POPUP_INVENTORY_FULL: SCREEN_BLACK_MARKET,
-        POPUP_WORLD_BOSS_BAG_FULL: SCREEN_WORLD_BOSS,
     }.get(overlay_rule.name)
     expected_status = (
         ResolutionStatus.RESOLVED
@@ -82,7 +86,21 @@ def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
     )
     assert state.status is expected_status
     assert state.base_context == expected_base
-    assert state.overlays == (overlay_rule.name,)
+    expected_overlays = {
+        STATUS_COMBINE_TRANSMUTE_AVAILABLE: (
+            MODE_COMBINE_TRANSMUTE,
+            STATUS_COMBINE_TRANSMUTE_AVAILABLE,
+        ),
+        STATUS_COMBINE_ETHEREAL_AVAILABLE: (
+            MODE_COMBINE_TRANSMUTE,
+            STATUS_COMBINE_ETHEREAL_AVAILABLE,
+        ),
+        STATUS_COMBINE_FUSE_AVAILABLE: (
+            MODE_COMBINE_FUSE,
+            STATUS_COMBINE_FUSE_AVAILABLE,
+        ),
+    }.get(overlay_rule.name, (overlay_rule.name,))
+    assert state.overlays == tuple(sorted(expected_overlays))
 
 
 def test_raid_complete_overlay_is_preserved_without_a_resolved_base():
@@ -199,22 +217,22 @@ def test_socket_inventory_full_is_global_and_resolves_over_world_boss():
     assert state.overlays == (POPUP_SOCKET_INVENTORY_FULL,)
 
 
-def test_world_boss_bag_full_requires_world_boss_context_and_resolves_distinctly():
+def test_equipment_inventory_full_is_global_and_resolves_over_world_boss():
     resolver = build_default_resolver()
 
-    ungated = resolver.resolve(batch(LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT))
+    ungated = resolver.resolve(batch(LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT))
     gated = resolver.resolve(
         batch(
             LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
-            LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
+            LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,
         )
     )
 
     assert ungated.status is ResolutionStatus.UNKNOWN
-    assert ungated.overlays == ()
+    assert ungated.overlays == (POPUP_EQUIPMENT_INVENTORY_FULL,)
     assert gated.status is ResolutionStatus.RESOLVED
     assert gated.base_context == SCREEN_WORLD_BOSS
-    assert gated.overlays == (POPUP_WORLD_BOSS_BAG_FULL,)
+    assert gated.overlays == (POPUP_EQUIPMENT_INVENTORY_FULL,)
 
 
 def test_catalog_returns_unknown_for_insufficient_evidence():
@@ -304,9 +322,9 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 7
-    assert len(OVERLAY_RULES) == 12
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 20
+    assert len(BASE_CONTEXT_RULES) == 8
+    assert len(OVERLAY_RULES) == 22
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 32
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 
