@@ -429,6 +429,7 @@ class SocketInventoryRelief:
                     and sold_slot not in _incompatible_slots(item)
                 ),
                 precondition=_is_sell_popup,
+                tolerated=_is_clean_socket,
                 policy=self.single_action_policy,
             )
             if sold is None:
@@ -460,6 +461,7 @@ class SocketInventoryRelief:
         *,
         expected,
         precondition,
+        tolerated=lambda item: False,
         policy=None,
     ):
         selected_policy = policy or self.normal_policy
@@ -472,7 +474,8 @@ class SocketInventoryRelief:
             retryable_from=precondition,
             abort_if=lambda item: _known_incompatible(
                 item, expected, precondition
-            ),
+            )
+            and not tolerated(item),
             stable_for=self.stable_for,
             policy=selected_policy,
         )

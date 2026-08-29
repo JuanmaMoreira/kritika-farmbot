@@ -6,6 +6,13 @@
     "frame_size": [2712, 1224],
     "human_ground_truth": "confirmed_in_chat",
     "scope": "semantic acquisition only; no SocketInventoryRelief implementation",
+    "dynamic_overlay_risk": {
+      "human_ground_truth": "the game chat can occlude the former upper-right Socket heading ROI",
+      "mitigation": "screen.socket now uses the persistent left Socket tab at [0.16, 0.11, 0.26, 0.24]",
+      "observed_chat_region": [0.44, 0.12, 0.85, 0.21],
+      "evidence": "legacy Meteorites frame (manifest base=unknown) with chat visible; the overlay region is context-independent",
+      "socket_tab_score_on_chat_negative": 0.46935373544692993
+    },
     "safety": {
       "karats_used": false,
       "single_real_sale": "Sell (Bulk) on human-confirmed Opal (Skill)+0",
@@ -27,8 +34,9 @@
       "cancel": [0.6, 0.633]
     },
     "cross_context_evaluation": {
-      "resolver": "168/168 correct, 168/168 overlays, 0 wrong, 0 ambiguous",
-      "incompatible_opal": "emitted only on red-grid and the still-red slots behind level-0 Sell popup",
+      "resolver": "171/171 correct, 171/171 overlays, 0 wrong, 0 ambiguous",
+      "socket_tab": "12 positives raw 0.977370..1.0; 159 negatives max 0.713128; selected/unselected, normal/dimmed and stronger Enhance-modal dimming variants; chat-overlay Meteorites negative raw 0.469354",
+      "incompatible_opal": "emitted on both selected and unselected red veils, including the still-red slots behind level-0 Sell popup; selected rendering positive min 1.0 and relevant negative max 0.821916",
       "enhance_animation_tappable": "emitted only on curated dark-stage and success-stage; rejected Select Boss, Previous Rewards and five legacy dark screens"
     },
     "runtime_fact": {
@@ -80,15 +88,18 @@
     {"path": "screencaps/semantic/socket_inventory_relief/socket/stable.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed"},
     {"path": "screencaps/semantic/socket_inventory_relief/socket/back-to-world-boss.png", "base_context": "screen.world_boss", "overlays": [], "review_status": "confirmed"},
     {"path": "screencaps/semantic/socket_inventory_relief/enhance/modal.png", "base_context": "screen.socket", "overlays": ["popup.socket_enhance_all"], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/enhance/modal-live-selected-slot.png", "base_context": "screen.socket", "overlays": ["popup.socket_enhance_all"], "review_status": "confirmed", "observations": ["item.socket.incompatible_opal"]},
     {"path": "screencaps/semantic/socket_inventory_relief/enhance/no-material.png", "base_context": "screen.socket", "overlays": ["popup.socket_enhance_all", "popup.socket_no_material"], "review_status": "confirmed"},
     {"path": "screencaps/semantic/socket_inventory_relief/enhance/dark-stage.png", "base_context": "unknown", "overlays": [], "review_status": "confirmed", "observations": ["activity.socket.enhance_animation_tappable"]},
     {"path": "screencaps/semantic/socket_inventory_relief/enhance/bright-flash.png", "base_context": "unknown", "overlays": [], "review_status": "confirmed"},
     {"path": "screencaps/semantic/socket_inventory_relief/enhance/success-stage.png", "base_context": "unknown", "overlays": [], "review_status": "confirmed", "observations": ["activity.socket.enhance_animation_tappable"]},
     {"path": "screencaps/semantic/socket_inventory_relief/enhance/after-safe-tap-socket.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed"},
     {"path": "screencaps/semantic/socket_inventory_relief/equipment_home/red-grid.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["item.socket.incompatible_opal", "landmark.socket_equipment_home_active"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/equipment_home/selected-red-slot-3.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["item.socket.incompatible_opal", "landmark.socket_equipment_home_active"]},
     {"path": "screencaps/semantic/socket_inventory_relief/equipment_home/no-red-candidates.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["landmark.socket_equipment_home_active"]},
     {"path": "screencaps/semantic/socket_inventory_relief/sell/level-0-popup.png", "base_context": "screen.socket", "overlays": ["popup.socket_sell"], "review_status": "confirmed", "observations": ["item.socket.incompatible_opal", "landmark.socket_equipment_home_active"]},
     {"path": "screencaps/semantic/socket_inventory_relief/sell/level-10-popup.png", "base_context": "screen.socket", "overlays": ["popup.socket_sell"], "review_status": "confirmed", "observations": ["landmark.socket_equipment_home_active"]},
-    {"path": "screencaps/semantic/socket_inventory_relief/sell/bulk-stable-after.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["landmark.socket_equipment_home_active"]}
+    {"path": "screencaps/semantic/socket_inventory_relief/sell/bulk-stable-after.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["landmark.socket_equipment_home_active"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/negatives/chat-overlay-meteorites.png", "base_context": "unknown", "overlays": [], "review_status": "confirmed"}
   ]
 }

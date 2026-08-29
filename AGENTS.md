@@ -47,6 +47,7 @@ Reglas permanentes para cualquier trabajo de Codex en este repositorio.
 
 - Durante implementación, ejecutar primero tests dirigidos. Antes de commitear código, ejecutar una vez la suite hardware-free completa y las regresiones productivas relevantes.
 - En calibración semántica, usar positivos, negativos relevantes, contextos visualmente próximos y regresiones conocidas como loop dirigido. Al integrar, evaluar detectores nuevos/modificados contra el corpus curado existente y detectores productivos contra evidencia nueva; reutilizar la cache incremental válida para pares viejos sin cambios.
+- Antes de promover una ROI en la franja superior del juego, auditar la oclusión dinámica del chat. Preferir landmarks estructurales fuera de esa zona; si no es posible, exigir positivos reales con chat visible antes de declarar robustez.
 - Reservar el full audit desde cero para cambios de infraestructura/preprocessing compartido, recalibraciones amplias, sospecha de cache inválida o auditorías explícitas. Acelerar nunca significa retirar negativos relevantes ni relajar aceptación.
 - Para docs-only o tooling que no importa runtime, validar formato, referencias y comportamiento dirigido; no repetir la suite completa sólo por Markdown. Si HEAD ya coincide con un checkpoint validado, el tree está limpio y no hubo código posterior, no volver a probar ese baseline.
 - Los tests normales deben funcionar sin teléfono. Toda prueba física es separada, explícita y opt-in; no iniciar el juego ni enviar input sin autorización dentro de la tarea.

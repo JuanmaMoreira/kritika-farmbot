@@ -10,11 +10,9 @@ La deuda de escalabilidad del evaluator offline quedó cerrada con evaluación i
 
 La Fase 2 de Socket Inventory Relief quedó cerrada hardware-free: support operation fuera del registry, Enhance All sólo por GOLD, taps bounded que excluyen flash/`UNKNOWN`, fallback Bulk sólo para ópalo incompatible con level `0` confirmado, retorno exacto y una única rama positiva local a cada ejecución de World Boss. Una segunda aparición usa `No`.
 
+Los smokes HIL cerraron Enhance positivo y No Material + venta segura. La segunda aparición no se forzó porque el usuario confirmó que preparar ese caso extremo no era razonable; queda cubierta por tests y por eventos productivos que registrarán `No` y el fin no fatal si ocurre naturalmente. La rama positiva bounded se considera cerrada.
+
 ## Próximo trabajo
-
-### Immediate next
-
-- Validar mediante HIL los casos live razonablemente reproducibles de la rama positiva Socket Full, sin forzar estados destructivos; antes de la primera venta real debe confirmarse por chat el item preparado.
 
 ### Known future
 

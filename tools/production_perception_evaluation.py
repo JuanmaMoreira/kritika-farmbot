@@ -28,7 +28,7 @@ from bot.catalog import (
     LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
     LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
     LANDMARK_SOCKET_SELL_BULK_BUTTON,
-    LANDMARK_SOCKET_TITLE,
+    LANDMARK_SOCKET_TAB,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
@@ -696,7 +696,7 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return POPUP_INVENTORY_FULL in entry.overlays
     if name == LANDMARK_QUICK_MENU_LOBBY_TILE:
         return MENU_QUICK in entry.overlays
-    if name == LANDMARK_SOCKET_TITLE:
+    if name == LANDMARK_SOCKET_TAB:
         return entry.base_context == SCREEN_SOCKET
     if name == LANDMARK_SOCKET_INVENTORY_FULL_PROMPT:
         return POPUP_SOCKET_INVENTORY_FULL in entry.overlays

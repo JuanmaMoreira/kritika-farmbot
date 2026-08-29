@@ -24,6 +24,12 @@ SOCKET_OPAL_GRID_ROWS = 4
 SOCKET_OPAL_GRID_COLUMNS = 4
 SOCKET_OPAL_SLOT_COUNT = SOCKET_OPAL_GRID_ROWS * SOCKET_OPAL_GRID_COLUMNS
 SOCKET_INCOMPATIBLE_OPAL_ASSET = Path("assets/ui/opal-blocked.png")
+SOCKET_INCOMPATIBLE_OPAL_SELECTED_ASSET = Path(
+    "assets/ui/opal-blocked-selected.png"
+)
+SOCKET_INCOMPATIBLE_OPAL_VARIANT_ASSETS = (
+    SOCKET_INCOMPATIBLE_OPAL_SELECTED_ASSET,
+)
 SOCKET_INCOMPATIBLE_OPAL_CONFIDENCE_THRESHOLD = 0.80
 SOCKET_ENHANCE_ANIMATION_CONFIDENCE_THRESHOLD = 0.80
 SOCKET_ENHANCE_ANIMATION_MAX_CENTER_MEAN = 26.0
@@ -79,36 +85,50 @@ class SocketIncompatibleOpalDetector:
         *,
         asset_root: str | Path | None = None,
         asset_path: str | Path = SOCKET_INCOMPATIBLE_OPAL_ASSET,
+        variant_asset_paths: tuple[
+            str | Path, ...
+        ] = SOCKET_INCOMPATIBLE_OPAL_VARIANT_ASSETS,
         template_loader: TemplateLoader | None = None,
     ) -> None:
         root = Path(asset_root) if asset_root is not None else Path.cwd()
-        path = Path(asset_path)
-        if not path.is_absolute():
-            path = root / path
-        path = path.resolve()
-        if not path.is_file():
-            raise FileNotFoundError(
-                f"Socket incompatible-opal template is unavailable: {path}"
-            )
         loader = template_loader or cv2.imread
-        template = loader(str(path), cv2.IMREAD_GRAYSCALE)
-        if (
-            template is None
-            or not isinstance(template, np.ndarray)
-            or template.ndim != 2
-            or template.size == 0
-            or template.dtype != np.uint8
-        ):
-            raise ValueError(
-                "Socket incompatible-opal template must be non-empty uint8 "
-                f"grayscale: {path}"
-            )
-        self.asset_path = path
-        self._template = template.copy()
+        paths = []
+        templates = []
+        for configured_path in (asset_path, *variant_asset_paths):
+            path = Path(configured_path)
+            if not path.is_absolute():
+                path = root / path
+            path = path.resolve()
+            if not path.is_file():
+                raise FileNotFoundError(
+                    "Socket incompatible-opal template is unavailable: "
+                    f"{path}"
+                )
+            template = loader(str(path), cv2.IMREAD_GRAYSCALE)
+            if (
+                template is None
+                or not isinstance(template, np.ndarray)
+                or template.ndim != 2
+                or template.size == 0
+                or template.dtype != np.uint8
+            ):
+                raise ValueError(
+                    "Socket incompatible-opal template must be non-empty "
+                    f"uint8 grayscale: {path}"
+                )
+            paths.append(path)
+            templates.append(template.copy())
+        self.asset_paths = tuple(paths)
+        self.asset_path = self.asset_paths[0]
+        self._templates = tuple(templates)
 
     @property
     def template_shape(self) -> tuple[int, int]:
-        return self._template.shape
+        return self._templates[0].shape
+
+    @property
+    def template_shapes(self) -> tuple[tuple[int, int], ...]:
+        return tuple(item.shape for item in self._templates)
 
     def measure(
         self, frame: np.ndarray
@@ -116,13 +136,17 @@ class SocketIncompatibleOpalDetector:
         _validate_frame(frame)
         readings = []
         for slot_index, region in enumerate(SOCKET_OPAL_SLOT_REGIONS):
-            raw_score = template_match_score(
-                frame, self._template, region=region
+            scores = tuple(
+                template_match_score(frame, template, region=region)
+                for template in self._templates
             )
-            if raw_score is None:
+            if any(score is None for score in scores):
                 raise ValueError(
-                    f"template {self.template_shape} does not fit slot {region}"
+                    f"templates {self.template_shapes} do not fit slot {region}"
                 )
+            raw_score = max(
+                float(score) for score in scores if score is not None
+            )
             readings.append(
                 SocketIncompatibleOpalReading(
                     slot_index=slot_index,

@@ -399,6 +399,7 @@ class WorldBossFlow:
                 expected=lambda item: _is_clean_base(item, SCREEN_SOCKET),
                 precondition=_is_world_boss_inventory_full,
                 retryable_from=_is_world_boss_inventory_full,
+                tolerated=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
             )
             if socket is None:
                 return self._transition_failure(
@@ -612,6 +613,7 @@ class WorldBossFlow:
         expected,
         precondition,
         retryable_from,
+        tolerated=lambda _: False,
     ) -> RuntimeSnapshot | None:
         result = self.verified_transition.execute(
             name,
@@ -621,7 +623,7 @@ class WorldBossFlow:
             precondition=precondition,
             retryable_from=retryable_from,
             abort_if=lambda item: _is_known_incompatible(
-                item, expected, retryable_from
+                item, expected, retryable_from, tolerated
             ),
             stable_for=self.stable_for,
             policy=self.transition_policy,
@@ -901,8 +903,10 @@ def _is_world_boss_bag_full(snapshot: RuntimeSnapshot) -> bool:
     )
 
 
-def _is_known_incompatible(snapshot, expected, retryable_from) -> bool:
-    if expected(snapshot) or retryable_from(snapshot):
+def _is_known_incompatible(
+    snapshot, expected, retryable_from, tolerated=lambda _: False
+) -> bool:
+    if expected(snapshot) or retryable_from(snapshot) or tolerated(snapshot):
         return False
     return snapshot.state.status in {
         ResolutionStatus.RESOLVED,

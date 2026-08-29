@@ -312,6 +312,16 @@ def test_red_candidate_level_zero_uses_bulk_and_requires_slot_disappearance():
     assert not any(type(call[1]).__name__ == "SellSocket" for call in transitions.calls)
     assert any(event == "socket_relief.sell_bulk_verified" for event, _ in events.records)
 
+    bulk_call = next(
+        call for call in transitions.calls if isinstance(call[1], SellSocketInBulk)
+    )
+    passive_transit = snapshot(20, base=SCREEN_SOCKET)
+    assert bulk_call[3]["retryable_from"](passive_transit) is False
+    assert bulk_call[3]["abort_if"](passive_transit) is False
+    assert bulk_call[3]["abort_if"](
+        snapshot(21, base=SCREEN_WORLD_BOSS)
+    ) is True
+
 
 @pytest.mark.parametrize(
     "fact_result",

@@ -21,7 +21,7 @@ from bot.catalog import (
     LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
     LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
     LANDMARK_SOCKET_SELL_BULK_BUTTON,
-    LANDMARK_SOCKET_TITLE,
+    LANDMARK_SOCKET_TAB,
     LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
@@ -298,20 +298,22 @@ SOCKET_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
     ),
 )
 
-# Persistent current-season Socket heading. The second rendering is the same
-# literal under modal dimming, allowing screen.socket to remain resolved while
-# Enhance All, no-material and Sell overlays are present. Empirical anchors are
-# provisional bounds from the human-confirmed 2026-08-29 acquisition corpus.
-SOCKET_TITLE_SPEC = LocalCvSpec(
-    name=LANDMARK_SOCKET_TITLE,
-    asset_path=Path("assets/ui/landmarks/socket-title-current.png"),
+# Persistent left-side Socket tab, outside the human-confirmed dynamic chat
+# overlay zone over the upper-right heading. Variants cover selected/unselected
+# and normal/dimmed renderings across Socket, Equipment Home and modal states.
+SOCKET_TAB_SPEC = LocalCvSpec(
+    name=LANDMARK_SOCKET_TAB,
+    asset_path=Path("assets/ui/landmarks/socket-tab-selected-current.png"),
     variant_asset_paths=(
-        Path("assets/ui/landmarks/socket-title-dimmed-current.png"),
+        Path("assets/ui/landmarks/socket-tab-selected-dimmed-current.png"),
+        Path("assets/ui/landmarks/socket-tab-equipment-current.png"),
+        Path("assets/ui/landmarks/socket-tab-equipment-dimmed-current.png"),
+        Path("assets/ui/landmarks/socket-tab-enhance-dimmed-current.png"),
     ),
-    region=(0.67, 0.08, 0.82, 0.18),
+    region=(0.16, 0.11, 0.26, 0.24),
     calibration=LinearGapCalibration(
-        negative_anchor=0.6756635308265686,
-        positive_anchor=0.8824502825737,
+        negative_anchor=0.7131282687187195,
+        positive_anchor=0.9773702621459961,
     ),
 )
 
@@ -435,7 +437,7 @@ DEFAULT_LOCAL_CV_SPECS = (
     INVENTORY_FULL_OK_BUTTON_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
-    SOCKET_TITLE_SPEC,
+    SOCKET_TAB_SPEC,
     SOCKET_ENHANCE_ALL_TITLE_SPEC,
     SOCKET_EQUIPMENT_HOME_ACTIVE_SPEC,
     SOCKET_INVENTORY_FULL_PROMPT_SPEC,

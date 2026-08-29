@@ -100,7 +100,8 @@ Overlays/popups productivos:
 Facts productivos:
 
 - Black Market internos: `currency.black_market.gold(slot)` y `status.black_market.purchased(slot)`.
-- Socket: Equipment Home activo e `item.socket.incompatible_opal(slot)` sobre el velo rojo; `activity.socket.enhance_animation_tappable` sólo en fases oscuras inequívocas. El flash brillante queda sin autorización.
+- Socket: Equipment Home activo e `item.socket.incompatible_opal(slot)` sobre el velo rojo seleccionado o no seleccionado; `activity.socket.enhance_animation_tappable` sólo en fases oscuras inequívocas. El flash brillante queda sin autorización.
+- La base Socket exige el tab izquierdo persistente en ROI `(0.16, 0.11, 0.26, 0.24)`, con cinco apariencias que cubren selected/unselected y el sombreado más fuerte de Enhance All. El encabezado superior derecho fue retirado como landmark porque el chat dinámico ocupa la banda observada `(0.44, 0.12, 0.85, 0.21)` y puede ocluirlo.
 - OCR demand-driven: `resource.sapphires` en Lobby, `battle.timer_remaining` en batalla World Boss e `item.socket.sell_level` sólo con `screen.socket + popup.socket_sell`; este último exige dos lecturas y es la barrera destructiva `level == 0`.
 - Temporal: `setting.auto_battle = ON/OFF/UNKNOWN`; sólo OFF inequívoco y contexto de batalla vigente autorizan toggle. ON se verifica en una ventana fresca posterior.
 
@@ -108,9 +109,13 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free de la rama positiva Socket Inventory Relief: **961/961 tests verdes**. El evaluator incremental reutilizó **4032/4032** pares del corpus productivo, sin invalidaciones y con cero wrong/ambiguous.
+- Suite hardware-free de la rama positiva Socket Inventory Relief: **963/963 tests verdes**. El corpus productivo actual cubre 171 frames × 24 detectores: **4104/4104** pares, 171/171 resoluciones y overlays, cero wrong/ambiguous; la ampliación de apariencias Socket invalidó conservadoramente la cache y produjo un único full audit final.
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
 - World Boss está validado hardware-free en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, una única rama positiva Socket Full, segunda rama negativa, Bag Full y Rotation desde World Boss.
+- Smoke HIL Enhance positivo: `Yes` llegó a Socket, GOLD produjo efecto, `TapThroughAnimation` ejecutó 6 taps guardados, Sell quedó `NOT_RUN` y `Back → World Boss` se verificó. La primera corrida expuso y luego corrigió un abort prematuro durante el frame transitorio World Boss sin popup.
+- Smoke HIL No Material + venta: GOLD confirmó `NO_EFFECT`, Equipment Home seleccionó el slot rojo 3, OCR confirmó `Opal (Skill)+0` 2/2 con confidence `0.958` y el usuario autorizó Bulk sobre el popup visible. La venta dejó popup y candidato ausentes e inventario `1/29 → 1/28`; el primer frame limpio precedió al landmark estable, por lo que esa transición ahora tolera el tránsito pasivo sin habilitar retry. La entrada a Socket fue manual, así que correctamente no se ejecutó ni declaró `Back → World Boss`.
+- La segunda aparición de Socket Full no se forzó live: el usuario confirmó que preparar ese caso extremo no era razonable. La policy queda cubierta hardware-free (`No`, fin no fatal, nunca segundo `Yes`) y los business events permiten auditarla si sucede en producción.
+- El landmark chat-safe resuelve los frames Socket live con confidence `1.0`; sus 12 positivos curados quedaron en `0.977370–1.0` frente a máximo de 159 negativos `0.713128`. Una captura legacy Meteorites con chat visible quedó como negativo explícito y dio raw `0.469354`.
 - `StandardRotation` pasó un loop aislado 28/28 con retorno al personaje inicial.
 - La composición `Black Market → World Boss → Rotation` y la GUI productiva están validadas.
 - Primer checkpoint combinado desde GUI: sesión `COMPLETED`, 28/28 personajes, 28 advances, 28 ejecuciones de cada flow y cero fallos técnicos. El detalle auditable está en `docs/HISTORY.md`.

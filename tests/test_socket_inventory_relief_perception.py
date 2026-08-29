@@ -18,6 +18,7 @@ from bot.perception import (
     SOCKET_ENHANCE_ANIMATION_TAPPABLE_OBSERVATION,
     SOCKET_INCOMPATIBLE_OPAL_ASSET,
     SOCKET_INCOMPATIBLE_OPAL_OBSERVATION,
+    SOCKET_INCOMPATIBLE_OPAL_SELECTED_ASSET,
     SOCKET_OPAL_SLOT_REGIONS,
     SocketEnhanceAnimationDetector,
     SocketIncompatibleOpalDetector,
@@ -124,6 +125,17 @@ def test_equipment_home_emits_active_tab_and_only_red_veil_slots():
     assert empty_observations.find(SOCKET_INCOMPATIBLE_OPAL_OBSERVATION) == ()
 
 
+def test_selected_red_veil_remains_the_same_guarded_slot_observation():
+    detector = SocketIncompatibleOpalDetector(asset_root=ROOT)
+    selected = _entry("equipment_home/selected-red-slot-3.png")
+
+    readings = detector.measure(selected)
+    selected_slots = tuple(item.value for item in detector.detect(selected))
+
+    assert selected_slots == (3, 4, 5, 7, 8, 9, 10, 11, 12)
+    assert readings[3].semantic_confidence >= 0.80
+
+
 def test_bulk_sale_stable_postcondition_removes_prior_red_slot_without_frame_equality():
     detector = SocketIncompatibleOpalDetector(asset_root=ROOT)
     before = _entry("equipment_home/red-grid.png")
@@ -165,11 +177,13 @@ def test_animation_gate_rejects_dark_periphery_with_bright_center():
     assert detector.detect(frame) == ()
 
 
-def test_incompatible_opal_detector_preserves_row_major_slot_identity():
+@pytest.mark.parametrize(
+    "asset_path",
+    (SOCKET_INCOMPATIBLE_OPAL_ASSET, SOCKET_INCOMPATIBLE_OPAL_SELECTED_ASSET),
+)
+def test_incompatible_opal_detector_preserves_row_major_slot_identity(asset_path):
     detector = SocketIncompatibleOpalDetector(asset_root=ROOT)
-    asset = cv2.imread(
-        str(ROOT / SOCKET_INCOMPATIBLE_OPAL_ASSET), cv2.IMREAD_COLOR
-    )
+    asset = cv2.imread(str(ROOT / asset_path), cv2.IMREAD_COLOR)
     frame = np.zeros((1224, 2712, 3), dtype=np.uint8)
     region = SOCKET_OPAL_SLOT_REGIONS[6]
     x1, y1, x2, y2 = (

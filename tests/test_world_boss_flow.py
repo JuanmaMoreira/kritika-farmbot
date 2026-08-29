@@ -469,6 +469,9 @@ def test_inventory_full_uses_one_positive_relief_then_no_and_completes_nonfatall
     assert names.count("world_boss.reject_inventory_full") == 1
     assert isinstance(driver.calls[4][1], AcceptSocketInventoryFull)
     assert isinstance(driver.calls[-1][1], RejectSocketInventoryFull)
+    accept_abort = driver.calls[4][3]["abort_if"]
+    assert not accept_abort(snapshot(70, base=SCREEN_WORLD_BOSS))
+    assert accept_abort(snapshot(71, base=SCREEN_LOBBY))
     assert len(relief.calls) == 1
     plan, cancel_requested = relief.calls[0]
     assert isinstance(plan.action, ExitSocket)
