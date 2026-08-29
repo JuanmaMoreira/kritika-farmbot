@@ -120,7 +120,7 @@ def test_manifest_keeps_source_rois_for_productive_and_future_facts():
 
     assert {
         "lobby_sapphires",
-        "battle_mode_world_boss_total_rank",
+        "battle_mode_world_boss_entry_title",
         "world_boss_my_rank",
         "world_boss_sapphires_cost",
         "world_boss_start",
@@ -135,7 +135,7 @@ def test_manifest_keeps_source_rois_for_productive_and_future_facts():
         for x1, y1, x2, y2 in rois.values()
     )
     assert len(evidence["lobby_sapphires"]) == 3
-    assert len(evidence["battle_mode_world_boss_total_rank"]) == 3
+    assert len(evidence["battle_mode_world_boss_entry_title"]) == 4
     assert len(evidence["world_boss_main_controls_and_facts"]) == 3
     assert len(evidence["previous_rewards_ok"]) == 3
     assert len(evidence["world_boss_battle_timer"]) == 5

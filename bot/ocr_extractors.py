@@ -310,8 +310,11 @@ def build_timer_extractor(engine: OcrEngine) -> OcrFactExtractor:
         parser=parse_duration_seconds,
         preprocessing=TIMER_PREPROCESSING,
         confirmations=1,
-        max_observations=3,
-        sample_interval=0.05,
+        # The chat may temporarily cover the only visible timer location.
+        # Retry passively over fresh frames; caller timeout/cancellation remain
+        # the outer bound and no unreadable reading authorizes input.
+        max_observations=10,
+        sample_interval=0.50,
     )
 
 

@@ -180,7 +180,8 @@ def test_product_extractors_space_independent_fresh_observations():
     timer = build_timer_extractor(engine)
 
     assert sapphires.sample_interval == 0.20
-    assert timer.sample_interval == 0.05
+    assert timer.sample_interval == 0.50
+    assert timer.max_observations == 10
 
 
 def test_dynamic_runtime_fact_contract_is_separate_from_character_context():

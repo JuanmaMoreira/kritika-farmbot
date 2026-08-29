@@ -165,7 +165,19 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert QUICK_MENU_LOBBY_TILE_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9826233983039856)
     )
-    assert BATTLE_MODE_SELECT_HEADER_SPEC.region == (0.36, 0.08, 0.64, 0.20)
+    assert BATTLE_MODE_SELECT_HEADER_SPEC.asset_path.as_posix() == (
+        "assets/ui/landmarks/battle-mode-world-boss-current.png"
+    )
+    assert BATTLE_MODE_SELECT_HEADER_SPEC.variant_asset_paths == (
+        Path("assets/ui/landmarks/battle-mode-world-boss-historical.png"),
+    )
+    assert BATTLE_MODE_SELECT_HEADER_SPEC.region == (0.16, 0.58, 0.32, 0.68)
+    assert BATTLE_MODE_SELECT_HEADER_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.39035069942474365)
+    )
+    assert BATTLE_MODE_SELECT_HEADER_SPEC.calibration.positive_anchor == (
+        pytest.approx(0.9919484853744507)
+    )
     assert WORLD_BOSS_SELECT_BOSS_HEADER_SPEC.region == (0.33, 0.01, 0.67, 0.15)
     assert WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC.region == (
         0.25, 0.78, 0.75, 0.91
@@ -235,8 +247,8 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
         ),
         (
             BATTLE_MODE_SELECT_HEADER_SPEC,
-            (595, 80),
-            "d1bd18ec8121e4f6ba1c8e7ef4465e5158a824e6129c2575409f786b5c2c14c6",
+            (320, 70),
+            "d55ae274244e1b299884027a4c2958496ac58abb0c89e2ab3a784fcc094973a7",
         ),
         (
             WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
@@ -287,3 +299,25 @@ def test_promoted_assets_are_exact_evaluated_candidates(spec, dimensions, sha256
     assert image is not None
     assert (image.shape[1], image.shape[0]) == dimensions
     assert hashlib.sha256(payload).hexdigest() == sha256
+
+
+def test_battle_mode_historical_variant_is_the_exact_evaluated_candidate():
+    repository_root = Path(__file__).resolve().parents[1]
+    path = repository_root / BATTLE_MODE_SELECT_HEADER_SPEC.variant_asset_paths[0]
+    payload = path.read_bytes()
+    image = cv2.imdecode(np.frombuffer(payload, dtype="uint8"), cv2.IMREAD_COLOR)
+
+    assert image is not None
+    assert (image.shape[1], image.shape[0]) == (280, 70)
+    assert hashlib.sha256(payload).hexdigest() == (
+        "72bf894aa0955a39ff7397897a9fb88f101b9567818a02e4d6184fe96e49b8d0"
+    )
+
+
+def test_battle_mode_landmark_avoids_the_known_dynamic_chat_region():
+    chat = (0.44, 0.12, 0.85, 0.21)
+    region = BATTLE_MODE_SELECT_HEADER_SPEC.region
+
+    assert min(region[2], chat[2]) <= max(region[0], chat[0]) or min(
+        region[3], chat[3]
+    ) <= max(region[1], chat[1])

@@ -242,16 +242,22 @@ CHARACTER_SELECT_HEADER_SPEC = LocalCvSpec(
     ),
 )
 
-# Current Survival selector header, deliberately distinct from the PvP
-# "Select Mode" screen. Seventeen confirmed positives (including the earlier
-# acquisition corpus) separate from 129 current/cross-context negatives.
+# The fixed World Boss entry title identifies the Survival selector without
+# using its upper header, which the dynamic game chat can occlude. Current and
+# historical native renderings cover 17 confirmed positives and remain
+# separated from the expanded 154-frame cross-context negative corpus.
 BATTLE_MODE_SELECT_HEADER_SPEC = LocalCvSpec(
     name=LANDMARK_BATTLE_MODE_SELECT_HEADER,
-    asset_path=Path("assets/ui/landmarks/battle-mode-select-header-current.png"),
-    region=(0.36, 0.08, 0.64, 0.20),
+    asset_path=Path(
+        "assets/ui/landmarks/battle-mode-world-boss-current.png"
+    ),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/battle-mode-world-boss-historical.png"),
+    ),
+    region=(0.16, 0.58, 0.32, 0.68),
     calibration=LinearGapCalibration(
-        negative_anchor=0.43016597628593445,
-        positive_anchor=0.7028394937515259,
+        negative_anchor=0.39035069942474365,
+        positive_anchor=0.9919484853744507,
     ),
 )
 

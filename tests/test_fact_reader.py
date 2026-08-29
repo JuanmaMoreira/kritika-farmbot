@@ -8,7 +8,12 @@ from bot.catalog import (
 from bot.capture import FrameSnapshot
 from bot.fact_reader import RuntimeFactReader
 from bot.ocr import OcrEngineError, OcrResult
-from bot.ocr_extractors import RESOURCE_SAPPHIRES, build_sapphires_extractor
+from bot.ocr_extractors import (
+    BATTLE_TIMER_REMAINING,
+    RESOURCE_SAPPHIRES,
+    build_sapphires_extractor,
+    build_timer_extractor,
+)
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.resolver import ContextResolver, ContextRule
 from bot.runtime_facts import FactQuality, FactReadStatus
@@ -124,6 +129,29 @@ def reader(sequences, texts, *, context=SCREEN_LOBBY, events=None):
     return RuntimeFactReader(observer, (extractor,), clock=clock, events=events)
 
 
+def timer_reader(sequences, texts):
+    clock = Clock()
+    resolver = ContextResolver(
+        base_rules=(
+            ContextRule(
+                SCREEN_WORLD_BOSS_BATTLE,
+                ("landmark.other_context",),
+                0.8,
+            ),
+        )
+    )
+    observer = RuntimeObserver(
+        Source(sequences),
+        Perception(SCREEN_WORLD_BOSS_BATTLE),
+        resolver,
+        poll_interval=0.1,
+        clock=clock,
+        sleeper=clock.sleep,
+    )
+    extractor = build_timer_extractor(Engine(texts))
+    return RuntimeFactReader(observer, (extractor,), clock=clock)
+
+
 class Events:
     def __init__(self):
         self.records = []
@@ -187,6 +215,30 @@ def test_all_empty_or_invalid_readings_are_unreadable_not_zero():
 
     assert result.status is FactReadStatus.UNREADABLE
     assert result.fact is None
+
+
+def test_timer_passively_reacquires_after_transient_unreadable_frames():
+    result = timer_reader(
+        [1, 2, 3, 4, 5],
+        ["chat", "chat", "chat", "chat", "0:55.4"],
+    ).read_timer_remaining(after_sequence=0, timeout=15.0)
+
+    assert result.status is FactReadStatus.CONFIRMED
+    assert result.fact.name == BATTLE_TIMER_REMAINING
+    assert result.fact.value == 56
+    assert tuple(item.sequence for item in result.evidence) == (1, 2, 3, 4, 5)
+    assert tuple(item.sequence for item in result.fact.evidence) == (5,)
+
+
+def test_timer_unreadable_reacquisition_remains_observation_bounded():
+    result = timer_reader(
+        list(range(1, 12)),
+        ["chat"] * 10,
+    ).read_timer_remaining(after_sequence=0, timeout=15.0)
+
+    assert result.status is FactReadStatus.UNREADABLE
+    assert result.fact is None
+    assert len(result.evidence) == 10
 
 
 def test_unreadable_retry_reduces_consensus_confidence():

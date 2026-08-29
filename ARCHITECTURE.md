@@ -58,7 +58,7 @@ Hay tres usos separados:
 
 Las observaciones intra-Socket de velo rojo y fase oscura de Enhance son operation-scoped: Perception sólo reporta evidencia. No seleccionan estrategia, no autorizan KARATS ni convierten una coincidencia aislada en permiso de venta.
 
-Los landmarks base evitan regiones con oclusión dinámica conocida. En Socket, el tab izquierdo persistente sustituye al encabezado superior derecho porque el chat del juego puede cubrir esa franja; las variantes cubren tab seleccionado/no seleccionado y modal normal/dimmed. Una ROI situada en una zona dinámica requiere positivos reales con el overlay antes de considerarse robusta.
+Los landmarks base evitan regiones con oclusión dinámica conocida. En Socket, el tab izquierdo persistente sustituye al encabezado superior derecho; en Battle Mode, el título de la tarjeta World Boss sustituye al encabezado superior. Popups, overlays y el panel Black Market se renderizan por encima del chat, por lo que su layering también forma parte de la auditoría; una ROI base situada en una zona dinámica requiere positivos reales con el overlay antes de considerarse robusta.
 
 Un fact no se convierte en contexto para facilitar navegación.
 
@@ -74,7 +74,7 @@ La evaluación offline productiva conserva los manifests curados como fuente de 
 
 ## Runtime Facts y CharacterContext
 
-`RuntimeFact(value, confidence, quality, source, context, evidence)` representa un valor dinámico adquirido cuando un consumidor lo necesita. `RuntimeFactReader` registra extractors, exige frames frescos/resueltos del contexto base y de todos los overlays requeridos por el extractor, y devuelve outcomes explícitos para confirmed, unreadable/uncertain, context mismatch, timeout, cancelación o fallo. Frames transitorios sin resolución pueden consumirse dentro del mismo budget sin autorizar OCR ni input.
+`RuntimeFact(value, confidence, quality, source, context, evidence)` representa un valor dinámico adquirido cuando un consumidor lo necesita. `RuntimeFactReader` registra extractors, exige frames frescos/resueltos del contexto base y de todos los overlays requeridos por el extractor, y devuelve outcomes explícitos para confirmed, unreadable/uncertain, context mismatch, timeout, cancelación o fallo. Frames transitorios sin resolución y lecturas OCR temporalmente ilegibles pueden consumirse dentro del budget bounded del extractor sin autorizar input; el timer usa hasta 10 frames frescos separados 0,5 s porque el chat puede cubrir su única ubicación visual.
 
 El boundary OCR es:
 
