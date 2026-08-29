@@ -60,6 +60,8 @@ Las observaciones intra-Socket de velo rojo y fase oscura de Enhance son operati
 
 Un fact no se convierte en contexto para facilitar navegación.
 
+La evaluación offline productiva conserva los manifests curados como fuente de verdad y cachea sólo resultados derivados por par detector/frame. Un hit exige identidad de contenido del frame, configuración y código del detector, contenido de assets, helpers CV compartidos, runtime OpenCV/NumPy y versión/lógica del evaluator; labels y `ContextResolver` se recalculan siempre. La cache bajo `artifacts/` es regenerable y una entrada corrupta o no fingerprintable se invalida conservadoramente; `--full-rebuild` fuerza auditoría global desde cero.
+
 ## ContextResolver y RuntimeObserver
 
 `ContextResolver` es puro, determinista y stateless. Con reglas explícitas, cero/uno/varios candidatos base producen `UNKNOWN`/`RESOLVED`/`AMBIGUOUS`; no hay first-match, voting, hysteresis ni desempate por confidence. Overlays se resuelven independientemente y pueden coexistir con base desconocida.

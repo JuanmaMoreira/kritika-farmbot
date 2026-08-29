@@ -56,9 +56,13 @@ from bot.catalog import (
     SCREEN_WORLD_BOSS_BATTLE,
     build_default_resolver,
 )
-from bot.capture import FrameSnapshot
 from bot.perception import build_default_perception
+from bot.observations import ObservationBatch
 from bot.state import ResolutionStatus
+from tools.incremental_perception_evaluation import (
+    IncrementalEvaluationStats,
+    evaluate_detector_frame_pairs,
+)
 from tools.semantic_slice_evaluation import (
     CONFIRMED,
     MANIFEST_VERSION,
@@ -80,6 +84,7 @@ DEFAULT_MANIFEST_PATHS = (
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
+DEFAULT_CACHE_PATH = "artifacts/semantic_slice/production-pairs-cache.json"
 PROMOTABLE_WORKBENCH_STATUS = "raw_unreviewed"
 WORKBENCH_SOURCE = "workbench"
 SUPPORTED_WORKBENCH_EVENT_SCHEMAS = frozenset({"1.0", "2.0"})
@@ -147,6 +152,7 @@ class ProductionPerceptionReport:
     detectors: dict[str, DetectorMetrics]
     resolver: ResolverMetrics
     frames: tuple[FrameResult, ...]
+    evaluation: IncrementalEvaluationStats
 
 
 @dataclass(frozen=True)
@@ -402,6 +408,9 @@ def _require_descendant(path: Path, parent: Path, label: str) -> None:
 def evaluate_production_perception(
     repository_root: str | Path,
     manifest_path: str | Path | Iterable[str | Path] = DEFAULT_MANIFEST_PATHS,
+    *,
+    cache_path: str | Path | None = DEFAULT_CACHE_PATH,
+    full_rebuild: bool = False,
 ) -> ProductionPerceptionReport:
     """Run production detectors and resolver over every confirmed manifest frame."""
 
@@ -427,6 +436,14 @@ def evaluate_production_perception(
     engine = build_default_perception(repository_root)
     resolver = build_default_resolver()
     production_base_contexts = frozenset(rule.name for rule in resolver.base_rules)
+    evaluated_frames, evaluation_stats = evaluate_detector_frame_pairs(
+        repository_root,
+        (entry.path for entry in entries),
+        engine.detectors,
+        cache_path=cache_path,
+        full_rebuild=full_rebuild,
+    )
+    evaluated_by_path = {item.path: item for item in evaluated_frames}
 
     detector_accumulators = {
         spec.name: {
@@ -471,12 +488,11 @@ def evaluate_production_perception(
     frame_results: list[FrameResult] = []
 
     for sequence, entry in enumerate(entries, start=1):
-        frame_path = repository_root / entry.path
-        frame = cv2.imread(str(frame_path), cv2.IMREAD_COLOR)
-        if frame is None:
-            raise FileNotFoundError(f"Confirmed screenshot is unreadable: {frame_path}")
-        batch = engine.analyze(
-            FrameSnapshot(frame, timestamp=float(sequence), sequence=sequence)
+        evaluated = evaluated_by_path[entry.path]
+        batch = ObservationBatch(
+            sequence=sequence,
+            timestamp=float(sequence),
+            observations=evaluated.observations,
         )
         state = resolver.resolve(batch)
 
@@ -487,7 +503,7 @@ def evaluate_production_perception(
             accumulator = detector_accumulators[name]
             evidence = batch.best(name)
             confidence = evidence.confidence if evidence is not None else 0.0
-            raw_score = detector.measure(frame).raw_match_score
+            raw_score = evaluated.raw_scores[name]
             positive = _is_positive(name, entry)
             confidence_key = (
                 "positive_confidences" if positive else "negative_confidences"
@@ -659,6 +675,7 @@ def evaluate_production_perception(
             },
         ),
         frames=tuple(frame_results),
+        evaluation=evaluation_stats,
     )
 
 
@@ -724,6 +741,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--output", default="artifacts/semantic_slice/phase3f-production.json"
     )
+    parser.add_argument(
+        "--cache",
+        default=DEFAULT_CACHE_PATH,
+        help="regenerable detector/frame result cache",
+    )
+    parser.add_argument(
+        "--full-rebuild",
+        action="store_true",
+        help="ignore cached pairs and perform a full global audit",
+    )
     arguments = parser.parse_args(argv)
 
     if arguments.materialize_workbench:
@@ -739,6 +766,8 @@ def main(argv: list[str] | None = None) -> int:
         arguments.repo_root,
         arguments.manifest
         or DEFAULT_MANIFEST_PATHS,
+        cache_path=arguments.cache,
+        full_rebuild=arguments.full_rebuild,
     )
     output_path = Path(arguments.output)
     if not output_path.is_absolute():
@@ -749,7 +778,19 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    print(json.dumps(payload, indent=2, ensure_ascii=False))
+    stats = report.evaluation
+    print(
+        "pairs="
+        f"{stats.total_pairs} cache_hits={stats.cache_hits} "
+        f"evaluated={stats.evaluated_pairs} "
+        f"invalidations={stats.invalidations} "
+        f"cache_rebuilt={str(stats.cache_rebuilt).lower()} "
+        f"duration={stats.duration_seconds:.3f}s "
+        f"wrong={report.resolver.wrong} "
+        f"ambiguous={report.resolver.ambiguous} "
+        f"result={'PASS' if report.resolver.wrong == 0 else 'FAIL'}"
+    )
+    print(f"report={output_path}")
     return 0
 
 

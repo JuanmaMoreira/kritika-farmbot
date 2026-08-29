@@ -164,7 +164,7 @@ Hechos derivados del log estructurado:
 - Las trece esperas finales de batalla terminaron `completed`; no hubo timeout, cancelación ni recovery no estructurado.
 - Resultado final: `SessionStatus.COMPLETED`, `characters_processed=28`, `advances_completed=28`, technical failures = 0.
 
-Este checkpoint quedó sobre `1814ddc` con la última suite hardware-free conocida en 921/921 tests verdes. No hubo código posterior antes del cierre documental.
+Este checkpoint quedó sobre `1814ddc`. El cierre documental reportó 921/921 tests, pero la auditoría posterior de colección demostró que `1814ddc`/`cf0aa4c` contienen 866 casos: no existieron 921 casos coleccionables en ese árbol. No hubo borrado posterior de 25 tests; el diff hasta `6a086e1` contiene 33 IDs añadidos y tres retirados por renombre, un neto de +30 hasta 896.
 
 ## Socket Inventory Relief — adquisición semántica
 
@@ -175,6 +175,10 @@ Dentro de Socket se verificó que la ruta de ópalos es **Equipment Home**, no e
 Equipment Home mostró doce slots con velo rojo en la grilla 4×4. El asset histórico `opal-blocked.png` resultó robusto sobre el marcado completo pese al glow del sprite: positivos limpios `0,950..0,970`, negativo máximo revisado `0,526`. Seleccionar el primer slot rojo abrió Sell para `Opal (Skill)+0`; la ROI normalizada `(0.47, 0.39, 0.58, 0.45)` con escala 4 produjo lecturas consistentes y permitió verificar una única venta destructiva por `Sell (Bulk)`. El popup desapareció, Socket/Equipment Home permanecieron estables y el mismo slot dejó de contener el candidato rojo. El bubble transitorio de ~1 s y frame equality quedaron descartados como postcondición. Un ópalo `+10` se leyó inequívocamente y se canceló; luego se capturó ausencia de candidatos rojos. El indicador `1/30 → 1/27` se observó, pero no se promovió como conteo de items porque su semántica no quedó confirmada.
 
 Producción incorporó assets current-season para título Socket normal/dimmed, Equipment Home, Enhance All, no-material y Sell Bulk; un detector row-major del velo rojo; una señal conservadora para fases oscuras tappable; y el Runtime Fact `item.socket.sell_level`, que exige `screen.socket + popup.socket_sell`, confidence OCR mínima `0,90` y consenso 2/3. La evaluación global descubrió que `SUCCESS!!` podía confundir el crop de texto histórico de Black Market; se reemplazó por el marco completo con espadas, cerrando el corpus ampliado en 168/168 resoluciones, cero wrong/ambiguous y overlays 168/168. Perception no elige estrategia ni autoriza venta: la futura support operation deberá exigir el slot rojo fresco, popup Sell, nivel confirmado exactamente `0` y postcondición estable del slot.
+
+## Evaluación offline incremental
+
+El evaluator productivo pasó a cachear observaciones/raw score por par detector×frame con fingerprints conservadores de frame, configuración, assets, código y runtime CV. Los labels y el resolver siguen evaluándose en cada corrida. Sobre 168 frames y 24 detectores, el full audit ejecutó 4.032 pares en 41,284 s; la repetición idéntica reutilizó 4.032/4.032, ejecutó cero matches y tardó 1,056 s. Ambos reportes fueron semánticamente idénticos: 168/168 resoluciones y overlays, cero wrong/ambiguous.
 
 ## Decisiones y alternativas reemplazadas
 
