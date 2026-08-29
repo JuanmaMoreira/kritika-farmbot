@@ -11,21 +11,28 @@ from bot.action_executor import ActionExecutor
 from bot.auto_battle import AutoBattleState, EnsureAutoBattleStatus
 from bot.catalog import (
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
+    MODE_COMBINE_FUSE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_EQUIPMENT_INVENTORY_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
+    SCREEN_COMBINE,
     SCREEN_LOBBY,
     SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
     SEMANTIC_CONFIDENCE_THRESHOLD,
+    STATUS_COMBINE_FUSE_AVAILABLE,
 )
 from bot.component_contracts import ComponentRequirement
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
 from bot.event_log import EventSink
+from bot.equipment_inventory_relief import (
+    EquipmentReliefOutcome,
+    EquipmentReturnPlan,
+)
 from bot.flow_contracts import (
     FlowContract,
     FlowEvent,
@@ -40,7 +47,9 @@ from bot.semantic_actions import (
     AcknowledgeWorldBossPreviousRewards,
     ContinueAfterWorldBossRaid,
     DismissWorldBossBagFull,
+    ExitCombine,
     ExitSocket,
+    OpenEquipmentCombine,
     OpenBattleModeSelect,
     OpenWorldBossSelector,
     RejectSocketInventoryFull,
@@ -124,6 +133,10 @@ class _SocketRelief(Protocol):
     def run(self, return_plan, cancel_requested=None): ...
 
 
+class _EquipmentRelief(Protocol):
+    def run(self, return_plan, cancel_requested=None): ...
+
+
 class WorldBossFlow:
     """Attempt exactly one World Boss participation, starting at Lobby."""
 
@@ -147,6 +160,7 @@ class WorldBossFlow:
         events: EventSink,
         *,
         socket_relief: _SocketRelief,
+        equipment_relief: _EquipmentRelief,
         cancel_requested: Callable[[], bool] = lambda: False,
         fact_timeout: float = 15.0,
         transition_timeout: float = 6.0,
@@ -174,6 +188,8 @@ class WorldBossFlow:
             raise ValueError("auto_battle must provide ensure_on()")
         if not callable(getattr(socket_relief, "run", None)):
             raise ValueError("socket_relief must provide run()")
+        if not callable(getattr(equipment_relief, "run", None)):
+            raise ValueError("equipment_relief must provide run()")
         if not callable(getattr(events, "record", None)):
             raise ValueError("events must provide record()")
         if (
@@ -188,6 +204,7 @@ class WorldBossFlow:
         self.facts = facts
         self.auto_battle = auto_battle
         self.socket_relief = socket_relief
+        self.equipment_relief = equipment_relief
         self.events = events
         self.cancel_requested = cancel_requested
         self.fact_timeout = float(fact_timeout)
@@ -339,6 +356,7 @@ class WorldBossFlow:
         else:
             main = entered
         socket_relief_attempted = False
+        equipment_relief_attempted = False
         while True:
             battle = self._transition(
                 transitions,
@@ -358,124 +376,156 @@ class WorldBossFlow:
                     transitions, sapphires, flow_events, previous_rewards
                 )
 
-            if not _is_world_boss_inventory_full(battle):
-                break
+            if _is_world_boss_inventory_full(battle):
+                if socket_relief_attempted:
+                    event = FlowEvent(WORLD_BOSS_INVENTORY_FULL)
+                    flow_events.append(event)
+                    self._record_best_effort(event.kind, branch="negative_after_relief")
+                    returned = self._transition(
+                        transitions,
+                        "world_boss.reject_inventory_full",
+                        RejectSocketInventoryFull(),
+                        battle,
+                        expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
+                        precondition=_is_world_boss_inventory_full,
+                        retryable_from=_is_world_boss_inventory_full,
+                    )
+                    if returned is None:
+                        return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
+                    self._record_best_effort("world_boss.completed", postcondition=SCREEN_WORLD_BOSS)
+                    return WorldBossFlowResult(
+                        status=FlowStatus.COMPLETED,
+                        events=tuple(flow_events),
+                        sapphires=sapphires,
+                        previous_rewards=previous_rewards,
+                        inventory_full=True,
+                        transition_outcomes=_transition_outcomes(transitions),
+                        transition_attempts=_transition_attempts(transitions),
+                    )
 
-            if socket_relief_attempted:
-                event = FlowEvent(WORLD_BOSS_INVENTORY_FULL)
-                flow_events.append(event)
-                self._record_best_effort(event.kind, branch="negative_after_relief")
-                returned = self._transition(
+                socket = self._transition(
                     transitions,
-                    "world_boss.reject_inventory_full",
-                    RejectSocketInventoryFull(),
+                    "world_boss.accept_inventory_full",
+                    AcceptSocketInventoryFull(),
                     battle,
-                    expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
+                    expected=lambda item: _is_clean_base(item, SCREEN_SOCKET),
                     precondition=_is_world_boss_inventory_full,
                     retryable_from=_is_world_boss_inventory_full,
+                    tolerated=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
                 )
-                if returned is None:
-                    return self._transition_failure(
-                        transitions, sapphires, flow_events, previous_rewards
-                    )
+                if socket is None:
+                    return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
+                socket_relief_attempted = True
+                self._record_best_effort("world_boss.socket_relief.started", sequence=socket.sequence)
+                relief = self.socket_relief.run(
+                    SocketReturnPlan(ExitSocket(), SCREEN_WORLD_BOSS),
+                    cancel_requested=self.cancel_requested,
+                )
                 self._record_best_effort(
-                    "world_boss.completed", postcondition=SCREEN_WORLD_BOSS
+                    "world_boss.socket_relief.finished",
+                    outcome=relief.outcome.value,
+                    enhance=relief.enhance.value,
+                    sell=relief.sell.value,
+                    animation_taps=relief.animation_taps,
+                    error=relief.error,
                 )
-                return WorldBossFlowResult(
-                    status=FlowStatus.COMPLETED,
-                    events=tuple(flow_events),
-                    sapphires=sapphires,
-                    previous_rewards=previous_rewards,
-                    inventory_full=True,
-                    transition_outcomes=_transition_outcomes(transitions),
-                    transition_attempts=_transition_attempts(transitions),
-                )
+                if relief.outcome is SocketReliefOutcome.CANCELLED:
+                    return self._cancelled(sapphires, flow_events, previous_rewards, transitions=transitions)
+                if relief.outcome is SocketReliefOutcome.FAILED:
+                    return self._failed(
+                        f"socket_inventory_relief_failed: {relief.error or 'no detail'}",
+                        sapphires=sapphires,
+                        flow_events=flow_events,
+                        previous_rewards=previous_rewards,
+                        transitions=transitions,
+                    )
+                main = relief.final_snapshot
+                if main is None or not _is_clean_base(main, SCREEN_WORLD_BOSS):
+                    return self._failed(
+                        "socket_inventory_relief_return_state_invalid",
+                        sapphires=sapphires,
+                        flow_events=flow_events,
+                        previous_rewards=previous_rewards,
+                        transitions=transitions,
+                    )
+                continue
 
-            socket = self._transition(
-                transitions,
-                "world_boss.accept_inventory_full",
-                AcceptSocketInventoryFull(),
-                battle,
-                expected=lambda item: _is_clean_base(item, SCREEN_SOCKET),
-                precondition=_is_world_boss_inventory_full,
-                retryable_from=_is_world_boss_inventory_full,
-                tolerated=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
-            )
-            if socket is None:
-                return self._transition_failure(
-                    transitions, sapphires, flow_events, previous_rewards
-                )
+            if _is_world_boss_bag_full(battle):
+                if equipment_relief_attempted:
+                    event = FlowEvent(WORLD_BOSS_BAG_FULL)
+                    flow_events.append(event)
+                    self._record_best_effort(event.kind, branch="negative_after_relief")
+                    returned = self._transition(
+                        transitions,
+                        "world_boss.dismiss_bag_full",
+                        DismissWorldBossBagFull(),
+                        battle,
+                        expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
+                        precondition=_is_world_boss_bag_full,
+                        retryable_from=_is_world_boss_bag_full,
+                    )
+                    if returned is None:
+                        return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
+                    self._record_best_effort("world_boss.completed", postcondition=SCREEN_WORLD_BOSS)
+                    return WorldBossFlowResult(
+                        status=FlowStatus.COMPLETED,
+                        events=tuple(flow_events),
+                        sapphires=sapphires,
+                        previous_rewards=previous_rewards,
+                        bag_full=True,
+                        transition_outcomes=_transition_outcomes(transitions),
+                        transition_attempts=_transition_attempts(transitions),
+                    )
 
-            # The one-shot allowance is consumed only after Socket was observed.
-            socket_relief_attempted = True
-            self._record_best_effort(
-                "world_boss.socket_relief.started", sequence=socket.sequence
-            )
-            relief = self.socket_relief.run(
-                SocketReturnPlan(ExitSocket(), SCREEN_WORLD_BOSS),
-                cancel_requested=self.cancel_requested,
-            )
-            self._record_best_effort(
-                "world_boss.socket_relief.finished",
-                outcome=relief.outcome.value,
-                enhance=relief.enhance.value,
-                sell=relief.sell.value,
-                animation_taps=relief.animation_taps,
-                error=relief.error,
-            )
-            if relief.outcome is SocketReliefOutcome.CANCELLED:
-                return self._cancelled(
-                    sapphires, flow_events, previous_rewards,
-                    transitions=transitions,
+                combine = self._transition(
+                    transitions,
+                    "world_boss.open_equipment_combine",
+                    OpenEquipmentCombine(),
+                    battle,
+                    expected=_is_stable_combine_entry,
+                    precondition=_is_world_boss_bag_full,
+                    retryable_from=_is_world_boss_bag_full,
+                    tolerated=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
                 )
-            if relief.outcome is SocketReliefOutcome.FAILED:
-                return self._failed(
-                    f"socket_inventory_relief_failed: "
-                    f"{relief.error or 'no detail'}",
-                    sapphires=sapphires,
-                    flow_events=flow_events,
-                    previous_rewards=previous_rewards,
-                    transitions=transitions,
+                if combine is None:
+                    return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
+                equipment_relief_attempted = True
+                self._record_best_effort("world_boss.equipment_relief.started", sequence=combine.sequence)
+                relief = self.equipment_relief.run(
+                    EquipmentReturnPlan(ExitCombine(), SCREEN_WORLD_BOSS),
+                    cancel_requested=self.cancel_requested,
                 )
-            main = relief.final_snapshot
-            if main is None or not _is_clean_base(main, SCREEN_WORLD_BOSS):
-                return self._failed(
-                    "socket_inventory_relief_return_state_invalid",
-                    sapphires=sapphires,
-                    flow_events=flow_events,
-                    previous_rewards=previous_rewards,
-                    transitions=transitions,
+                self._record_best_effort(
+                    "world_boss.equipment_relief.finished",
+                    outcome=relief.outcome.value,
+                    transmute=relief.transmute.value,
+                    ethereal=relief.ethereal.value,
+                    fuse=relief.fuse.value,
+                    animation_taps=relief.animation_taps,
+                    error=relief.error,
                 )
+                if relief.outcome is EquipmentReliefOutcome.CANCELLED:
+                    return self._cancelled(sapphires, flow_events, previous_rewards, transitions=transitions)
+                if relief.outcome is EquipmentReliefOutcome.FAILED:
+                    return self._failed(
+                        f"equipment_inventory_relief_failed: {relief.error or 'no detail'}",
+                        sapphires=sapphires,
+                        flow_events=flow_events,
+                        previous_rewards=previous_rewards,
+                        transitions=transitions,
+                    )
+                main = relief.final_snapshot
+                if main is None or not _is_clean_base(main, SCREEN_WORLD_BOSS):
+                    return self._failed(
+                        "equipment_inventory_relief_return_state_invalid",
+                        sapphires=sapphires,
+                        flow_events=flow_events,
+                        previous_rewards=previous_rewards,
+                        transitions=transitions,
+                    )
+                continue
 
-        if _is_world_boss_bag_full(battle):
-            event = FlowEvent(WORLD_BOSS_BAG_FULL)
-            flow_events.append(event)
-            self._record_best_effort(event.kind)
-            returned = self._transition(
-                transitions,
-                "world_boss.dismiss_bag_full",
-                DismissWorldBossBagFull(),
-                battle,
-                expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
-                precondition=_is_world_boss_bag_full,
-                retryable_from=_is_world_boss_bag_full,
-            )
-            if returned is None:
-                return self._transition_failure(
-                    transitions, sapphires, flow_events, previous_rewards
-                )
-            self._record_best_effort(
-                "world_boss.completed", postcondition=SCREEN_WORLD_BOSS
-            )
-            return WorldBossFlowResult(
-                status=FlowStatus.COMPLETED,
-                events=tuple(flow_events),
-                sapphires=sapphires,
-                previous_rewards=previous_rewards,
-                bag_full=True,
-                transition_outcomes=_transition_outcomes(transitions),
-                transition_attempts=_transition_attempts(transitions),
-            )
+            break
 
         ensured = self.auto_battle.ensure_on(
             after_sequence=battle.sequence,
@@ -900,6 +950,18 @@ def _is_world_boss_bag_full(snapshot: RuntimeSnapshot) -> bool:
         snapshot.state.status is ResolutionStatus.RESOLVED
         and snapshot.state.base_context == SCREEN_WORLD_BOSS
         and set(snapshot.state.overlays) == {POPUP_EQUIPMENT_INVENTORY_FULL}
+    )
+
+
+def _is_stable_combine_entry(snapshot: RuntimeSnapshot) -> bool:
+    return (
+        snapshot.state.status is ResolutionStatus.RESOLVED
+        and snapshot.state.base_context == SCREEN_COMBINE
+        and set(snapshot.state.overlays)
+        in (
+            {MODE_COMBINE_FUSE},
+            {MODE_COMBINE_FUSE, STATUS_COMBINE_FUSE_AVAILABLE},
+        )
     )
 
 

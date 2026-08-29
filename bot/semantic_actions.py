@@ -224,6 +224,66 @@ class ExitSocket:
 
 
 @dataclass(frozen=True)
+class OpenEquipmentCombine:
+    """Request Combine on the global equipment inventory-full guard."""
+
+
+@dataclass(frozen=True)
+class SelectCombineTransmute:
+    """Request the base Transmute tab."""
+
+
+@dataclass(frozen=True)
+class SelectCombineFuse:
+    """Request the base Fuse tab."""
+
+
+@dataclass(frozen=True)
+class OpenCombineAll:
+    """Request Combine All in the active base Combine mode."""
+
+
+@dataclass(frozen=True)
+class ConfirmCombineAll:
+    """Confirm the active Combine All popup."""
+
+
+@dataclass(frozen=True)
+class OpenAwakenedTransmute:
+    """Open the partially visible Awakened Transmute entry."""
+
+
+@dataclass(frozen=True)
+class OpenEtherealRandomPart:
+    """Open Ethereal Random Part from Awakened Transmute."""
+
+
+@dataclass(frozen=True)
+class OpenEtherealMassCombine:
+    """Request Mass Combine in Ethereal Random Part."""
+
+
+@dataclass(frozen=True)
+class ConfirmEtherealMassCombine:
+    """Confirm the Ethereal Mass Combine operation."""
+
+
+@dataclass(frozen=True)
+class AcknowledgeEtherealNoMaterial:
+    """Acknowledge the defensive Ethereal no-material popup."""
+
+
+@dataclass(frozen=True)
+class TapCombineAnimation:
+    """Request one tap in the acquired Combine animation region."""
+
+
+@dataclass(frozen=True)
+class ExitCombine:
+    """Request the live-verified Combine Back action."""
+
+
+@dataclass(frozen=True)
 class DismissWorldBossBagFull:
     """Request Close on the World Boss Start bag-full guard."""
 
@@ -260,6 +320,18 @@ SemanticAction = (
     | CancelSocketSell
     | TapSocketEnhanceAnimation
     | ExitSocket
+    | OpenEquipmentCombine
+    | SelectCombineTransmute
+    | SelectCombineFuse
+    | OpenCombineAll
+    | ConfirmCombineAll
+    | OpenAwakenedTransmute
+    | OpenEtherealRandomPart
+    | OpenEtherealMassCombine
+    | ConfirmEtherealMassCombine
+    | AcknowledgeEtherealNoMaterial
+    | TapCombineAnimation
+    | ExitCombine
     | DismissWorldBossBagFull
 )
 
@@ -267,6 +339,7 @@ SemanticAction = (
 __all__ = (
     "AcceptPurchaseConfirmation",
     "AcceptSocketInventoryFull",
+    "AcknowledgeEtherealNoMaterial",
     "AcknowledgeSocketNoMaterial",
     "AcknowledgeWorldBossPreviousRewards",
     "AcknowledgeInventoryFull",
@@ -275,6 +348,8 @@ __all__ = (
     "ContinueAfterWorldBossRaid",
     "CancelSocketSell",
     "CloseSocketEnhanceAll",
+    "ConfirmCombineAll",
+    "ConfirmEtherealMassCombine",
     "DismissWorldBossBagFull",
     "OpenBlackMarket",
     "OpenBattleModeSelect",
@@ -298,5 +373,14 @@ __all__ = (
     "ToggleAutoBattle",
     "TapSocketEnhanceAnimation",
     "ExitSocket",
+    "ExitCombine",
+    "OpenAwakenedTransmute",
+    "OpenCombineAll",
+    "OpenEquipmentCombine",
+    "OpenEtherealMassCombine",
+    "OpenEtherealRandomPart",
+    "SelectCombineFuse",
+    "SelectCombineTransmute",
     "StartWorldBossBattle",
+    "TapCombineAnimation",
 )

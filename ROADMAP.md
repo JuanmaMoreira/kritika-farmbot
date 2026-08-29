@@ -12,14 +12,14 @@ La Fase 2 de Socket Inventory Relief quedó cerrada hardware-free: support opera
 
 Los smokes HIL cerraron Enhance positivo y No Material + venta segura. La segunda aparición no se forzó porque el usuario confirmó que preparar ese caso extremo no era razonable; queda cubierta por tests y por eventos productivos que registrarán `No` y el fin no fatal si ocurre naturalmente. La rama positiva bounded se considera cerrada.
 
-La adquisición/promoción de Equipment Inventory Full quedó cerrada: popup global, entrada Combine, modos y `N` independientes, paneles/popups, defensivo sin material, una animación tappable común, postcondiciones por desaparición y `Back → World Boss`. Sólo ese caller fue confirmado y no se implementó gameplay.
+La rama Equipment Inventory Full quedó cerrada para el caller confirmado World Boss: support operation independiente, orden fijo Transmute → Ethereal condicional → Fuse, acumulación sin short-circuit, animación común mediante `TapThroughAnimation`, postcondiciones por desaparición, retorno exacto y un único intento positivo por `run()`. Una segunda aparición usa el cierre negativo no fatal. No se agregó un flow ni una entrada de GUI/registry.
 
 ## Próximo trabajo
 
 ### Known future
 
 - Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su recovery bounded antes de automatizarlo.
-- Implementar `EquipmentInventoryRelief` como support operation independiente: orden fijo Transmute → Ethereal condicional → Fuse, sin short-circuit, outcomes explícitos y retorno exacto. Después integrar una única rama positiva en World Boss; no generalizar otros callers sin evidencia live.
+- Ampliar retornos de Equipment Inventory Full a otros farming flows sólo con evidencia live específica; por ahora únicamente `Combine → Back → World Boss` está verificado.
 - Ampliar retornos de Socket a otros farming flows sólo con evidencia live específica; por ahora únicamente `Socket → Back → World Boss` está verificado.
 - Implementar `CharacterContextProvider`/nombre sólo cuando identidad tenga un consumidor concreto.
 - Incorporar `ConflictResolver`, recovery transversal, aislamiento de fallos y policy de continuación unattended cuando la evidencia lo requiera.

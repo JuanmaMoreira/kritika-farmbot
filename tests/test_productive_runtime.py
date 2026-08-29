@@ -72,6 +72,7 @@ def _runtime(observer, events):
         facts=object(),
         auto_battle=object(),
         socket_relief=object(),
+        equipment_relief=object(),
         events=events,
         cancel_token=SimpleNamespace(is_requested=lambda: False),
     )
@@ -89,6 +90,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     transition = object()
     tap_through = object()
     socket_relief = object()
+    equipment_relief = object()
     monkeypatch.setattr(productive, "build_runtime_event_stream", lambda *a, **k: events)
     monkeypatch.setattr(productive.RuntimeConfig, "from_env", lambda **kwargs: config)
     monkeypatch.setattr(productive, "build_adb_client", lambda value: adb)
@@ -107,6 +109,11 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
         "SocketInventoryRelief",
         lambda *args, **kwargs: socket_relief,
     )
+    monkeypatch.setattr(
+        productive,
+        "EquipmentInventoryRelief",
+        lambda *args, **kwargs: equipment_relief,
+    )
 
     with productive.open_productive_runtime(log_path="ignored.log") as runtime:
         assert runtime.config is config
@@ -115,6 +122,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
         assert runtime.facts is facts
         assert runtime.auto_battle is auto
         assert runtime.socket_relief is socket_relief
+        assert runtime.equipment_relief is equipment_relief
         assert source.entered and not source.exited
 
     assert source.exited

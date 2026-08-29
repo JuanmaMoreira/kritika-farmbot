@@ -7,6 +7,7 @@ from bot.action_executor import (
     ActionExecutor,
     DEFAULT_BLACK_MARKET_ACTION_TARGETS,
     DEFAULT_BATTLE_ACTION_TARGETS,
+    DEFAULT_EQUIPMENT_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
     DEFAULT_SOCKET_ACTION_TARGETS,
     FrameGeometry,
@@ -14,6 +15,7 @@ from bot.action_executor import (
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
     AcceptSocketInventoryFull,
+    AcknowledgeEtherealNoMaterial,
     AcknowledgeSocketNoMaterial,
     AcknowledgeInventoryFull,
     AcknowledgeWorldBossPreviousRewards,
@@ -22,8 +24,11 @@ from bot.semantic_actions import (
     ContinueAfterWorldBossRaid,
     CancelSocketSell,
     CloseSocketEnhanceAll,
+    ConfirmCombineAll,
+    ConfirmEtherealMassCombine,
     DismissWorldBossBagFull,
     ExitSocket,
+    ExitCombine,
     OpenBlackMarket,
     OpenBattleModeSelect,
     OpenCharacterSelect,
@@ -31,12 +36,19 @@ from bot.semantic_actions import (
     OpenSocketEnhanceAll,
     OpenSocketEquipmentHome,
     OpenSocketSell,
+    OpenAwakenedTransmute,
+    OpenCombineAll,
+    OpenEquipmentCombine,
+    OpenEtherealMassCombine,
+    OpenEtherealRandomPart,
     QuickMenuLayout,
     OpenWorldBossSelector,
     RejectInsufficientGold,
     RejectSocketInventoryFull,
     SelectSocketEnhanceGold,
     SelectSocketOpalSlot,
+    SelectCombineFuse,
+    SelectCombineTransmute,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -44,6 +56,7 @@ from bot.semantic_actions import (
     Swipe,
     ToggleAutoBattle,
     TapSocketEnhanceAnimation,
+    TapCombineAnimation,
     StartWorldBossBattle,
 )
 
@@ -130,6 +143,33 @@ def test_executor_translates_world_boss_route_actions(action, target):
     ),
 )
 def test_executor_translates_only_safe_socket_route_actions(action, target):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert receipt.normalized_target == target
+
+
+@pytest.mark.parametrize(
+    ("action", "target"),
+    (
+        (OpenEquipmentCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_combine),
+        (SelectCombineTransmute(), DEFAULT_EQUIPMENT_ACTION_TARGETS.select_transmute),
+        (SelectCombineFuse(), DEFAULT_EQUIPMENT_ACTION_TARGETS.select_fuse),
+        (OpenCombineAll(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_combine_all),
+        (ConfirmCombineAll(), DEFAULT_EQUIPMENT_ACTION_TARGETS.confirm_combine_all),
+        (OpenAwakenedTransmute(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_awakened_transmute),
+        (OpenEtherealRandomPart(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_ethereal_random_part),
+        (OpenEtherealMassCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_ethereal_mass_combine),
+        (ConfirmEtherealMassCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.confirm_ethereal_mass_combine),
+        (AcknowledgeEtherealNoMaterial(), DEFAULT_EQUIPMENT_ACTION_TARGETS.acknowledge_ethereal_no_material),
+        (TapCombineAnimation(), DEFAULT_EQUIPMENT_ACTION_TARGETS.animation_tap),
+        (ExitCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.exit_combine),
+    ),
+)
+def test_executor_translates_only_acquired_equipment_relief_actions(action, target):
     adb = Mock()
     executor = ActionExecutor(adb)
 

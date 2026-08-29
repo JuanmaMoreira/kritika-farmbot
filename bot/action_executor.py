@@ -15,6 +15,7 @@ from bot.geometry import (
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
     AcceptSocketInventoryFull,
+    AcknowledgeEtherealNoMaterial,
     AcknowledgeInventoryFull,
     AcknowledgeSocketNoMaterial,
     AcknowledgeWorldBossPreviousRewards,
@@ -23,8 +24,11 @@ from bot.semantic_actions import (
     ContinueAfterWorldBossRaid,
     CancelSocketSell,
     CloseSocketEnhanceAll,
+    ConfirmCombineAll,
+    ConfirmEtherealMassCombine,
     DismissWorldBossBagFull,
     ExitSocket,
+    ExitCombine,
     OpenBlackMarket,
     OpenBattleModeSelect,
     OpenCharacterSelect,
@@ -32,12 +36,19 @@ from bot.semantic_actions import (
     OpenSocketEnhanceAll,
     OpenSocketEquipmentHome,
     OpenSocketSell,
+    OpenAwakenedTransmute,
+    OpenCombineAll,
+    OpenEquipmentCombine,
+    OpenEtherealMassCombine,
+    OpenEtherealRandomPart,
     QuickMenuLayout,
     OpenWorldBossSelector,
     RejectInsufficientGold,
     RejectSocketInventoryFull,
     SelectSocketEnhanceGold,
     SelectSocketOpalSlot,
+    SelectCombineFuse,
+    SelectCombineTransmute,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -46,6 +57,7 @@ from bot.semantic_actions import (
     Swipe,
     ToggleAutoBattle,
     TapSocketEnhanceAnimation,
+    TapCombineAnimation,
     StartWorldBossBattle,
 )
 
@@ -223,6 +235,44 @@ DEFAULT_SOCKET_ACTION_TARGETS = SocketActionTargets()
 
 
 @dataclass(frozen=True)
+class EquipmentActionTargets:
+    """Normalized targets acquired from the live equipment relief route."""
+
+    open_combine: RelativePoint = (0.5000, 0.6300)
+    select_transmute: RelativePoint = (0.3000, 0.1800)
+    select_fuse: RelativePoint = (0.2200, 0.1800)
+    open_combine_all: RelativePoint = (0.4500, 0.9200)
+    confirm_combine_all: RelativePoint = (0.4500, 0.7200)
+    open_awakened_transmute: RelativePoint = (0.3300, 0.9300)
+    open_ethereal_random_part: RelativePoint = (0.2700, 0.4300)
+    open_ethereal_mass_combine: RelativePoint = (0.3400, 0.6400)
+    confirm_ethereal_mass_combine: RelativePoint = (0.4300, 0.6200)
+    acknowledge_ethereal_no_material: RelativePoint = (0.5000, 0.6200)
+    animation_tap: RelativePoint = (0.5000, 0.7800)
+    exit_combine: RelativePoint = (0.8000, 0.0700)
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.open_combine,
+            self.select_transmute,
+            self.select_fuse,
+            self.open_combine_all,
+            self.confirm_combine_all,
+            self.open_awakened_transmute,
+            self.open_ethereal_random_part,
+            self.open_ethereal_mass_combine,
+            self.confirm_ethereal_mass_combine,
+            self.acknowledge_ethereal_no_material,
+            self.animation_tap,
+            self.exit_combine,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_EQUIPMENT_ACTION_TARGETS = EquipmentActionTargets()
+
+
+@dataclass(frozen=True)
 class ActionExecution:
     """Diagnostic receipt for one physical action already sent to ADB."""
 
@@ -254,6 +304,7 @@ class ActionExecutor:
         rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
         battle_targets: BattleActionTargets = DEFAULT_BATTLE_ACTION_TARGETS,
         socket_targets: SocketActionTargets = DEFAULT_SOCKET_ACTION_TARGETS,
+        equipment_targets: EquipmentActionTargets = DEFAULT_EQUIPMENT_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
             raise ValueError("adb must provide tap(x, y)")
@@ -265,11 +316,14 @@ class ActionExecutor:
             raise ValueError("battle_targets must be BattleActionTargets")
         if not isinstance(socket_targets, SocketActionTargets):
             raise ValueError("socket_targets must be SocketActionTargets")
+        if not isinstance(equipment_targets, EquipmentActionTargets):
+            raise ValueError("equipment_targets must be EquipmentActionTargets")
         self.adb = adb
         self.targets = targets
         self.rotation_targets = rotation_targets
         self.battle_targets = battle_targets
         self.socket_targets = socket_targets
+        self.equipment_targets = equipment_targets
 
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
@@ -354,6 +408,30 @@ class ActionExecutor:
             return self.socket_targets.cancel_sell
         if isinstance(action, TapSocketEnhanceAnimation):
             return self.socket_targets.animation_safe_tap
+        if isinstance(action, OpenEquipmentCombine):
+            return self.equipment_targets.open_combine
+        if isinstance(action, SelectCombineTransmute):
+            return self.equipment_targets.select_transmute
+        if isinstance(action, SelectCombineFuse):
+            return self.equipment_targets.select_fuse
+        if isinstance(action, OpenCombineAll):
+            return self.equipment_targets.open_combine_all
+        if isinstance(action, ConfirmCombineAll):
+            return self.equipment_targets.confirm_combine_all
+        if isinstance(action, OpenAwakenedTransmute):
+            return self.equipment_targets.open_awakened_transmute
+        if isinstance(action, OpenEtherealRandomPart):
+            return self.equipment_targets.open_ethereal_random_part
+        if isinstance(action, OpenEtherealMassCombine):
+            return self.equipment_targets.open_ethereal_mass_combine
+        if isinstance(action, ConfirmEtherealMassCombine):
+            return self.equipment_targets.confirm_ethereal_mass_combine
+        if isinstance(action, AcknowledgeEtherealNoMaterial):
+            return self.equipment_targets.acknowledge_ethereal_no_material
+        if isinstance(action, TapCombineAnimation):
+            return self.equipment_targets.animation_tap
+        if isinstance(action, ExitCombine):
+            return self.equipment_targets.exit_combine
         if isinstance(action, DismissWorldBossBagFull):
             return self.battle_targets.dismiss_world_boss_bag_full
         raise ValueError("unsupported semantic action")
@@ -389,9 +467,11 @@ __all__ = (
     "BattleActionTargets",
     "DEFAULT_BATTLE_ACTION_TARGETS",
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
+    "DEFAULT_EQUIPMENT_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
     "FrameGeometry",
+    "EquipmentActionTargets",
     "RotationActionTargets",
     "SocketActionTargets",
     "SwipeExecution",

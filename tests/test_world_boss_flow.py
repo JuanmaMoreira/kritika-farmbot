@@ -10,18 +10,24 @@ from bot.auto_battle import AutoBattleState, EnsureAutoBattleStatus
 from bot.capture import FrameSnapshot
 from bot.catalog import (
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
+    MODE_COMBINE_FUSE,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_EQUIPMENT_INVENTORY_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
+    SCREEN_COMBINE,
     SCREEN_LOBBY,
     SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
 )
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
+from bot.equipment_inventory_relief import (
+    EquipmentReliefOutcome,
+    EquipmentReliefResult,
+)
 from bot.flow_contracts import FlowStatus
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.runtime_facts import (
@@ -35,7 +41,9 @@ from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
 from bot.semantic_actions import (
     AcceptSocketInventoryFull,
     DismissWorldBossBagFull,
+    ExitCombine,
     ExitSocket,
+    OpenEquipmentCombine,
     RejectSocketInventoryFull,
 )
 from bot.socket_inventory_relief import (
@@ -158,6 +166,17 @@ class SocketRelief:
         return self.results.pop(0)
 
 
+class EquipmentRelief:
+    def __init__(self, results=()):
+        self.results = list(results)
+        self.calls = []
+
+    def run(self, return_plan, cancel_requested=None):
+        self.calls.append((return_plan, cancel_requested))
+        assert self.results, "unexpected Equipment relief call"
+        return self.results.pop(0)
+
+
 class Transitions:
     def __init__(self, snapshots, outcomes=None):
         self.snapshots = list(snapshots)
@@ -210,13 +229,14 @@ def auto_result(state=AutoBattleState.ON, taps=0, sequence=8,
 def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
                transitions=(), auto=None, trace=None, cancel=lambda: False,
                fake_time=None, wait_policy=None, socket_relief=None,
-               transition_outcomes=None):
+               equipment_relief=None, transition_outcomes=None):
     trace = trace if trace is not None else []
     observer = Observer(waits, observes, trace)
     facts = Facts(sapphire_read, timer_read, trace)
     events = Events()
     transition_driver = Transitions(transitions, transition_outcomes)
     socket_relief = socket_relief or SocketRelief()
+    equipment_relief = equipment_relief or EquipmentRelief()
     auto = auto or Mock()
     if not hasattr(auto, "ensure_on"):
         auto.ensure_on = Mock(return_value=auto_result())
@@ -239,6 +259,7 @@ def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
     flow = WorldBossFlow(
         observer, Mock(), facts, auto, events,
         socket_relief=socket_relief,
+        equipment_relief=equipment_relief,
         cancel_requested=cancel,
         verified_transition=transition_driver,
         stable_for=0,
@@ -681,12 +702,24 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
         base=SCREEN_WORLD_BOSS,
         overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,),
     )
-    returned = snapshot(8, base=SCREEN_WORLD_BOSS)
+    combine = snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,))
+    second_bag_full = snapshot(
+        10,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,),
+    )
+    returned = snapshot(11, base=SCREEN_WORLD_BOSS)
+    relief = EquipmentRelief((EquipmentReliefResult(
+        EquipmentReliefOutcome.NO_RELIEF_AVAILABLE,
+        final_snapshot=snapshot(9, base=SCREEN_WORLD_BOSS),
+    ),))
     transitions = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
         snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         bag_full,
+        combine,
+        second_bag_full,
         returned,
     ]
     auto = Mock()
@@ -695,6 +728,7 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
         waits=[lobby, main],
         transitions=transitions,
         auto=auto,
+        equipment_relief=relief,
     )
 
     result = flow.run()
@@ -702,12 +736,16 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
     assert result.status is FlowStatus.COMPLETED
     assert result.bag_full
     assert result.event_count(WORLD_BOSS_BAG_FULL) == 1
+    assert isinstance(driver.calls[4][1], OpenEquipmentCombine)
     assert driver.calls[-1][0] == "world_boss.dismiss_bag_full"
     assert isinstance(driver.calls[-1][1], DismissWorldBossBagFull)
     assert all(item[0] != "timer" for item in facts.trace)
     assert observer.observes == []
     auto.ensure_on.assert_not_called()
     assert any(name == WORLD_BOSS_BAG_FULL for name, _ in events.records)
+    assert len(relief.calls) == 1
+    assert isinstance(relief.calls[0][0].action, ExitCombine)
+    assert relief.calls[0][0].expected_return_state == SCREEN_WORLD_BOSS
 
 
 def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
@@ -723,9 +761,13 @@ def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
         snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         bag_full,
+        snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,)),
+        snapshot(10, base=SCREEN_WORLD_BOSS, overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,)),
         bag_full,
     ]
     outcomes = [
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
         VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
         VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
         VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
@@ -741,6 +783,10 @@ def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
         Mock(),
         events,
         socket_relief=SocketRelief(),
+        equipment_relief=EquipmentRelief((EquipmentReliefResult(
+            EquipmentReliefOutcome.RELIEVED,
+            final_snapshot=snapshot(9, base=SCREEN_WORLD_BOSS),
+        ),)),
         verified_transition=driver,
         stable_for=0,
     )
@@ -750,6 +796,93 @@ def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
     assert result.status is FlowStatus.FAILED
     assert "world_boss.dismiss_bag_full_failed" in result.error
     assert not any(name == "world_boss.completed" for name, _ in events.records)
+
+
+def test_positive_equipment_allowance_is_fresh_for_each_run():
+    bag_full = snapshot(
+        7,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,),
+    )
+    transition_cycle = [
+        snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
+        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(5, base=SCREEN_WORLD_BOSS),
+        bag_full,
+        snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,)),
+        snapshot(10, base=SCREEN_WORLD_BOSS, overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,)),
+        snapshot(11, base=SCREEN_WORLD_BOSS),
+    ]
+    relief = EquipmentRelief((
+        EquipmentReliefResult(
+            EquipmentReliefOutcome.NO_RELIEF_AVAILABLE,
+            final_snapshot=snapshot(9, base=SCREEN_WORLD_BOSS),
+        ),
+        EquipmentReliefResult(
+            EquipmentReliefOutcome.RELIEVED,
+            final_snapshot=snapshot(19, base=SCREEN_WORLD_BOSS),
+        ),
+    ))
+    flow, _, _, _, _, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
+        waits=[
+            snapshot(2, base=SCREEN_LOBBY),
+            snapshot(6, base=SCREEN_WORLD_BOSS),
+            snapshot(12, base=SCREEN_LOBBY),
+            snapshot(16, base=SCREEN_WORLD_BOSS),
+        ],
+        transitions=transition_cycle + transition_cycle,
+        equipment_relief=relief,
+    )
+
+    first = flow.run()
+    second = flow.run()
+
+    assert first.status is second.status is FlowStatus.COMPLETED
+    names = [call[0] for call in driver.calls]
+    assert names.count("world_boss.open_equipment_combine") == 2
+    assert names.count("world_boss.dismiss_bag_full") == 2
+    assert len(relief.calls) == 2
+
+
+@pytest.mark.parametrize(
+    ("relief_outcome", "expected_status", "error_text"),
+    (
+        (EquipmentReliefOutcome.CANCELLED, FlowStatus.CANCELLED, None),
+        (EquipmentReliefOutcome.FAILED, FlowStatus.FAILED, "equipment_inventory_relief_failed"),
+    ),
+)
+def test_equipment_relief_cancel_and_failure_stop_before_another_start(
+    relief_outcome, expected_status, error_text
+):
+    bag_full = snapshot(
+        7,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,),
+    )
+    relief = EquipmentRelief((EquipmentReliefResult(
+        relief_outcome,
+        final_snapshot=snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,)),
+        error="scripted" if relief_outcome is EquipmentReliefOutcome.FAILED else None,
+    ),))
+    flow, _, _, _, _, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
+        waits=[snapshot(2, base=SCREEN_LOBBY), snapshot(6, base=SCREEN_WORLD_BOSS)],
+        transitions=[
+            snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
+            snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+            snapshot(5, base=SCREEN_WORLD_BOSS),
+            bag_full,
+            snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,)),
+        ],
+        equipment_relief=relief,
+    )
+
+    result = flow.run()
+
+    assert result.status is expected_status
+    assert error_text is None or error_text in result.error
+    assert [call[0] for call in driver.calls].count("world_boss.start") == 1
 
 
 @pytest.mark.parametrize(
@@ -773,6 +906,7 @@ def test_each_navigation_or_ack_failure_aborts_without_later_input(
         Observer(waits=waits), Mock(),
         Facts(fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY)),
         Mock(), Events(), socket_relief=SocketRelief(),
+        equipment_relief=EquipmentRelief(),
         verified_transition=driver, stable_for=0,
     )
 
@@ -798,6 +932,7 @@ def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():
             fact_result("battle.timer_remaining", 20, 9, SCREEN_WORLD_BOSS_BATTLE),
         ),
         auto, Events(), socket_relief=SocketRelief(),
+        equipment_relief=EquipmentRelief(),
         verified_transition=driver, stable_for=0,
         wait_policy=policy,
         clock=fake.clock,
@@ -882,6 +1017,7 @@ def test_navigation_transition_outcomes_are_preserved(outcome, expected_error):
         observer, Mock(),
         Facts(fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY)),
         Mock(), Events(), socket_relief=SocketRelief(),
+        equipment_relief=EquipmentRelief(),
         verified_transition=driver, stable_for=0,
     )
 
@@ -904,6 +1040,7 @@ def test_unknown_is_not_a_retry_guard_for_any_world_boss_transition():
         Observer(waits=[lobby]), Mock(),
         Facts(fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY)),
         Mock(), Events(), socket_relief=SocketRelief(),
+        equipment_relief=EquipmentRelief(),
         verified_transition=driver, stable_for=0,
     )
     flow.run()
@@ -965,7 +1102,8 @@ def raid_wait_flow(*, raid_at=None, unknown_until=None, always_unknown=False,
     auto = Mock(ensure_on=Mock())
     flow = WorldBossFlow(
         observer, actions, Mock(read_sapphires=Mock(), read_timer_remaining=Mock()),
-        auto, Events(), socket_relief=SocketRelief(), cancel_requested=cancel,
+        auto, Events(), socket_relief=SocketRelief(),
+        equipment_relief=EquipmentRelief(), cancel_requested=cancel,
         wait_policy=policy, clock=fake.clock,
         initial_wait=ControlledWait(
             check_interval=1, clock=fake.clock, sleeper=fake.sleep
