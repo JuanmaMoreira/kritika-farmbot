@@ -71,6 +71,7 @@ def _runtime(observer, events):
         actions=object(),
         facts=object(),
         auto_battle=object(),
+        socket_relief=object(),
         events=events,
         cancel_token=SimpleNamespace(is_requested=lambda: False),
     )
@@ -85,6 +86,9 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     actions = object()
     facts = object()
     auto = object()
+    transition = object()
+    tap_through = object()
+    socket_relief = object()
     monkeypatch.setattr(productive, "build_runtime_event_stream", lambda *a, **k: events)
     monkeypatch.setattr(productive.RuntimeConfig, "from_env", lambda **kwargs: config)
     monkeypatch.setattr(productive, "build_adb_client", lambda value: adb)
@@ -96,6 +100,13 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     monkeypatch.setattr(productive, "build_runtime_fact_reader", lambda value, events: facts)
     monkeypatch.setattr(productive, "AutoBattleDetector", lambda value: object())
     monkeypatch.setattr(productive, "AutoBattleEnsurer", lambda detector, action: auto)
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: transition)
+    monkeypatch.setattr(productive, "TapThroughAnimation", lambda *args: tap_through)
+    monkeypatch.setattr(
+        productive,
+        "SocketInventoryRelief",
+        lambda *args, **kwargs: socket_relief,
+    )
 
     with productive.open_productive_runtime(log_path="ignored.log") as runtime:
         assert runtime.config is config
@@ -103,6 +114,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
         assert runtime.actions is actions
         assert runtime.facts is facts
         assert runtime.auto_battle is auto
+        assert runtime.socket_relief is socket_relief
         assert source.entered and not source.exited
 
     assert source.exited

@@ -14,26 +14,38 @@ from bot.geometry import (
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
+    AcceptSocketInventoryFull,
     AcknowledgeInventoryFull,
+    AcknowledgeSocketNoMaterial,
     AcknowledgeWorldBossPreviousRewards,
     CloseBlackMarket,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
+    CancelSocketSell,
+    CloseSocketEnhanceAll,
     DismissWorldBossBagFull,
+    ExitSocket,
     OpenBlackMarket,
     OpenBattleModeSelect,
     OpenCharacterSelect,
     OpenQuickMenu,
+    OpenSocketEnhanceAll,
+    OpenSocketEquipmentHome,
+    OpenSocketSell,
     QuickMenuLayout,
     OpenWorldBossSelector,
     RejectInsufficientGold,
-    RejectWorldBossInventoryFull,
+    RejectSocketInventoryFull,
+    SelectSocketEnhanceGold,
+    SelectSocketOpalSlot,
+    SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
     SelectBlackMarketSlot,
     SemanticAction,
     Swipe,
     ToggleAutoBattle,
+    TapSocketEnhanceAnimation,
     StartWorldBossBattle,
 )
 
@@ -145,7 +157,6 @@ class BattleActionTargets:
     start_world_boss_battle: RelativePoint = (0.7740, 0.9346)
     toggle_auto_battle: RelativePoint = (0.8625, 0.0480)
     continue_after_raid: RelativePoint = (0.5000, 0.9100)
-    reject_world_boss_inventory_full: RelativePoint = (0.5690, 0.6307)
     dismiss_world_boss_bag_full: RelativePoint = (0.6700, 0.3100)
 
     def __post_init__(self) -> None:
@@ -157,13 +168,58 @@ class BattleActionTargets:
             self.start_world_boss_battle,
             self.toggle_auto_battle,
             self.continue_after_raid,
-            self.reject_world_boss_inventory_full,
             self.dismiss_world_boss_bag_full,
         ):
             relative_point_to_pixel(point, 1, 1)
 
 
 DEFAULT_BATTLE_ACTION_TARGETS = BattleActionTargets()
+
+
+@dataclass(frozen=True)
+class SocketActionTargets:
+    """Normalized targets acquired from the live Socket relief route."""
+
+    accept_inventory_full: RelativePoint = (0.433974, 0.640779)
+    reject_inventory_full: RelativePoint = (0.5690, 0.6307)
+    exit_socket: RelativePoint = (0.8000, 0.0700)
+    open_enhance_all: RelativePoint = (0.6250, 0.9400)
+    enhance_gold: RelativePoint = (0.3750, 0.8400)
+    acknowledge_no_material: RelativePoint = (0.5000, 0.6250)
+    close_enhance_all: RelativePoint = (0.7500, 0.1550)
+    open_equipment_home: RelativePoint = (0.3030, 0.1800)
+    opal_slots: tuple[RelativePoint, ...] = tuple(
+        (x, y)
+        for y in (0.400, 0.540, 0.680, 0.820)
+        for x in (0.583, 0.650, 0.718, 0.785)
+    )
+    open_sell: RelativePoint = (0.3700, 0.9300)
+    sell_bulk: RelativePoint = (0.4000, 0.6330)
+    cancel_sell: RelativePoint = (0.6000, 0.6330)
+    animation_safe_tap: RelativePoint = (0.0800, 0.5000)
+
+    def __post_init__(self) -> None:
+        if len(self.opal_slots) != 16:
+            raise ValueError("opal_slots must contain exactly sixteen targets")
+        for point in (
+            self.accept_inventory_full,
+            self.reject_inventory_full,
+            self.exit_socket,
+            self.open_enhance_all,
+            self.enhance_gold,
+            self.acknowledge_no_material,
+            self.close_enhance_all,
+            self.open_equipment_home,
+            *self.opal_slots,
+            self.open_sell,
+            self.sell_bulk,
+            self.cancel_sell,
+            self.animation_safe_tap,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_SOCKET_ACTION_TARGETS = SocketActionTargets()
 
 
 @dataclass(frozen=True)
@@ -197,6 +253,7 @@ class ActionExecutor:
         targets: BlackMarketActionTargets = DEFAULT_BLACK_MARKET_ACTION_TARGETS,
         rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
         battle_targets: BattleActionTargets = DEFAULT_BATTLE_ACTION_TARGETS,
+        socket_targets: SocketActionTargets = DEFAULT_SOCKET_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
             raise ValueError("adb must provide tap(x, y)")
@@ -206,10 +263,13 @@ class ActionExecutor:
             raise ValueError("rotation_targets must be RotationActionTargets")
         if not isinstance(battle_targets, BattleActionTargets):
             raise ValueError("battle_targets must be BattleActionTargets")
+        if not isinstance(socket_targets, SocketActionTargets):
+            raise ValueError("socket_targets must be SocketActionTargets")
         self.adb = adb
         self.targets = targets
         self.rotation_targets = rotation_targets
         self.battle_targets = battle_targets
+        self.socket_targets = socket_targets
 
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
@@ -268,8 +328,32 @@ class ActionExecutor:
             return self.battle_targets.start_world_boss_battle
         if isinstance(action, ContinueAfterWorldBossRaid):
             return self.battle_targets.continue_after_raid
-        if isinstance(action, RejectWorldBossInventoryFull):
-            return self.battle_targets.reject_world_boss_inventory_full
+        if isinstance(action, AcceptSocketInventoryFull):
+            return self.socket_targets.accept_inventory_full
+        if isinstance(action, RejectSocketInventoryFull):
+            return self.socket_targets.reject_inventory_full
+        if isinstance(action, ExitSocket):
+            return self.socket_targets.exit_socket
+        if isinstance(action, OpenSocketEnhanceAll):
+            return self.socket_targets.open_enhance_all
+        if isinstance(action, SelectSocketEnhanceGold):
+            return self.socket_targets.enhance_gold
+        if isinstance(action, AcknowledgeSocketNoMaterial):
+            return self.socket_targets.acknowledge_no_material
+        if isinstance(action, CloseSocketEnhanceAll):
+            return self.socket_targets.close_enhance_all
+        if isinstance(action, OpenSocketEquipmentHome):
+            return self.socket_targets.open_equipment_home
+        if isinstance(action, SelectSocketOpalSlot):
+            return self.socket_targets.opal_slots[action.slot_index]
+        if isinstance(action, OpenSocketSell):
+            return self.socket_targets.open_sell
+        if isinstance(action, SellSocketInBulk):
+            return self.socket_targets.sell_bulk
+        if isinstance(action, CancelSocketSell):
+            return self.socket_targets.cancel_sell
+        if isinstance(action, TapSocketEnhanceAnimation):
+            return self.socket_targets.animation_safe_tap
         if isinstance(action, DismissWorldBossBagFull):
             return self.battle_targets.dismiss_world_boss_bag_full
         raise ValueError("unsupported semantic action")
@@ -306,7 +390,9 @@ __all__ = (
     "DEFAULT_BATTLE_ACTION_TARGETS",
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
+    "DEFAULT_SOCKET_ACTION_TARGETS",
     "FrameGeometry",
     "RotationActionTargets",
+    "SocketActionTargets",
     "SwipeExecution",
 )

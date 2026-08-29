@@ -117,6 +117,8 @@ Distingue éxito inicial, durante grace, tras retry, guard rechazado, agotamient
 
 No ejecuta input, retry, navegación ni recovery. Esperar disponibilidad futura durante horas pertenece a un scheduler.
 
+`TapThroughAnimation` modela una animación salteable ya iniciada. Alterna snapshots frescos con un tap semántico sólo cuando el caller confirma una fase tappable; impone intervalo, timeout y máximo de taps, y termina inmediatamente ante la postcondición. Estados flash/transitorios pueden observarse sin input; `UNKNOWN` o un estado incompatible nunca autorizan tap. La primitive compone `RuntimeObserver + ActionExecutor`, pero no reconoce pantallas ni elige estrategia.
+
 ## Flows y contratos
 
 `FlowContract` declara una precondición (`EXACT_STATE` o capability) y uno o más estados exactos permitidos al completar. `FlowResult` separa `COMPLETED`, `FAILED` y `CANCELLED`; completion sólo es válido si la postcondición actual está declarada. `FlowEvent` representa un resultado de negocio no fatal y no controla la sesión.
@@ -125,7 +127,9 @@ No ejecuta input, retry, navegación ni recovery. Esperar disponibilidad futura 
 
 `WorldBossFlow` es `PER_CHARACTER`, declara Lobby → Lobby/World Boss y posee policy de sapphires, navegación, Previous Rewards, guards de inventario, Auto Battle, timer, Raid Complete y Continue. Raid Complete depende del overlay, no de que una base concreta resuelva simultáneamente. El flow no implementa OCR, matching, ADB ni recovery de conexión; consume esos boundaries.
 
-Support operations futuros seguirán `check → operación bounded → recheck → continue/skip/fail`; no se permiten llamadas recursivas arbitrarias entre flows. `SocketInventoryRelief` será una operación reutilizable con precondición `screen.socket` y retorno a un `expected_return_state` exacto; no será registrable en GUI/`FlowRegistry`. El caller conservará la decisión de entrar por `Yes` y su policy local de un único intento positivo.
+Las support operations siguen `check → operación bounded → recheck → continue/skip/fail`; no son flows, no entran en GUI/`FlowRegistry` y no permiten llamadas recursivas arbitrarias entre flows. El caller conserva la policy de cuándo invocarlas y entrega un return plan con acción y estado exacto esperado; la operación sólo reporta éxito después de verificar ese retorno.
+
+`SocketInventoryRelief` requiere `screen.socket` limpio, intenta Enhance All sólo con GOLD y, ante No Material, puede buscar de forma bounded un ópalo incompatible visible. Sell in Bulk se autoriza únicamente con velo rojo y un fact de nivel confirmado en `0`; lectura no confirmada o nivel distinto cancela la venta. Sus outcomes explícitos son `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` y `CANCELLED`. `WorldBossFlow` posee tanto el `Yes` inicial como el permiso local de un único intento positivo por ejecución; una segunda aparición usa `No`. El único return plan compuesto productivamente es `ExitSocket → screen.world_boss`.
 
 ## Rotation y Quick Menu
 

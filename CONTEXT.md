@@ -13,7 +13,7 @@ Capture
   → Perception
   → Semantic Observations / Runtime Facts
   → ContextResolver
-  → Flow / SessionRunner / Rotation
+  → Flow / Support Operation / SessionRunner / Rotation
   → operaciones semánticas verificadas
   → ActionExecutor
   → AdbClient
@@ -41,11 +41,14 @@ Purchase Confirmation exige `Purchased` fresco en el mismo slot. Insufficient Go
 
 Con recursos suficientes navega Lobby → Battle Mode Select → Select Boss → World Boss. Previous Rewards es una rama opcional que se estabiliza y confirma antes de Start. Después de Start:
 
-- `popup.socket_inventory_full`: `No → World Boss`, evento no fatal y fin del flow;
+- primera `popup.socket_inventory_full`: `Yes → SocketInventoryRelief → Back verificado → World Boss`; el permiso positivo se consume sólo tras confirmar Socket y existe una vez por `run()`;
+- segunda `popup.socket_inventory_full`: `No → World Boss`, evento no fatal y fin del flow, sin una segunda entrada positiva;
 - `popup.world_boss_bag_full`: `X → World Boss`, evento no fatal y fin del flow;
 - batalla: asegura Auto Battle ON, lee el timer, espera pasivamente timer + margen y luego busca Raid Complete con polling bounded.
 
 Raid Complete se acepta por presencia del overlay, independientemente de que la base esté resuelta, transitoria o `UNKNOWN`. Continue se verifica contra World Boss. Ausencia del overlay termina en timeout, nunca en éxito supuesto. La conexión fallida post-batalla todavía no tiene semántica/recovery productivo.
+
+`SocketInventoryRelief` es una support operation productiva, no un flow ni una entrada del registry. Desde Socket intenta primero Enhance All exclusivamente con GOLD. Una animación positiva usa taps bounded sólo sobre fases inequívocamente tappable y termina al observar Socket; No Material cierra el modal y habilita el fallback. La venta sólo considera ópalos incompatibles con velo rojo y sólo ejecuta Sell in Bulk cuando `item.socket.sell_level == 0` fue confirmado; cualquier nivel no cero o lectura no confirmada cancela. Retorna `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` o `CANCELLED` y siempre exige el estado exacto declarado por el caller. El único return plan productivo actual es `Socket → Back → World Boss`.
 
 ### Sesión y Rotation
 
@@ -57,7 +60,7 @@ Raid Complete se acepta por presencia del overlay, independientemente de que la 
 
 ### Runtime manual, GUI, logging y cancelación
 
-`ProductiveRuntime` compone configuración, ADB, captura, percepción, observer, OCR facts, Auto Battle, executor, registry, flows, session y rotation con cleanup explícito. Antes de validar una pre/postcondición limpia tolera frames transitorios durante una espera bounded; no convierte un estado contradictorio en éxito.
+`ProductiveRuntime` compone configuración, ADB, captura, percepción, observer, OCR facts, Auto Battle, executor, `TapThroughAnimation`, `SocketInventoryRelief`, registry, flows, session y rotation con cleanup explícito. Antes de validar una pre/postcondición limpia tolera frames transitorios durante una espera bounded; no convierte un estado contradictorio en éxito.
 
 - GUI productiva: `tools.gui`, con launcher `Kritika FarmBot.cmd`; permite ordenar/activar flows, `Run Flow Once`, `Run Session`, character count, Debug Mode y `Stop Safely`.
 - CLI productiva: `tools.run_flow` y `tools.run_session`, con el mismo registry/runtime y exit codes documentados en README.
@@ -65,7 +68,7 @@ Raid Complete se acepta por presencia del overlay, independientemente de que la 
 - GUI: un único worker no-Tk ejecuta el runtime y entrega eventos/resultados por queue; el main thread sólo renderiza. No contiene business logic.
 - `CancellationToken` es thread-safe y compartido por GUI/CLI, runner, facts y waits. Stop/Ctrl+C solicita cancelación en boundaries seguros; no mata threads ni clasifica cancelación como fallo técnico.
 
-`ControlledWait` es una primitive monotónica, cancelable y bounded para actividad ya iniciada. Recibe duración o deadline y condiciones opcionales de completion/terminal. Sin condición, alcanzar el límite es completion de la espera pasiva; con condición, vencer sin observarla es timeout. Un check falso sólo continúa; la primitive no ejecuta input, retry ni recovery.
+`ControlledWait` es una primitive monotónica, cancelable y bounded para actividad ya iniciada. Recibe duración o deadline y condiciones opcionales de completion/terminal. Sin condición, alcanzar el límite es completion de la espera pasiva; con condición, vencer sin observarla es timeout. Un check falso sólo continúa; la primitive no ejecuta input, retry ni recovery. `TapThroughAnimation` alterna snapshots frescos y taps state-guarded para una animación ya iniciada, con intervalo, timeout y máximo de taps; flash, `UNKNOWN` o estado incompatible nunca autorizan input.
 
 ## Estados, overlays y facts útiles
 
@@ -105,9 +108,9 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free del checkpoint Socket Inventory Relief: **896/896 tests verdes**. La evaluación productiva global cerró 168/168 resoluciones, 168/168 overlays y cero wrong/ambiguous.
+- Suite hardware-free de la rama positiva Socket Inventory Relief: **961/961 tests verdes**. El evaluator incremental reutilizó **4032/4032** pares del corpus productivo, sin invalidaciones y con cero wrong/ambiguous.
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
-- World Boss está validado en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, Inventory Full, Bag Full y Rotation desde World Boss.
+- World Boss está validado hardware-free en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, una única rama positiva Socket Full, segunda rama negativa, Bag Full y Rotation desde World Boss.
 - `StandardRotation` pasó un loop aislado 28/28 con retorno al personaje inicial.
 - La composición `Black Market → World Boss → Rotation` y la GUI productiva están validadas.
 - Primer checkpoint combinado desde GUI: sesión `COMPLETED`, 28/28 personajes, 28 advances, 28 ejecuciones de cada flow y cero fallos técnicos. El detalle auditable está en `docs/HISTORY.md`.
@@ -115,7 +118,7 @@ Facts productivos:
 ## Deuda y limitaciones relevantes
 
 - Adquirir y diseñar recovery bounded para el popup de conexión post-batalla de World Boss.
-- `WorldBossFlow` aún toma sólo `No` ante `popup.socket_inventory_full`; la semántica de alivio está adquirida, pero `SocketInventoryRelief`, el único intento positivo del caller y la restauración de `expected_return_state` siguen sin implementar.
+- `popup.world_boss_bag_full` conserva sólo su cierre negativo no fatal; no existe una operación de alivio para ese inventario.
 - No existe `CharacterContextProvider` ni OCR de nombre. Tampoco costo/rank/participation, Auto Repeat o scheduler.
 - `ConflictResolver`, recovery transversal e isolation/continuation unattended siguen futuros. Los retries locales verificados no se trasladan a esa capa.
 - Timings y retries pueden seguir ajustándose sólo a partir de logs productivos; no hay necesidad de tuning preventivo.
@@ -123,4 +126,4 @@ Facts productivos:
 
 ## Próximo trabajo
 
-Implementar como Fase 2 la support operation reutilizable `SocketInventoryRelief` sobre las señales ya adquiridas, sin convertirla en flow ni trasladar la policy de único intento fuera del caller. Las prioridades restantes están en [`ROADMAP.md`](ROADMAP.md).
+La rama positiva bounded de Socket Inventory Full quedó implementada. Las prioridades restantes están en [`ROADMAP.md`](ROADMAP.md); no se amplían return plans ni flows sin evidencia específica.

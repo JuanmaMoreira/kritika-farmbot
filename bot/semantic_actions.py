@@ -10,6 +10,7 @@ from bot.geometry import RelativePoint, relative_point_to_pixel
 
 
 _BLACK_MARKET_SLOT_COUNT = 10
+_SOCKET_OPAL_SLOT_COUNT = 16
 
 
 @dataclass(frozen=True)
@@ -144,8 +145,82 @@ class ContinueAfterWorldBossRaid:
 
 
 @dataclass(frozen=True)
-class RejectWorldBossInventoryFull:
-    """Request No on the World Boss Start inventory-full guard."""
+class AcceptSocketInventoryFull:
+    """Request Yes on the global Socket inventory-full guard."""
+
+
+@dataclass(frozen=True)
+class RejectSocketInventoryFull:
+    """Request No on the global Socket inventory-full guard."""
+
+
+@dataclass(frozen=True)
+class OpenSocketEnhanceAll:
+    """Request the Socket Enhance All modal."""
+
+
+@dataclass(frozen=True)
+class SelectSocketEnhanceGold:
+    """Request the GOLD option; no KARATS action exists by design."""
+
+
+@dataclass(frozen=True)
+class AcknowledgeSocketNoMaterial:
+    """Request OK on Socket's no-material popup."""
+
+
+@dataclass(frozen=True)
+class CloseSocketEnhanceAll:
+    """Request Close on the Enhance All modal."""
+
+
+@dataclass(frozen=True)
+class OpenSocketEquipmentHome:
+    """Request the acquired Equipment Home submenu."""
+
+
+@dataclass(frozen=True)
+class SelectSocketOpalSlot:
+    """Request one visible row-major Socket opal slot."""
+
+    slot_index: int
+
+    def __post_init__(self) -> None:
+        value = self.slot_index
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, Integral)
+            or not 0 <= value < _SOCKET_OPAL_SLOT_COUNT
+        ):
+            raise ValueError(
+                f"slot_index must be an integer in [0, {_SOCKET_OPAL_SLOT_COUNT - 1}]"
+            )
+        object.__setattr__(self, "slot_index", int(value))
+
+
+@dataclass(frozen=True)
+class OpenSocketSell:
+    """Request Sell for the already selected Socket item."""
+
+
+@dataclass(frozen=True)
+class SellSocketInBulk:
+    """Request the only productively authorized Socket sale action."""
+
+
+@dataclass(frozen=True)
+class CancelSocketSell:
+    """Request non-destructive cancellation of the Socket Sell popup."""
+
+
+@dataclass(frozen=True)
+class TapSocketEnhanceAnimation:
+    """Request one tap in the acquired safe animation region."""
+
+
+@dataclass(frozen=True)
+class ExitSocket:
+    """Request the live-verified Socket Back action."""
 
 
 @dataclass(frozen=True)
@@ -172,32 +247,56 @@ SemanticAction = (
     | AcknowledgeWorldBossPreviousRewards
     | StartWorldBossBattle
     | ContinueAfterWorldBossRaid
-    | RejectWorldBossInventoryFull
+    | AcceptSocketInventoryFull
+    | RejectSocketInventoryFull
+    | OpenSocketEnhanceAll
+    | SelectSocketEnhanceGold
+    | AcknowledgeSocketNoMaterial
+    | CloseSocketEnhanceAll
+    | OpenSocketEquipmentHome
+    | SelectSocketOpalSlot
+    | OpenSocketSell
+    | SellSocketInBulk
+    | CancelSocketSell
+    | TapSocketEnhanceAnimation
+    | ExitSocket
     | DismissWorldBossBagFull
 )
 
 
 __all__ = (
     "AcceptPurchaseConfirmation",
+    "AcceptSocketInventoryFull",
+    "AcknowledgeSocketNoMaterial",
     "AcknowledgeWorldBossPreviousRewards",
     "AcknowledgeInventoryFull",
     "CloseBlackMarket",
     "ConfirmCharacterSelection",
     "ContinueAfterWorldBossRaid",
+    "CancelSocketSell",
+    "CloseSocketEnhanceAll",
     "DismissWorldBossBagFull",
     "OpenBlackMarket",
     "OpenBattleModeSelect",
     "OpenCharacterSelect",
     "OpenQuickMenu",
+    "OpenSocketEnhanceAll",
+    "OpenSocketEquipmentHome",
+    "OpenSocketSell",
     "QuickMenuLayout",
     "OpenWorldBossSelector",
     "RejectInsufficientGold",
-    "RejectWorldBossInventoryFull",
+    "RejectSocketInventoryFull",
+    "SelectSocketEnhanceGold",
+    "SelectSocketOpalSlot",
+    "SellSocketInBulk",
     "Swipe",
     "SelectLastVisibleCharacter",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",
     "SemanticAction",
     "ToggleAutoBattle",
+    "TapSocketEnhanceAnimation",
+    "ExitSocket",
     "StartWorldBossBattle",
 )

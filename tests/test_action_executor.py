@@ -8,29 +8,42 @@ from bot.action_executor import (
     DEFAULT_BLACK_MARKET_ACTION_TARGETS,
     DEFAULT_BATTLE_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
+    DEFAULT_SOCKET_ACTION_TARGETS,
     FrameGeometry,
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
+    AcceptSocketInventoryFull,
+    AcknowledgeSocketNoMaterial,
     AcknowledgeInventoryFull,
     AcknowledgeWorldBossPreviousRewards,
     CloseBlackMarket,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
+    CancelSocketSell,
+    CloseSocketEnhanceAll,
     DismissWorldBossBagFull,
+    ExitSocket,
     OpenBlackMarket,
     OpenBattleModeSelect,
     OpenCharacterSelect,
     OpenQuickMenu,
+    OpenSocketEnhanceAll,
+    OpenSocketEquipmentHome,
+    OpenSocketSell,
     QuickMenuLayout,
     OpenWorldBossSelector,
     RejectInsufficientGold,
-    RejectWorldBossInventoryFull,
+    RejectSocketInventoryFull,
+    SelectSocketEnhanceGold,
+    SelectSocketOpalSlot,
+    SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
     SelectBlackMarketSlot,
     Swipe,
     ToggleAutoBattle,
+    TapSocketEnhanceAnimation,
     StartWorldBossBattle,
 )
 
@@ -86,7 +99,6 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
         (StartWorldBossBattle(), DEFAULT_BATTLE_ACTION_TARGETS.start_world_boss_battle),
         (ToggleAutoBattle(), DEFAULT_BATTLE_ACTION_TARGETS.toggle_auto_battle),
         (ContinueAfterWorldBossRaid(), DEFAULT_BATTLE_ACTION_TARGETS.continue_after_raid),
-        (RejectWorldBossInventoryFull(), DEFAULT_BATTLE_ACTION_TARGETS.reject_world_boss_inventory_full),
         (DismissWorldBossBagFull(), DEFAULT_BATTLE_ACTION_TARGETS.dismiss_world_boss_bag_full),
     ),
 )
@@ -98,6 +110,57 @@ def test_executor_translates_world_boss_route_actions(action, target):
 
     adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
     assert receipt.normalized_target == target
+
+
+@pytest.mark.parametrize(
+    ("action", "target"),
+    (
+        (AcceptSocketInventoryFull(), DEFAULT_SOCKET_ACTION_TARGETS.accept_inventory_full),
+        (RejectSocketInventoryFull(), DEFAULT_SOCKET_ACTION_TARGETS.reject_inventory_full),
+        (ExitSocket(), DEFAULT_SOCKET_ACTION_TARGETS.exit_socket),
+        (OpenSocketEnhanceAll(), DEFAULT_SOCKET_ACTION_TARGETS.open_enhance_all),
+        (SelectSocketEnhanceGold(), DEFAULT_SOCKET_ACTION_TARGETS.enhance_gold),
+        (AcknowledgeSocketNoMaterial(), DEFAULT_SOCKET_ACTION_TARGETS.acknowledge_no_material),
+        (CloseSocketEnhanceAll(), DEFAULT_SOCKET_ACTION_TARGETS.close_enhance_all),
+        (OpenSocketEquipmentHome(), DEFAULT_SOCKET_ACTION_TARGETS.open_equipment_home),
+        (OpenSocketSell(), DEFAULT_SOCKET_ACTION_TARGETS.open_sell),
+        (SellSocketInBulk(), DEFAULT_SOCKET_ACTION_TARGETS.sell_bulk),
+        (CancelSocketSell(), DEFAULT_SOCKET_ACTION_TARGETS.cancel_sell),
+        (TapSocketEnhanceAnimation(), DEFAULT_SOCKET_ACTION_TARGETS.animation_safe_tap),
+    ),
+)
+def test_executor_translates_only_safe_socket_route_actions(action, target):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert receipt.normalized_target == target
+
+
+@pytest.mark.parametrize("slot_index", range(16))
+def test_executor_supports_each_visible_socket_opal_slot(slot_index):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(
+        SelectSocketOpalSlot(slot_index), FrameGeometry(width=2712, height=1224)
+    )
+
+    target = DEFAULT_SOCKET_ACTION_TARGETS.opal_slots[slot_index]
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert receipt.normalized_target == target
+
+
+def test_socket_action_vocabulary_has_no_karats_or_individual_sell_intent():
+    import bot.semantic_actions as actions
+
+    exported = set(actions.__all__)
+
+    assert not any("Karat" in name for name in exported)
+    assert "SellSocketInBulk" in exported
+    assert "SellSocket" not in exported
 
 
 @pytest.mark.parametrize("slot_index", range(10))

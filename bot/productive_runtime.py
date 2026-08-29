@@ -24,7 +24,9 @@ from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
 from bot.runtime_observer import RuntimeObserver, RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.session import SessionPlan, SessionResult, SessionRunner
+from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
+from bot.tap_through_animation import TapThroughAnimation
 from bot.verified_transition import VerifiedTransition
 
 
@@ -54,6 +56,7 @@ class ProductiveRuntime:
     actions: ActionExecutor
     facts: object
     auto_battle: AutoBattleEnsurer
+    socket_relief: SocketInventoryRelief
     events: RuntimeEventStream
     cancel_token: CancellationToken
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY
@@ -235,12 +238,23 @@ def open_productive_runtime(
             )
             facts = build_runtime_fact_reader(observer, events=events)
             auto_battle = AutoBattleEnsurer(AutoBattleDetector(observer), actions)
+            transition = VerifiedTransition(observer, actions, events)
+            tap_through = TapThroughAnimation(observer, actions, events)
+            socket_relief = SocketInventoryRelief(
+                observer,
+                actions,
+                facts,
+                events,
+                verified_transition=transition,
+                tap_through=tap_through,
+            )
             yield ProductiveRuntime(
                 config,
                 observer,
                 actions,
                 facts,
                 auto_battle,
+                socket_relief,
                 events,
                 token,
                 registry,
