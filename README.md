@@ -30,7 +30,7 @@ En Windows también se puede abrir con doble clic sobre `Kritika FarmBot.cmd` en
 
 La lista de flows procede directamente de `FlowRegistry`. Seleccionar una fila y usar `Enable / Disable`, `↑ Up` y `↓ Down`; una sesión conserva exactamente el orden visible de los flows activos. `Run Flow Once` exige un único flow activo y no rota. `Run Session` usa todos los flows activos, `SessionPlan`, `SessionRunner` y el número positivo de Characters; el default es 28.
 
-`Stop Safely` solicita el mismo token de cancelación que la CLI y no mata threads. Durante una ejecución, los controles de configuración quedan bloqueados. Si se intenta cerrar la ventana, la GUI ofrece solicitar la parada segura y espera el boundary antes de salir.
+`Run Session` muestra un contador monotónico `HH:MM:SS`, reseteado por cada sesión y congelado en su duración final. `Stop Safely` solicita el mismo token de cancelación que la CLI y no mata threads; el contador sigue hasta el resultado `CANCELLED`. Durante una ejecución, los controles de configuración quedan bloqueados. Si se intenta cerrar la ventana, la GUI ofrece solicitar la parada segura y espera el boundary antes de salir.
 
 La Debug Console muestra eventos en vivo con timestamp, nivel, componente y campos estructurados; Debug Mode agrega facts OCR, transiciones, retries y telemetría de waits. `Clear`, `Copy selected` y `Copy all` sólo modifican la vista. El log persistente completo siempre queda bajo `logs/` y su path aparece en Status / Progress.
 

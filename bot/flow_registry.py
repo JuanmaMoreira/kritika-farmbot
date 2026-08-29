@@ -16,7 +16,7 @@ class FlowDependencies(Protocol):
     facts: object
     auto_battle: object
     socket_relief: object
-    equipment_relief: object
+    equipment_combine_relief: object
     events: object
     cancel_requested: Callable[[], bool]
 
@@ -110,7 +110,7 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
         dependencies.auto_battle,
         dependencies.events,
         socket_relief=dependencies.socket_relief,
-        equipment_relief=dependencies.equipment_relief,
+        equipment_combine_relief=dependencies.equipment_combine_relief,
         cancel_requested=dependencies.cancel_requested,
         verified_transition=VerifiedTransition(
             dependencies.observer, dependencies.actions, dependencies.events

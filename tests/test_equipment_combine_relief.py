@@ -17,11 +17,11 @@ from bot.catalog import (
     STATUS_COMBINE_FUSE_AVAILABLE,
     STATUS_COMBINE_TRANSMUTE_AVAILABLE,
 )
-from bot.equipment_inventory_relief import (
-    EquipmentInventoryRelief,
-    EquipmentReliefOutcome,
-    EquipmentReturnPlan,
-    EquipmentStrategyOutcome,
+from bot.equipment_combine_relief import (
+    EquipmentCombineRelief,
+    EquipmentCombineReliefOutcome,
+    EquipmentCombineReturnPlan,
+    EquipmentCombineStrategyOutcome,
 )
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
@@ -119,7 +119,7 @@ def build(initial, transitions, taps=()):
     observer = Observer(initial)
     driver = Transitions(transitions)
     tapper = TapThrough(taps)
-    operation = EquipmentInventoryRelief(
+    operation = EquipmentCombineRelief(
         observer,
         Actions(),
         Events(),
@@ -131,7 +131,7 @@ def build(initial, transitions, taps=()):
 
 
 def plan():
-    return EquipmentReturnPlan(ExitCombine(), SCREEN_WORLD_BOSS)
+    return EquipmentCombineReturnPlan(ExitCombine(), SCREEN_WORLD_BOSS)
 
 
 def completed(taps, final):
@@ -151,17 +151,20 @@ def test_all_three_absent_statuses_skip_and_return_no_relief():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.NO_RELIEF_AVAILABLE
+    assert result.outcome is EquipmentCombineReliefOutcome.NO_RELIEF_AVAILABLE
     assert (result.transmute, result.ethereal, result.fuse) == (
-        EquipmentStrategyOutcome.SKIPPED,
-        EquipmentStrategyOutcome.SKIPPED,
-        EquipmentStrategyOutcome.SKIPPED,
+        EquipmentCombineStrategyOutcome.SKIPPED,
+        EquipmentCombineStrategyOutcome.SKIPPED,
+        EquipmentCombineStrategyOutcome.SKIPPED,
     )
     assert [type(call[1]) for call in driver.calls] == [
         SelectCombineTransmute,
         SelectCombineFuse,
         ExitCombine,
     ]
+    names = [name for name, _ in operation.events.records]
+    assert "equipment_combine_relief.started" in names
+    assert "equipment_combine_relief.finished" in names
     assert tapper.calls == []
 
 
@@ -184,9 +187,9 @@ def test_transmute_effect_is_verified_and_fuse_is_still_evaluated():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.RELIEVED
-    assert result.transmute is EquipmentStrategyOutcome.EFFECT
-    assert result.ethereal is result.fuse is EquipmentStrategyOutcome.SKIPPED
+    assert result.outcome is EquipmentCombineReliefOutcome.RELIEVED
+    assert result.transmute is EquipmentCombineStrategyOutcome.EFFECT
+    assert result.ethereal is result.fuse is EquipmentCombineStrategyOutcome.SKIPPED
     assert result.animation_taps == 2
     assert len(tapper.calls) == 1
 
@@ -213,9 +216,9 @@ def test_ethereal_effect_returns_to_transmute_and_clears_guard():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.RELIEVED
-    assert result.ethereal is EquipmentStrategyOutcome.EFFECT
-    assert [call[0] for call in driver.calls].index("equipment_relief.ethereal.return_transmute") < [call[0] for call in driver.calls].index("equipment_relief.select_fuse")
+    assert result.outcome is EquipmentCombineReliefOutcome.RELIEVED
+    assert result.ethereal is EquipmentCombineStrategyOutcome.EFFECT
+    assert [call[0] for call in driver.calls].index("equipment_combine_relief.ethereal.return_transmute") < [call[0] for call in driver.calls].index("equipment_combine_relief.select_fuse")
 
 
 def test_fuse_effect_is_evaluated_fresh_after_transmute():
@@ -234,8 +237,8 @@ def test_fuse_effect_is_evaluated_fresh_after_transmute():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.RELIEVED
-    assert result.fuse is EquipmentStrategyOutcome.EFFECT
+    assert result.outcome is EquipmentCombineReliefOutcome.RELIEVED
+    assert result.fuse is EquipmentCombineStrategyOutcome.EFFECT
 
 
 def test_transmute_can_generate_fresh_fuse_availability():
@@ -257,7 +260,7 @@ def test_transmute_can_generate_fresh_fuse_availability():
 
     result = operation.run(plan())
 
-    assert result.transmute is result.fuse is EquipmentStrategyOutcome.EFFECT
+    assert result.transmute is result.fuse is EquipmentCombineStrategyOutcome.EFFECT
     assert result.animation_taps == 6
 
 
@@ -273,8 +276,8 @@ def test_present_status_without_animation_is_bounded_failure_not_no_relief():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.FAILED
-    assert result.transmute is EquipmentStrategyOutcome.FAILED
+    assert result.outcome is EquipmentCombineReliefOutcome.FAILED
+    assert result.transmute is EquipmentCombineStrategyOutcome.FAILED
 
 
 def test_defensive_ethereal_no_material_is_explicit_failure_and_not_effect():
@@ -292,9 +295,9 @@ def test_defensive_ethereal_no_material_is_explicit_failure_and_not_effect():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.FAILED
-    assert result.ethereal is EquipmentStrategyOutcome.FAILED
-    assert driver.calls[-1][0] == "equipment_relief.ethereal.restore_transmute"
+    assert result.outcome is EquipmentCombineReliefOutcome.FAILED
+    assert result.ethereal is EquipmentCombineStrategyOutcome.FAILED
+    assert driver.calls[-1][0] == "equipment_combine_relief.ethereal.restore_transmute"
 
 
 def test_cancellation_is_distinct_and_sends_no_transition():
@@ -302,7 +305,7 @@ def test_cancellation_is_distinct_and_sends_no_transition():
 
     result = operation.run(plan(), lambda: True)
 
-    assert result.outcome is EquipmentReliefOutcome.CANCELLED
+    assert result.outcome is EquipmentCombineReliefOutcome.CANCELLED
     assert driver.calls == []
 
 
@@ -320,8 +323,8 @@ def test_cancellation_from_shared_animation_primitive_is_propagated():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.CANCELLED
-    assert result.transmute is EquipmentStrategyOutcome.CANCELLED
+    assert result.outcome is EquipmentCombineReliefOutcome.CANCELLED
+    assert result.transmute is EquipmentCombineStrategyOutcome.CANCELLED
     assert result.animation_taps == 1
 
 
@@ -333,6 +336,6 @@ def test_exact_return_plan_failure_does_not_claim_success():
 
     result = operation.run(plan())
 
-    assert result.outcome is EquipmentReliefOutcome.FAILED
+    assert result.outcome is EquipmentCombineReliefOutcome.FAILED
     assert result.error == "equipment_return_failed"
     assert isinstance(driver.calls[-1][1], ExitCombine)

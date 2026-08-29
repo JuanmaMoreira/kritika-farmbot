@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Callable
 
 from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventLevel, RuntimeEvent
@@ -73,6 +75,41 @@ class FlowSelectionModel:
 class GuiRunMode(str, Enum):
     FLOW_ONCE = "flow_once"
     SESSION = "session"
+
+
+class SessionElapsedTimer:
+    """Monotonic presentation state for the productive Run Session timer."""
+
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
+        self.clock = clock
+        self._started_at: float | None = None
+        self._elapsed = 0.0
+
+    @property
+    def running(self) -> bool:
+        return self._started_at is not None
+
+    @property
+    def text(self) -> str:
+        total_seconds = int(max(0.0, self._elapsed))
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+    def start(self) -> str:
+        self._started_at = self.clock()
+        self._elapsed = 0.0
+        return self.text
+
+    def update(self) -> str:
+        if self._started_at is not None:
+            self._elapsed = max(0.0, self.clock() - self._started_at)
+        return self.text
+
+    def finish(self, duration: float) -> str:
+        self._elapsed = max(0.0, float(duration))
+        self._started_at = None
+        return self.text
 
 
 @dataclass(frozen=True)
@@ -164,5 +201,6 @@ __all__ = (
     "GuiFlowOption",
     "GuiProgress",
     "GuiRunMode",
+    "SessionElapsedTimer",
     "event_visible",
 )

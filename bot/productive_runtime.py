@@ -16,7 +16,7 @@ from bot.auto_battle import AutoBattleDetector, AutoBattleEnsurer
 from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS, build_default_resolver
 from bot.config import RuntimeConfig
 from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtime_event_stream
-from bot.equipment_inventory_relief import EquipmentInventoryRelief
+from bot.equipment_combine_relief import EquipmentCombineRelief
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry
 from bot.perception import build_default_perception
@@ -58,7 +58,7 @@ class ProductiveRuntime:
     facts: object
     auto_battle: AutoBattleEnsurer
     socket_relief: SocketInventoryRelief
-    equipment_relief: EquipmentInventoryRelief
+    equipment_combine_relief: EquipmentCombineRelief
     events: RuntimeEventStream
     cancel_token: CancellationToken
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY
@@ -250,7 +250,7 @@ def open_productive_runtime(
                 verified_transition=transition,
                 tap_through=tap_through,
             )
-            equipment_relief = EquipmentInventoryRelief(
+            equipment_combine_relief = EquipmentCombineRelief(
                 observer,
                 actions,
                 events,
@@ -264,7 +264,7 @@ def open_productive_runtime(
                 facts,
                 auto_battle,
                 socket_relief,
-                equipment_relief,
+                equipment_combine_relief,
                 events,
                 token,
                 registry,

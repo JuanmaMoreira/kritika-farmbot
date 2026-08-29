@@ -20,12 +20,15 @@ from bot.gui_model import (
     FlowSelectionModel,
     GuiExecutionRequest,
     GuiProgress,
+    GuiRunMode,
+    SessionElapsedTimer,
     event_visible,
 )
 from bot.productive_runtime import PROJECT_ROOT
 
 
 POLL_INTERVAL_MS = 50
+SESSION_TIMER_INTERVAL_MS = 1000
 MAX_VISIBLE_CONSOLE_LINES = 5000
 
 
@@ -45,6 +48,8 @@ class KritikaFarmBotGui:
         self.selection = FlowSelectionModel()
         self.controller = GuiRuntimeController(registry=self.selection.registry)
         self.progress = GuiProgress()
+        self.session_timer = SessionElapsedTimer()
+        self._active_mode: GuiRunMode | None = None
         self._debug_for_run = False
         self._close_when_idle = False
 
@@ -61,11 +66,13 @@ class KritikaFarmBotGui:
         self.state_var = tk.StringVar(value="-")
         self.result_var = tk.StringVar(value="Ready")
         self.log_var = tk.StringVar(value="Log: -")
+        self.session_elapsed_var = tk.StringVar(value=self.session_timer.text)
 
         self._build_layout()
         self._refresh_flow_list()
         self._set_running_controls(False)
         self.root.after(POLL_INTERVAL_MS, self._drain_worker)
+        self.root.after(SESSION_TIMER_INTERVAL_MS, self._refresh_session_timer)
 
     def _build_layout(self) -> None:
         outer = ttk.Frame(self.root, padding=12)
@@ -117,18 +124,19 @@ class KritikaFarmBotGui:
 
         status = ttk.LabelFrame(outer, text="Status / Progress", padding=8)
         status.grid(row=2, column=0, sticky="ew", pady=10)
-        for column in range(4):
+        for column in range(5):
             status.columnconfigure(column, weight=1)
         self._status_pair(status, 0, "Status", self.status_var)
         self._status_pair(status, 1, "Character", self.character_var)
         self._status_pair(status, 2, "Flow", self.flow_var)
         self._status_pair(status, 3, "State", self.state_var)
+        self._status_pair(status, 4, "Session elapsed", self.session_elapsed_var)
         ttk.Label(status, text="Result:").grid(row=2, column=0, sticky="w", pady=(8, 0))
         ttk.Label(status, textvariable=self.result_var).grid(
-            row=2, column=1, columnspan=3, sticky="w", pady=(8, 0)
+            row=2, column=1, columnspan=4, sticky="w", pady=(8, 0)
         )
         ttk.Label(status, textvariable=self.log_var).grid(
-            row=3, column=0, columnspan=4, sticky="w", pady=(3, 0)
+            row=3, column=0, columnspan=5, sticky="w", pady=(3, 0)
         )
 
         console_frame = ttk.LabelFrame(outer, text="Debug Console", padding=8)
@@ -233,6 +241,9 @@ class KritikaFarmBotGui:
 
     def _start(self, request: GuiExecutionRequest) -> None:
         self.progress = GuiProgress(character="1 / 1" if request.character_count == 1 else "-")
+        self._active_mode = request.mode
+        if request.mode is GuiRunMode.SESSION:
+            self.session_elapsed_var.set(self.session_timer.start())
         self._debug_for_run = request.debug
         self.status_var.set(GuiRunStatus.RUNNING.value)
         self.result_var.set("Running...")
@@ -270,6 +281,9 @@ class KritikaFarmBotGui:
         self.root.after(POLL_INTERVAL_MS, self._drain_worker)
 
     def _finish(self, result: GuiExecutionResult) -> None:
+        if self._active_mode is GuiRunMode.SESSION:
+            self.session_elapsed_var.set(self.session_timer.finish(result.duration))
+        self._active_mode = None
         self.status_var.set(result.status.value)
         self.progress.state = result.status.value
         summary = (
@@ -282,6 +296,11 @@ class KritikaFarmBotGui:
         self.result_var.set(summary)
         self.log_var.set(f"Log: {result.log_path}")
         self._set_running_controls(False)
+
+    def _refresh_session_timer(self) -> None:
+        if self.session_timer.running:
+            self.session_elapsed_var.set(self.session_timer.update())
+        self.root.after(SESSION_TIMER_INTERVAL_MS, self._refresh_session_timer)
 
     def _sync_progress(self) -> None:
         self.character_var.set(self.progress.character)

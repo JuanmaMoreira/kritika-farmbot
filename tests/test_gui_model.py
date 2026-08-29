@@ -8,6 +8,7 @@ from bot.gui_model import (
     FlowSelectionModel,
     GuiExecutionRequest,
     GuiProgress,
+    SessionElapsedTimer,
     event_visible,
 )
 
@@ -52,6 +53,33 @@ def test_execution_request_validation():
         GuiExecutionRequest.session((), 2)
     with pytest.raises(ValueError, match="positive integer"):
         GuiExecutionRequest.session(("black_market",), 0)
+
+
+def test_session_timer_starts_at_zero_updates_monotonically_and_freezes_final_duration():
+    now = [100.0]
+    timer = SessionElapsedTimer(clock=lambda: now[0])
+
+    assert timer.text == "00:00:00"
+    assert timer.start() == "00:00:00"
+    now[0] = 3761.9
+    assert timer.update() == "01:01:01"
+    assert timer.finish(3662.8) == "01:01:02"
+
+    now[0] = 9000.0
+    assert not timer.running
+    assert timer.update() == "01:01:02"
+
+
+def test_new_session_resets_a_previous_final_duration():
+    now = [10.0]
+    timer = SessionElapsedTimer(clock=lambda: now[0])
+    timer.start()
+    timer.finish(12.9)
+
+    now[0] = 30.0
+    assert timer.start() == "00:00:00"
+    now[0] = 31.2
+    assert timer.update() == "00:00:01"
 
 
 def test_progress_is_directly_derived_from_runtime_events():

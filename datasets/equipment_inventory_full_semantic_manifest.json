@@ -8,7 +8,7 @@
       1224
     ],
     "human_ground_truth": "confirmed_incrementally_in_chat",
-    "scope": "semantic acquisition and perception promotion only; no EquipmentInventoryRelief or World Boss positive-branch integration",
+    "scope": "semantic acquisition and perception promotion only; no EquipmentCombineRelief or World Boss positive-branch integration",
     "caller_scope": "Only screen.world_boss was observed. No other caller is generalized.",
     "layering": {
       "observed_chat_region": [

@@ -72,7 +72,7 @@ def _runtime(observer, events):
         facts=object(),
         auto_battle=object(),
         socket_relief=object(),
-        equipment_relief=object(),
+        equipment_combine_relief=object(),
         events=events,
         cancel_token=SimpleNamespace(is_requested=lambda: False),
     )
@@ -90,7 +90,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     transition = object()
     tap_through = object()
     socket_relief = object()
-    equipment_relief = object()
+    equipment_combine_relief = object()
     monkeypatch.setattr(productive, "build_runtime_event_stream", lambda *a, **k: events)
     monkeypatch.setattr(productive.RuntimeConfig, "from_env", lambda **kwargs: config)
     monkeypatch.setattr(productive, "build_adb_client", lambda value: adb)
@@ -111,8 +111,8 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     )
     monkeypatch.setattr(
         productive,
-        "EquipmentInventoryRelief",
-        lambda *args, **kwargs: equipment_relief,
+        "EquipmentCombineRelief",
+        lambda *args, **kwargs: equipment_combine_relief,
     )
 
     with productive.open_productive_runtime(log_path="ignored.log") as runtime:
@@ -122,10 +122,15 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
         assert runtime.facts is facts
         assert runtime.auto_battle is auto
         assert runtime.socket_relief is socket_relief
-        assert runtime.equipment_relief is equipment_relief
+        assert runtime.equipment_combine_relief is equipment_combine_relief
         assert source.entered and not source.exited
 
     assert source.exited
+
+
+def test_legacy_equipment_inventory_relief_name_has_no_compatibility_alias():
+    assert not Path("bot/equipment_inventory_relief.py").exists()
+    assert not hasattr(productive, "EquipmentInventoryRelief")
 
 
 def test_runtime_configuration_failure_is_persisted_to_session_log(monkeypatch, tmp_path):

@@ -1,4 +1,4 @@
-"""Reusable bounded support operation for equipment inventory relief."""
+"""Reusable bounded support operation for equipment relief through Combine."""
 
 from __future__ import annotations
 
@@ -44,14 +44,14 @@ from bot.tap_through_animation import (
 from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 
 
-class EquipmentReliefOutcome(str, Enum):
+class EquipmentCombineReliefOutcome(str, Enum):
     RELIEVED = "relieved"
     NO_RELIEF_AVAILABLE = "no_relief_available"
     FAILED = "failed"
     CANCELLED = "cancelled"
 
 
-class EquipmentStrategyOutcome(str, Enum):
+class EquipmentCombineStrategyOutcome(str, Enum):
     NOT_RUN = "not_run"
     SKIPPED = "skipped"
     EFFECT = "effect"
@@ -60,7 +60,7 @@ class EquipmentStrategyOutcome(str, Enum):
 
 
 @dataclass(frozen=True)
-class EquipmentReturnPlan:
+class EquipmentCombineReturnPlan:
     action: object
     expected_return_state: str
 
@@ -73,11 +73,11 @@ class EquipmentReturnPlan:
 
 
 @dataclass(frozen=True)
-class EquipmentReliefResult:
-    outcome: EquipmentReliefOutcome
-    transmute: EquipmentStrategyOutcome = EquipmentStrategyOutcome.NOT_RUN
-    ethereal: EquipmentStrategyOutcome = EquipmentStrategyOutcome.NOT_RUN
-    fuse: EquipmentStrategyOutcome = EquipmentStrategyOutcome.NOT_RUN
+class EquipmentCombineReliefResult:
+    outcome: EquipmentCombineReliefOutcome
+    transmute: EquipmentCombineStrategyOutcome = EquipmentCombineStrategyOutcome.NOT_RUN
+    ethereal: EquipmentCombineStrategyOutcome = EquipmentCombineStrategyOutcome.NOT_RUN
+    fuse: EquipmentCombineStrategyOutcome = EquipmentCombineStrategyOutcome.NOT_RUN
     animation_taps: int = 0
     final_snapshot: RuntimeSnapshot | None = None
     error: str | None = None
@@ -85,12 +85,12 @@ class EquipmentReliefResult:
     @property
     def succeeded(self) -> bool:
         return self.outcome in {
-            EquipmentReliefOutcome.RELIEVED,
-            EquipmentReliefOutcome.NO_RELIEF_AVAILABLE,
+            EquipmentCombineReliefOutcome.RELIEVED,
+            EquipmentCombineReliefOutcome.NO_RELIEF_AVAILABLE,
         }
 
 
-class EquipmentInventoryRelief:
+class EquipmentCombineRelief:
     """Run Transmute, conditional Ethereal, then fresh Fuse and return exactly."""
 
     def __init__(
@@ -141,11 +141,11 @@ class EquipmentInventoryRelief:
 
     def run(
         self,
-        return_plan: EquipmentReturnPlan,
+        return_plan: EquipmentCombineReturnPlan,
         cancel_requested: Callable[[], bool] = lambda: False,
-    ) -> EquipmentReliefResult:
-        if not isinstance(return_plan, EquipmentReturnPlan):
-            raise ValueError("return_plan must be an EquipmentReturnPlan")
+    ) -> EquipmentCombineReliefResult:
+        if not isinstance(return_plan, EquipmentCombineReturnPlan):
+            raise ValueError("return_plan must be an EquipmentCombineReturnPlan")
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
         try:
@@ -163,13 +163,13 @@ class EquipmentInventoryRelief:
         current = self.observer.observe()
         if not _is_stable_combine(current):
             return self._failed(
-                "equipment_relief_precondition_rejected",
+                "equipment_combine_relief_precondition_rejected",
                 final_snapshot=current,
             )
-        self._record("equipment_relief.started", sequence=current.sequence)
+        self._record("equipment_combine_relief.started", sequence=current.sequence)
 
         transmute_menu = self._transition(
-            "equipment_relief.select_transmute",
+            "equipment_combine_relief.select_transmute",
             SelectCombineTransmute(),
             current,
             expected=_is_transmute_menu,
@@ -185,22 +185,22 @@ class EquipmentInventoryRelief:
             cancel_requested=cancel_requested,
             label="transmute",
         )
-        if transmute is EquipmentStrategyOutcome.CANCELLED:
+        if transmute is EquipmentCombineStrategyOutcome.CANCELLED:
             return self._cancelled(transmute=transmute, animation_taps=taps, final_snapshot=current)
-        if transmute is EquipmentStrategyOutcome.FAILED:
+        if transmute is EquipmentCombineStrategyOutcome.FAILED:
             return self._failed("equipment_transmute_failed", transmute=transmute, animation_taps=taps, final_snapshot=current)
 
         ethereal, current, ethereal_taps = self._ethereal(current, cancel_requested)
         taps += ethereal_taps
-        if ethereal is EquipmentStrategyOutcome.CANCELLED:
+        if ethereal is EquipmentCombineStrategyOutcome.CANCELLED:
             return self._cancelled(transmute=transmute, ethereal=ethereal, animation_taps=taps, final_snapshot=current)
-        if ethereal is EquipmentStrategyOutcome.FAILED:
+        if ethereal is EquipmentCombineStrategyOutcome.FAILED:
             return self._failed("equipment_ethereal_failed", transmute=transmute, ethereal=ethereal, animation_taps=taps, final_snapshot=current)
 
         if cancel_requested():
             return self._cancelled(transmute=transmute, ethereal=ethereal, animation_taps=taps, final_snapshot=current)
         fuse_menu = self._transition(
-            "equipment_relief.select_fuse",
+            "equipment_combine_relief.select_fuse",
             SelectCombineFuse(),
             current,
             expected=_is_fuse_menu,
@@ -216,15 +216,15 @@ class EquipmentInventoryRelief:
             label="fuse",
         )
         taps += fuse_taps
-        if fuse is EquipmentStrategyOutcome.CANCELLED:
+        if fuse is EquipmentCombineStrategyOutcome.CANCELLED:
             return self._cancelled(transmute=transmute, ethereal=ethereal, fuse=fuse, animation_taps=taps, final_snapshot=current)
-        if fuse is EquipmentStrategyOutcome.FAILED:
+        if fuse is EquipmentCombineStrategyOutcome.FAILED:
             return self._failed("equipment_fuse_failed", transmute=transmute, ethereal=ethereal, fuse=fuse, animation_taps=taps, final_snapshot=current)
 
         if cancel_requested():
             return self._cancelled(transmute=transmute, ethereal=ethereal, fuse=fuse, animation_taps=taps, final_snapshot=current)
         returned = self._transition(
-            "equipment_relief.return",
+            "equipment_combine_relief.return",
             return_plan.action,
             current,
             expected=lambda item: _is_clean_base(item, return_plan.expected_return_state),
@@ -233,10 +233,10 @@ class EquipmentInventoryRelief:
         if returned is None:
             return self._failed("equipment_return_failed", transmute=transmute, ethereal=ethereal, fuse=fuse, animation_taps=taps, final_snapshot=current)
 
-        relieved = EquipmentStrategyOutcome.EFFECT in {transmute, ethereal, fuse}
-        outcome = EquipmentReliefOutcome.RELIEVED if relieved else EquipmentReliefOutcome.NO_RELIEF_AVAILABLE
+        relieved = EquipmentCombineStrategyOutcome.EFFECT in {transmute, ethereal, fuse}
+        outcome = EquipmentCombineReliefOutcome.RELIEVED if relieved else EquipmentCombineReliefOutcome.NO_RELIEF_AVAILABLE
         self._record(
-            "equipment_relief.finished",
+            "equipment_combine_relief.finished",
             outcome=outcome.value,
             transmute=transmute.value,
             ethereal=ethereal.value,
@@ -244,26 +244,26 @@ class EquipmentInventoryRelief:
             animation_taps=taps,
             expected_return_state=return_plan.expected_return_state,
         )
-        return EquipmentReliefResult(outcome, transmute, ethereal, fuse, taps, returned)
+        return EquipmentCombineReliefResult(outcome, transmute, ethereal, fuse, taps, returned)
 
     def _base_combine(self, current, *, mode, status, cancel_requested, label):
         if cancel_requested():
-            return EquipmentStrategyOutcome.CANCELLED, current, 0
+            return EquipmentCombineStrategyOutcome.CANCELLED, current, 0
         expected_menu = _is_transmute_menu if mode == MODE_COMBINE_TRANSMUTE else _is_fuse_menu
         if status not in current.state.overlays:
-            self._record(f"equipment_relief.{label}_skipped")
-            return EquipmentStrategyOutcome.SKIPPED, current, 0
+            self._record(f"equipment_combine_relief.{label}_skipped")
+            return EquipmentCombineStrategyOutcome.SKIPPED, current, 0
         popup = self._transition(
-            f"equipment_relief.{label}.open_combine_all",
+            f"equipment_combine_relief.{label}.open_combine_all",
             OpenCombineAll(),
             current,
             expected=lambda item: _is_combine_all_popup(item, mode),
             precondition=lambda item: expected_menu(item) and status in item.state.overlays,
         )
         if popup is None:
-            return EquipmentStrategyOutcome.FAILED, current, 0
+            return EquipmentCombineStrategyOutcome.FAILED, current, 0
         animation = self._transition(
-            f"equipment_relief.{label}.confirm_combine_all",
+            f"equipment_combine_relief.{label}.confirm_combine_all",
             ConfirmCombineAll(),
             popup,
             expected=_is_tappable_animation,
@@ -272,8 +272,8 @@ class EquipmentInventoryRelief:
             policy=self.single_action_policy,
         )
         if animation is None:
-            self._record(f"equipment_relief.{label}_contradiction", reason="no_verified_animation")
-            return EquipmentStrategyOutcome.FAILED, popup, 0
+            self._record(f"equipment_combine_relief.{label}_contradiction", reason="no_verified_animation")
+            return EquipmentCombineStrategyOutcome.FAILED, popup, 0
         tapped = self.tap_through.run(
             animation,
             action=TapCombineAnimation(),
@@ -284,39 +284,39 @@ class EquipmentInventoryRelief:
             policy=self.animation_policy,
         )
         if tapped.outcome is TapThroughOutcome.CANCELLED:
-            return EquipmentStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
+            return EquipmentCombineStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
         if not tapped.succeeded:
-            self._record(f"equipment_relief.{label}_failed", reason=tapped.outcome.value)
-            return EquipmentStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
-        self._record(f"equipment_relief.{label}_effect", taps=tapped.tap_count)
-        return EquipmentStrategyOutcome.EFFECT, tapped.final_snapshot, tapped.tap_count
+            self._record(f"equipment_combine_relief.{label}_failed", reason=tapped.outcome.value)
+            return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
+        self._record(f"equipment_combine_relief.{label}_effect", taps=tapped.tap_count)
+        return EquipmentCombineStrategyOutcome.EFFECT, tapped.final_snapshot, tapped.tap_count
 
     def _ethereal(self, current, cancel_requested):
         if cancel_requested():
-            return EquipmentStrategyOutcome.CANCELLED, current, 0
+            return EquipmentCombineStrategyOutcome.CANCELLED, current, 0
         if STATUS_COMBINE_ETHEREAL_AVAILABLE not in current.state.overlays:
-            self._record("equipment_relief.ethereal_skipped")
-            return EquipmentStrategyOutcome.SKIPPED, current, 0
+            self._record("equipment_combine_relief.ethereal_skipped")
+            return EquipmentCombineStrategyOutcome.SKIPPED, current, 0
         awakened = self._transition(
-            "equipment_relief.ethereal.open_awakened",
+            "equipment_combine_relief.ethereal.open_awakened",
             OpenAwakenedTransmute(),
             current,
             expected=_is_awakened_panel,
             precondition=lambda item: _is_transmute_menu(item) and STATUS_COMBINE_ETHEREAL_AVAILABLE in item.state.overlays,
         )
         if awakened is None:
-            return EquipmentStrategyOutcome.FAILED, current, 0
+            return EquipmentCombineStrategyOutcome.FAILED, current, 0
         random_part = self._transition(
-            "equipment_relief.ethereal.open_random_part",
+            "equipment_combine_relief.ethereal.open_random_part",
             OpenEtherealRandomPart(),
             awakened,
             expected=_is_random_part_panel,
             precondition=_is_awakened_panel,
         )
         if random_part is None:
-            return EquipmentStrategyOutcome.FAILED, awakened, 0
+            return EquipmentCombineStrategyOutcome.FAILED, awakened, 0
         outcome = self._transition(
-            "equipment_relief.ethereal.open_mass_combine",
+            "equipment_combine_relief.ethereal.open_mass_combine",
             OpenEtherealMassCombine(),
             random_part,
             expected=lambda item: _is_ethereal_confirm(item) or _is_ethereal_no_material(item),
@@ -324,10 +324,10 @@ class EquipmentInventoryRelief:
             policy=self.single_action_policy,
         )
         if outcome is None:
-            return EquipmentStrategyOutcome.FAILED, random_part, 0
+            return EquipmentCombineStrategyOutcome.FAILED, random_part, 0
         if _is_ethereal_no_material(outcome):
             acknowledged = self._transition(
-                "equipment_relief.ethereal.ack_no_material",
+                "equipment_combine_relief.ethereal.ack_no_material",
                 AcknowledgeEtherealNoMaterial(),
                 outcome,
                 expected=_is_random_part_panel,
@@ -335,17 +335,17 @@ class EquipmentInventoryRelief:
             )
             if acknowledged is not None:
                 restored = self._transition(
-                    "equipment_relief.ethereal.restore_transmute",
+                    "equipment_combine_relief.ethereal.restore_transmute",
                     SelectCombineTransmute(),
                     acknowledged,
                     expected=_is_transmute_menu,
                     precondition=_is_random_part_panel,
                 )
                 acknowledged = restored or acknowledged
-            self._record("equipment_relief.ethereal_defensive_no_material")
-            return EquipmentStrategyOutcome.FAILED, acknowledged or outcome, 0
+            self._record("equipment_combine_relief.ethereal_defensive_no_material")
+            return EquipmentCombineStrategyOutcome.FAILED, acknowledged or outcome, 0
         animation = self._transition(
-            "equipment_relief.ethereal.confirm_mass_combine",
+            "equipment_combine_relief.ethereal.confirm_mass_combine",
             ConfirmEtherealMassCombine(),
             outcome,
             expected=_is_tappable_animation,
@@ -354,7 +354,7 @@ class EquipmentInventoryRelief:
             policy=self.single_action_policy,
         )
         if animation is None:
-            return EquipmentStrategyOutcome.FAILED, outcome, 0
+            return EquipmentCombineStrategyOutcome.FAILED, outcome, 0
         tapped = self.tap_through.run(
             animation,
             action=TapCombineAnimation(),
@@ -365,20 +365,20 @@ class EquipmentInventoryRelief:
             policy=self.animation_policy,
         )
         if tapped.outcome is TapThroughOutcome.CANCELLED:
-            return EquipmentStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
+            return EquipmentCombineStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
         if not tapped.succeeded:
-            return EquipmentStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
+            return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
         restored = self._transition(
-            "equipment_relief.ethereal.return_transmute",
+            "equipment_combine_relief.ethereal.return_transmute",
             SelectCombineTransmute(),
             tapped.final_snapshot,
             expected=lambda item: _is_transmute_menu(item) and STATUS_COMBINE_ETHEREAL_AVAILABLE not in item.state.overlays,
             precondition=_is_random_part_panel,
         )
         if restored is None:
-            return EquipmentStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
-        self._record("equipment_relief.ethereal_effect", taps=tapped.tap_count)
-        return EquipmentStrategyOutcome.EFFECT, restored, tapped.tap_count
+            return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
+        self._record("equipment_combine_relief.ethereal_effect", taps=tapped.tap_count)
+        return EquipmentCombineStrategyOutcome.EFFECT, restored, tapped.tap_count
 
     def _transition(self, name, action, before, *, expected, precondition, tolerated=lambda _: False, policy=None):
         result = self.transition.execute(
@@ -392,16 +392,16 @@ class EquipmentInventoryRelief:
             stable_for=self.stable_for,
             policy=policy or self.normal_policy,
         )
-        self._record("equipment_relief.transition", name=name, outcome=result.outcome.value, attempts=result.attempt_count)
+        self._record("equipment_combine_relief.transition", name=name, outcome=result.outcome.value, attempts=result.attempt_count)
         return result.final_snapshot if result.succeeded else None
 
     def _cancelled(self, **kwargs):
-        self._record("equipment_relief.cancelled")
-        return EquipmentReliefResult(EquipmentReliefOutcome.CANCELLED, **kwargs)
+        self._record("equipment_combine_relief.cancelled")
+        return EquipmentCombineReliefResult(EquipmentCombineReliefOutcome.CANCELLED, **kwargs)
 
     def _failed(self, error, **kwargs):
-        self._record("equipment_relief.failed", error=error)
-        return EquipmentReliefResult(EquipmentReliefOutcome.FAILED, error=error, **kwargs)
+        self._record("equipment_combine_relief.failed", error=error)
+        return EquipmentCombineReliefResult(EquipmentCombineReliefOutcome.FAILED, error=error, **kwargs)
 
     def _record(self, event: str, **fields: object) -> None:
         try:
@@ -502,9 +502,9 @@ def _known_incompatible(snapshot, expected, retryable_from) -> bool:
 
 
 __all__ = (
-    "EquipmentInventoryRelief",
-    "EquipmentReliefOutcome",
-    "EquipmentReliefResult",
-    "EquipmentReturnPlan",
-    "EquipmentStrategyOutcome",
+    "EquipmentCombineRelief",
+    "EquipmentCombineReliefOutcome",
+    "EquipmentCombineReliefResult",
+    "EquipmentCombineReturnPlan",
+    "EquipmentCombineStrategyOutcome",
 )

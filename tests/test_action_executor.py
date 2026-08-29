@@ -169,7 +169,7 @@ def test_executor_translates_only_safe_socket_route_actions(action, target):
         (ExitCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.exit_combine),
     ),
 )
-def test_executor_translates_only_acquired_equipment_relief_actions(action, target):
+def test_executor_translates_only_acquired_equipment_combine_relief_actions(action, target):
     adb = Mock()
     executor = ActionExecutor(adb)
 

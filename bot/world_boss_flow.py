@@ -29,9 +29,9 @@ from bot.catalog import (
 from bot.component_contracts import ComponentRequirement
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
 from bot.event_log import EventSink
-from bot.equipment_inventory_relief import (
-    EquipmentReliefOutcome,
-    EquipmentReturnPlan,
+from bot.equipment_combine_relief import (
+    EquipmentCombineReliefOutcome,
+    EquipmentCombineReturnPlan,
 )
 from bot.flow_contracts import (
     FlowContract,
@@ -133,7 +133,7 @@ class _SocketRelief(Protocol):
     def run(self, return_plan, cancel_requested=None): ...
 
 
-class _EquipmentRelief(Protocol):
+class _EquipmentCombineRelief(Protocol):
     def run(self, return_plan, cancel_requested=None): ...
 
 
@@ -160,7 +160,7 @@ class WorldBossFlow:
         events: EventSink,
         *,
         socket_relief: _SocketRelief,
-        equipment_relief: _EquipmentRelief,
+        equipment_combine_relief: _EquipmentCombineRelief,
         cancel_requested: Callable[[], bool] = lambda: False,
         fact_timeout: float = 15.0,
         transition_timeout: float = 6.0,
@@ -188,8 +188,8 @@ class WorldBossFlow:
             raise ValueError("auto_battle must provide ensure_on()")
         if not callable(getattr(socket_relief, "run", None)):
             raise ValueError("socket_relief must provide run()")
-        if not callable(getattr(equipment_relief, "run", None)):
-            raise ValueError("equipment_relief must provide run()")
+        if not callable(getattr(equipment_combine_relief, "run", None)):
+            raise ValueError("equipment_combine_relief must provide run()")
         if not callable(getattr(events, "record", None)):
             raise ValueError("events must provide record()")
         if (
@@ -204,7 +204,7 @@ class WorldBossFlow:
         self.facts = facts
         self.auto_battle = auto_battle
         self.socket_relief = socket_relief
-        self.equipment_relief = equipment_relief
+        self.equipment_combine_relief = equipment_combine_relief
         self.events = events
         self.cancel_requested = cancel_requested
         self.fact_timeout = float(fact_timeout)
@@ -356,7 +356,7 @@ class WorldBossFlow:
         else:
             main = entered
         socket_relief_attempted = False
-        equipment_relief_attempted = False
+        equipment_combine_relief_attempted = False
         while True:
             battle = self._transition(
                 transitions,
@@ -451,7 +451,7 @@ class WorldBossFlow:
                 continue
 
             if _is_world_boss_bag_full(battle):
-                if equipment_relief_attempted:
+                if equipment_combine_relief_attempted:
                     event = FlowEvent(WORLD_BOSS_BAG_FULL)
                     flow_events.append(event)
                     self._record_best_effort(event.kind, branch="negative_after_relief")
@@ -489,14 +489,14 @@ class WorldBossFlow:
                 )
                 if combine is None:
                     return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
-                equipment_relief_attempted = True
-                self._record_best_effort("world_boss.equipment_relief.started", sequence=combine.sequence)
-                relief = self.equipment_relief.run(
-                    EquipmentReturnPlan(ExitCombine(), SCREEN_WORLD_BOSS),
+                equipment_combine_relief_attempted = True
+                self._record_best_effort("world_boss.equipment_combine_relief.started", sequence=combine.sequence)
+                relief = self.equipment_combine_relief.run(
+                    EquipmentCombineReturnPlan(ExitCombine(), SCREEN_WORLD_BOSS),
                     cancel_requested=self.cancel_requested,
                 )
                 self._record_best_effort(
-                    "world_boss.equipment_relief.finished",
+                    "world_boss.equipment_combine_relief.finished",
                     outcome=relief.outcome.value,
                     transmute=relief.transmute.value,
                     ethereal=relief.ethereal.value,
@@ -504,11 +504,11 @@ class WorldBossFlow:
                     animation_taps=relief.animation_taps,
                     error=relief.error,
                 )
-                if relief.outcome is EquipmentReliefOutcome.CANCELLED:
+                if relief.outcome is EquipmentCombineReliefOutcome.CANCELLED:
                     return self._cancelled(sapphires, flow_events, previous_rewards, transitions=transitions)
-                if relief.outcome is EquipmentReliefOutcome.FAILED:
+                if relief.outcome is EquipmentCombineReliefOutcome.FAILED:
                     return self._failed(
-                        f"equipment_inventory_relief_failed: {relief.error or 'no detail'}",
+                        f"equipment_combine_relief_failed: {relief.error or 'no detail'}",
                         sapphires=sapphires,
                         flow_events=flow_events,
                         previous_rewards=previous_rewards,
@@ -517,7 +517,7 @@ class WorldBossFlow:
                 main = relief.final_snapshot
                 if main is None or not _is_clean_base(main, SCREEN_WORLD_BOSS):
                     return self._failed(
-                        "equipment_inventory_relief_return_state_invalid",
+                        "equipment_combine_relief_return_state_invalid",
                         sapphires=sapphires,
                         flow_events=flow_events,
                         previous_rewards=previous_rewards,
