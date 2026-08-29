@@ -224,7 +224,7 @@
     },
     {
       "path": "screencaps/semantic/equipment_inventory_full/combine/animation/transmute-tappable.png",
-      "base_context": "unknown",
+      "base_context": "screen.combine",
       "overlays": [],
       "review_status": "confirmed",
       "observations": [

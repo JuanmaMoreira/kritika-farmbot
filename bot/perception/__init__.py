@@ -24,6 +24,7 @@ from .black_market import (
     BlackMarketPurchasedReading,
 )
 from .engine import PerceptionDetector, PerceptionEngine
+from .combine import CombineContextDetector
 from .local_cv import LocalCvDetection, LocalCvDetector
 from .socket import (
     SOCKET_ENHANCE_ANIMATION_CALIBRATION,
@@ -102,6 +103,7 @@ def build_default_perception(
             BlackMarketPurchasedDetector(asset_root=root),
             SocketIncompatibleOpalDetector(asset_root=root),
             SocketEnhanceAnimationDetector(),
+            CombineContextDetector(asset_root=root),
         )
     )
 
@@ -139,6 +141,7 @@ __all__ = (
     "COMBINE_ROWS_INDICATOR_SPEC",
     "COMBINE_ROWS_UPPER_INDICATOR_SPEC",
     "COMBINE_TRANSMUTE_ACTIVE_SPEC",
+    "CombineContextDetector",
     "DEFAULT_LOCAL_CV_SPECS",
     "EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC",
     "INSUFFICIENT_GOLD_PROMPT_SPEC",

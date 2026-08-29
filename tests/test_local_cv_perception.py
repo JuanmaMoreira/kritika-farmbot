@@ -47,7 +47,7 @@ from bot.catalog import (
 )
 from bot.capture import FrameSnapshot
 from bot.observations import ObservationSource
-from bot.perception import build_default_perception
+from bot.perception import CombineContextDetector, build_default_perception
 from bot.perception.black_market import (
     BlackMarketGoldDetector,
     BlackMarketPurchasedDetector,
@@ -276,10 +276,11 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     assert tuple(
         detector.spec for detector in engine.detectors[:len(DEFAULT_LOCAL_CV_SPECS)]
     ) == DEFAULT_LOCAL_CV_SPECS
-    assert isinstance(engine.detectors[-4], BlackMarketGoldDetector)
-    assert isinstance(engine.detectors[-3], BlackMarketPurchasedDetector)
-    assert isinstance(engine.detectors[-2], SocketIncompatibleOpalDetector)
-    assert isinstance(engine.detectors[-1], SocketEnhanceAnimationDetector)
+    assert isinstance(engine.detectors[-5], BlackMarketGoldDetector)
+    assert isinstance(engine.detectors[-4], BlackMarketPurchasedDetector)
+    assert isinstance(engine.detectors[-3], SocketIncompatibleOpalDetector)
+    assert isinstance(engine.detectors[-2], SocketEnhanceAnimationDetector)
+    assert isinstance(engine.detectors[-1], CombineContextDetector)
     assert len(created) == 2 * len(DEFAULT_LOCAL_CV_SPECS)
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
