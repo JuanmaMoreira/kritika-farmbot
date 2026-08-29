@@ -20,7 +20,7 @@ from bot.perception.specs import (
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
     WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
-    WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC,
+    SOCKET_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
     WORLD_BOSS_SAPPHIRES_USED_SPEC,
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
@@ -106,14 +106,14 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
         pytest.approx(0.2776434123516083)
     )
     assert BLACK_MARKET_TITLE_SPEC.asset_path.as_posix() == (
-        "assets/ui/black-market-id.png"
+        "assets/ui/landmarks/black-market-title-frame-current.png"
     )
     assert BLACK_MARKET_TITLE_SPEC.variant_asset_paths == ()
     assert BLACK_MARKET_TITLE_SPEC.calibration.negative_anchor == pytest.approx(
-        0.301844984292984
+        0.566973090171814
     )
     assert BLACK_MARKET_TITLE_SPEC.calibration.positive_anchor == pytest.approx(
-        0.39833250641822815
+        0.6773226857185364
     )
     assert INSUFFICIENT_GOLD_PROMPT_SPEC.asset_path.as_posix() == (
         "assets/ui/landmarks/insufficient-gold-prompt-current.png"
@@ -170,13 +170,13 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC.region == (
         0.25, 0.78, 0.75, 0.91
     )
-    assert WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC.region == (
+    assert SOCKET_INVENTORY_FULL_PROMPT_SPEC.region == (
         0.31, 0.38, 0.69, 0.54
     )
-    assert WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC.calibration.negative_anchor == (
-        pytest.approx(0.22421956062316895)
+    assert SOCKET_INVENTORY_FULL_PROMPT_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.5793697237968445)
     )
-    assert WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC.calibration.positive_anchor == (
+    assert SOCKET_INVENTORY_FULL_PROMPT_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9941959977149963)
     )
     assert WORLD_BOSS_BAG_FULL_PROMPT_SPEC.region == (0.28, 0.32, 0.72, 0.62)
@@ -264,7 +264,7 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             "b5f87a11d6b42c067820ddf3c7d101ed7d325141bad5d71398ca847419ddb132",
         ),
         (
-            WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC,
+            SOCKET_INVENTORY_FULL_PROMPT_SPEC,
             (867, 123),
             "06dfb3251fc38c459200c006ee2a02fe55ee2576547c8abee7db3731330b4cc1",
         ),

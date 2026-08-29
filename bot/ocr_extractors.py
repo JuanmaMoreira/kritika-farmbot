@@ -12,7 +12,12 @@ from typing import Callable
 import cv2
 import numpy as np
 
-from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS_BATTLE
+from bot.catalog import (
+    POPUP_SOCKET_SELL,
+    SCREEN_LOBBY,
+    SCREEN_SOCKET,
+    SCREEN_WORLD_BOSS_BATTLE,
+)
 from bot.geometry import (
     RelativeRegion,
     normalize_relative_region,
@@ -27,11 +32,13 @@ from bot.state import ResolutionStatus
 
 RESOURCE_SAPPHIRES = "resource.sapphires"
 BATTLE_TIMER_REMAINING = "battle.timer_remaining"
+SOCKET_SELL_ITEM_LEVEL = "item.socket.sell_level"
 
 # Survival's blue counter. The earlier candidate (0.845, 0.59, 0.945, 0.68)
 # covered Battle's violet melee tickets and was rejected during live HIL review.
 SAPPHIRES_ROI = normalize_relative_region((0.77, 0.43, 0.855, 0.505))
 WORLD_BOSS_TIMER_ROI = normalize_relative_region((0.36, 0.12, 0.59, 0.23))
+SOCKET_SELL_LEVEL_ROI = normalize_relative_region((0.47, 0.39, 0.58, 0.45))
 
 IntegerParser = Callable[[str], int | None]
 
@@ -94,6 +101,7 @@ TIMER_PREPROCESSING = RoiPreprocessing(
     inner_region=(0.45, 0.05, 1.0, 0.80),
     scale=2.0,
 )
+SOCKET_SELL_LEVEL_PREPROCESSING = RoiPreprocessing(scale=4.0)
 
 
 class ExtractionStatus(str, Enum):
@@ -132,6 +140,7 @@ class OcrFactExtractor:
     region: RelativeRegion
     engine: OcrEngine
     parser: IntegerParser
+    required_overlays: tuple[str, ...] = ()
     preprocessing: RoiPreprocessing = RoiPreprocessing()
     confirmations: int = 1
     max_observations: int = 3
@@ -142,6 +151,12 @@ class OcrFactExtractor:
         object.__setattr__(self, "name", validate_semantic_name(self.name))
         object.__setattr__(self, "context", validate_semantic_name(self.context))
         object.__setattr__(self, "region", normalize_relative_region(self.region))
+        overlays = tuple(
+            validate_semantic_name(item) for item in self.required_overlays
+        )
+        if len(set(overlays)) != len(overlays):
+            raise ValueError("required_overlays must not contain duplicates")
+        object.__setattr__(self, "required_overlays", overlays)
         if not callable(getattr(self.engine, "recognize", None)):
             raise ValueError("engine must provide recognize(image)")
         if not callable(self.parser):
@@ -182,6 +197,7 @@ class OcrFactExtractor:
         if (
             state.status is not ResolutionStatus.RESOLVED
             or state.base_context != self.context
+            or not set(self.required_overlays).issubset(state.overlays)
         ):
             return FactExtraction(
                 status=ExtractionStatus.CONTEXT_MISMATCH,
@@ -258,6 +274,19 @@ def parse_duration_seconds(text: str) -> int | None:
     return total
 
 
+def parse_socket_sell_level(text: str) -> int | None:
+    """Parse only the Socket Sell sentence carrying an Opal (Skill) level."""
+
+    if not isinstance(text, str):
+        raise ValueError("text must be a string")
+    match = re.fullmatch(
+        r"\s*(?:\[?Opal\s*)?\(?Skill\)\s*\+\s*([0-9]{1,3})\]"
+        r"\s*for\s*6\s*K(?:\s*Coins?\.?)?\s*",
+        text,
+    )
+    return int(match.group(1)) if match is not None else None
+
+
 def build_sapphires_extractor(engine: OcrEngine) -> OcrFactExtractor:
     return OcrFactExtractor(
         name=RESOURCE_SAPPHIRES,
@@ -286,9 +315,26 @@ def build_timer_extractor(engine: OcrEngine) -> OcrFactExtractor:
     )
 
 
+def build_socket_sell_level_extractor(engine: OcrEngine) -> OcrFactExtractor:
+    return OcrFactExtractor(
+        name=SOCKET_SELL_ITEM_LEVEL,
+        context=SCREEN_SOCKET,
+        required_overlays=(POPUP_SOCKET_SELL,),
+        region=SOCKET_SELL_LEVEL_ROI,
+        engine=engine,
+        parser=parse_socket_sell_level,
+        preprocessing=SOCKET_SELL_LEVEL_PREPROCESSING,
+        confirmations=2,
+        max_observations=3,
+        min_ocr_confidence=0.90,
+        sample_interval=0.15,
+    )
+
+
 __all__ = (
     "BATTLE_TIMER_REMAINING",
     "RESOURCE_SAPPHIRES",
+    "SOCKET_SELL_ITEM_LEVEL",
     "FactExtraction",
     "ExtractionStatus",
     "OcrFactExtractor",
@@ -298,9 +344,13 @@ __all__ = (
     "SAPPHIRES_PREPROCESSING",
     "SAPPHIRES_ROI",
     "TIMER_PREPROCESSING",
+    "SOCKET_SELL_LEVEL_PREPROCESSING",
+    "SOCKET_SELL_LEVEL_ROI",
     "WORLD_BOSS_TIMER_ROI",
     "build_sapphires_extractor",
+    "build_socket_sell_level_extractor",
     "build_timer_extractor",
     "parse_duration_seconds",
     "parse_integer",
+    "parse_socket_sell_level",
 )

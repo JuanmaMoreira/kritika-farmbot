@@ -14,7 +14,7 @@ from bot.catalog import (
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_WORLD_BOSS_BAG_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
-    POPUP_WORLD_BOSS_INVENTORY_FULL,
+    POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_LOBBY,
     SCREEN_WORLD_BOSS,
@@ -398,7 +398,7 @@ def test_inventory_full_after_start_rejects_no_and_completes_for_character():
     inventory = snapshot(
         7,
         base=SCREEN_WORLD_BOSS,
-        overlays=(POPUP_WORLD_BOSS_INVENTORY_FULL,),
+        overlays=(POPUP_SOCKET_INVENTORY_FULL,),
     )
     returned = snapshot(8, base=SCREEN_WORLD_BOSS)
     transitions = [

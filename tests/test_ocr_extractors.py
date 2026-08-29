@@ -4,19 +4,23 @@ import numpy as np
 import pytest
 
 from bot.action_executor import FrameGeometry
-from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS_BATTLE
+from bot.catalog import POPUP_SOCKET_SELL, SCREEN_LOBBY, SCREEN_SOCKET, SCREEN_WORLD_BOSS_BATTLE
 from bot.capture import FrameSnapshot
 from bot.ocr import OcrResult
 from bot.ocr_extractors import (
     BATTLE_TIMER_REMAINING,
     RESOURCE_SAPPHIRES,
+    SOCKET_SELL_ITEM_LEVEL,
+    SOCKET_SELL_LEVEL_ROI,
     SAPPHIRES_ROI,
     WORLD_BOSS_TIMER_ROI,
     ExtractionStatus,
     build_sapphires_extractor,
+    build_socket_sell_level_extractor,
     build_timer_extractor,
     parse_duration_seconds,
     parse_integer,
+    parse_socket_sell_level,
 )
 from bot.observations import ObservationBatch
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
@@ -35,7 +39,7 @@ class Engine:
         return self.result
 
 
-def snapshot(context, *, sequence=3, fill=0):
+def snapshot(context, *, sequence=3, fill=0, overlays=()):
     image = np.full((100, 200, 3), fill, dtype=np.uint8)
     frame = FrameSnapshot(image=image, timestamp=float(sequence), sequence=sequence)
     observations = ObservationBatch(sequence=sequence, timestamp=float(sequence))
@@ -44,6 +48,7 @@ def snapshot(context, *, sequence=3, fill=0):
         sequence=sequence,
         timestamp=float(sequence),
         base_context=context,
+        overlays=overlays,
     )
     return RuntimeSnapshot(
         frame=frame,
@@ -90,6 +95,22 @@ def test_parse_duration_seconds(text, expected):
     assert parse_duration_seconds(text) == expected
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("(Skill)+0] for 6 K", 0),
+        ("Skill)+10] for 6 K", 10),
+        ("[Opal (Skill)+0] for 6 K Coins.", 0),
+        ("(Skill)+O] for 6 K", None),
+        ("(Skill)+0] for 8 K", None),
+        ("Gem (Skill)+0] for 6 K", None),
+        ("(Skill)+", None),
+    ],
+)
+def test_parse_socket_sell_level_requires_exact_opal_sale_context(text, expected):
+    assert parse_socket_sell_level(text) == expected
+
+
 def test_sapphires_extractor_owns_roi_preprocessing_and_typed_value():
     engine = Engine(OcrResult("32/32", 0.99))
     extractor = build_sapphires_extractor(engine)
@@ -113,6 +134,23 @@ def test_timer_extractor_returns_semantic_seconds_and_keeps_raw_text():
     assert extractor.region == WORLD_BOSS_TIMER_ROI
     assert result.value == 67
     assert result.evidence.raw_text == "01:07"
+
+
+def test_socket_sell_level_requires_screen_and_sell_overlay_before_ocr():
+    engine = Engine(OcrResult("(Skill)+0] for 6 K", 0.98))
+    extractor = build_socket_sell_level_extractor(engine)
+
+    missing_overlay = extractor.extract(snapshot(SCREEN_SOCKET))
+    accepted = extractor.extract(
+        snapshot(SCREEN_SOCKET, overlays=(POPUP_SOCKET_SELL,))
+    )
+
+    assert extractor.name == SOCKET_SELL_ITEM_LEVEL
+    assert extractor.region == SOCKET_SELL_LEVEL_ROI
+    assert missing_overlay.status is ExtractionStatus.CONTEXT_MISMATCH
+    assert accepted.status is ExtractionStatus.VALUE
+    assert accepted.value == 0
+    assert len(engine.images) == 1
 
 
 def test_extractor_rejects_wrong_context_before_ocr():

@@ -20,18 +20,25 @@ from bot.catalog import (
     MENU_QUICK,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
+    POPUP_SOCKET_ENHANCE_ALL,
+    POPUP_SOCKET_INVENTORY_FULL,
+    POPUP_SOCKET_NO_MATERIAL,
+    POPUP_SOCKET_SELL,
     POPUP_INVENTORY_FULL,
     POPUP_INSUFFICIENT_GOLD,
     POPUP_PURCHASE_CONFIRMATION,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
+    POPUP_WORLD_BOSS_BAG_FULL,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
     SCREEN_LOBBY,
+    SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
 )
 from bot.geometry import RelativeRegion, frame_dimensions
+from bot.observations import validate_semantic_name
 from bot.screen import template_match_score
 
 LANDMARK_GOLD_CURRENCY_ICON = "landmark.gold_currency_icon"
@@ -50,6 +57,7 @@ BASE_CONTEXT_LABELS = frozenset(
         SCREEN_CHARACTER_SELECT,
         SCREEN_BATTLE_MODE_SELECT,
         SCREEN_BLACK_MARKET,
+        SCREEN_SOCKET,
         SCREEN_WORLD_BOSS,
         SCREEN_WORLD_BOSS_BATTLE,
         UNKNOWN_BASE_CONTEXT,
@@ -60,10 +68,15 @@ OVERLAY_LABELS = frozenset(
         POPUP_PURCHASE_CONFIRMATION,
         POPUP_INSUFFICIENT_GOLD,
         POPUP_INVENTORY_FULL,
+        POPUP_SOCKET_ENHANCE_ALL,
+        POPUP_SOCKET_INVENTORY_FULL,
+        POPUP_SOCKET_NO_MATERIAL,
+        POPUP_SOCKET_SELL,
         MENU_QUICK,
         OVERLAY_WORLD_BOSS_SELECT_BOSS,
         OVERLAY_WORLD_BOSS_RAID_COMPLETE,
         POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
+        POPUP_WORLD_BOSS_BAG_FULL,
     )
 )
 
@@ -158,6 +171,7 @@ class ManifestEntry:
     base_context: str | None
     overlays: tuple[str, ...]
     review_status: str
+    observations: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "path", validate_relative_path(self.path))
@@ -169,11 +183,17 @@ class ManifestEntry:
         if any(overlay not in OVERLAY_LABELS for overlay in overlays):
             raise ValueError("manifest contains an unsupported overlay label")
         object.__setattr__(self, "overlays", tuple(sorted(overlays)))
+        observations = tuple(
+            validate_semantic_name(item) for item in self.observations
+        )
+        if len(set(observations)) != len(observations):
+            raise ValueError("observations must not contain duplicates")
+        object.__setattr__(self, "observations", tuple(sorted(observations)))
 
         if self.review_status == CONFIRMED:
             if self.base_context not in BASE_CONTEXT_LABELS:
                 raise ValueError("confirmed entries require a valid base_context")
-        elif self.base_context is not None or overlays:
+        elif self.base_context is not None or overlays or observations:
             raise ValueError(
                 "unsure/skipped entries cannot contain inferred labels"
             )
@@ -382,6 +402,7 @@ def load_manifest(path: str | Path) -> tuple[ManifestEntry, ...]:
             base_context=item.get("base_context"),
             overlays=tuple(item.get("overlays", ())),
             review_status=item["review_status"],
+            observations=tuple(item.get("observations", ())),
         )
         for item in payload.get("entries", ())
     )

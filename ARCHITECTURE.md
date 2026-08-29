@@ -56,6 +56,8 @@ Hay tres usos separados:
 - facts intra-screen como GOLD/Purchased permanecen en el snapshot para el flow dueño;
 - Runtime Facts demand-driven/temporales usan extractors tipados y evidencia propia.
 
+Las observaciones intra-Socket de velo rojo y fase oscura de Enhance son operation-scoped: Perception sólo reporta evidencia. No seleccionan estrategia, no autorizan KARATS ni convierten una coincidencia aislada en permiso de venta.
+
 Un fact no se convierte en contexto para facilitar navegación.
 
 ## ContextResolver y RuntimeObserver
@@ -68,7 +70,7 @@ Un fact no se convierte en contexto para facilitar navegación.
 
 ## Runtime Facts y CharacterContext
 
-`RuntimeFact(value, confidence, quality, source, context, evidence)` representa un valor dinámico adquirido cuando un flow lo necesita. `RuntimeFactReader` registra extractors, exige frames frescos/resueltos del contexto requerido y devuelve outcomes explícitos para confirmed, unreadable/uncertain, context mismatch, timeout, cancelación o fallo. Frames transitorios sin resolución pueden consumirse dentro del mismo budget sin autorizar OCR ni input.
+`RuntimeFact(value, confidence, quality, source, context, evidence)` representa un valor dinámico adquirido cuando un consumidor lo necesita. `RuntimeFactReader` registra extractors, exige frames frescos/resueltos del contexto base y de todos los overlays requeridos por el extractor, y devuelve outcomes explícitos para confirmed, unreadable/uncertain, context mismatch, timeout, cancelación o fallo. Frames transitorios sin resolución pueden consumirse dentro del mismo budget sin autorizar OCR ni input.
 
 El boundary OCR es:
 
@@ -81,7 +83,7 @@ RuntimeSnapshot
   → consumidor
 ```
 
-Los flows no recortan píxeles, invocan el engine ni parsean strings. Los facts productivos iniciales son sapphires y battle timer; Auto Battle es temporal, no OCR.
+Flows y support operations no recortan píxeles, invocan el engine ni parsean strings. Los facts OCR productivos son sapphires, battle timer y el nivel mostrado en el popup Sell de Socket; Auto Battle es temporal, no OCR.
 
 `CharacterContext` contiene metadata relativamente estable de un personaje, hoy `name=None` y `name_confidence=None`. El índice `1..N` es posición de sesión, no identidad. Recursos, stamina, timers y rank son Runtime Facts. Un futuro `CharacterContextProvider` podrá adquirir identidad una vez por personaje y enriquecer logging/flows sin modificar `StandardRotation`; ausencia de nombre no debe ser fatal para consumidores observacionales.
 
@@ -121,7 +123,7 @@ No ejecuta input, retry, navegación ni recovery. Esperar disponibilidad futura 
 
 `WorldBossFlow` es `PER_CHARACTER`, declara Lobby → Lobby/World Boss y posee policy de sapphires, navegación, Previous Rewards, guards de inventario, Auto Battle, timer, Raid Complete y Continue. Raid Complete depende del overlay, no de que una base concreta resuelva simultáneamente. El flow no implementa OCR, matching, ADB ni recovery de conexión; consume esos boundaries.
 
-Support operations futuros seguirán `check → operación bounded → recheck → continue/skip/fail`; no se permiten llamadas recursivas arbitrarias entre flows.
+Support operations futuros seguirán `check → operación bounded → recheck → continue/skip/fail`; no se permiten llamadas recursivas arbitrarias entre flows. `SocketInventoryRelief` será una operación reutilizable con precondición `screen.socket` y retorno a un `expected_return_state` exacto; no será registrable en GUI/`FlowRegistry`. El caller conservará la decisión de entrar por `Yes` y su policy local de un único intento positivo.
 
 ## Rotation y Quick Menu
 

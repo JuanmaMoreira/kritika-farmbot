@@ -10,14 +10,14 @@ Los checkpoints live incluyen Black Market 28/28, Rotation aislada 28/28 y la pr
 
 ### Immediate next
 
-- Usar GUI/runtime productivo para recopilar problemas reales.
-- Resolver bugs o tuning sólo a partir de logs y evidencia reproducible.
-- Elegir y definir con el usuario el próximo flow o capacidad antes de implementarlo; no hay uno decidido en este checkpoint.
+- Implementar Fase 2 de `SocketInventoryRelief` como support operation reutilizable, no como flow: Enhance All sólo por GOLD, fallback a venta Bulk de ópalo incompatible únicamente con level fact confirmado en `0`, outcomes explícitos y restauración exacta de `expected_return_state`.
+- Integrar después la rama positiva en cada farming flow dueño, con un único intento por ejecución local al caller; una reaparición del popup debe tomar la rama negativa.
+- Diseñar la operación bounded de taps de animación sobre la señal operation-scoped adquirida; el flash/`UNKNOWN` nunca autoriza input.
 
 ### Known future
 
 - Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su recovery bounded antes de automatizarlo.
-- Definir inventory-management/free-space y la policy para reanudar o saltear World Boss; hoy Inventory Full/Bag Full terminan conservadoramente ese flow.
+- Ampliar retornos de Socket a otros farming flows sólo con evidencia live específica; por ahora únicamente `Socket → Back → World Boss` está verificado.
 - Implementar `CharacterContextProvider`/nombre sólo cuando identidad tenga un consumidor concreto.
 - Incorporar `ConflictResolver`, recovery transversal, aislamiento de fallos y policy de continuación unattended cuando la evidencia lo requiera.
 - Evaluar costo/rank/participation, Auto Repeat y scheduler cuando exista un caso funcional definido.

@@ -23,7 +23,14 @@ from bot.catalog import (
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
+    LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
+    LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
+    LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
+    LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
+    LANDMARK_SOCKET_SELL_BULK_BUTTON,
+    LANDMARK_SOCKET_TITLE,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
+    LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
@@ -34,11 +41,17 @@ from bot.catalog import (
     POPUP_INSUFFICIENT_GOLD,
     POPUP_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
+    POPUP_SOCKET_ENHANCE_ALL,
+    POPUP_SOCKET_INVENTORY_FULL,
+    POPUP_SOCKET_NO_MATERIAL,
+    POPUP_SOCKET_SELL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
+    POPUP_WORLD_BOSS_BAG_FULL,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
     SCREEN_LOBBY,
+    SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
     build_default_resolver,
@@ -61,6 +74,9 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/quick_menu_evidence_manifest.json",
     "datasets/black_market_interruptions_manifest.json",
     "datasets/world_boss_semantic_manifest.json",
+    "datasets/socket_inventory_full_evidence_manifest.json",
+    "datasets/world_boss_bag_full_evidence_manifest.json",
+    "datasets/socket_inventory_relief_semantic_manifest.json",
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
@@ -663,10 +679,24 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return POPUP_INVENTORY_FULL in entry.overlays
     if name == LANDMARK_QUICK_MENU_LOBBY_TILE:
         return MENU_QUICK in entry.overlays
+    if name == LANDMARK_SOCKET_TITLE:
+        return entry.base_context == SCREEN_SOCKET
+    if name == LANDMARK_SOCKET_INVENTORY_FULL_PROMPT:
+        return POPUP_SOCKET_INVENTORY_FULL in entry.overlays
+    if name == LANDMARK_SOCKET_ENHANCE_ALL_TITLE:
+        return POPUP_SOCKET_ENHANCE_ALL in entry.overlays
+    if name == LANDMARK_SOCKET_NO_MATERIAL_PROMPT:
+        return POPUP_SOCKET_NO_MATERIAL in entry.overlays
+    if name == LANDMARK_SOCKET_SELL_BULK_BUTTON:
+        return POPUP_SOCKET_SELL in entry.overlays
+    if name == LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE:
+        return LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE in entry.observations
     if name == LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER:
         return OVERLAY_WORLD_BOSS_SELECT_BOSS in entry.overlays
     if name == LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE:
         return POPUP_WORLD_BOSS_PREVIOUS_REWARDS in entry.overlays
+    if name == LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT:
+        return POPUP_WORLD_BOSS_BAG_FULL in entry.overlays
     if name == LANDMARK_WORLD_BOSS_SAPPHIRES_USED:
         return entry.base_context == SCREEN_WORLD_BOSS
     if name == LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE:

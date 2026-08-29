@@ -152,6 +152,12 @@ def test_manifest_round_trip_preserves_human_review_labels(tmp_path):
             "overlays": (),
             "review_status": "automatic",
         },
+        {
+            "base_context": "screen.lobby",
+            "overlays": (),
+            "review_status": CONFIRMED,
+            "observations": ("not_namespaced",),
+        },
     ],
 )
 def test_manifest_rejects_invalid_labels_and_status_combinations(kwargs):

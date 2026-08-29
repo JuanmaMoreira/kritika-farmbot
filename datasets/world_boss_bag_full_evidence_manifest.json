@@ -27,12 +27,12 @@
     }
   },
   "entries": [
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_500454Z_01.png","review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_955670Z_02.png","review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_418364Z_03.png","review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_895470Z_04.png","review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_367520Z_05.png","review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_837378Z_06.png","review_status":"confirmed"}
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_500454Z_01.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202141_955670Z_02.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_418364Z_03.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202142_895470Z_04.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_367520Z_05.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/bag_full/20260828T202143_837378Z_06.png","base_context":"screen.world_boss","overlays":["popup.world_boss_bag_full"],"review_status":"confirmed"}
   ],
   "postcondition_entries": [
     {"path":"screencaps/semantic/world_boss/bag_full_after/20260828T222906_501260Z_01.png","review_status":"confirmed"},

@@ -16,10 +16,15 @@ from bot.catalog import (
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
+    LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
+    LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
+    LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
+    LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
+    LANDMARK_SOCKET_SELL_BULK_BUTTON,
+    LANDMARK_SOCKET_TITLE,
     LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
-    LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
@@ -101,18 +106,19 @@ def _finite_real(value: object, field: str) -> float:
     return result
 
 
-# Black Market retained the historical asset and crop after Phase 3F visual
-# review. Current-season Workbench positives show a wider text rendering, but
-# the existing template separates all 18 confirmed positives from 128
-# cross-context negatives in the current 146-entry production corpus. Both
-# empirical anchors reflect that expanded global evaluation.
+# The current full title frame replaces the text-only crop after the Socket
+# Enhance success screen exposed a false Black Market base resolution. Its
+# swords and panel separate all 18 historical/current positives from the
+# expanded cross-context corpus, including the dark animation stages.
 BLACK_MARKET_TITLE_SPEC = LocalCvSpec(
     name=LANDMARK_BLACK_MARKET_TITLE,
-    asset_path=Path("assets/ui/black-market-id.png"),
-    region=(0.4395, 0.0997, 0.5579, 0.1495),
+    asset_path=Path(
+        "assets/ui/landmarks/black-market-title-frame-current.png"
+    ),
+    region=(0.37, 0.04, 0.62, 0.18),
     calibration=LinearGapCalibration(
-        negative_anchor=0.301844984292984,
-        positive_anchor=0.39833250641822815,
+        negative_anchor=0.566973090171814,
+        positive_anchor=0.6773226857185364,
     ),
 )
 
@@ -277,20 +283,92 @@ WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC = LocalCvSpec(
     ),
 )
 
-# Human-confirmed World Boss Start guard. This Yes/No prompt is intentionally
-# distinct from Black Market's OK-only inventory-cap popup. The literal prompt
-# excludes buttons and the underlying boss/rank data. Two live positives score
-# 0.994195998..0.999982059; the strongest reviewed World Boss negative scores
-# 0.224219561. Resolving inventory and resuming remains deferred policy.
-WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
-    name=LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
+# Human-confirmed Socket-cap guard reached from World Boss. The literal and
+# semantic namespace are global to the Socket inventory; the underlying caller
+# remains independently resolved as screen.world_boss.
+SOCKET_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
     asset_path=Path(
-        "assets/ui/landmarks/world-boss-inventory-full-prompt-current.png"
+        "assets/ui/landmarks/socket-inventory-full-prompt-current.png"
     ),
     region=(0.31, 0.38, 0.69, 0.54),
     calibration=LinearGapCalibration(
-        negative_anchor=0.22421956062316895,
+        negative_anchor=0.5793697237968445,
         positive_anchor=0.9941959977149963,
+    ),
+)
+
+# Persistent current-season Socket heading. The second rendering is the same
+# literal under modal dimming, allowing screen.socket to remain resolved while
+# Enhance All, no-material and Sell overlays are present. Empirical anchors are
+# provisional bounds from the human-confirmed 2026-08-29 acquisition corpus.
+SOCKET_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_SOCKET_TITLE,
+    asset_path=Path("assets/ui/landmarks/socket-title-current.png"),
+    variant_asset_paths=(
+        Path("assets/ui/landmarks/socket-title-dimmed-current.png"),
+    ),
+    region=(0.67, 0.08, 0.82, 0.18),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6756635308265686,
+        positive_anchor=0.8824502825737,
+    ),
+)
+
+# Literal modal title; cost and both payment buttons are deliberately excluded.
+# Future policy may target GOLD only, but this observation never authorizes a
+# payment action and cannot distinguish buttons by coordinate.
+SOCKET_ENHANCE_ALL_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
+    asset_path=Path(
+        "assets/ui/landmarks/socket-enhance-all-title-current.png"
+    ),
+    region=(0.40, 0.12, 0.60, 0.25),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5010461211204529,
+        positive_anchor=0.9996619820594788,
+    ),
+)
+
+# Stable message used as the unambiguous Enhance All NO_EFFECT signal.
+SOCKET_NO_MATERIAL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/socket-no-material-prompt-current.png"
+    ),
+    region=(0.38, 0.35, 0.62, 0.55),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5095562934875488,
+        positive_anchor=0.999983012676239,
+    ),
+)
+
+# Sell (Bulk) is a stable structural landmark for the destructive confirmation
+# modal. It does not authorize sale; level==0 must be a separate confirmed fact.
+SOCKET_SELL_BULK_BUTTON_SPEC = LocalCvSpec(
+    name=LANDMARK_SOCKET_SELL_BULK_BUTTON,
+    asset_path=Path(
+        "assets/ui/landmarks/socket-sell-bulk-button-current.png"
+    ),
+    region=(0.32, 0.53, 0.48, 0.72),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.462656170129776,
+        positive_anchor=0.9993649125099182,
+    ),
+)
+
+# Active Equipment Home tab gates the visible incompatible-opal grid. It is an
+# observation rather than a separate base context because Socket remains the
+# containing screen.
+SOCKET_EQUIPMENT_HOME_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
+    asset_path=Path(
+        "assets/ui/landmarks/socket-equipment-home-active-current.png"
+    ),
+    region=(0.23, 0.12, 0.38, 0.24),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.4660988748073578,
+        positive_anchor=0.9939724802970886,
     ),
 )
 
@@ -357,9 +435,14 @@ DEFAULT_LOCAL_CV_SPECS = (
     INVENTORY_FULL_OK_BUTTON_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
+    SOCKET_TITLE_SPEC,
+    SOCKET_ENHANCE_ALL_TITLE_SPEC,
+    SOCKET_EQUIPMENT_HOME_ACTIVE_SPEC,
+    SOCKET_INVENTORY_FULL_PROMPT_SPEC,
+    SOCKET_NO_MATERIAL_PROMPT_SPEC,
+    SOCKET_SELL_BULK_BUTTON_SPEC,
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
-    WORLD_BOSS_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_BAG_FULL_PROMPT_SPEC,
     WORLD_BOSS_SAPPHIRES_USED_SPEC,
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,

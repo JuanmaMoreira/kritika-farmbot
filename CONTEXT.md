@@ -41,7 +41,7 @@ Purchase Confirmation exige `Purchased` fresco en el mismo slot. Insufficient Go
 
 Con recursos suficientes navega Lobby → Battle Mode Select → Select Boss → World Boss. Previous Rewards es una rama opcional que se estabiliza y confirma antes de Start. Después de Start:
 
-- `popup.world_boss_inventory_full`: `No → World Boss`, evento no fatal y fin del flow;
+- `popup.socket_inventory_full`: `No → World Boss`, evento no fatal y fin del flow;
 - `popup.world_boss_bag_full`: `X → World Boss`, evento no fatal y fin del flow;
 - batalla: asegura Auto Battle ON, lee el timer, espera pasivamente timer + margen y luego busca Raid Complete con polling bounded.
 
@@ -75,6 +75,7 @@ Contextos base productivos:
 - `screen.character_select`
 - `screen.battle_mode_select`
 - `screen.black_market`
+- `screen.socket`
 - `screen.world_boss`
 - `screen.world_boss_battle`
 
@@ -86,21 +87,25 @@ Overlays/popups productivos:
 - `popup.inventory_full`
 - `overlay.world_boss_select_boss`
 - `popup.world_boss_previous_rewards`
-- `popup.world_boss_inventory_full`
+- `popup.socket_inventory_full`
+- `popup.socket_enhance_all`
+- `popup.socket_no_material`
+- `popup.socket_sell`
 - `popup.world_boss_bag_full`
 - `overlay.world_boss_raid_complete`
 
 Facts productivos:
 
 - Black Market internos: `currency.black_market.gold(slot)` y `status.black_market.purchased(slot)`.
-- OCR demand-driven: `resource.sapphires` en Lobby y `battle.timer_remaining` en batalla World Boss.
+- Socket: Equipment Home activo e `item.socket.incompatible_opal(slot)` sobre el velo rojo; `activity.socket.enhance_animation_tappable` sólo en fases oscuras inequívocas. El flash brillante queda sin autorización.
+- OCR demand-driven: `resource.sapphires` en Lobby, `battle.timer_remaining` en batalla World Boss e `item.socket.sell_level` sólo con `screen.socket + popup.socket_sell`; este último exige dos lecturas y es la barrera destructiva `level == 0`.
 - Temporal: `setting.auto_battle = ON/OFF/UNKNOWN`; sólo OFF inequívoco y contexto de batalla vigente autorizan toggle. ON se verifica en una ventana fresca posterior.
 
 `CharacterContext` conserva `name=None` y `name_confidence=None`: el índice de sesión no es identidad. Recursos, timer y otros valores cambiantes son Runtime Facts, no CharacterContext.
 
 ## Estado de validación
 
-- Última suite hardware-free conocida en `1814ddc`: **921/921 tests verdes**; no hubo cambios de código posteriores a ese checkpoint.
+- Suite hardware-free del checkpoint Socket Inventory Relief: **896/896 tests verdes**. La evaluación productiva global cerró 168/168 resoluciones, 168/168 overlays y cero wrong/ambiguous.
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
 - World Boss está validado en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, Inventory Full, Bag Full y Rotation desde World Boss.
 - `StandardRotation` pasó un loop aislado 28/28 con retorno al personaje inicial.
@@ -110,7 +115,7 @@ Facts productivos:
 ## Deuda y limitaciones relevantes
 
 - Adquirir y diseñar recovery bounded para el popup de conexión post-batalla de World Boss.
-- Inventory Full/Bag Full de World Boss aplican policy conservadora de skip; liberar espacio y reanudar requiere una policy futura acordada.
+- `WorldBossFlow` aún toma sólo `No` ante `popup.socket_inventory_full`; la semántica de alivio está adquirida, pero `SocketInventoryRelief`, el único intento positivo del caller y la restauración de `expected_return_state` siguen sin implementar.
 - No existe `CharacterContextProvider` ni OCR de nombre. Tampoco costo/rank/participation, Auto Repeat o scheduler.
 - `ConflictResolver`, recovery transversal e isolation/continuation unattended siguen futuros. Los retries locales verificados no se trasladan a esa capa.
 - Timings y retries pueden seguir ajustándose sólo a partir de logs productivos; no hay necesidad de tuning preventivo.
@@ -118,4 +123,4 @@ Facts productivos:
 
 ## Próximo trabajo
 
-Usar GUI/runtime productivo para recopilar problemas reales y resolver bugs o tuning a partir de logs. Antes de implementar otro flow/capacidad, elegirlo y definir con el usuario intención, outcomes y policy. Las prioridades conocidas están en [`ROADMAP.md`](ROADMAP.md).
+Implementar como Fase 2 la support operation reutilizable `SocketInventoryRelief` sobre las señales ya adquiridas, sin convertirla en flow ni trasladar la policy de único intento fuera del caller. Las prioridades restantes están en [`ROADMAP.md`](ROADMAP.md).

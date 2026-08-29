@@ -14,6 +14,7 @@ from bot.ocr import OcrEngineError
 from bot.ocr_extractors import (
     BATTLE_TIMER_REMAINING,
     RESOURCE_SAPPHIRES,
+    SOCKET_SELL_ITEM_LEVEL,
     ExtractionStatus,
     OcrFactExtractor,
 )
@@ -143,7 +144,7 @@ class RuntimeFactReader:
                 return FactReadResult(
                     FactReadStatus.CONTEXT_MISMATCH,
                     evidence=tuple(evidence),
-                    detail=f"fresh frame is not {extractor.context}",
+                    detail="fresh frame does not satisfy fact context requirements",
                 )
             if extracted.status == ExtractionStatus.UNREADABLE:
                 continue
@@ -207,6 +208,9 @@ class RuntimeFactReader:
 
     def read_timer_remaining(self, **kwargs) -> FactReadResult[int]:
         return self.read_fact(BATTLE_TIMER_REMAINING, **kwargs)
+
+    def read_socket_sell_item_level(self, **kwargs) -> FactReadResult[int]:
+        return self.read_fact(SOCKET_SELL_ITEM_LEVEL, **kwargs)
 
     def _record(self, event: str, **fields: object) -> None:
         if self.events is None:

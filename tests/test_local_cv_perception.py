@@ -18,10 +18,15 @@ from bot.catalog import (
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
+    LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
+    LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
-    LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
+    LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
+    LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
+    LANDMARK_SOCKET_SELL_BULK_BUTTON,
+    LANDMARK_SOCKET_TITLE,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
@@ -37,6 +42,10 @@ from bot.perception.black_market import (
 )
 from bot.perception.engine import PerceptionEngine
 from bot.perception.local_cv import LocalCvDetector
+from bot.perception.socket import (
+    SocketEnhanceAnimationDetector,
+    SocketIncompatibleOpalDetector,
+)
 from bot.perception.specs import (
     CHARACTER_SELECT_HEADER_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
@@ -253,10 +262,12 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
 
     assert engine is not second
     assert tuple(
-        detector.spec for detector in engine.detectors[:-2]
+        detector.spec for detector in engine.detectors[:len(DEFAULT_LOCAL_CV_SPECS)]
     ) == DEFAULT_LOCAL_CV_SPECS
-    assert isinstance(engine.detectors[-2], BlackMarketGoldDetector)
-    assert isinstance(engine.detectors[-1], BlackMarketPurchasedDetector)
+    assert isinstance(engine.detectors[-4], BlackMarketGoldDetector)
+    assert isinstance(engine.detectors[-3], BlackMarketPurchasedDetector)
+    assert isinstance(engine.detectors[-2], SocketIncompatibleOpalDetector)
+    assert isinstance(engine.detectors[-1], SocketEnhanceAnimationDetector)
     assert len(created) == 2 * len(DEFAULT_LOCAL_CV_SPECS)
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
@@ -267,9 +278,14 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
         LANDMARK_INVENTORY_FULL_OK_BUTTON,
         LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
         LANDMARK_QUICK_MENU_LOBBY_TILE,
+        LANDMARK_SOCKET_TITLE,
+        LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
+        LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
+        LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
+        LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
+        LANDMARK_SOCKET_SELL_BULK_BUTTON,
         LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
         LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
-        LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
         LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
         LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
         LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,

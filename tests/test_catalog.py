@@ -17,7 +17,7 @@ from bot.catalog import (
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
     LANDMARK_WORLD_BOSS_BAG_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE,
-    LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
+    LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
     LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE,
     LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
     LANDMARK_WORLD_BOSS_SELECT_BOSS_HEADER,
@@ -29,7 +29,7 @@ from bot.catalog import (
     POPUP_INVENTORY_FULL,
     POPUP_PURCHASE_CONFIRMATION,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
-    POPUP_WORLD_BOSS_INVENTORY_FULL,
+    POPUP_SOCKET_INVENTORY_FULL,
     POPUP_WORLD_BOSS_BAG_FULL,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
@@ -186,17 +186,17 @@ def test_inventory_full_requires_ok_button_and_black_market_context_gate():
     assert gated.overlays == (POPUP_INVENTORY_FULL,)
 
 
-def test_world_boss_inventory_full_is_distinct_and_resolves_over_world_boss():
+def test_socket_inventory_full_is_global_and_resolves_over_world_boss():
     state = build_default_resolver().resolve(
         batch(
             LANDMARK_WORLD_BOSS_SAPPHIRES_USED,
-            LANDMARK_WORLD_BOSS_INVENTORY_FULL_PROMPT,
+            LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
         )
     )
 
     assert state.status is ResolutionStatus.RESOLVED
     assert state.base_context == SCREEN_WORLD_BOSS
-    assert state.overlays == (POPUP_WORLD_BOSS_INVENTORY_FULL,)
+    assert state.overlays == (POPUP_SOCKET_INVENTORY_FULL,)
 
 
 def test_world_boss_bag_full_requires_world_boss_context_and_resolves_distinctly():
@@ -304,9 +304,9 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 6
-    assert len(OVERLAY_RULES) == 9
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 15
+    assert len(BASE_CONTEXT_RULES) == 7
+    assert len(OVERLAY_RULES) == 12
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 20
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

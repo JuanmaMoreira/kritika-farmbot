@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-29",
+    "source": "live_scrcpy",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat",
+    "scope": "semantic acquisition only; no SocketInventoryRelief implementation",
+    "safety": {
+      "karats_used": false,
+      "single_real_sale": "Sell (Bulk) on human-confirmed Opal (Skill)+0",
+      "level_10_disposition": "Cancel"
+    },
+    "acquired_targets": {
+      "inventory_yes": [0.433974, 0.640779],
+      "socket_back": [0.8, 0.07],
+      "enhance_all": [0.625, 0.94],
+      "gold_enhance": [0.375, 0.84],
+      "karat_enhance_forbidden": [0.625, 0.84],
+      "animation_safe_sample": [0.08, 0.5],
+      "animation_safe_region": [0.04, 0.4, 0.12, 0.6],
+      "equipment_home": [0.303, 0.18],
+      "selected_red_slot_index_4_zero_based": [0.583, 0.54],
+      "open_sell": [0.37, 0.93],
+      "sell_bulk": [0.4, 0.633],
+      "sell_single_forbidden": [0.5, 0.633],
+      "cancel": [0.6, 0.633]
+    },
+    "cross_context_evaluation": {
+      "resolver": "168/168 correct, 168/168 overlays, 0 wrong, 0 ambiguous",
+      "incompatible_opal": "emitted only on red-grid and the still-red slots behind level-0 Sell popup",
+      "enhance_animation_tappable": "emitted only on curated dark-stage and success-stage; rejected Select Boss, Previous Rewards and five legacy dark screens"
+    },
+    "runtime_fact": {
+      "name": "item.socket.sell_level",
+      "context": "screen.socket + popup.socket_sell",
+      "roi": [0.47, 0.39, 0.58, 0.45],
+      "preprocessing_scale": 4.0,
+      "confirmations": "2 of at most 3 fresh readings",
+      "level_0": {"raw_text": "(Skill)+0] for 6 K", "confidence_range": [0.933, 0.987]},
+      "level_10": {"raw_text": "Skill)+10] for 6 K", "confidence_range": [0.972, 0.987]}
+    }
+  },
+  "transitions": [
+    {
+      "from": "screen.world_boss + popup.socket_inventory_full",
+      "action": "Yes",
+      "to": "screen.socket",
+      "verified": true
+    },
+    {
+      "from": "screen.socket",
+      "action": "Back",
+      "to": "screen.world_boss",
+      "verified": true
+    },
+    {
+      "from": "popup.socket_enhance_all",
+      "action": "Gold Enhance",
+      "to": "activity.socket.enhance_animation_tappable",
+      "verified": true,
+      "note": "bright flash stages deliberately emit no tap authorization"
+    },
+    {
+      "from": "popup.socket_enhance_all",
+      "action": "Gold Enhance",
+      "to": "popup.socket_no_material",
+      "verified": true,
+      "meaning": "NO_EFFECT"
+    },
+    {
+      "from": "screen.socket + popup.socket_sell + item.socket.sell_level=0",
+      "action": "Sell (Bulk)",
+      "to": "screen.socket with popup absent and prior red slot absent",
+      "verified": true
+    }
+  ],
+  "entries": [
+    {"path": "screencaps/semantic/socket_inventory_relief/socket/yes-to-socket.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/socket/stable.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/socket/back-to-world-boss.png", "base_context": "screen.world_boss", "overlays": [], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/enhance/modal.png", "base_context": "screen.socket", "overlays": ["popup.socket_enhance_all"], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/enhance/no-material.png", "base_context": "screen.socket", "overlays": ["popup.socket_enhance_all", "popup.socket_no_material"], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/enhance/dark-stage.png", "base_context": "unknown", "overlays": [], "review_status": "confirmed", "observations": ["activity.socket.enhance_animation_tappable"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/enhance/bright-flash.png", "base_context": "unknown", "overlays": [], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/enhance/success-stage.png", "base_context": "unknown", "overlays": [], "review_status": "confirmed", "observations": ["activity.socket.enhance_animation_tappable"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/enhance/after-safe-tap-socket.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/socket_inventory_relief/equipment_home/red-grid.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["item.socket.incompatible_opal", "landmark.socket_equipment_home_active"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/equipment_home/no-red-candidates.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["landmark.socket_equipment_home_active"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/sell/level-0-popup.png", "base_context": "screen.socket", "overlays": ["popup.socket_sell"], "review_status": "confirmed", "observations": ["item.socket.incompatible_opal", "landmark.socket_equipment_home_active"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/sell/level-10-popup.png", "base_context": "screen.socket", "overlays": ["popup.socket_sell"], "review_status": "confirmed", "observations": ["landmark.socket_equipment_home_active"]},
+    {"path": "screencaps/semantic/socket_inventory_relief/sell/bulk-stable-after.png", "base_context": "screen.socket", "overlays": [], "review_status": "confirmed", "observations": ["landmark.socket_equipment_home_active"]}
+  ]
+}

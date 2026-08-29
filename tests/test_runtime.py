@@ -75,6 +75,7 @@ def test_build_runtime_fact_reader_hides_roi_ocr_and_parser_from_consumer():
 
     assert reader.fact_names == (
         "battle.timer_remaining",
+        "item.socket.sell_level",
         "resource.sapphires",
     )
     assert not hasattr(reader, "region")

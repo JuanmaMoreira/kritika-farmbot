@@ -5,10 +5,19 @@ import cv2
 import pytest
 
 from bot.action_executor import FrameGeometry
-from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS_BATTLE
+from bot.catalog import (
+    POPUP_SOCKET_SELL,
+    SCREEN_LOBBY,
+    SCREEN_SOCKET,
+    SCREEN_WORLD_BOSS_BATTLE,
+)
 from bot.capture import FrameSnapshot
 from bot.ocr import RapidOcrEngine
-from bot.ocr_extractors import build_sapphires_extractor, build_timer_extractor
+from bot.ocr_extractors import (
+    build_sapphires_extractor,
+    build_socket_sell_level_extractor,
+    build_timer_extractor,
+)
 from bot.observations import ObservationBatch
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
 from bot.state import ResolutionStatus, ResolvedState
@@ -16,6 +25,9 @@ from bot.state import ResolutionStatus, ResolvedState
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPOSITORY_ROOT / "datasets/ocr_runtime_facts_evidence_manifest.json"
+SOCKET_MANIFEST_PATH = (
+    REPOSITORY_ROOT / "datasets/socket_inventory_relief_semantic_manifest.json"
+)
 
 
 def load_manifest():
@@ -108,3 +120,45 @@ def test_product_ocr_extractors_replay_curated_live_evidence_when_present():
         result = extractors[kind].extract(snapshot)
 
         assert result.value == expected, path
+
+
+def test_socket_sell_level_replays_zero_and_nonzero_live_guards_when_present():
+    payload = json.loads(SOCKET_MANIFEST_PATH.read_text(encoding="utf-8"))
+    evidence = payload["curation"]["runtime_fact"]
+    cases = (
+        ("sell/level-0-popup.png", 0, evidence["level_0"]["raw_text"]),
+        ("sell/level-10-popup.png", 10, evidence["level_10"]["raw_text"]),
+    )
+    paths = {
+        suffix: REPOSITORY_ROOT / next(
+            item["path"] for item in payload["entries"]
+            if item["path"].endswith(suffix)
+        )
+        for suffix, _, _ in cases
+    }
+    if not all(path.is_file() for path in paths.values()):
+        pytest.skip("local Socket OCR evidence corpus is not present")
+
+    extractor = build_socket_sell_level_extractor(RapidOcrEngine())
+    for sequence, (suffix, expected, raw_text) in enumerate(cases, start=1):
+        image = cv2.imread(str(paths[suffix]), cv2.IMREAD_COLOR)
+        frame = FrameSnapshot(image, float(sequence), sequence)
+        state = ResolvedState(
+            ResolutionStatus.RESOLVED,
+            sequence,
+            float(sequence),
+            base_context=SCREEN_SOCKET,
+            overlays=(POPUP_SOCKET_SELL,),
+        )
+        snapshot = RuntimeSnapshot(
+            frame,
+            ObservationBatch(sequence, float(sequence)),
+            state,
+            RuntimeFacts(),
+            FrameGeometry.from_frame(image),
+        )
+
+        result = extractor.extract(snapshot)
+
+        assert result.value == expected
+        assert raw_text in result.evidence.raw_text

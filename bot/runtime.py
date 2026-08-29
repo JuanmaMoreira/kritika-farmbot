@@ -8,7 +8,11 @@ from bot.config import RuntimeConfig
 from bot.fact_reader import RuntimeFactReader
 from bot.event_log import EventSink
 from bot.ocr import OcrEngine, RapidOcrEngine
-from bot.ocr_extractors import build_sapphires_extractor, build_timer_extractor
+from bot.ocr_extractors import (
+    build_sapphires_extractor,
+    build_socket_sell_level_extractor,
+    build_timer_extractor,
+)
 from bot.runtime_observer import RuntimeObserver
 
 
@@ -42,13 +46,14 @@ def build_runtime_fact_reader(
     ocr_engine: OcrEngine | None = None,
     events: EventSink | None = None,
 ) -> RuntimeFactReader:
-    """Compose the two productive OCR facts over one shared OCR engine."""
+    """Compose productive OCR facts over one shared OCR engine."""
 
     engine = ocr_engine if ocr_engine is not None else RapidOcrEngine()
     return RuntimeFactReader(
         observer,
         (
             build_sapphires_extractor(engine),
+            build_socket_sell_level_extractor(engine),
             build_timer_extractor(engine),
         ),
         events=events,
