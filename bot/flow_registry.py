@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from typing import Callable, Protocol
 
 from bot.black_market_flow import BlackMarketFlow
+from bot.daily_quests_flow import DailyQuestsFlow
 from bot.flow_contracts import FlowContract, FlowScope, PerCharacterFlow
+from bot.mailbox_flow import MailboxFlow
 from bot.world_boss_flow import WorldBossFlow
 
 
@@ -118,6 +120,24 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
+    return DailyQuestsFlow(
+        dependencies.observer,
+        dependencies.actions,
+        dependencies.events,
+        cancel_requested=dependencies.cancel_requested,
+    )
+
+
+def _build_mailbox(dependencies: FlowDependencies) -> PerCharacterFlow:
+    return MailboxFlow(
+        dependencies.observer,
+        dependencies.actions,
+        dependencies.events,
+        cancel_requested=dependencies.cancel_requested,
+    )
+
+
 DEFAULT_FLOW_REGISTRY = FlowRegistry((
     FlowDefinition(
         "black_market",
@@ -132,6 +152,20 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
         WorldBossFlow.scope,
         WorldBossFlow.contract,
         _build_world_boss,
+    ),
+    FlowDefinition(
+        "daily_quests",
+        "Daily Quests",
+        DailyQuestsFlow.scope,
+        DailyQuestsFlow.contract,
+        _build_daily_quests,
+    ),
+    FlowDefinition(
+        "mailbox",
+        "Mailbox",
+        MailboxFlow.scope,
+        MailboxFlow.contract,
+        _build_mailbox,
     ),
 ))
 

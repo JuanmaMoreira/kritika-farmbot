@@ -2,7 +2,7 @@
 
 Kritika FarmBot es un proyecto de automatización para **Kritika: The White Knights** sobre un dispositivo Android físico conectado por USB.
 
-El runtime híbrido 0.2 productivo ejecuta actualmente Black Market, World Boss y rotación standard mediante contratos semánticos verificados. El código legacy se conserva sólo como conocimiento histórico.
+El runtime híbrido 0.2 productivo ejecuta actualmente Black Market, World Boss, Daily Quests, Mailbox y rotación standard mediante contratos semánticos verificados. El código legacy se conserva sólo como conocimiento histórico.
 
 ## Dirección 0.2
 
@@ -45,19 +45,21 @@ Ejecutar desde la raíz del repositorio. El wrapper resuelve el Python, ADB y sc
 # Ejecutar una vez sobre el personaje actual
 .\tools\agent_run.ps1 tools.run_flow black_market
 .\tools\agent_run.ps1 tools.run_flow world_boss --debug
+.\tools\agent_run.ps1 tools.run_flow daily_quests
+.\tools\agent_run.ps1 tools.run_flow mailbox
 
 # Ejecutar una sesión; el orden escrito se conserva
-.\tools\agent_run.ps1 tools.run_session black_market world_boss --characters 2
+.\tools\agent_run.ps1 tools.run_session black_market world_boss daily_quests mailbox --characters 2
 
 # Sin --characters se usa el default productivo actual: 28
-.\tools\agent_run.ps1 tools.run_session black_market world_boss --debug
+.\tools\agent_run.ps1 tools.run_session black_market world_boss daily_quests mailbox --debug
 ```
 
 La consola normal muestra `INFO`, `WARNING` y `ERROR`; `--debug` agrega facts OCR, transiciones, grace/retries y telemetría de `ControlledWait`. Cada ejecución crea un `.log` estructurado bajo `logs/`, con timestamp e id de sesión. No se guardan frames.
 
 `Ctrl+C` solicita cancelación segura; pulsarlo una segunda vez fuerza la interrupción. El resumen final distingue `COMPLETED`, `FAILED` y `CANCELLED`. Exit codes: `0` completado, `1` fallo del flow/sesión, `2` argumentos/config/runtime inválidos y `130` cancelado.
 
-El usuario debe dejar el personaje actual en la precondición declarada. Los flows vigentes parten de Lobby. Una sesión rota exactamente una vez después de los flows de cada personaje, incluido el último retorno que cierra el ciclo.
+El usuario debe dejar el personaje actual en la precondición declarada. Los flows vigentes parten de Lobby. En la selección default, Daily Quests y Mailbox son los dos flows finales y Rotation ocurre después de ambos. Si World Boss termina en su pantalla principal, el boundary de precondiciones usa la ruta adquirida `World Boss → Quick Menu → Lobby` antes de Daily, sin cambiar la policy de World Boss. Una sesión rota exactamente una vez después de los flows de cada personaje, incluido el último retorno que cierra el ciclo.
 
 ## Documentación
 

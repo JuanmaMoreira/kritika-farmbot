@@ -22,6 +22,9 @@ from bot.catalog import (
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+    LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
+    LANDMARK_DAILY_QUESTS_TITLE,
     LANDMARK_COMBINE_ALL_TITLE,
     LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,
     LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,
@@ -33,6 +36,10 @@ from bot.catalog import (
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
+    LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,
+    LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
+    LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
+    LANDMARK_MAILBOX_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
@@ -50,6 +57,8 @@ from bot.catalog import (
     MENU_QUICK,
     MODE_COMBINE_FUSE,
     MODE_COMBINE_TRANSMUTE,
+    MODE_DAILY_QUESTS,
+    MODE_MAILBOX_CHARACTER_MAIL,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_INSUFFICIENT_GOLD,
@@ -71,6 +80,8 @@ from bot.catalog import (
     SCREEN_CHARACTER_SELECT,
     SCREEN_COMBINE,
     SCREEN_LOBBY,
+    SCREEN_MAILBOX,
+    SCREEN_QUESTS,
     SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
@@ -102,6 +113,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/world_boss_bag_full_evidence_manifest.json",
     "datasets/equipment_inventory_full_semantic_manifest.json",
     "datasets/socket_inventory_relief_semantic_manifest.json",
+    "datasets/daily_quests_mailbox_semantic_manifest.json",
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
@@ -707,6 +719,20 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return entry.base_context == SCREEN_LOBBY
     if name == LANDMARK_CHARACTER_SELECT_HEADER:
         return entry.base_context == SCREEN_CHARACTER_SELECT
+    if name == LANDMARK_DAILY_QUESTS_TITLE:
+        return entry.base_context == SCREEN_QUESTS
+    if name == LANDMARK_DAILY_QUESTS_TAB_ACTIVE:
+        return MODE_DAILY_QUESTS in entry.overlays
+    if name == LANDMARK_MAILBOX_TITLE:
+        return entry.base_context == SCREEN_MAILBOX
+    if name == LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE:
+        return MODE_MAILBOX_CHARACTER_MAIL in entry.overlays
+    if name in {
+        LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+        LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
+        LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
+    }:
+        return name in entry.observations
     if name == LANDMARK_COMBINE_FUSE_TAB:
         return entry.base_context == SCREEN_COMBINE
     if name == LANDMARK_COMBINE_FUSE_ACTIVE:

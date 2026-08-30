@@ -1,0 +1,214 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-29/30",
+    "human_ground_truth": "confirmed_in_chat",
+    "scope": "Daily Quests and Character Mail semantics only; no flows or gameplay implementation",
+    "interpretation": {
+      "daily_quests": "Claim All removes visible per-row Claim actions; Start, Video, Claimed and the independent progress reward are relevant negatives. A second Claim All was a confirmed no-op.",
+      "mailbox": "The central spinner remains present while Claim All processes and disappears at quiescence. Inbox count remains unchanged until read mail is deleted. Five unclaimable rewards remained after Delete read mail because reward capacity was exhausted.",
+      "bubbles": "Transient acquired/MAX-limit bubbles are retained in processing evidence but are not promoted as completion semantics."
+    }
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/lobby/before-daily.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/lobby/after-mailbox.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-claimable/01.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["landmark.daily_quests_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-claimable/02.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["landmark.daily_quests_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-claimable/03.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["landmark.daily_quests_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-settled/01.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-settled/02.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-settled/03-noop.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claim/01.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claim/02.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claim/03.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claimed/01.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claimed/02.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claimed/03.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-account/01.png",
+      "base_context": "screen.mailbox",
+      "overlays": [],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-account/02.png",
+      "base_context": "screen.mailbox",
+      "overlays": [],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-account/03.png",
+      "base_context": "screen.mailbox",
+      "overlays": [],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-character-claimable/01.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_claimable"],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-character-claimable/02.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_claimable"],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-character-claimable/03.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_claimable"],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-processing/01.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_claimable", "status.mailbox_read_mail_present"],
+      "observations": ["activity.mailbox_claim_processing", "landmark.mailbox_row_claim_button", "landmark.mailbox_row_delete_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-processing/02.png",
+      "base_context": "screen.mailbox",
+      "overlays": [],
+      "observations": ["activity.mailbox_claim_processing", "landmark.mailbox_row_delete_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-processing/03.png",
+      "base_context": "screen.mailbox",
+      "overlays": [],
+      "observations": ["activity.mailbox_claim_processing", "landmark.mailbox_row_delete_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-processing/04.png",
+      "base_context": "screen.mailbox",
+      "overlays": [],
+      "observations": ["activity.mailbox_claim_processing", "landmark.mailbox_row_delete_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-read/01.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_read_mail_present"],
+      "observations": ["landmark.mailbox_row_delete_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-read/02.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_read_mail_present"],
+      "observations": ["landmark.mailbox_row_delete_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-read/03.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_read_mail_present"],
+      "observations": ["landmark.mailbox_row_delete_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-leftovers/01.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_claimable"],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-leftovers/02.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_claimable"],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-mailbox/mailbox-leftovers/03.png",
+      "base_context": "screen.mailbox",
+      "overlays": ["mode.mailbox_character_mail", "status.mailbox_claimable"],
+      "observations": ["landmark.mailbox_row_claim_button"],
+      "review_status": "confirmed"
+    }
+  ]
+}

@@ -40,7 +40,7 @@ GUI contains no business logic
 
 `bot/runtime.py` construye ADB, captura y facts. `bot/productive_runtime.py` es el composition root compartido: adquiere configuración, `AdbClient`, `ScrcpyFrameSource`, percepción, resolver, observer, OCR facts, Auto Battle, `ActionExecutor`, flows, Rotation y runner. El owner mantiene cleanup explícito de source, proceso, socket y forward, incluso ante fallo.
 
-`bot/flow_registry.py` es la única lista productiva de flows. Cada `FlowDefinition` declara id, display name, scope, contrato y factory; `FlowRegistry` valida y conserva orden explícito. No hay discovery, reflection ni plugin system. El registry actual contiene `black_market` y `world_boss`.
+`bot/flow_registry.py` es la única lista productiva de flows. Cada `FlowDefinition` declara id, display name, scope, contrato y factory; `FlowRegistry` valida y conserva orden explícito. No hay discovery, reflection ni plugin system. El registry actual contiene `black_market`, `world_boss`, `daily_quests` y `mailbox`, en ese orden default.
 
 ## Capture y Perception
 
@@ -58,6 +58,8 @@ Hay tres usos separados:
 
 Las observaciones intra-Socket de velo rojo y fase oscura de Enhance son operation-scoped: Perception sólo reporta evidencia. No seleccionan estrategia, no autorizan KARATS ni convierten una coincidencia aislada en permiso de venta.
 
+Daily Quests y Character Mail usan semántica y actions productivas separadas. `screen.quests`/`mode.daily_quests` separan el `Claim` de filas del reward de progreso; `screen.mailbox`/`mode.mailbox_character_mail` gatean `Claim` y `Delete` para no confundir Account Mail. El spinner cyan se expone como `activity.mailbox_claim_processing`, una observación operation-scoped que puede faltar durante fases oscuras de rotación. Perception no interpreta bubbles, no declara Inbox vacío y no decide si quedaron rewards reclamables.
+
 Equipment Inventory Full usa `popup.equipment_inventory_full` como overlay global, separado del caller. `screen.combine` deriva de un landmark compuesto que acepta el tab Fuse persistente o la actividad inequívoca de animación, evitando un estado `UNKNOWN` en la fase que consumirá `TapThroughAnimation`. Los modos activos y tres observaciones posicionales de `N` se combinan en el resolver para producir disponibilidad Transmute, Ethereal y Fuse. Los títulos de panel/modal aportan estados intermedios con consumidores futuros concretos. Las tres operaciones comparten `activity.combine_animation_tappable`; Perception no decide el orden ni si debe combinar.
 
 Los landmarks base evitan regiones con oclusión dinámica conocida. En Socket, el tab izquierdo persistente sustituye al encabezado superior derecho; en Battle Mode, el título de la tarjeta World Boss sustituye al encabezado superior. Popups, overlays y el panel Black Market se renderizan por encima del chat, por lo que su layering también forma parte de la auditoría; una ROI base situada en una zona dinámica requiere positivos reales con el overlay antes de considerarse robusta.
@@ -71,6 +73,8 @@ La evaluación offline productiva conserva los manifests curados como fuente de 
 `ContextResolver` es puro, determinista y stateless. Con reglas explícitas, cero/uno/varios candidatos base producen `UNKNOWN`/`RESOLVED`/`AMBIGUOUS`; no hay first-match, voting, hysteresis ni desempate por confidence. Overlays se resuelven independientemente y pueden coexistir con base desconocida.
 
 `RuntimeObserver` une frame, observations, estado, facts intra-screen y geometría en un `RuntimeSnapshot` coherente. `observe()` y `wait_until()` son el boundary de consumidores; las esperas exigen sequences frescas, tienen timeout, pueden exigir estabilidad y aceptan cancelación/abort conditions. La estabilidad pertenece al consumidor, no al resolver.
+
+Los consumidores de Claim All reutilizan esa estabilidad: Daily Quests termina al desaparecer establemente `status.daily_quests_claimable` bajo su base/modo; Mailbox termina sólo tras ausencia estable de `activity.mailbox_claim_processing` y retorno estable del modo Character Mail. En Mailbox no basta un único frame sin spinner y la persistencia de `status.mailbox_claimable` después de la quiescencia representa leftovers, no procesamiento activo.
 
 `TemporalObserver` reúne un número bounded de snapshots frescos, separados en el tiempo y context-correct. No clasifica ni ejecuta input. `AutoBattleDetector` es un extractor temporal que produce `setting.auto_battle = ON/OFF/UNKNOWN`.
 
@@ -131,6 +135,8 @@ No ejecuta input, retry, navegación ni recovery. Esperar disponibilidad futura 
 
 `WorldBossFlow` es `PER_CHARACTER`, declara Lobby → Lobby/World Boss y posee policy de sapphires, navegación, Previous Rewards, guards de inventario, Auto Battle, timer, Raid Complete y Continue. Raid Complete depende del overlay, no de que una base concreta resuelva simultáneamente. El flow no implementa OCR, matching, ADB ni recovery de conexión; consume esos boundaries.
 
+`DailyQuestsFlow` y `MailboxFlow` son `PER_CHARACTER`, declaran Lobby → Lobby y contienen únicamente su policy de negocio. Claim All es single-attempt en ambos. Daily acepta no-op inicial y completa por desaparición estable del status. Mailbox separa onset bounded, actividad observada y quiescencia estable; ausencia de onset sólo es no-effect cuando los claims persisten de forma estable. Delete Read ocurre después de esa rama y únicamente con read mail observable. Leftovers son `FlowEvent` no fatal.
+
 Las support operations siguen `check → operación bounded → recheck → continue/skip/fail`; no son flows, no entran en GUI/`FlowRegistry` y no permiten llamadas recursivas arbitrarias entre flows. El caller conserva la policy de cuándo invocarlas y entrega un return plan con acción y estado exacto esperado; la operación sólo reporta éxito después de verificar ese retorno.
 
 `SocketInventoryRelief` requiere `screen.socket` limpio, intenta Enhance All sólo con GOLD y, ante No Material, puede buscar de forma bounded un ópalo incompatible visible. Sell in Bulk se autoriza únicamente con velo rojo y un fact de nivel confirmado en `0`; lectura no confirmada o nivel distinto cancela la venta. Sus outcomes explícitos son `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` y `CANCELLED`. `WorldBossFlow` posee tanto el `Yes` inicial como el permiso local de un único intento positivo por ejecución; una segunda aparición usa `No`. El único return plan compuesto productivamente es `ExitSocket → screen.world_boss`.
@@ -146,6 +152,8 @@ Después de Bulk, un frame Socket limpio puede preceder al landmark estable de E
 `RotationStrategy.advance()` es un contrato transversal. `StandardRotation` requiere la capability `quick_menu_accessible` y deja Lobby como única postcondición exitosa. Abre Quick Menu, Character Select, usa `ObservedScroll` hasta borde confirmado, verifica la selección visual de la tarjeta target, confirma y exige Lobby fresco. No conoce flows, nombres de personaje ni ADB.
 
 `quick_menu_accessible` es una capability de policy, no una pantalla ni un nodo de navegación. Su allow-list productivo contiene Lobby y World Boss. `menu.quick` sigue siendo un overlay observable; `bot/quick_menu.py` elige el layout del intent interno según el contexto de origen. Incorporar otro contexto requiere evidencia live, no inferencia desde metadata legacy.
+
+`MinimalPreconditionEnsurer` conserva el boundary de normalización a Lobby. El composition root lo implementa mediante la ruta ya adquirida `screen.world_boss → menu.quick → screen.lobby`, de modo que un World Boss exitoso no obliga a cambiar su contrato para que Daily pueda ejecutarse después. `SessionRunner` continúa sin actions ni business logic.
 
 ## SessionRunner
 

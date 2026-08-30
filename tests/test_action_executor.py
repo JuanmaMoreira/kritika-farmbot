@@ -7,7 +7,9 @@ from bot.action_executor import (
     ActionExecutor,
     DEFAULT_BLACK_MARKET_ACTION_TARGETS,
     DEFAULT_BATTLE_ACTION_TARGETS,
+    DEFAULT_DAILY_QUESTS_ACTION_TARGETS,
     DEFAULT_EQUIPMENT_ACTION_TARGETS,
+    DEFAULT_MAILBOX_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
     DEFAULT_SOCKET_ACTION_TARGETS,
     FrameGeometry,
@@ -19,7 +21,11 @@ from bot.semantic_actions import (
     AcknowledgeSocketNoMaterial,
     AcknowledgeInventoryFull,
     AcknowledgeWorldBossPreviousRewards,
+    ClaimAllCharacterMail,
+    ClaimAllDailyQuests,
     CloseBlackMarket,
+    CloseDailyQuests,
+    CloseMailbox,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
     CancelSocketSell,
@@ -27,9 +33,12 @@ from bot.semantic_actions import (
     ConfirmCombineAll,
     ConfirmEtherealMassCombine,
     DismissWorldBossBagFull,
+    DeleteReadCharacterMail,
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenDailyQuests,
+    OpenMailbox,
     OpenBattleModeSelect,
     OpenCharacterSelect,
     OpenQuickMenu,
@@ -49,6 +58,8 @@ from bot.semantic_actions import (
     SelectSocketOpalSlot,
     SelectCombineFuse,
     SelectCombineTransmute,
+    SelectCharacterMail,
+    SelectQuickMenuLobby,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -100,6 +111,43 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
     adb.tap.assert_called_once_with(*expected)
     assert receipt.normalized_target == target
     assert receipt.pixel_target == expected
+
+
+@pytest.mark.parametrize(
+    ("action", "target"),
+    (
+        (
+            OpenDailyQuests(),
+            DEFAULT_DAILY_QUESTS_ACTION_TARGETS.open_daily_quests,
+        ),
+        (ClaimAllDailyQuests(), DEFAULT_DAILY_QUESTS_ACTION_TARGETS.claim_all),
+        (
+            CloseDailyQuests(),
+            DEFAULT_DAILY_QUESTS_ACTION_TARGETS.close_daily_quests,
+        ),
+        (OpenMailbox(), DEFAULT_MAILBOX_ACTION_TARGETS.open_mailbox),
+        (
+            SelectCharacterMail(),
+            DEFAULT_MAILBOX_ACTION_TARGETS.select_character_mail,
+        ),
+        (ClaimAllCharacterMail(), DEFAULT_MAILBOX_ACTION_TARGETS.claim_all),
+        (
+            DeleteReadCharacterMail(),
+            DEFAULT_MAILBOX_ACTION_TARGETS.delete_read,
+        ),
+        (CloseMailbox(), DEFAULT_MAILBOX_ACTION_TARGETS.close_mailbox),
+    ),
+)
+def test_executor_translates_daily_quests_and_mailbox_actions(action, target):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    geometry = FrameGeometry(width=2712, height=1224)
+
+    receipt = executor.execute(action, geometry)
+
+    expected = (int(target[0] * 2712), int(target[1] * 1224))
+    adb.tap.assert_called_once_with(*expected)
+    assert receipt.normalized_target == target
 
 
 @pytest.mark.parametrize(
@@ -221,6 +269,7 @@ def test_executor_supports_each_row_major_black_market_slot(slot_index):
     ("action", "target"),
     (
         (OpenQuickMenu(), DEFAULT_ROTATION_ACTION_TARGETS.open_quick_menu),
+        (SelectQuickMenuLobby(), DEFAULT_ROTATION_ACTION_TARGETS.select_lobby),
         (
             OpenCharacterSelect(),
             DEFAULT_ROTATION_ACTION_TARGETS.open_character_select,

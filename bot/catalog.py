@@ -11,6 +11,8 @@ SCREEN_CHARACTER_SELECT = "screen.character_select"
 SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
 SCREEN_COMBINE = "screen.combine"
+SCREEN_MAILBOX = "screen.mailbox"
+SCREEN_QUESTS = "screen.quests"
 SCREEN_SOCKET = "screen.socket"
 SCREEN_WORLD_BOSS = "screen.world_boss"
 SCREEN_WORLD_BOSS_BATTLE = "screen.world_boss_battle"
@@ -31,11 +33,16 @@ OVERLAY_WORLD_BOSS_RAID_COMPLETE = "overlay.world_boss_raid_complete"
 MENU_QUICK = "menu.quick"
 MODE_COMBINE_FUSE = "mode.combine_fuse"
 MODE_COMBINE_TRANSMUTE = "mode.combine_transmute"
+MODE_DAILY_QUESTS = "mode.daily_quests"
+MODE_MAILBOX_CHARACTER_MAIL = "mode.mailbox_character_mail"
 PANEL_COMBINE_AWAKENED_TRANSMUTE = "panel.combine_awakened_transmute"
 PANEL_COMBINE_ETHEREAL_RANDOM_PART = "panel.combine_ethereal_random_part"
 STATUS_COMBINE_ETHEREAL_AVAILABLE = "status.combine_ethereal_available"
 STATUS_COMBINE_FUSE_AVAILABLE = "status.combine_fuse_available"
 STATUS_COMBINE_TRANSMUTE_AVAILABLE = "status.combine_transmute_available"
+STATUS_DAILY_QUESTS_CLAIMABLE = "status.daily_quests_claimable"
+STATUS_MAILBOX_CLAIMABLE = "status.mailbox_claimable"
+STATUS_MAILBOX_READ_MAIL_PRESENT = "status.mailbox_read_mail_present"
 
 LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
     "landmark.lobby_trading_center_label"
@@ -97,18 +104,38 @@ LANDMARK_COMBINE_ETHEREAL_NO_MATERIAL_PROMPT = (
 ACTIVITY_COMBINE_ANIMATION_TAPPABLE = (
     "activity.combine_animation_tappable"
 )
+LANDMARK_DAILY_QUESTS_TITLE = "landmark.daily_quests_title"
+LANDMARK_DAILY_QUESTS_TAB_ACTIVE = "landmark.daily_quests_tab_active"
+LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON = (
+    "landmark.daily_quests_row_claim_button"
+)
+LANDMARK_MAILBOX_TITLE = "landmark.mailbox_title"
+LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE = (
+    "landmark.mailbox_character_mail_active"
+)
+LANDMARK_MAILBOX_ROW_CLAIM_BUTTON = "landmark.mailbox_row_claim_button"
+LANDMARK_MAILBOX_ROW_DELETE_BUTTON = "landmark.mailbox_row_delete_button"
+ACTIVITY_MAILBOX_CLAIM_PROCESSING = "activity.mailbox_claim_processing"
 
 SEMANTIC_OBSERVATION_NAMES = (
     ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
+    ACTIVITY_MAILBOX_CLAIM_PROCESSING,
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
     INDICATOR_COMBINE_ROWS_UPPER,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+    LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
+    LANDMARK_DAILY_QUESTS_TITLE,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
+    LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,
+    LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
+    LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
+    LANDMARK_MAILBOX_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
@@ -151,6 +178,16 @@ BASE_CONTEXT_RULES = (
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(
+        name=SCREEN_MAILBOX,
+        requires=(LANDMARK_MAILBOX_TITLE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_QUESTS,
+        requires=(LANDMARK_DAILY_QUESTS_TITLE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
         name=SCREEN_COMBINE,
         requires=(LANDMARK_COMBINE_CONTEXT,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
@@ -178,6 +215,40 @@ BASE_CONTEXT_RULES = (
 )
 
 OVERLAY_RULES = (
+    ContextRule(
+        name=MODE_DAILY_QUESTS,
+        requires=(LANDMARK_DAILY_QUESTS_TAB_ACTIVE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_DAILY_QUESTS_CLAIMABLE,
+        requires=(
+            LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
+            LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=MODE_MAILBOX_CHARACTER_MAIL,
+        requires=(LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_MAILBOX_CLAIMABLE,
+        requires=(
+            LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,
+            LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_MAILBOX_READ_MAIL_PRESENT,
+        requires=(
+            LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,
+            LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
     ContextRule(
         name=POPUP_EQUIPMENT_INVENTORY_FULL,
         requires=(LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,),

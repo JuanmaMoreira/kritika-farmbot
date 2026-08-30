@@ -2,7 +2,7 @@
 
 ## Qué es
 
-Kritika FarmBot 0.2 automatiza tareas por personaje de **Kritika: The White Knights** sobre un dispositivo Android físico. El runtime productivo vigente ejecuta Black Market y World Boss, compone ambos en sesiones multicharacter y cambia de personaje con `StandardRotation`.
+Kritika FarmBot 0.2 automatiza tareas por personaje de **Kritika: The White Knights** sobre un dispositivo Android físico. El runtime productivo vigente ejecuta Black Market, World Boss, Daily Quests y Mailbox, los compone en sesiones multicharacter y cambia de personaje con `StandardRotation`.
 
 GUI Tkinter y CLI son frontends finos del mismo composition root. El código y los tests son la fuente de implementación; la cronología y las calibraciones viven en [`docs/HISTORY.md`](docs/HISTORY.md).
 
@@ -53,11 +53,17 @@ Raid Complete se acepta por presencia del overlay, independientemente de que la 
 
 `EquipmentCombineRelief` es una support operation productiva independiente. Exige `screen.combine` fresca, recorre siempre Transmute → Ethereal condicional → Fuse y reevalúa Fuse después de los pasos previos. Cada status sólo se interpreta en su tab activo; un guard presente sin animación/postcondición verificadas es fallo técnico. Las tres ramas reutilizan `TapThroughAnimation`, acumulan efectos sin short-circuit y exigen desaparición fresca del status correspondiente. El popup Ethereal de material insuficiente es una contradicción defensiva explícita, nunca éxito supuesto. Retorna `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` o `CANCELLED`; el único return plan productivo confirmado es `Combine → Back → World Boss`.
 
+### Daily Quests y Mailbox
+
+`DailyQuestsFlow` y `MailboxFlow` son `PER_CHARACTER` con contrato `screen.lobby → screen.lobby`. Daily omite Claim All cuando no hay `status.daily_quests_claimable`; si lo hay, ejecuta un único intento y exige desaparición estable del status bajo `screen.quests + mode.daily_quests`. El reward independiente de karats nunca es target.
+
+Mailbox entra a Character Mail, omite Claim All sin claims y nunca lo reintenta. Si observa `activity.mailbox_claim_processing`, exige su ausencia estable; una fase oscura aislada reinicia la estabilidad. Si la actividad nunca aparece pero Character Mail con claims persiste estable, registra intento sin efecto y continúa. Leftovers son no fatales y no disparan liberación de inventario. Delete Read sólo se ejecuta con `status.mailbox_read_mail_present` y exige su desaparición estable; Inbox vacío no es postcondición.
+
 ### Sesión y Rotation
 
 `FlowRegistry` registra explícitamente `black_market` y `world_boss`, con metadata, contrato y factory compartidos por todos los frontends.
 
-`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
+`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default termina `… → Daily Quests → Mailbox → Rotation`. Si un flow anterior termina en World Boss, el boundary existente de precondiciones normaliza por `Quick Menu → Lobby` antes de Daily. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
 
 `StandardRotation` no es un flow. Requiere la capability `quick_menu_accessible`, abre Quick Menu, entra a Character Select, confirma el final mediante scroll observado A/T/B, verifica la selección de la última tarjeta, confirma y exige Lobby fresco. No identifica personajes. El allow-list productivo de Quick Menu contiene Lobby y World Boss, con layout interno específico para cada origen.
 
@@ -78,6 +84,8 @@ Raid Complete se acepta por presencia del overlay, independientemente de que la 
 Contextos base productivos:
 
 - `screen.lobby`
+- `screen.quests`
+- `screen.mailbox`
 - `screen.character_select`
 - `screen.battle_mode_select`
 - `screen.black_market`
@@ -89,6 +97,11 @@ Contextos base productivos:
 Overlays/popups productivos:
 
 - `menu.quick`
+- `mode.daily_quests`
+- `status.daily_quests_claimable`
+- `mode.mailbox_character_mail`
+- `status.mailbox_claimable`
+- `status.mailbox_read_mail_present`
 - `popup.purchase_confirmation`
 - `popup.insufficient_gold`
 - `popup.inventory_full`
@@ -116,6 +129,8 @@ Facts productivos:
 - Black Market internos: `currency.black_market.gold(slot)` y `status.black_market.purchased(slot)`.
 - Socket: Equipment Home activo e `item.socket.incompatible_opal(slot)` sobre el velo rojo seleccionado o no seleccionado; `activity.socket.enhance_animation_tappable` sólo en fases oscuras inequívocas. El flash brillante queda sin autorización.
 - Combine: `landmark.combine_context` deriva `screen.combine` desde el tab estructural izquierdo o desde la actividad inequívoca durante la animación; así el frame tappable nunca necesita autorizar input desde `UNKNOWN`. Los tabs activos asignan modo. `indicator.combine_rows_upper`, `indicator.combine_row_bottom` e `indicator.combine_rows` son evidencia posicional y sólo su conjunción con el modo deriva disponibilidad. `activity.combine_animation_tappable` es común a Transmute, Ethereal y Fuse. Durante la animación Transmute puede seguir visible el `N` inferior real de Ethereal; sin tab Transmute activo no se deriva un status espurio.
+- Daily Quests: el `Claim` de filas visibles deriva `status.daily_quests_claimable` únicamente bajo el tab Daily activo. La recompensa de progreso independiente (30 karats en la adquisición) queda fuera de esa ROI y es un negativo confirmado. Tras Claim All, la desaparición estable del status mientras persisten `screen.quests + mode.daily_quests` es la señal adquirida de quiescencia; ausencia inicial admite success/no-op.
+- Character Mail: `Claim` y `Delete` de filas derivan statuses independientes sólo bajo el tab Character Mail activo. `activity.mailbox_claim_processing` observa la fase cyan del spinner central; como su rotación contiene frames oscuros, un negativo aislado no indica completion. La espera futura debe exigir ausencia estable en frames frescos, bounded y conservando `screen.mailbox`. Los bubbles transitorios no son señal principal.
 - La base Socket exige el tab izquierdo persistente en ROI `(0.16, 0.11, 0.26, 0.24)`, con cinco apariencias que cubren selected/unselected y el sombreado más fuerte de Enhance All. El encabezado superior derecho fue retirado como landmark porque el chat dinámico ocupa la banda observada `(0.44, 0.12, 0.85, 0.21)` y puede ocluirlo.
 - Battle Mode Select usa el título fijo de la tarjeta World Boss en ROI `(0.16, 0.58, 0.32, 0.68)`, fuera de esa banda. Sus variantes current/historical sustituyen al encabezado superior ocluible sin cambiar el contrato semántico.
 - Los paneles Black Market, popups y overlays se renderizan por encima del chat; una intersección de sus ROIs no implica oclusión. Las pantallas base no tienen esa protección.
@@ -126,7 +141,10 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free: **1035/1035 tests verdes**. El corpus productivo ampliado cubre 270 frames × 37 detectores: **9990/9990** pares, 270/270 resoluciones y overlays, cero wrong/ambiguous. Los 13 detectores CV locales promovidos para Equipment/Combine tienen cero falsos positivos y cero falsos negativos en ese corpus; el gap más estrecho es `landmark.combine_ethereal_random_part_title` (`0.037053`). El detector derivado de contexto también queda cubierto en los 270 frames.
+- Suite hardware-free: **1090/1090 tests verdes**.
+- Corpus productivo ampliado: 300 frames × 45 detectores, **13500/13500** pares, 300/300 resoluciones y overlays, cero wrong/ambiguous. Los siete landmarks CV de Daily Quests/Mailbox separan positivos y negativos; su gap más estrecho es `landmark.mailbox_row_delete_button` (`0.081946`). El detector derivado de actividad Mailbox queda cubierto por tests dirigidos.
+- Adquisición HIL Daily Quests: apertura desde Lobby, Claim All con desaparición de `Claim`, estado estable con `Start`/ads, segundo Claim All no-op, recompensa de progreso separada y cierre a Lobby confirmados live.
+- Adquisición HIL Character Mail: Account Mail → Character Mail, Claim All con spinner/bubbles y transición `Claim → Delete`, quiescencia con Inbox aún 19, Delete Read Mail y cierre a Lobby confirmados live. Por límites de recompensa quedaron cinco mails reclamables; el estado residual se preserva como final válido y no dispara ninguna rutina para liberar espacio.
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
 - World Boss está validado hardware-free en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, ramas positivas únicas y segundas ramas negativas para Socket/Equipment Full, y Rotation desde World Boss.
 - Smoke HIL Enhance positivo: `Yes` llegó a Socket, GOLD produjo efecto, `TapThroughAnimation` ejecutó 6 taps guardados, Sell quedó `NOT_RUN` y `Back → World Boss` se verificó. La primera corrida expuso y luego corrigió un abort prematuro durante el frame transitorio World Boss sin popup.
@@ -150,4 +168,4 @@ Facts productivos:
 
 ## Próximo trabajo
 
-La rama positiva de Equipment Inventory Full queda limitada al caller World Boss confirmado. El próximo trabajo vuelve a las deudas enumeradas en [`ROADMAP.md`](ROADMAP.md); no se generalizan callers ni se avanza a otra capacidad desde este checkpoint.
+Daily Quests y Mailbox quedan cerrados como flows productivos sin smoke adicional: la evidencia HIL ya había fijado targets y señales, y tests/evaluator no dejaron una duda que requiriera hardware. El próximo trabajo vuelve a las deudas enumeradas en [`ROADMAP.md`](ROADMAP.md); no se avanza a routines ni a otro flow desde este checkpoint.

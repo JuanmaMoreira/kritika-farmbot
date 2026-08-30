@@ -29,6 +29,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se productivizó `setting.auto_battle = ON/OFF/UNKNOWN` mediante observación temporal fresca del glow y se añadió `ensure_auto_battle_on()` con toggle semántico, verificación posterior y retries conservadores. La calibración live obtuvo 0 FP/FN; ON inicial usó 0 taps y OFF pasó a ON confirmado con un tap, sin implementar `WorldBossFlow`.
 - Se completó el primer `WorldBossFlow` productivo: sapphires-first, navegación y popups verificados, Auto Battle + timer + `ControlledWait`, Raid Complete y salidas Lobby/World Boss. Los smokes live validaron batalla completa, sapphires insuficientes sin input e inventario lleno con terminación conservadora; Rotation desde World Boss incorporó el offset lateral real de Quick Menu.
 - Se cerró el primer checkpoint operativo combinado: runtime manual y GUI Tkinter comparten registry, sesiones, cancelación y logging; una sesión GUI `Black Market → World Boss → Rotation` completó 28/28 personajes y 28 advances con business events conservadores, retries state-guarded y cero fallos técnicos.
+- Se incorporaron `DailyQuestsFlow` y `MailboxFlow` como flows productivos `PER_CHARACTER` Lobby → Lobby, con Claim All single-attempt, completion estable basada en estado, leftovers no fatales, Delete Read condicionado y orden default `… → Daily Quests → Mailbox → Rotation`.
 
 ### Changed
 

@@ -8,6 +8,9 @@ from numbers import Real
 from pathlib import Path
 
 from bot.catalog import (
+    LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+    LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
+    LANDMARK_DAILY_QUESTS_TITLE,
     ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
@@ -18,6 +21,10 @@ from bot.catalog import (
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
+    LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,
+    LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
+    LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
+    LANDMARK_MAILBOX_TITLE,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
@@ -251,6 +258,100 @@ CHARACTER_SELECT_HEADER_SPEC = LocalCvSpec(
     calibration=LinearGapCalibration(
         negative_anchor=0.2776434123516083,
         positive_anchor=0.43373382091522217,
+    ),
+)
+
+# Current Quest panel title. The popup renders above Lobby/chat, and the title
+# remains unchanged across claimable, settled, progress-reward and no-op
+# evidence. Calibration includes the expanded cross-context corpus.
+DAILY_QUESTS_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_DAILY_QUESTS_TITLE,
+    asset_path=Path("assets/ui/landmarks/daily-quests-title-current.png"),
+    region=(0.43, 0.04, 0.57, 0.17),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5704289078712463,
+        positive_anchor=0.9863162040710449,
+    ),
+)
+
+# The orange selected Daily Quests tab excludes the transient N badge. It is
+# present in all acquired stable Daily states, including Claim All no-op.
+DAILY_QUESTS_TAB_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
+    asset_path=Path(
+        "assets/ui/landmarks/daily-quests-tab-active-current.png"
+    ),
+    region=(0.17, 0.15, 0.34, 0.31),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.3563847839832306,
+        positive_anchor=0.9862149953842163,
+    ),
+)
+
+# Position-specific turquoise Claim action from Daily Quest rows only. The
+# search region deliberately starts below the independent progress reward, so
+# its active and disabled Claim renderings are confirmed negatives.
+DAILY_QUESTS_ROW_CLAIM_SPEC = LocalCvSpec(
+    name=LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+    asset_path=Path(
+        "assets/ui/landmarks/daily-quests-row-claim-current.png"
+    ),
+    region=(0.66, 0.34, 0.78, 0.75),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7896780371665955,
+        positive_anchor=0.9804643988609314,
+    ),
+)
+
+# Current Mailbox title, stable across Account/Character tabs, Claim All
+# processing bubbles, read mail and residual unclaimable rewards.
+MAILBOX_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_MAILBOX_TITLE,
+    asset_path=Path("assets/ui/landmarks/mailbox-title-current.png"),
+    region=(0.43, 0.09, 0.58, 0.23),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6245492696762085,
+        positive_anchor=0.9794498682022095,
+    ),
+)
+
+# Orange selected Character Mail tab. Transient reward bubbles can occlude it;
+# those frames intentionally keep only screen.mailbox plus raw processing
+# activity instead of pretending the mode remains observable.
+MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,
+    asset_path=Path(
+        "assets/ui/landmarks/mailbox-character-mail-active-current.png"
+    ),
+    region=(0.28, 0.15, 0.48, 0.34),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5357502698898315,
+        positive_anchor=0.9879775047302246,
+    ),
+)
+
+# Red per-row Claim is global visual evidence inside Mailbox; catalog policy
+# combines it with Character Mail active before deriving a productive status.
+MAILBOX_ROW_CLAIM_SPEC = LocalCvSpec(
+    name=LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
+    asset_path=Path("assets/ui/landmarks/mailbox-row-claim-current.png"),
+    region=(0.68, 0.30, 0.81, 0.75),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7149763703346252,
+        positive_anchor=0.9837077856063843,
+    ),
+)
+
+# Turquoise per-row Delete identifies mail that was read/claimed. Its weakest
+# confirmed positive is a deliberately retained dim processing frame; the gap
+# remains separated from Account Mail Claim buttons and other contexts.
+MAILBOX_ROW_DELETE_SPEC = LocalCvSpec(
+    name=LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
+    asset_path=Path("assets/ui/landmarks/mailbox-row-delete-current.png"),
+    region=(0.68, 0.30, 0.81, 0.75),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7161568403244019,
+        positive_anchor=0.7981032729148865,
     ),
 )
 
@@ -611,6 +712,13 @@ COMBINE_ANIMATION_TAPPABLE_SPEC = LocalCvSpec(
 DEFAULT_LOCAL_CV_SPECS = (
     LOBBY_TRADING_CENTER_LABEL_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
+    DAILY_QUESTS_TITLE_SPEC,
+    DAILY_QUESTS_TAB_ACTIVE_SPEC,
+    DAILY_QUESTS_ROW_CLAIM_SPEC,
+    MAILBOX_TITLE_SPEC,
+    MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC,
+    MAILBOX_ROW_CLAIM_SPEC,
+    MAILBOX_ROW_DELETE_SPEC,
     BATTLE_MODE_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     INSUFFICIENT_GOLD_PROMPT_SPEC,

@@ -4,10 +4,11 @@ from types import SimpleNamespace
 import pytest
 
 import bot.productive_runtime as productive
-from bot.catalog import SCREEN_LOBBY
+from bot.catalog import MENU_QUICK, SCREEN_LOBBY, SCREEN_WORLD_BOSS
 from bot.event_log import RuntimeEventStream
 from bot.productive_runtime import ProductiveRuntime
 from bot.runtime_observer import RuntimeWaitTimeout
+from bot.semantic_actions import OpenQuickMenu, SelectQuickMenuLobby
 from bot.state import ResolutionStatus
 
 
@@ -201,3 +202,33 @@ def test_clean_context_probe_timeout_records_last_observed_state():
             },
         )
     ]
+
+
+def test_productive_precondition_normalizes_world_boss_to_lobby(monkeypatch):
+    world_boss = _snapshot(
+        1, status=ResolutionStatus.RESOLVED, base=SCREEN_WORLD_BOSS
+    )
+    quick_menu = _snapshot(
+        2, status=ResolutionStatus.UNKNOWN, overlays={MENU_QUICK}
+    )
+    lobby = _snapshot(3, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    observer = Observer(world_boss, lobby)
+    runtime = _runtime(observer, Events())
+    calls = []
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append((name, action, before, kwargs))
+            final = quick_menu if len(calls) == 1 else lobby
+            assert kwargs["expected"](final)
+            assert kwargs["precondition"](before)
+            return SimpleNamespace(succeeded=True, final_snapshot=final)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+
+    assert runtime._navigate_to_lobby()
+    assert [(name, action) for name, action, _, _ in calls] == [
+        ("precondition.open_quick_menu", OpenQuickMenu()),
+        ("precondition.select_lobby", SelectQuickMenuLobby()),
+    ]
+    assert runtime.build_preconditions().navigate_to_lobby is not None

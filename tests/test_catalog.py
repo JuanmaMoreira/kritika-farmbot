@@ -24,6 +24,8 @@ from bot.catalog import (
     MENU_QUICK,
     MODE_COMBINE_FUSE,
     MODE_COMBINE_TRANSMUTE,
+    MODE_DAILY_QUESTS,
+    MODE_MAILBOX_CHARACTER_MAIL,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     OVERLAY_RULES,
@@ -42,6 +44,9 @@ from bot.catalog import (
     STATUS_COMBINE_ETHEREAL_AVAILABLE,
     STATUS_COMBINE_FUSE_AVAILABLE,
     STATUS_COMBINE_TRANSMUTE_AVAILABLE,
+    STATUS_DAILY_QUESTS_CLAIMABLE,
+    STATUS_MAILBOX_CLAIMABLE,
+    STATUS_MAILBOX_READ_MAIL_PRESENT,
     SEMANTIC_CONFIDENCE_THRESHOLD,
     SEMANTIC_OBSERVATION_NAMES,
     build_default_resolver,
@@ -98,6 +103,18 @@ def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
         STATUS_COMBINE_FUSE_AVAILABLE: (
             MODE_COMBINE_FUSE,
             STATUS_COMBINE_FUSE_AVAILABLE,
+        ),
+        STATUS_DAILY_QUESTS_CLAIMABLE: (
+            MODE_DAILY_QUESTS,
+            STATUS_DAILY_QUESTS_CLAIMABLE,
+        ),
+        STATUS_MAILBOX_CLAIMABLE: (
+            MODE_MAILBOX_CHARACTER_MAIL,
+            STATUS_MAILBOX_CLAIMABLE,
+        ),
+        STATUS_MAILBOX_READ_MAIL_PRESENT: (
+            MODE_MAILBOX_CHARACTER_MAIL,
+            STATUS_MAILBOX_READ_MAIL_PRESENT,
         ),
     }.get(overlay_rule.name, (overlay_rule.name,))
     assert state.overlays == tuple(sorted(expected_overlays))
@@ -322,9 +339,9 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 8
-    assert len(OVERLAY_RULES) == 22
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 33
+    assert len(BASE_CONTEXT_RULES) == 10
+    assert len(OVERLAY_RULES) == 27
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 41
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

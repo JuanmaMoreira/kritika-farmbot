@@ -24,6 +24,46 @@ class CloseBlackMarket:
 
 
 @dataclass(frozen=True)
+class OpenDailyQuests:
+    """Request the direct Lobby -> Daily Quests action."""
+
+
+@dataclass(frozen=True)
+class ClaimAllDailyQuests:
+    """Request Claim All for already-confirmed claimable Daily Quest rows."""
+
+
+@dataclass(frozen=True)
+class CloseDailyQuests:
+    """Request the Daily Quests -> Lobby close action."""
+
+
+@dataclass(frozen=True)
+class OpenMailbox:
+    """Request the Lobby -> Mailbox action."""
+
+
+@dataclass(frozen=True)
+class SelectCharacterMail:
+    """Request the Character Mail tab inside Mailbox."""
+
+
+@dataclass(frozen=True)
+class ClaimAllCharacterMail:
+    """Request Claim All for already-confirmed Character Mail claims."""
+
+
+@dataclass(frozen=True)
+class DeleteReadCharacterMail:
+    """Request deletion of already-confirmed read Character Mail."""
+
+
+@dataclass(frozen=True)
+class CloseMailbox:
+    """Request the Mailbox -> Lobby close action."""
+
+
+@dataclass(frozen=True)
 class SelectBlackMarketSlot:
     """Request selection of one row-major Black Market offer slot."""
 
@@ -65,6 +105,11 @@ class QuickMenuLayout(str, Enum):
 @dataclass(frozen=True)
 class OpenQuickMenu:
     """Request opening Quick Menu from a capability-approved context."""
+
+
+@dataclass(frozen=True)
+class SelectQuickMenuLobby:
+    """Request the Lobby tile inside an already-confirmed Quick Menu."""
 
 
 @dataclass(frozen=True)
@@ -291,11 +336,20 @@ class DismissWorldBossBagFull:
 SemanticAction = (
     OpenBlackMarket
     | CloseBlackMarket
+    | OpenDailyQuests
+    | ClaimAllDailyQuests
+    | CloseDailyQuests
+    | OpenMailbox
+    | SelectCharacterMail
+    | ClaimAllCharacterMail
+    | DeleteReadCharacterMail
+    | CloseMailbox
     | SelectBlackMarketSlot
     | AcceptPurchaseConfirmation
     | RejectInsufficientGold
     | AcknowledgeInventoryFull
     | OpenQuickMenu
+    | SelectQuickMenuLobby
     | OpenCharacterSelect
     | Swipe
     | SelectLastVisibleCharacter
@@ -344,6 +398,10 @@ __all__ = (
     "AcknowledgeWorldBossPreviousRewards",
     "AcknowledgeInventoryFull",
     "CloseBlackMarket",
+    "ClaimAllCharacterMail",
+    "ClaimAllDailyQuests",
+    "CloseDailyQuests",
+    "CloseMailbox",
     "ConfirmCharacterSelection",
     "ContinueAfterWorldBossRaid",
     "CancelSocketSell",
@@ -351,7 +409,10 @@ __all__ = (
     "ConfirmCombineAll",
     "ConfirmEtherealMassCombine",
     "DismissWorldBossBagFull",
+    "DeleteReadCharacterMail",
     "OpenBlackMarket",
+    "OpenDailyQuests",
+    "OpenMailbox",
     "OpenBattleModeSelect",
     "OpenCharacterSelect",
     "OpenQuickMenu",
@@ -367,6 +428,8 @@ __all__ = (
     "SellSocketInBulk",
     "Swipe",
     "SelectLastVisibleCharacter",
+    "SelectCharacterMail",
+    "SelectQuickMenuLobby",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",
     "SemanticAction",

@@ -26,6 +26,15 @@ from .black_market import (
 from .engine import PerceptionDetector, PerceptionEngine
 from .combine import CombineContextDetector
 from .local_cv import LocalCvDetection, LocalCvDetector
+from .mailbox import (
+    MAILBOX_CLAIM_PROCESSING_CALIBRATION,
+    MAILBOX_CLAIM_PROCESSING_CONFIDENCE_THRESHOLD,
+    MAILBOX_CLAIM_PROCESSING_HSV_LOWER,
+    MAILBOX_CLAIM_PROCESSING_HSV_UPPER,
+    MAILBOX_CLAIM_PROCESSING_REGION,
+    MailboxClaimProcessingDetector,
+    MailboxClaimProcessingReading,
+)
 from .socket import (
     SOCKET_ENHANCE_ANIMATION_CALIBRATION,
     SOCKET_ENHANCE_ANIMATION_CONFIDENCE_THRESHOLD,
@@ -48,6 +57,9 @@ from .specs import (
     BATTLE_MODE_SELECT_HEADER_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
+    DAILY_QUESTS_ROW_CLAIM_SPEC,
+    DAILY_QUESTS_TAB_ACTIVE_SPEC,
+    DAILY_QUESTS_TITLE_SPEC,
     COMBINE_ALL_TITLE_SPEC,
     COMBINE_ANIMATION_TAPPABLE_SPEC,
     COMBINE_AWAKENED_TRANSMUTE_TITLE_SPEC,
@@ -65,6 +77,10 @@ from .specs import (
     INSUFFICIENT_GOLD_PROMPT_SPEC,
     INVENTORY_FULL_OK_BUTTON_SPEC,
     LOBBY_TRADING_CENTER_LABEL_SPEC,
+    MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC,
+    MAILBOX_ROW_CLAIM_SPEC,
+    MAILBOX_ROW_DELETE_SPEC,
+    MAILBOX_TITLE_SPEC,
     PURCHASE_CONFIRMATION_PROMPT_SPEC,
     QUICK_MENU_LOBBY_TILE_SPEC,
     SOCKET_ENHANCE_ALL_TITLE_SPEC,
@@ -104,6 +120,7 @@ def build_default_perception(
             SocketIncompatibleOpalDetector(asset_root=root),
             SocketEnhanceAnimationDetector(),
             CombineContextDetector(asset_root=root),
+            MailboxClaimProcessingDetector(asset_root=root),
         )
     )
 
@@ -129,6 +146,9 @@ __all__ = (
     "BlackMarketPurchasedDetector",
     "BlackMarketPurchasedReading",
     "CHARACTER_SELECT_HEADER_SPEC",
+    "DAILY_QUESTS_ROW_CLAIM_SPEC",
+    "DAILY_QUESTS_TAB_ACTIVE_SPEC",
+    "DAILY_QUESTS_TITLE_SPEC",
     "COMBINE_ALL_TITLE_SPEC",
     "COMBINE_ANIMATION_TAPPABLE_SPEC",
     "COMBINE_AWAKENED_TRANSMUTE_TITLE_SPEC",
@@ -177,6 +197,17 @@ __all__ = (
     "WORLD_BOSS_SELECT_BOSS_HEADER_SPEC",
     "LinearGapCalibration",
     "LOBBY_TRADING_CENTER_LABEL_SPEC",
+    "MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC",
+    "MAILBOX_CLAIM_PROCESSING_CALIBRATION",
+    "MAILBOX_CLAIM_PROCESSING_CONFIDENCE_THRESHOLD",
+    "MAILBOX_CLAIM_PROCESSING_HSV_LOWER",
+    "MAILBOX_CLAIM_PROCESSING_HSV_UPPER",
+    "MAILBOX_CLAIM_PROCESSING_REGION",
+    "MAILBOX_ROW_CLAIM_SPEC",
+    "MAILBOX_ROW_DELETE_SPEC",
+    "MAILBOX_TITLE_SPEC",
+    "MailboxClaimProcessingDetector",
+    "MailboxClaimProcessingReading",
     "LocalCvDetection",
     "LocalCvDetector",
     "LocalCvSpec",

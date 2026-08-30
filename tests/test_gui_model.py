@@ -29,18 +29,33 @@ def test_selection_is_populated_only_from_registry_and_defaults_active():
     assert [(item.id, item.display_name) for item in model.options] == [
         (item.id, item.display_name) for item in DEFAULT_FLOW_REGISTRY.definitions
     ]
-    assert model.active_ids == ("black_market", "world_boss")
+    assert model.active_ids == (
+        "black_market",
+        "world_boss",
+        "daily_quests",
+        "mailbox",
+    )
 
 
 def test_toggle_and_move_preserve_exact_active_order():
     model = FlowSelectionModel()
 
     model.move_up("world_boss")
-    assert model.active_ids == ("world_boss", "black_market")
+    assert model.active_ids == (
+        "world_boss",
+        "black_market",
+        "daily_quests",
+        "mailbox",
+    )
     model.set_enabled("world_boss", False)
-    assert model.active_ids == ("black_market",)
+    assert model.active_ids == ("black_market", "daily_quests", "mailbox")
     model.toggle("world_boss")
-    assert model.active_ids == ("world_boss", "black_market")
+    assert model.active_ids == (
+        "world_boss",
+        "black_market",
+        "daily_quests",
+        "mailbox",
+    )
     assert not model.move_up("world_boss")
 
 

@@ -19,7 +19,11 @@ from bot.semantic_actions import (
     AcknowledgeInventoryFull,
     AcknowledgeSocketNoMaterial,
     AcknowledgeWorldBossPreviousRewards,
+    ClaimAllCharacterMail,
+    ClaimAllDailyQuests,
     CloseBlackMarket,
+    CloseDailyQuests,
+    CloseMailbox,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
     CancelSocketSell,
@@ -27,9 +31,12 @@ from bot.semantic_actions import (
     ConfirmCombineAll,
     ConfirmEtherealMassCombine,
     DismissWorldBossBagFull,
+    DeleteReadCharacterMail,
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenDailyQuests,
+    OpenMailbox,
     OpenBattleModeSelect,
     OpenCharacterSelect,
     OpenQuickMenu,
@@ -49,6 +56,8 @@ from bot.semantic_actions import (
     SelectSocketOpalSlot,
     SelectCombineFuse,
     SelectCombineTransmute,
+    SelectCharacterMail,
+    SelectQuickMenuLobby,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -128,6 +137,50 @@ DEFAULT_BLACK_MARKET_ACTION_TARGETS = BlackMarketActionTargets()
 
 
 @dataclass(frozen=True)
+class DailyQuestsActionTargets:
+    """Normalized targets acquired from the live Daily Quests route."""
+
+    open_daily_quests: RelativePoint = (0.6540, 0.9200)
+    claim_all: RelativePoint = (0.6930, 0.1413)
+    close_daily_quests: RelativePoint = (0.8223, 0.0989)
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.open_daily_quests,
+            self.claim_all,
+            self.close_daily_quests,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_DAILY_QUESTS_ACTION_TARGETS = DailyQuestsActionTargets()
+
+
+@dataclass(frozen=True)
+class MailboxActionTargets:
+    """Normalized targets acquired from the live Character Mail route."""
+
+    open_mailbox: RelativePoint = (0.8890, 0.0550)
+    select_character_mail: RelativePoint = (0.3820, 0.2737)
+    claim_all: RelativePoint = (0.4775, 0.3521)
+    delete_read: RelativePoint = (0.2826, 0.3521)
+    close_mailbox: RelativePoint = (0.8182, 0.1683)
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.open_mailbox,
+            self.select_character_mail,
+            self.claim_all,
+            self.delete_read,
+            self.close_mailbox,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_MAILBOX_ACTION_TARGETS = MailboxActionTargets()
+
+
+@dataclass(frozen=True)
 class RotationActionTargets:
     """Normalized targets measured from the current 2712x1224 layout.
 
@@ -139,6 +192,7 @@ class RotationActionTargets:
     # Shared live-confirmed hit target inside the player header. It opens and
     # closes Quick Menu from both Lobby and World Boss at the current geometry.
     open_quick_menu: RelativePoint = (0.1940, 0.0564)
+    select_lobby: RelativePoint = (0.2020, 0.2050)
     open_character_select: RelativePoint = (0.0704, 0.7835)
     open_character_select_shifted: RelativePoint = (0.2000, 0.7835)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
@@ -147,6 +201,7 @@ class RotationActionTargets:
     def __post_init__(self) -> None:
         for point in (
             self.open_quick_menu,
+            self.select_lobby,
             self.open_character_select,
             self.open_character_select_shifted,
             self.last_visible_character,
@@ -301,6 +356,10 @@ class ActionExecutor:
         adb: AdbClient,
         *,
         targets: BlackMarketActionTargets = DEFAULT_BLACK_MARKET_ACTION_TARGETS,
+        daily_quests_targets: DailyQuestsActionTargets = (
+            DEFAULT_DAILY_QUESTS_ACTION_TARGETS
+        ),
+        mailbox_targets: MailboxActionTargets = DEFAULT_MAILBOX_ACTION_TARGETS,
         rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
         battle_targets: BattleActionTargets = DEFAULT_BATTLE_ACTION_TARGETS,
         socket_targets: SocketActionTargets = DEFAULT_SOCKET_ACTION_TARGETS,
@@ -310,6 +369,10 @@ class ActionExecutor:
             raise ValueError("adb must provide tap(x, y)")
         if not isinstance(targets, BlackMarketActionTargets):
             raise ValueError("targets must be BlackMarketActionTargets")
+        if not isinstance(daily_quests_targets, DailyQuestsActionTargets):
+            raise ValueError("daily_quests_targets must be DailyQuestsActionTargets")
+        if not isinstance(mailbox_targets, MailboxActionTargets):
+            raise ValueError("mailbox_targets must be MailboxActionTargets")
         if not isinstance(rotation_targets, RotationActionTargets):
             raise ValueError("rotation_targets must be RotationActionTargets")
         if not isinstance(battle_targets, BattleActionTargets):
@@ -320,6 +383,8 @@ class ActionExecutor:
             raise ValueError("equipment_targets must be EquipmentActionTargets")
         self.adb = adb
         self.targets = targets
+        self.daily_quests_targets = daily_quests_targets
+        self.mailbox_targets = mailbox_targets
         self.rotation_targets = rotation_targets
         self.battle_targets = battle_targets
         self.socket_targets = socket_targets
@@ -348,6 +413,22 @@ class ActionExecutor:
             return self.targets.open_black_market
         if isinstance(action, CloseBlackMarket):
             return self.targets.close_black_market
+        if isinstance(action, OpenDailyQuests):
+            return self.daily_quests_targets.open_daily_quests
+        if isinstance(action, ClaimAllDailyQuests):
+            return self.daily_quests_targets.claim_all
+        if isinstance(action, CloseDailyQuests):
+            return self.daily_quests_targets.close_daily_quests
+        if isinstance(action, OpenMailbox):
+            return self.mailbox_targets.open_mailbox
+        if isinstance(action, SelectCharacterMail):
+            return self.mailbox_targets.select_character_mail
+        if isinstance(action, ClaimAllCharacterMail):
+            return self.mailbox_targets.claim_all
+        if isinstance(action, DeleteReadCharacterMail):
+            return self.mailbox_targets.delete_read
+        if isinstance(action, CloseMailbox):
+            return self.mailbox_targets.close_mailbox
         if isinstance(action, SelectBlackMarketSlot):
             return self.targets.slots[action.slot_index]
         if isinstance(action, AcceptPurchaseConfirmation):
@@ -358,6 +439,8 @@ class ActionExecutor:
             return self.targets.acknowledge_inventory_full
         if isinstance(action, OpenQuickMenu):
             return self.rotation_targets.open_quick_menu
+        if isinstance(action, SelectQuickMenuLobby):
+            return self.rotation_targets.select_lobby
         if isinstance(action, OpenCharacterSelect):
             return (
                 self.rotation_targets.open_character_select
@@ -467,12 +550,16 @@ __all__ = (
     "BattleActionTargets",
     "DEFAULT_BATTLE_ACTION_TARGETS",
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
+    "DEFAULT_DAILY_QUESTS_ACTION_TARGETS",
     "DEFAULT_EQUIPMENT_ACTION_TARGETS",
+    "DEFAULT_MAILBOX_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
     "FrameGeometry",
+    "DailyQuestsActionTargets",
     "EquipmentActionTargets",
     "RotationActionTargets",
+    "MailboxActionTargets",
     "SocketActionTargets",
     "SwipeExecution",
 )

@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from bot.action_executor import ActionExecutor
 from bot.auto_battle import AutoBattleDetector, AutoBattleEnsurer
-from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS, build_default_resolver
+from bot.catalog import MENU_QUICK, SCREEN_LOBBY, SCREEN_WORLD_BOSS, build_default_resolver
 from bot.config import RuntimeConfig
 from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtime_event_stream
 from bot.equipment_combine_relief import EquipmentCombineRelief
@@ -24,11 +24,12 @@ from bot.preconditions import MinimalPreconditionEnsurer
 from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
 from bot.runtime_observer import RuntimeObserver, RuntimeWaitCancelled, RuntimeWaitTimeout
+from bot.semantic_actions import OpenQuickMenu, SelectQuickMenuLobby
 from bot.session import SessionPlan, SessionResult, SessionRunner
 from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughAnimation
-from bot.verified_transition import VerifiedTransition
+from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -76,7 +77,10 @@ class ProductiveRuntime:
         return tuple(self.build_flow(definition) for definition in definitions)
 
     def build_preconditions(self) -> MinimalPreconditionEnsurer:
-        return MinimalPreconditionEnsurer(lambda: self._current_clean_context())
+        return MinimalPreconditionEnsurer(
+            lambda: self._current_clean_context(),
+            navigate_to_lobby=self._navigate_to_lobby,
+        )
 
     def build_rotation(self, character_count: int) -> StandardRotation:
         return StandardRotation(
@@ -198,6 +202,49 @@ class ProductiveRuntime:
         except RuntimeWaitCancelled:
             return None
 
+    def _navigate_to_lobby(self) -> bool:
+        """Normalize the acquired World Boss Quick Menu route to Lobby."""
+
+        initial = self.observer.observe()
+        if _is_clean_base(initial, SCREEN_LOBBY):
+            return True
+        if not _is_clean_base(initial, SCREEN_WORLD_BOSS):
+            return False
+        transition = VerifiedTransition(self.observer, self.actions, self.events)
+        policy = VerifiedTransitionPolicy(
+            normal_timeout=6.0,
+            grace_timeout=2.0,
+            max_attempts=2,
+        )
+        opened = transition.execute(
+            "precondition.open_quick_menu",
+            OpenQuickMenu(),
+            initial,
+            expected=_has_quick_menu,
+            precondition=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_WORLD_BOSS
+            ),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_WORLD_BOSS
+            ),
+            abort_if=_has_incompatible_quick_menu_state,
+            policy=policy,
+        )
+        if not opened.succeeded or self.cancel_requested():
+            return False
+        lobby = transition.execute(
+            "precondition.select_lobby",
+            SelectQuickMenuLobby(),
+            opened.final_snapshot,
+            expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+            precondition=_has_quick_menu,
+            retryable_from=_has_quick_menu,
+            abort_if=_has_incompatible_lobby_navigation_state,
+            stable_for=_CLEAN_CONTEXT_STABLE_FOR,
+            policy=policy,
+        )
+        return lobby.succeeded and not self.cancel_requested()
+
 
 @contextmanager
 def open_productive_runtime(
@@ -292,6 +339,47 @@ def _is_clean_known_context(snapshot) -> bool:
         state.status is ResolutionStatus.RESOLVED
         and state.base_context in _CLEAN_CONTEXTS
         and not state.overlays
+    )
+
+
+def _is_clean_base(snapshot, base: str) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.RESOLVED
+        and state.base_context == base
+        and not state.overlays
+    )
+
+
+def _has_quick_menu(snapshot) -> bool:
+    state = snapshot.state
+    return (
+        set(state.overlays) == {MENU_QUICK}
+        and state.status in {ResolutionStatus.UNKNOWN, ResolutionStatus.RESOLVED}
+    )
+
+
+def _has_incompatible_quick_menu_state(snapshot) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.AMBIGUOUS
+        or bool(set(state.overlays) - {MENU_QUICK})
+        or (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context not in {SCREEN_WORLD_BOSS, SCREEN_LOBBY}
+        )
+    )
+
+
+def _has_incompatible_lobby_navigation_state(snapshot) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.AMBIGUOUS
+        or bool(set(state.overlays) - {MENU_QUICK})
+        or (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context not in {SCREEN_WORLD_BOSS, SCREEN_LOBBY}
+        )
     )
 
 

@@ -196,6 +196,14 @@ En el popup Sell, OCR confirmó dos veces `Opal (Skill)+0` con confidence `0,958
 
 No se fabricó live la segunda aparición de Socket Full: el usuario indicó que preparar ese caso extremo no era razonable. La regresión determinista conserva la policy de un solo permiso positivo por `WorldBossFlow.run()`, segundo popup por `No`, evento no fatal y cero segunda entrada a Socket; los logs productivos preservarán la primera ocurrencia natural.
 
+## Daily Quests y Mailbox productivos
+
+La adquisición HIL confirmó Daily Claim All positivo, no-op y reward independiente; Character Mail confirmó spinner con fases oscuras, transición Claim → Delete, Delete Read y leftovers por límites de recompensa. Se promovieron siete landmarks, una actividad derivada y 30 labels curados.
+
+`DailyQuestsFlow` y `MailboxFlow` se integraron como `PER_CHARACTER` Lobby → Lobby al final del registry. Ambos usan intents tipados y waits frescos bounded con estabilidad, sin sleep como postcondición ni retries de Claim All. Mailbox registra el intento sin efecto y leftovers sin liberar recursos. Para preservar el contrato Lobby de Daily después de World Boss, el composition root conectó el normalizador ya previsto por `MinimalPreconditionEnsurer` a la ruta adquirida World Boss → Quick Menu → Lobby; `WorldBossFlow` y `SessionRunner` no cambiaron policy.
+
+El cierre hardware-free pasó 1090 tests y el evaluator incremental reutilizó 13500/13500 pares sin invalidaciones, con 300/300 resoluciones correctas. No se hizo smoke adicional porque la adquisición live previa ya cubría targets/transiciones y las validaciones no dejaron dudas de hardware.
+
 ## Decisiones y alternativas reemplazadas
 
 - El icono de oro de Lobby describe un shell persistente, no una pantalla base exclusiva.

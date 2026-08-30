@@ -153,6 +153,25 @@ def test_configurable_n_runs_every_flow_and_advance_exactly_n_times():
     assert [item.index for item in result.character_results] == [1, 2, 3, 4]
 
 
+def test_daily_quests_and_mailbox_are_final_flows_before_rotation():
+    trace = []
+    prior = Flow("world_boss", [FlowResult(FlowStatus.COMPLETED)], trace)
+    daily = Flow("daily_quests", [FlowResult(FlowStatus.COMPLETED)], trace)
+    mailbox = Flow("mailbox", [FlowResult(FlowStatus.COMPLETED)], trace)
+    rotation = Rotation(1, trace)
+    runner, _ = _runner(1, [prior, daily, mailbox], rotation)
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.COMPLETED
+    assert trace == [
+        "world_boss.run",
+        "daily_quests.run",
+        "mailbox.run",
+        "rotation.advance",
+    ]
+
+
 def test_business_events_are_aggregated_logged_and_do_not_abort():
     trace = []
     flow = Flow(
