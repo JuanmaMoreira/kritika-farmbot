@@ -36,6 +36,7 @@ from bot.semantic_actions import (
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenGuild,
     OpenQuests,
     OpenMailbox,
     OpenBattleModeSelect,
@@ -224,12 +225,14 @@ DEFAULT_ROTATION_ACTION_TARGETS = RotationActionTargets()
 
 @dataclass(frozen=True)
 class GuildActionTargets:
-    """Normalized target acquired from the live Guild Attendance control."""
+    """Normalized targets acquired from the live Guild surface."""
 
+    open_guild: RelativePoint = (0.7891, 0.0858)
     attendance: RelativePoint = (0.4330, 0.4300)
 
     def __post_init__(self) -> None:
-        relative_point_to_pixel(self.attendance, 1, 1)
+        for point in (self.open_guild, self.attendance):
+            relative_point_to_pixel(point, 1, 1)
 
 
 DEFAULT_GUILD_ACTION_TARGETS = GuildActionTargets()
@@ -459,6 +462,8 @@ class ActionExecutor:
             return self.mailbox_targets.delete_read
         if isinstance(action, CloseMailbox):
             return self.mailbox_targets.close_mailbox
+        if isinstance(action, OpenGuild):
+            return self.guild_targets.open_guild
         if isinstance(action, SelectBlackMarketSlot):
             return self.targets.slots[action.slot_index]
         if isinstance(action, AcceptPurchaseConfirmation):

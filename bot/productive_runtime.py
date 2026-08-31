@@ -33,7 +33,7 @@ from bot.quick_menu import quick_menu_accessible, select_quick_menu_guild_action
 from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
 from bot.runtime_observer import RuntimeObserver, RuntimeWaitCancelled, RuntimeWaitTimeout
-from bot.semantic_actions import OpenQuickMenu, SelectQuickMenuLobby
+from bot.semantic_actions import OpenGuild, OpenQuickMenu, SelectQuickMenuLobby
 from bot.session import SessionPlan, SessionResult, SessionRunner
 from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
@@ -92,6 +92,7 @@ class ProductiveRuntime:
         return MinimalPreconditionEnsurer(
             lambda: self._current_clean_context(),
             navigate_to_lobby=self._navigate_to_lobby,
+            navigate_lobby_to_guild=self._navigate_lobby_to_guild,
             navigate_to_guild=self._navigate_to_guild,
         )
 
@@ -268,7 +269,7 @@ class ProductiveRuntime:
         return lobby.succeeded and not self.cancel_requested()
 
     def _navigate_to_guild(self) -> bool:
-        """Navigate through Quick Menu and verify the acquired Guild screen."""
+        """Navigate a non-Lobby capable origin through Quick Menu to Guild."""
 
         initial = self.observer.observe()
         if _is_clean_base(initial, SCREEN_GUILD):
@@ -276,6 +277,7 @@ class ProductiveRuntime:
         origin = initial.state.base_context
         if (
             origin is None
+            or origin == SCREEN_LOBBY
             or not quick_menu_accessible(origin)
             or not _is_clean_base(initial, origin)
         ):
@@ -309,6 +311,37 @@ class ProductiveRuntime:
             retryable_from=_has_quick_menu,
             abort_if=lambda snapshot: _has_incompatible_destination_state(
                 snapshot, origin, SCREEN_GUILD
+            ),
+            stable_for=_CLEAN_CONTEXT_STABLE_FOR,
+            policy=policy,
+        )
+        return guild.succeeded and not self.cancel_requested()
+
+    def _navigate_lobby_to_guild(self) -> bool:
+        """Use the acquired direct Lobby target and verify Guild."""
+
+        initial = self.observer.observe()
+        if _is_clean_base(initial, SCREEN_GUILD):
+            return True
+        if not _is_clean_base(initial, SCREEN_LOBBY):
+            return False
+        transition = VerifiedTransition(self.observer, self.actions, self.events)
+        policy = VerifiedTransitionPolicy(
+            normal_timeout=6.0,
+            grace_timeout=2.0,
+            max_attempts=2,
+        )
+        guild = transition.execute(
+            "precondition.open_guild",
+            OpenGuild(),
+            initial,
+            expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_GUILD),
+            precondition=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_LOBBY
+            ),
+            abort_if=lambda snapshot: _has_incompatible_destination_state(
+                snapshot, SCREEN_LOBBY, SCREEN_GUILD
             ),
             stable_for=_CLEAN_CONTEXT_STABLE_FOR,
             policy=policy,

@@ -39,6 +39,7 @@ from bot.semantic_actions import (
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenGuild,
     OpenQuests,
     OpenMailbox,
     OpenBattleModeSelect,
@@ -346,6 +347,17 @@ def test_executor_translates_guild_attendance_to_acquired_button_target():
     )
 
     target = DEFAULT_GUILD_ACTION_TARGETS.attendance
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert receipt.normalized_target == target
+
+
+def test_executor_translates_direct_lobby_guild_target():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(OpenGuild(), FrameGeometry(width=2712, height=1224))
+
+    target = DEFAULT_GUILD_ACTION_TARGETS.open_guild
     adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
     assert receipt.normalized_target == target
 

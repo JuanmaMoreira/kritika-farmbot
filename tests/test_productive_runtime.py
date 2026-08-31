@@ -16,6 +16,7 @@ from bot.event_log import RuntimeEventStream
 from bot.productive_runtime import ProductiveRuntime
 from bot.runtime_observer import RuntimeWaitTimeout
 from bot.semantic_actions import (
+    OpenGuild,
     OpenQuickMenu,
     QuickMenuLayout,
     SelectQuickMenuGuild,
@@ -258,8 +259,10 @@ def test_productive_precondition_normalizes_world_boss_to_lobby(monkeypatch):
     assert runtime.build_preconditions().navigate_to_lobby is not None
 
 
-def test_productive_precondition_navigates_quick_menu_to_verified_guild(monkeypatch):
-    lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+def test_productive_precondition_navigates_world_boss_via_quick_menu_to_guild(monkeypatch):
+    world_boss = _snapshot(
+        1, status=ResolutionStatus.RESOLVED, base=SCREEN_WORLD_BOSS
+    )
     quick_menu = _snapshot(
         2, status=ResolutionStatus.UNKNOWN, overlays={MENU_QUICK}
     )
@@ -269,7 +272,7 @@ def test_productive_precondition_navigates_quick_menu_to_verified_guild(monkeypa
         base=SCREEN_GUILD,
         overlays={STATUS_GUILD_ATTENDANCE_ACTIVE},
     )
-    observer = Observer(lobby, guild)
+    observer = Observer(world_boss, guild)
     runtime = _runtime(observer, Events())
     calls = []
 
@@ -289,17 +292,56 @@ def test_productive_precondition_navigates_quick_menu_to_verified_guild(monkeypa
         ("precondition.open_quick_menu", OpenQuickMenu()),
         (
             "precondition.select_guild",
-            SelectQuickMenuGuild(QuickMenuLayout.LOBBY),
+            SelectQuickMenuGuild(QuickMenuLayout.SHIFTED),
         ),
     ]
     assert runtime.build_preconditions().navigate_to_guild is not None
 
 
+def test_productive_precondition_navigates_lobby_directly_to_verified_guild(
+    monkeypatch,
+):
+    lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    guild = _snapshot(
+        2,
+        status=ResolutionStatus.RESOLVED,
+        base=SCREEN_GUILD,
+        overlays={STATUS_GUILD_ATTENDANCE_ACTIVE},
+    )
+    runtime = _runtime(Observer(lobby, guild), Events())
+    calls = []
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append((name, action, before, kwargs))
+            assert kwargs["expected"](guild)
+            assert kwargs["precondition"](before)
+            assert not kwargs["abort_if"](guild)
+            return SimpleNamespace(succeeded=True, final_snapshot=guild)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+
+    assert runtime._navigate_lobby_to_guild()
+    assert [(name, action) for name, action, _, _ in calls] == [
+        ("precondition.open_guild", OpenGuild()),
+    ]
+    assert runtime.build_preconditions().navigate_lobby_to_guild is not None
+
+
+def test_quick_menu_guild_fallback_rejects_lobby_origin_without_input(monkeypatch):
+    lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    runtime = _runtime(Observer(lobby, lobby), Events())
+    monkeypatch.setattr(
+        productive,
+        "VerifiedTransition",
+        lambda *args: (_ for _ in ()).throw(AssertionError("must not navigate")),
+    )
+
+    assert not runtime._navigate_to_guild()
+
+
 def test_guild_navigation_rejects_unverified_destination(monkeypatch):
     lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
-    quick_menu = _snapshot(
-        2, status=ResolutionStatus.UNKNOWN, overlays={MENU_QUICK}
-    )
     observer = Observer(lobby, lobby)
     runtime = _runtime(observer, Events())
     calls = []
@@ -307,12 +349,10 @@ def test_guild_navigation_rejects_unverified_destination(monkeypatch):
     class Transition:
         def execute(self, name, action, before, **kwargs):
             calls.append(name)
-            if len(calls) == 1:
-                return SimpleNamespace(succeeded=True, final_snapshot=quick_menu)
             assert not kwargs["expected"](lobby)
             return SimpleNamespace(succeeded=False, final_snapshot=lobby)
 
     monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
 
-    assert not runtime._navigate_to_guild()
-    assert calls == ["precondition.open_quick_menu", "precondition.select_guild"]
+    assert not runtime._navigate_lobby_to_guild()
+    assert calls == ["precondition.open_guild"]

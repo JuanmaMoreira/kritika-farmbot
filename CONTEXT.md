@@ -65,13 +65,13 @@ La semántica productiva reconoce `screen.guild`, `status.guild_attendance_activ
 
 `GuildCheckInFlow` es `PER_CHARACTER` con contrato `screen.guild → screen.guild`. Completado inicial es success/no-op; activo autoriza exactamente un `CheckInGuildAttendance` y espera hasta `10 s` por completion estable durante `0.75 s` sobre snapshots frescos. Timeout, estados incompatibles/contradictorios o postcondición no verificable fallan sin segundo tap; cancelación se propaga. El flow no navega ni usa `ControlledWait` o bubble text.
 
-La navegación live `Lobby → Quick Menu → Guild` terminó en `screen.guild`, y Guild abrió Quick Menu con el layout desplazado. El runtime promueve ambos targets de Guild, selecciona el layout según el origen y exige `screen.guild` observable. `MinimalPreconditionEnsurer` usa esa operación sólo para requisitos exactos Guild; si ya está en Guild no navega.
+La navegación live `Lobby → Quick Menu → Guild` terminó en `screen.guild`, y Guild abrió Quick Menu con el layout desplazado. Para normalizar un requisito Guild, `MinimalPreconditionEnsurer` prioriza el acceso directo adquirido `Lobby → Guild`; desde otros orígenes permitidos, como World Boss, usa `Quick Menu → Guild` con layout desplazado. Ambas operaciones exigen `screen.guild` observable y, si ya está en Guild, no navega.
 
 ### Sesión y Rotation
 
 `FlowRegistry` registra explícitamente `black_market`, `world_boss`, `daily_quests`, `mailbox` y `guild_check_in`, con metadata, contrato y factory compartidos por todos los frontends.
 
-`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default termina `… → Daily Quests → Mailbox → Guild Check-In → Rotation`. El boundary de precondiciones normaliza únicamente a Lobby o Guild mediante sus rutas Quick Menu verificadas. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
+`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default termina `… → Daily Quests → Mailbox → Guild Check-In → Rotation`. El boundary de precondiciones normaliza únicamente a Lobby o Guild mediante transiciones explícitas verificadas, priorizando el acceso directo Lobby → Guild. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
 
 `StandardRotation` no es un flow. Requiere la capability `quick_menu_accessible`, abre Quick Menu, entra a Character Select, confirma el final mediante scroll observado A/T/B, verifica la selección de la última tarjeta, confirma y exige Lobby fresco. No identifica personajes. El allow-list productivo contiene Lobby, World Boss y Guild; Guild conserva exactamente uno de sus statuses Attendance como estado de origen compatible y usa el layout desplazado.
 
@@ -153,7 +153,7 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free: **1141/1141 tests verdes**.
+- Suite hardware-free: **1145/1145 tests verdes**.
 - Corpus productivo ampliado: 319 frames × 47 detectores, **14993/14993** pares, 319/319 resoluciones y overlays, cero wrong/ambiguous. Los siete landmarks CV de Daily Quests/Mailbox separan positivos y negativos; su gap más estrecho es `landmark.mailbox_row_delete_button` (`0.081946`). Guild separa 16 positivos de 303 negativos con gap `0.613817`; su evaluator dirigido pasa 19/19, incluida la transición, el bubble y ambas rutas Quick Menu.
 - Adquisición HIL Daily Quests: apertura desde Lobby, Claim All con desaparición de `Claim`, estado estable con `Start`/ads, segundo Claim All no-op, recompensa de progreso separada y cierre a Lobby confirmados live.
 - Adquisición HIL Character Mail: Account Mail → Character Mail, Claim All con spinner/bubbles y transición `Claim → Delete`, quiescencia con Inbox aún 19, Delete Read Mail y cierre a Lobby confirmados live. Por límites de recompensa quedaron cinco mails reclamables; el estado residual se preserva como final válido y no dispara ninguna rutina para liberar espacio.

@@ -208,7 +208,7 @@ El cierre hardware-free pasó 1090 tests y el evaluator incremental reutilizó 1
 
 La adquisición HIL confirmó `screen.guild`, Attendance activo/completado, la transición a botón oscuro, `Lobby → Quick Menu → Guild` y Quick Menu abierto desde Guild con layout desplazado. El cambio visual completó en menos de 0,749 s dentro de la evidencia curada; el bubble quedó explícitamente excluido de la señal.
 
-La implementación promovió targets normalizados para Guild en ambos layouts y para Attendance, añadió Guild a `quick_menu_accessible` y conectó una normalización exacta/verificada hacia `screen.guild`. `GuildCheckInFlow` permanece Guild → Guild: completed inicial es no-op, active habilita un solo tap y la completion exige estado completed fresco durante 0,75 s dentro de 10 s. No se añadieron retries de negocio, categories, routines ni un navigation graph.
+La implementación promovió targets normalizados para Guild en ambos layouts y para Attendance, añadió Guild a `quick_menu_accessible` y conectó una normalización exacta/verificada hacia `screen.guild`. Tras detectar que Lobby estaba usando innecesariamente Quick Menu, se promovió además su acceso directo ya adquirido: Lobby usa `OpenGuild`, mientras World Boss y otros orígenes permitidos conservan el menú desplazado. `GuildCheckInFlow` permanece Guild → Guild: completed inicial es no-op, active habilita un solo tap y la completion exige estado completed fresco durante 0,75 s dentro de 10 s. No se añadieron retries de negocio, categories, routines ni un navigation graph.
 
 ## Decisiones y alternativas reemplazadas
 

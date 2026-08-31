@@ -44,9 +44,9 @@ class PreconditionEnsurer(Protocol):
 
 
 class MinimalPreconditionEnsurer:
-    """Normalize exact Lobby or Guild requirements through Quick Menu.
+    """Normalize exact Lobby or Guild using only acquired transitions.
 
-    The two navigation callbacks are interaction boundaries. A production
+    The navigation callbacks are interaction boundaries. A production
     adapter must implement observed, verified transitions; the runner never
     receives actions, coordinates, or ADB.
     """
@@ -56,6 +56,7 @@ class MinimalPreconditionEnsurer:
         current_context: Callable[[], str | None],
         *,
         navigate_to_lobby: Callable[[], bool] | None = None,
+        navigate_lobby_to_guild: Callable[[], bool] | None = None,
         navigate_to_guild: Callable[[], bool] | None = None,
         quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
     ) -> None:
@@ -63,12 +64,17 @@ class MinimalPreconditionEnsurer:
             raise ValueError("current_context must be callable")
         if navigate_to_lobby is not None and not callable(navigate_to_lobby):
             raise ValueError("navigate_to_lobby must be callable or None")
+        if navigate_lobby_to_guild is not None and not callable(
+            navigate_lobby_to_guild
+        ):
+            raise ValueError("navigate_lobby_to_guild must be callable or None")
         if navigate_to_guild is not None and not callable(navigate_to_guild):
             raise ValueError("navigate_to_guild must be callable or None")
         if not isinstance(quick_menu_policy, QuickMenuPolicy):
             raise ValueError("quick_menu_policy must be QuickMenuPolicy")
         self.current_context = current_context
         self.navigate_to_lobby = navigate_to_lobby
+        self.navigate_lobby_to_guild = navigate_lobby_to_guild
         self.navigate_to_guild = navigate_to_guild
         self.quick_menu_policy = quick_menu_policy
 
@@ -85,17 +91,32 @@ class MinimalPreconditionEnsurer:
             )
 
         if requirement.kind is RequirementKind.EXACT_STATE:
-            navigation = {
-                SCREEN_LOBBY: (self.navigate_to_lobby, "lobby"),
-                SCREEN_GUILD: (self.navigate_to_guild, "guild"),
-            }.get(requirement.name)
-            if navigation is not None and self.quick_menu_policy.allows(before):
-                callback, destination = navigation
+            if (
+                requirement.name == SCREEN_LOBBY
+                and self.quick_menu_policy.allows(before)
+            ):
                 return self._navigate_and_verify(
                     requirement,
                     before,
-                    callback,
-                    destination,
+                    self.navigate_to_lobby,
+                    "quick_menu_lobby",
+                )
+            if requirement.name == SCREEN_GUILD and before == SCREEN_LOBBY:
+                return self._navigate_and_verify(
+                    requirement,
+                    before,
+                    self.navigate_lobby_to_guild,
+                    "direct_guild",
+                )
+            if (
+                requirement.name == SCREEN_GUILD
+                and self.quick_menu_policy.allows(before)
+            ):
+                return self._navigate_and_verify(
+                    requirement,
+                    before,
+                    self.navigate_to_guild,
+                    "quick_menu_guild",
                 )
 
         return self._failed(
@@ -141,14 +162,14 @@ class MinimalPreconditionEnsurer:
         requirement: ComponentRequirement,
         before: str | None,
         callback: Callable[[], bool] | None,
-        destination: str,
+        navigation: str,
     ) -> EnsureResult:
         if callback is None:
             return self._failed(
                 requirement,
                 before,
                 before,
-                f"quick_menu_{destination}_navigation_unavailable",
+                f"{navigation}_navigation_unavailable",
             )
         try:
             navigated = callback() is True
@@ -159,7 +180,7 @@ class MinimalPreconditionEnsurer:
                 requirement,
                 before,
                 None,
-                f"quick_menu_{destination}_navigation_failed: "
+                f"{navigation}_navigation_failed: "
                 f"{type(error).__name__}: {error}",
             )
         after = self._current_context()
@@ -174,7 +195,7 @@ class MinimalPreconditionEnsurer:
             requirement,
             before,
             after,
-            f"quick_menu_{destination}_postcondition_failed",
+            f"{navigation}_postcondition_failed",
         )
 
     @staticmethod

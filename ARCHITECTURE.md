@@ -159,9 +159,9 @@ Después de Bulk, un frame Socket limpio puede preceder al landmark estable de E
 
 `quick_menu_accessible` es una capability de policy, no una pantalla ni un nodo de navegación. Su allow-list productivo contiene Lobby, World Boss y Guild. `menu.quick` sigue siendo un overlay observable; `bot/quick_menu.py` elige el layout del intent interno según el contexto de origen. Guild acepta exactamente un status Attendance al abrir el menú y usa el layout desplazado adquirido.
 
-La operación productiva `Quick Menu → Guild` selecciona el target base o desplazado y exige `screen.guild` con un estado Attendance coherente como postcondición. La evidencia live confirma `Lobby → menu.quick → screen.guild` y que `screen.guild` abre `menu.quick` con el layout desplazado.
+La normalización a Guild tiene dos transiciones explícitas: desde Lobby usa el acceso directo `OpenGuild`; desde otros contextos permitidos usa `Quick Menu → Guild` con el layout adquirido. Ambas exigen `screen.guild` con un estado Attendance coherente como postcondición. La evidencia live también confirma `Lobby → menu.quick → screen.guild` y que `screen.guild` abre `menu.quick` con el layout desplazado.
 
-`MinimalPreconditionEnsurer` conserva callbacks separados para normalizar únicamente a Lobby o Guild. El composition root implementa ambas rutas con transiciones verificadas; un requisito Guild ya satisfecho no invoca navegación. No existe navigation graph ni generalización a otros destinos. `SessionRunner` continúa sin actions ni business logic.
+`MinimalPreconditionEnsurer` conserva callbacks separados para normalizar únicamente a Lobby o Guild. Para Guild, un origen Lobby elige siempre la transición directa; sólo otros orígenes con `quick_menu_accessible` usan el fallback Quick Menu. Un requisito Guild ya satisfecho no invoca navegación y un fallo directo no encadena otra estrategia. No existe navigation graph ni generalización a otros destinos. `SessionRunner` continúa sin actions ni business logic.
 
 ## SessionRunner
 

@@ -49,6 +49,11 @@ class OpenMailbox:
 
 
 @dataclass(frozen=True)
+class OpenGuild:
+    """Request the direct Lobby -> Guild action."""
+
+
+@dataclass(frozen=True)
 class SelectCharacterMail:
     """Request the Character Mail tab inside Mailbox."""
 
@@ -366,6 +371,7 @@ SemanticAction = (
     | ClaimAllCharacterMail
     | DeleteReadCharacterMail
     | CloseMailbox
+    | OpenGuild
     | SelectBlackMarketSlot
     | AcceptPurchaseConfirmation
     | RejectInsufficientGold
@@ -436,6 +442,7 @@ __all__ = (
     "DismissWorldBossBagFull",
     "DeleteReadCharacterMail",
     "OpenBlackMarket",
+    "OpenGuild",
     "OpenQuests",
     "OpenMailbox",
     "OpenBattleModeSelect",

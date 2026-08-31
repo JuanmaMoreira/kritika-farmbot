@@ -16,7 +16,7 @@ La rama Equipment Inventory Full quedó cerrada para el caller confirmado World 
 
 Daily Quests y Character Mail quedaron cerrados como flows productivos `PER_CHARACTER`, ambos Lobby → Lobby. La selección default los conserva antes de Guild Check-In; Claim All es single-attempt, Mailbox conserva leftovers no fatales y no existe ninguna rutina de liberación de espacio. La integración reutiliza el normalizador adquirido World Boss → Quick Menu → Lobby sin modificar la policy de flows anteriores ni `SessionRunner`.
 
-Guild Check-In quedó cerrado productivamente: semántica pendiente/completado, intent single-tap, completion fresca estable, ruta verificada `Quick Menu → Guild`, normalización exacta, allow-list desde Guild y registro/selección GUI `PER_CHARACTER`. No se añadieron categories, routines ni grafo de navegación.
+Guild Check-In quedó cerrado productivamente: semántica pendiente/completado, intent single-tap, completion fresca estable, acceso directo Lobby → Guild, fallback verificado Quick Menu desde otros contextos, allow-list desde Guild y registro/selección GUI `PER_CHARACTER`. No se añadieron categories, routines ni grafo de navegación.
 
 ## Próximo trabajo
 

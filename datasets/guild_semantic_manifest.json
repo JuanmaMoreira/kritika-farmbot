@@ -28,6 +28,13 @@
       "guild_target_shifted_layout": [0.3946, 0.65],
       "attendance_target": [0.433, 0.43],
       "targets_promoted_from_curated_live_evidence": true
+    },
+    "direct_lobby_navigation": {
+      "origin": "screen.lobby",
+      "destination": "screen.guild",
+      "target": [0.7891, 0.0858],
+      "required_postcondition": "screen.guild",
+      "evidence": "existing live-confirmed Lobby header target"
     }
   },
   "entries": [
