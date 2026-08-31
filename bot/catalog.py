@@ -11,6 +11,7 @@ SCREEN_CHARACTER_SELECT = "screen.character_select"
 SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
 SCREEN_COMBINE = "screen.combine"
+SCREEN_FRIENDS = "screen.friends"
 SCREEN_GUILD = "screen.guild"
 SCREEN_MAILBOX = "screen.mailbox"
 SCREEN_QUESTS = "screen.quests"
@@ -42,10 +43,17 @@ STATUS_COMBINE_ETHEREAL_AVAILABLE = "status.combine_ethereal_available"
 STATUS_COMBINE_FUSE_AVAILABLE = "status.combine_fuse_available"
 STATUS_COMBINE_TRANSMUTE_AVAILABLE = "status.combine_transmute_available"
 STATUS_DAILY_QUESTS_CLAIMABLE = "status.daily_quests_claimable"
+STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE = (
+    "status.friends_send_stamina_daily_active"
+)
 STATUS_GUILD_ATTENDANCE_ACTIVE = "status.guild_attendance_active"
 STATUS_GUILD_ATTENDANCE_COMPLETED = "status.guild_attendance_completed"
+STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE = (
+    "status.guild_attendance_daily_active"
+)
 STATUS_MAILBOX_CLAIMABLE = "status.mailbox_claimable"
 STATUS_MAILBOX_READ_MAIL_PRESENT = "status.mailbox_read_mail_present"
+STATUS_WORLD_BOSS_DAILY_ACTIVE = "status.world_boss_daily_active"
 
 LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
     "landmark.lobby_trading_center_label"
@@ -112,10 +120,18 @@ LANDMARK_DAILY_QUESTS_TAB_ACTIVE = "landmark.daily_quests_tab_active"
 LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON = (
     "landmark.daily_quests_row_claim_button"
 )
+LANDMARK_FRIENDS_TITLE = "landmark.friends_title"
+LANDMARK_FRIENDS_ALL_BUTTON = "landmark.friends_all_button"
+INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE = (
+    "indicator.friends_send_stamina_daily_active"
+)
 LANDMARK_GUILD_MESSAGE_TAB = "landmark.guild_message_tab"
 INDICATOR_GUILD_ATTENDANCE_ACTIVE = "indicator.guild_attendance_active"
 INDICATOR_GUILD_ATTENDANCE_COMPLETED = (
     "indicator.guild_attendance_completed"
+)
+INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE = (
+    "indicator.guild_attendance_daily_active"
 )
 LANDMARK_MAILBOX_TITLE = "landmark.mailbox_title"
 LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE = (
@@ -124,6 +140,7 @@ LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE = (
 LANDMARK_MAILBOX_ROW_CLAIM_BUTTON = "landmark.mailbox_row_claim_button"
 LANDMARK_MAILBOX_ROW_DELETE_BUTTON = "landmark.mailbox_row_delete_button"
 ACTIVITY_MAILBOX_CLAIM_PROCESSING = "activity.mailbox_claim_processing"
+INDICATOR_WORLD_BOSS_DAILY_ACTIVE = "indicator.world_boss_daily_active"
 
 SEMANTIC_OBSERVATION_NAMES = (
     ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
@@ -131,14 +148,19 @@ SEMANTIC_OBSERVATION_NAMES = (
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
     INDICATOR_COMBINE_ROWS_UPPER,
+    INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
     INDICATOR_GUILD_ATTENDANCE_ACTIVE,
     INDICATOR_GUILD_ATTENDANCE_COMPLETED,
+    INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
     LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_DAILY_QUESTS_TITLE,
+    LANDMARK_FRIENDS_ALL_BUTTON,
+    LANDMARK_FRIENDS_TITLE,
     LANDMARK_GUILD_MESSAGE_TAB,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
@@ -189,6 +211,11 @@ BASE_CONTEXT_RULES = (
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(
+        name=SCREEN_FRIENDS,
+        requires=(LANDMARK_FRIENDS_TITLE, LANDMARK_FRIENDS_ALL_BUTTON),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
         name=SCREEN_GUILD,
         requires=(LANDMARK_GUILD_MESSAGE_TAB,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
@@ -232,6 +259,15 @@ BASE_CONTEXT_RULES = (
 
 OVERLAY_RULES = (
     ContextRule(
+        name=STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
+        requires=(
+            LANDMARK_FRIENDS_TITLE,
+            LANDMARK_FRIENDS_ALL_BUTTON,
+            INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
         name=STATUS_GUILD_ATTENDANCE_ACTIVE,
         requires=(
             LANDMARK_GUILD_MESSAGE_TAB,
@@ -244,6 +280,22 @@ OVERLAY_RULES = (
         requires=(
             LANDMARK_GUILD_MESSAGE_TAB,
             INDICATOR_GUILD_ATTENDANCE_COMPLETED,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        requires=(
+            LANDMARK_GUILD_MESSAGE_TAB,
+            INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_WORLD_BOSS_DAILY_ACTIVE,
+        requires=(
+            LANDMARK_BATTLE_MODE_SELECT_HEADER,
+            INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
         ),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),

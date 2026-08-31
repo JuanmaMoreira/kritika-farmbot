@@ -38,11 +38,16 @@ from bot.perception.specs import (
     QUICK_MENU_LOBBY_TILE_SPEC,
     WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC,
     EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC,
+    FRIENDS_ALL_BUTTON_SPEC,
+    FRIENDS_SEND_STAMINA_DAILY_SPEC,
+    FRIENDS_TITLE_SPEC,
+    GUILD_ATTENDANCE_DAILY_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
     SOCKET_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
     WORLD_BOSS_SAPPHIRES_USED_SPEC,
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
+    WORLD_BOSS_DAILY_SPEC,
 )
 
 
@@ -197,6 +202,18 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert BATTLE_MODE_SELECT_HEADER_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9919484853744507)
     )
+    assert FRIENDS_TITLE_SPEC.region == (0.38, 0.02, 0.62, 0.16)
+    assert FRIENDS_ALL_BUTTON_SPEC.region == (0.72, 0.80, 0.84, 0.96)
+    assert FRIENDS_SEND_STAMINA_DAILY_SPEC.region == (
+        0.695, 0.81, 0.745, 0.905
+    )
+    assert GUILD_ATTENDANCE_DAILY_SPEC.region == (0.38, 0.34, 0.425, 0.435)
+    assert WORLD_BOSS_DAILY_SPEC.region == (0.15, 0.54, 0.20, 0.64)
+    assert {
+        FRIENDS_SEND_STAMINA_DAILY_SPEC.asset_path,
+        GUILD_ATTENDANCE_DAILY_SPEC.asset_path,
+        WORLD_BOSS_DAILY_SPEC.asset_path,
+    } == {Path("assets/ui/indicators/daily-mission-badge-current.png")}
     assert WORLD_BOSS_SELECT_BOSS_HEADER_SPEC.region == (0.33, 0.01, 0.67, 0.15)
     assert WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC.region == (
         0.25, 0.78, 0.75, 0.91
@@ -327,6 +344,21 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             DAILY_QUESTS_ROW_CLAIM_SPEC,
             (210, 125),
             "2879136914db3c4ba336f10a8d2511be2aa8ba5c9c43bdf5cc42855399935249",
+        ),
+        (
+            FRIENDS_TITLE_SPEC,
+            (500, 100),
+            "029272002f12fc3e93c9ec4a80d5ddc83a38b356471e18ab241a6f546934fe6b",
+        ),
+        (
+            FRIENDS_ALL_BUTTON_SPEC,
+            (200, 95),
+            "6651160576db4bb1ad9f2f67b596b4e86a99ca4c4a45909ba7951c80924c3e4e",
+        ),
+        (
+            FRIENDS_SEND_STAMINA_DAILY_SPEC,
+            (50, 60),
+            "1e7e0f59c27e708526efc234363f9ede390d8cbbc9e8d89b2f07a7c6a2489b64",
         ),
         (
             MAILBOX_TITLE_SPEC,

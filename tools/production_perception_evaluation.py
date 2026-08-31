@@ -19,12 +19,17 @@ from bot.catalog import (
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
     INDICATOR_COMBINE_ROWS_UPPER,
+    INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
+    INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
     LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_DAILY_QUESTS_TITLE,
+    LANDMARK_FRIENDS_ALL_BUTTON,
+    LANDMARK_FRIENDS_TITLE,
     LANDMARK_GUILD_MESSAGE_TAB,
     LANDMARK_COMBINE_ALL_TITLE,
     LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,
@@ -80,6 +85,7 @@ from bot.catalog import (
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
     SCREEN_COMBINE,
+    SCREEN_FRIENDS,
     SCREEN_GUILD,
     SCREEN_LOBBY,
     SCREEN_MAILBOX,
@@ -117,6 +123,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/socket_inventory_relief_semantic_manifest.json",
     "datasets/daily_quests_mailbox_semantic_manifest.json",
     "datasets/guild_semantic_manifest.json",
+    "datasets/daily_activity_semantic_manifest.json",
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
@@ -724,6 +731,14 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return entry.base_context == SCREEN_CHARACTER_SELECT
     if name == LANDMARK_DAILY_QUESTS_TITLE:
         return entry.base_context == SCREEN_QUESTS
+    if name in {LANDMARK_FRIENDS_TITLE, LANDMARK_FRIENDS_ALL_BUTTON}:
+        return entry.base_context == SCREEN_FRIENDS
+    if name in {
+        INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
+        INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
+    }:
+        return name in entry.observations
     if name == LANDMARK_DAILY_QUESTS_TAB_ACTIVE:
         return MODE_DAILY_QUESTS in entry.overlays
     if name == LANDMARK_GUILD_MESSAGE_TAB:

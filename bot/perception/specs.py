@@ -11,11 +11,16 @@ from bot.catalog import (
     LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
     LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_DAILY_QUESTS_TITLE,
+    LANDMARK_FRIENDS_ALL_BUTTON,
+    LANDMARK_FRIENDS_TITLE,
     LANDMARK_GUILD_MESSAGE_TAB,
     ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
     INDICATOR_COMBINE_ROWS_UPPER,
+    INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
+    INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_CHARACTER_SELECT_HEADER,
@@ -304,6 +309,57 @@ DAILY_QUESTS_ROW_CLAIM_SPEC = LocalCvSpec(
     ),
 )
 
+# Full current Friends title frame. The popup renders above Lobby and the
+# dynamic chat layer, so this upper landmark remains observable without using
+# the transient processing bubble after All. These specs use a 1e-7 numerical
+# guard above the measured maximum negative so an anchor-equal score emits no
+# floating-point residue as presence evidence.
+FRIENDS_TITLE_SPEC = LocalCvSpec(
+    name=LANDMARK_FRIENDS_TITLE,
+    asset_path=Path("assets/ui/landmarks/friends-title-current.png"),
+    region=(0.38, 0.02, 0.62, 0.16),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7385951,
+        positive_anchor=0.989769101142883,
+    ),
+)
+
+# The button crop excludes the Daily badge at its upper-left edge. It remains
+# identical before and after the business action and is therefore structural,
+# not completion evidence.
+FRIENDS_ALL_BUTTON_SPEC = LocalCvSpec(
+    name=LANDMARK_FRIENDS_ALL_BUTTON,
+    asset_path=Path("assets/ui/landmarks/friends-all-button-current.png"),
+    region=(0.72, 0.80, 0.84, 0.96),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7735992,
+        positive_anchor=0.970031499862671,
+    ),
+)
+
+# Friends, Guild and Battle Mode Select use the same Daily mission icon.
+# Separate position-specific specs prevent an unrelated activity badge from
+# becoming business eligibility for another context.
+FRIENDS_SEND_STAMINA_DAILY_SPEC = LocalCvSpec(
+    name=INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
+    asset_path=Path("assets/ui/indicators/daily-mission-badge-current.png"),
+    region=(0.695, 0.81, 0.745, 0.905),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6545846,
+        positive_anchor=0.984439730644226,
+    ),
+)
+
+GUILD_ATTENDANCE_DAILY_SPEC = LocalCvSpec(
+    name=INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    asset_path=Path("assets/ui/indicators/daily-mission-badge-current.png"),
+    region=(0.38, 0.34, 0.425, 0.435),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6131251,
+        positive_anchor=0.922698438167572,
+    ),
+)
+
 # Stable Guild Message tab on the joined-guild shell. It sits well below the
 # transient check-in bubble and outside the upper dynamic chat band. The
 # current corpus contains 16 Guild positives (including Quick Menu over Guild)
@@ -386,6 +442,16 @@ BATTLE_MODE_SELECT_HEADER_SPEC = LocalCvSpec(
     calibration=LinearGapCalibration(
         negative_anchor=0.39035069942474365,
         positive_anchor=0.9919484853744507,
+    ),
+)
+
+WORLD_BOSS_DAILY_SPEC = LocalCvSpec(
+    name=INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
+    asset_path=Path("assets/ui/indicators/daily-mission-badge-current.png"),
+    region=(0.15, 0.54, 0.20, 0.64),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6143493,
+        positive_anchor=0.972343325614929,
     ),
 )
 
@@ -730,12 +796,17 @@ DEFAULT_LOCAL_CV_SPECS = (
     DAILY_QUESTS_TITLE_SPEC,
     DAILY_QUESTS_TAB_ACTIVE_SPEC,
     DAILY_QUESTS_ROW_CLAIM_SPEC,
+    FRIENDS_TITLE_SPEC,
+    FRIENDS_ALL_BUTTON_SPEC,
+    FRIENDS_SEND_STAMINA_DAILY_SPEC,
     GUILD_MESSAGE_TAB_SPEC,
+    GUILD_ATTENDANCE_DAILY_SPEC,
     MAILBOX_TITLE_SPEC,
     MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC,
     MAILBOX_ROW_CLAIM_SPEC,
     MAILBOX_ROW_DELETE_SPEC,
     BATTLE_MODE_SELECT_HEADER_SPEC,
+    WORLD_BOSS_DAILY_SPEC,
     BLACK_MARKET_TITLE_SPEC,
     INSUFFICIENT_GOLD_PROMPT_SPEC,
     INVENTORY_FULL_OK_BUTTON_SPEC,

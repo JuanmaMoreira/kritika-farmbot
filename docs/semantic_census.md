@@ -73,7 +73,7 @@ en `constants.py`, `context.py`, `actions.py` o `flows.py`).
 | 42 | `arena-tryouts-complete` | `popup.arena_tryouts_complete` | overlay | `arena-tryouts-complete-id.png` | legacy / legacy-only | FUTURE | Resultado `ok`. |
 | 43 | `arena-points-reward` | `popup.arena_points_reward` | overlay | `arena-points-reward-id.png` | legacy / legacy-only | FUTURE | Reward `ok`. |
 | 44 | `mailbox` | `screen.mailbox` | base | `mailbox-id.png` | legacy / legacy-only | FUTURE | Estado `no-mail`; no Quick Menu en esta definición. |
-| 45 | `friends` | `screen.friends` | base | `friends-id.png` | legacy / legacy-only | FUTURE | Tabs list/recommended/pending. |
+| 45 | `friends` | `screen.friends` | base | `friends-title-current.png` + `friends-all-button-current.png` | current / production | SEND_STAMINA_FUTURE | Shell y All promovidos con evidencia HIL; accept/delete siguen fuera de alcance. |
 | 46 | `friends-delete` | `popup.friends_delete` | overlay | `friends-delete-id.png` | legacy / legacy-only | FUTURE | Confirmación yes/no. |
 | 47 | `friends-pending-max-amount` | `popup.friends_pending_max` | overlay | `friends-pending-max-amount-id.png` | legacy / legacy-only | FUTURE | Límite alcanzado. |
 | 48 | `friends-recommended-request-sent` | `popup.friend_request_sent` | overlay | `friends-recommended-request-sent-id.png` | legacy / legacy-only | FUTURE | Acknowledgement. |
@@ -185,11 +185,23 @@ GOLD. Ningún item/slot se convierte en contexto.
 | `screen.world_boss` | production | 8 frames; el landmark excluye boss, rank, daño y valores variables. |
 | `screen.world_boss_battle` | production | 21 frames, incluidos 8 con Raid Complete; landmark estructural de daño sin números. |
 | `overlay.world_boss_raid_complete` | production overlay | 8 frames sobre la base de batalla todavía visible. |
+| `status.world_boss_daily_active` | production semantic, sin consumidor | Badge Daily posicional en la tarjeta World Boss; positivos/negativos actuales e históricos, incluidos negativos con badges de otras tarjetas aún visibles. |
 
 La curación conserva ROIs normalizados candidates para sapphires, costo, rank,
 Start, Auto Repeat, Auto Battle, timer y taps seguros. Una segunda evidencia registra
 Auto OFF/ON y sus métricas temporales, pero no promueve OCR, facts, parsers, acciones,
 detector temporal ni flow.
+
+## Señales Daily adquiridas para la fase siguiente
+
+Un único asset current-season del badge verde alimenta tres observaciones con ROIs
+independientes: Friends All, Guild Attendance y World Boss en Battle Mode Select.
+Friends también promueve `screen.friends` y `landmark.friends_all_button`; la transición
+live confirma que All elimina el badge de forma estable y Close restaura Lobby. Guild
+conserva por separado el estado active/completed del botón y el badge Daily. Falta el
+negativo live `Attendance activo + Daily ausente`, por lo que ningún guard de Guild fue
+implementado. World Boss expone sólo elegibilidad externa futura; su flow general-purpose
+permanece sin esa precondición.
 
 ## Ciclo de incorporación 0.2
 

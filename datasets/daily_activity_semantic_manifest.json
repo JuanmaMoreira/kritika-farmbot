@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-08-31",
+    "source": "live_scrcpy_with_human_navigation",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat",
+    "scope": "Observational semantics only for future SendStaminaFlow, a future GuildCheckInFlow Daily guard, and future external World Boss Daily eligibility; no flow, guard, routine or eligibility policy",
+    "shared_daily_indicator": {
+      "description": "The same green circular Daily mission badge rendering appears beside Friends All, Guild Attendance and the World Boss card; each semantic remains position- and context-specific.",
+      "asset": "assets/ui/indicators/daily-mission-badge-current.png",
+      "friends_region": [0.695, 0.81, 0.745, 0.905],
+      "guild_region": [0.38, 0.34, 0.425, 0.435],
+      "world_boss_region": [0.15, 0.54, 0.20, 0.64],
+      "bubble_is_not_business_semantics": true
+    },
+    "friends": {
+      "open_target_from_lobby": [0.8374, 0.0784],
+      "all_target": [0.775, 0.89],
+      "close_target": [0.819, 0.098],
+      "postcondition": "Daily indicator absent stably while screen.friends remains resolved",
+      "transition": {
+        "recording_interval_seconds": 0.20,
+        "last_indicator_present_utc": "2026-08-31T15:31:48.917881+00:00",
+        "first_indicator_absent_utc": "2026-08-31T15:31:49.118903+00:00",
+        "sampled_transition_upper_bound_seconds": 0.201022,
+        "first_visible_processing_bubble_utc": "2026-08-31T15:31:48.519864+00:00",
+        "indicator_absent_after_processing_onset_seconds": 0.599039,
+        "curated_absence_stability_seconds": 0.797902,
+        "human_observed_response_seconds": "approximately 1",
+        "suggested_future_timeout_seconds": 3.0,
+        "suggested_future_stability_seconds": 0.75
+      },
+      "close_result": "screen.lobby human-confirmed and captured after Close"
+    },
+    "guild": {
+      "daily_active_positive": "Attendance actionable with the Daily badge present",
+      "daily_inactive_negative": "Attendance completed with the Daily badge absent",
+      "missing_discriminating_evidence": "Attendance actionable with the Daily badge absent could not be reproduced during this session"
+    },
+    "world_boss": {
+      "eligibility_location": "World Boss card on screen.battle_mode_select",
+      "negative_strength": "World Boss badge absent while unrelated Daily badges remain visible on other cards",
+      "flow_integration": "external eligibility only; not a WorldBossFlow precondition"
+    }
+  },
+  "entries": [
+    {"path":"screencaps/semantic/daily_activity/friends/daily-active/01.png","base_context":"screen.friends","overlays":["status.friends_send_stamina_daily_active"],"observations":["landmark.friends_title","landmark.friends_all_button","indicator.friends_send_stamina_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/friends/daily-active/02.png","base_context":"screen.friends","overlays":["status.friends_send_stamina_daily_active"],"observations":["landmark.friends_title","landmark.friends_all_button","indicator.friends_send_stamina_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/friends/daily-active/03.png","base_context":"screen.friends","overlays":["status.friends_send_stamina_daily_active"],"observations":["landmark.friends_title","landmark.friends_all_button","indicator.friends_send_stamina_daily_active"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/daily_activity/friends/daily-inactive/01.png","base_context":"screen.friends","overlays":[],"observations":["landmark.friends_title","landmark.friends_all_button"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/friends/daily-inactive/02.png","base_context":"screen.friends","overlays":[],"observations":["landmark.friends_title","landmark.friends_all_button"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/friends/daily-inactive/03.png","base_context":"screen.friends","overlays":[],"observations":["landmark.friends_title","landmark.friends_all_button"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/daily_activity/friends/transition/01-last-active.png","base_context":"screen.friends","overlays":["status.friends_send_stamina_daily_active"],"observations":["landmark.friends_title","landmark.friends_all_button","indicator.friends_send_stamina_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/friends/transition/02-first-inactive.png","base_context":"screen.friends","overlays":[],"observations":["landmark.friends_title","landmark.friends_all_button"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/friends/transition/03-inactive-stable.png","base_context":"screen.friends","overlays":[],"observations":["landmark.friends_title","landmark.friends_all_button"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/friends/close-lobby/01.png","base_context":"screen.lobby","overlays":[],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/daily_activity/guild/daily-active/01.png","base_context":"screen.guild","overlays":["status.guild_attendance_active","status.guild_attendance_daily_active"],"observations":["indicator.guild_attendance_active","indicator.guild_attendance_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/guild/daily-active/02.png","base_context":"screen.guild","overlays":["status.guild_attendance_active","status.guild_attendance_daily_active"],"observations":["indicator.guild_attendance_active","indicator.guild_attendance_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/guild/daily-active/03.png","base_context":"screen.guild","overlays":["status.guild_attendance_active","status.guild_attendance_daily_active"],"observations":["indicator.guild_attendance_active","indicator.guild_attendance_daily_active"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/guild/completed/01.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/guild/completed/02.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/guild/completed/03.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/01.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/02.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/03.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/01.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/02.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/03.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"}
+  ]
+}

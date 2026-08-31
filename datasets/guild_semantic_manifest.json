@@ -3,7 +3,7 @@
   "curation": {
     "captured_at_utc": "2026-08-31",
     "human_ground_truth": "confirmed_in_chat",
-    "scope": "Guild shell, Attendance pending/completed, its observed transition, and Guild-only Quick Menu navigation evidence; no flow or precondition policy",
+    "scope": "Guild shell, Attendance pending/completed, its observed transition, Guild Daily badge evidence, and Guild-only Quick Menu navigation evidence",
     "attendance_transition": {
       "recording_interval_seconds": 0.25,
       "last_curated_pending_utc": "2026-08-31T03:29:30.628293+00:00",
@@ -16,6 +16,15 @@
       "description": "mean HSV value of a fixed interior red-fill strip on the Attendance button; active is bright and completed is dark/pressed",
       "region": [0.448, 0.39, 0.46, 0.45],
       "quick_menu_open_suppresses_state_reading": true
+    },
+    "attendance_daily_signal": {
+      "description": "shared green Daily mission badge beside Attendance, observed independently from the button fill state",
+      "asset": "assets/ui/indicators/daily-mission-badge-current.png",
+      "region": [0.38, 0.34, 0.425, 0.435],
+      "actionable_with_daily_frames": 4,
+      "completed_without_daily_frames": 9,
+      "actionable_without_daily_frames": 0,
+      "remaining_evidence_gap": "Attendance actionable without Daily could not be reproduced live"
     },
     "quick_menu_navigation": {
       "origin": "screen.lobby",
@@ -38,11 +47,11 @@
     }
   },
   "entries": [
-    {"path":"screencaps/semantic/guild/pending/01.png","base_context":"screen.guild","overlays":["status.guild_attendance_active"],"observations":["indicator.guild_attendance_active"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/guild/pending/02.png","base_context":"screen.guild","overlays":["status.guild_attendance_active"],"observations":["indicator.guild_attendance_active"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/guild/pending/03.png","base_context":"screen.guild","overlays":["status.guild_attendance_active"],"observations":["indicator.guild_attendance_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/guild/pending/01.png","base_context":"screen.guild","overlays":["status.guild_attendance_active","status.guild_attendance_daily_active"],"observations":["indicator.guild_attendance_active","indicator.guild_attendance_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/guild/pending/02.png","base_context":"screen.guild","overlays":["status.guild_attendance_active","status.guild_attendance_daily_active"],"observations":["indicator.guild_attendance_active","indicator.guild_attendance_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/guild/pending/03.png","base_context":"screen.guild","overlays":["status.guild_attendance_active","status.guild_attendance_daily_active"],"observations":["indicator.guild_attendance_active","indicator.guild_attendance_daily_active"],"review_status":"confirmed"},
 
-    {"path":"screencaps/semantic/guild/transition/01-pending.png","base_context":"screen.guild","overlays":["status.guild_attendance_active"],"observations":["indicator.guild_attendance_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/guild/transition/01-pending.png","base_context":"screen.guild","overlays":["status.guild_attendance_active","status.guild_attendance_daily_active"],"observations":["indicator.guild_attendance_active","indicator.guild_attendance_daily_active"],"review_status":"confirmed"},
     {"path":"screencaps/semantic/guild/transition/02-completed-bubble-onset.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},
     {"path":"screencaps/semantic/guild/transition/03-completed-bubble-stable.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},
     {"path":"screencaps/semantic/guild/transition/04-completed-settled.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},

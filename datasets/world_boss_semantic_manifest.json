@@ -71,6 +71,13 @@
         "corpus": "17 confirmed positives and 154 reviewed negatives"
       }
     },
+    "world_boss_daily_evidence": {
+      "signal": "shared green Daily mission badge at the upper-left of the World Boss card",
+      "region": [0.15, 0.54, 0.20, 0.64],
+      "historical_positive_frames": 3,
+      "historical_negative_frames": 3,
+      "consumer_boundary": "future external Daily eligibility; not a WorldBossFlow precondition"
+    },
     "temporal_evidence": {
       "auto_battle_off": "battle entries 06-09 after explicit ON-to-OFF tap; static border",
       "auto_battle_on": "battle entries 10-13 after explicit OFF-to-ON tap; animated border glow",
@@ -78,9 +85,9 @@
     }
   },
   "entries": [
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230905_545895Z_01.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_089202Z_02.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_628075Z_03.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230905_545895Z_01.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_089202Z_02.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_628075Z_03.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
     {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_314994Z_01.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
     {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_806451Z_02.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
     {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231734_295455Z_03.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},

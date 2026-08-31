@@ -4,7 +4,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025708_293226Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:08.293226+00:00",
@@ -18,7 +19,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025709_482302Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:09.482302+00:00",
@@ -32,7 +34,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025710_350038Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:10.350038+00:00",
@@ -46,7 +49,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025711_913679Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:11.913679+00:00",
@@ -60,7 +64,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025712_631010Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:12.631010+00:00",
@@ -74,7 +79,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025713_536365Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:13.536365+00:00",
@@ -88,7 +94,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025714_319360Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:14.319360+00:00",
@@ -102,7 +109,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025715_119330Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:15.119330+00:00",
@@ -116,7 +124,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025715_899141Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:15.899141+00:00",
@@ -130,7 +139,8 @@
     {
       "path": "screencaps/semantic/battle_mode_select/20260823T025716_783619Z.png",
       "base_context": "screen.battle_mode_select",
-      "overlays": [],
+      "overlays": ["status.world_boss_daily_active"],
+      "observations": ["indicator.world_boss_daily_active"],
       "review_status": "confirmed",
       "metadata": {
         "captured_at_utc": "2026-08-23T02:57:16.783619+00:00",

@@ -18,6 +18,8 @@ Daily Quests y Character Mail quedaron cerrados como flows productivos `PER_CHAR
 
 Guild Check-In quedó cerrado productivamente: semántica pendiente/completado, intent single-tap, completion fresca estable, acceso directo Lobby → Guild, fallback verificado Quick Menu desde otros contextos, allow-list desde Guild y registro/selección GUI `PER_CHARACTER`. No se añadieron categories, routines ni grafo de navegación.
 
+La adquisición Daily para la fase siguiente quedó promovida sin cambiar gameplay: Friends/All con transición del badge a ausencia y Close→Lobby, badge Attendance independiente del estado del botón y badge World Boss contextual en Battle Mode Select. Los tres reutilizan un asset visual con ROIs separadas. Queda pendiente el negativo live `Attendance activo + Daily ausente`.
+
 ## Próximo trabajo
 
 ### Known future
@@ -31,6 +33,9 @@ Guild Check-In quedó cerrado productivamente: semántica pendiente/completado, 
 - Agregar estrategias Rotation identity-aware o MAIN/SUBS sólo si dejan de bastar MRU + `StandardRotation`.
 - Hacer polish de UI más adelante; la GUI actual ya es el frontend operativo.
 - Evaluar detector entrenado o fallback VLM provider-agnostic sólo ante un caso no cubierto y evidencia suficiente.
+- Implementar `SendStaminaFlow` sólo con el contrato Lobby → Friends → Lobby, guard Daily, un único tap All y desaparición estable del indicador.
+- Añadir el guard Daily a `GuildCheckInFlow` después de cerrar el negativo live `Attendance activo + Daily ausente`; no cambiar su completion por botón oscuro.
+- Diseñar la mínima eligibility Daily externa para World Boss sin convertirla en precondición interna de `WorldBossFlow` ni crear todavía un framework de routines.
 
 ## Criterios permanentes de avance
 
