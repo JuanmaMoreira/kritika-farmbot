@@ -41,7 +41,12 @@ from bot.flow_contracts import (
     FlowStatus,
 )
 from bot.runtime_facts import FactReadStatus
-from bot.runtime_observer import RuntimeObserver, RuntimeSnapshot
+from bot.runtime_observer import (
+    RuntimeObserver,
+    RuntimeSnapshot,
+    RuntimeWaitCancelled,
+    RuntimeWaitTimeout,
+)
 from bot.semantic_actions import (
     AcceptSocketInventoryFull,
     AcknowledgeWorldBossPreviousRewards,
@@ -545,7 +550,39 @@ class WorldBossFlow:
                 sapphires, flow_events, previous_rewards, initial_auto,
                 ensured.tap_count, transitions,
             )
-        if ensured.status is not EnsureAutoBattleStatus.SUCCESS:
+        raid = None
+        if ensured.status is EnsureAutoBattleStatus.INTERRUPTED:
+            # A fast raid may finish while the temporal Auto Battle window is
+            # still being collected.  Reacquire the overlay passively and skip
+            # timer acquisition; completion is already the stronger signal.
+            auto_after = (
+                ensured.observations[-1].sequence
+                if ensured.observations
+                else battle.sequence
+            )
+            try:
+                raid = self.observer.wait_until(
+                    _is_raid_complete,
+                    after_sequence=auto_after,
+                    timeout=self.fact_timeout,
+                    cancel_requested=self.cancel_requested,
+                )
+            except RuntimeWaitCancelled:
+                return self._cancelled(
+                    sapphires, flow_events, previous_rewards, initial_auto,
+                    ensured.tap_count, transitions,
+                )
+            except RuntimeWaitTimeout:
+                return self._failed(
+                    "raid_complete_after_auto_interruption_timeout",
+                    sapphires=sapphires,
+                    flow_events=flow_events,
+                    previous_rewards=previous_rewards,
+                    auto_battle_initial=initial_auto,
+                    auto_battle_taps=ensured.tap_count,
+                    transitions=transitions,
+                )
+        elif ensured.status is not EnsureAutoBattleStatus.SUCCESS:
             return self._failed(
                 f"auto_battle_failed: {ensured.status.value}: "
                 f"{ensured.detail or 'no detail'}",
@@ -557,44 +594,77 @@ class WorldBossFlow:
                 transitions=transitions,
             )
 
-        timer_after = (
-            ensured.observations[-1].sequence
-            if ensured.observations
-            else battle.sequence
-        )
-        timer_read = self.facts.read_timer_remaining(
-            after_sequence=timer_after,
-            timeout=self.fact_timeout,
-            cancel_requested=self.cancel_requested,
-        )
-        if timer_read.status is FactReadStatus.CANCELLED:
-            return self._cancelled(
-                sapphires, flow_events, previous_rewards, initial_auto,
-                ensured.tap_count, transitions,
+        timer = None
+        wait_elapsed = 0.0
+        wait_checks = 0
+        if raid is None:
+            timer_after = (
+                ensured.observations[-1].sequence
+                if ensured.observations
+                else battle.sequence
             )
-        if timer_read.status is not FactReadStatus.CONFIRMED:
-            return self._failed(
-                f"timer_fact_failed: {timer_read.status.value}: "
-                f"{timer_read.detail or 'no detail'}",
-                sapphires=sapphires,
-                flow_events=flow_events,
-                previous_rewards=previous_rewards,
-                auto_battle_initial=initial_auto,
-                auto_battle_taps=ensured.tap_count,
-                transitions=transitions,
+            timer_read = self.facts.read_timer_remaining(
+                after_sequence=timer_after,
+                timeout=self.fact_timeout,
+                cancel_requested=self.cancel_requested,
             )
-        timer_fact = timer_read.fact
-        assert timer_fact is not None
-        timer = timer_fact.value
-        self._record_best_effort("world_boss.timer_read", seconds=timer)
+            if timer_read.status is FactReadStatus.CANCELLED:
+                return self._cancelled(
+                    sapphires, flow_events, previous_rewards, initial_auto,
+                    ensured.tap_count, transitions,
+                )
+            if timer_read.status is not FactReadStatus.CONFIRMED:
+                return self._failed(
+                    f"timer_fact_failed: {timer_read.status.value}: "
+                    f"{timer_read.detail or 'no detail'}",
+                    sapphires=sapphires,
+                    flow_events=flow_events,
+                    previous_rewards=previous_rewards,
+                    auto_battle_initial=initial_auto,
+                    auto_battle_taps=ensured.tap_count,
+                    transitions=transitions,
+                )
+            timer_fact = timer_read.fact
+            assert timer_fact is not None
+            timer = timer_fact.value
+            self._record_best_effort("world_boss.timer_read", seconds=timer)
 
-        wait_result, raid = self._wait_for_raid_complete(timer)
-        self._record_best_effort(
-            "world_boss.controlled_wait",
-            outcome=wait_result.outcome.value,
-            elapsed=wait_result.elapsed,
-            poll_count=wait_result.poll_count,
-        )
+            wait_result, raid = self._wait_for_raid_complete(timer)
+            wait_elapsed = wait_result.elapsed
+            wait_checks = wait_result.poll_count
+            self._record_best_effort(
+                "world_boss.controlled_wait",
+                outcome=wait_result.outcome.value,
+                elapsed=wait_elapsed,
+                poll_count=wait_checks,
+            )
+            if wait_result.outcome is ControlledWaitOutcome.CANCELLED:
+                return self._cancelled(
+                    sapphires=sapphires,
+                    flow_events=flow_events,
+                    previous_rewards=previous_rewards,
+                    auto_battle_initial=initial_auto,
+                    auto_battle_taps=ensured.tap_count,
+                    initial_timer=timer,
+                    wait_elapsed=wait_elapsed,
+                    wait_checks=wait_checks,
+                    transitions=transitions,
+                )
+            if wait_result.outcome is not ControlledWaitOutcome.COMPLETED or raid is None:
+                return self._failed(
+                    f"raid_complete_wait_{wait_result.outcome.value}: "
+                    f"{wait_result.error or 'overlay not observed'}",
+                    sapphires=sapphires,
+                    flow_events=flow_events,
+                    previous_rewards=previous_rewards,
+                    auto_battle_initial=initial_auto,
+                    auto_battle_taps=ensured.tap_count,
+                    initial_timer=timer,
+                    wait_elapsed=wait_elapsed,
+                    wait_checks=wait_checks,
+                    transitions=transitions,
+                )
+
         common = dict(
             sapphires=sapphires,
             flow_events=flow_events,
@@ -602,18 +672,10 @@ class WorldBossFlow:
             auto_battle_initial=initial_auto,
             auto_battle_taps=ensured.tap_count,
             initial_timer=timer,
-            wait_elapsed=wait_result.elapsed,
-            wait_checks=wait_result.poll_count,
+            wait_elapsed=wait_elapsed,
+            wait_checks=wait_checks,
             transitions=transitions,
         )
-        if wait_result.outcome is ControlledWaitOutcome.CANCELLED:
-            return self._cancelled(**common)
-        if wait_result.outcome is not ControlledWaitOutcome.COMPLETED or raid is None:
-            return self._failed(
-                f"raid_complete_wait_{wait_result.outcome.value}: "
-                f"{wait_result.error or 'overlay not observed'}",
-                **common,
-            )
 
         returned = self._transition(
             transitions,
@@ -633,8 +695,8 @@ class WorldBossFlow:
                 initial_auto,
                 ensured.tap_count,
                 timer,
-                wait_result.elapsed,
-                wait_result.poll_count,
+                wait_elapsed,
+                wait_checks,
                 True,
             )
         self._record_best_effort("world_boss.completed", postcondition=SCREEN_WORLD_BOSS)
@@ -646,8 +708,8 @@ class WorldBossFlow:
             auto_battle_initial=initial_auto,
             auto_battle_taps=ensured.tap_count,
             initial_timer=timer,
-            wait_elapsed=wait_result.elapsed,
-            wait_checks=wait_result.poll_count,
+            wait_elapsed=wait_elapsed,
+            wait_checks=wait_checks,
             raid_complete_detected=True,
             transition_outcomes=_transition_outcomes(transitions),
             transition_attempts=_transition_attempts(transitions),

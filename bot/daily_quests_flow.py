@@ -24,7 +24,12 @@ from bot.runtime_observer import (
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
-from bot.semantic_actions import ClaimAllDailyQuests, CloseDailyQuests, OpenDailyQuests
+from bot.semantic_actions import (
+    ClaimAllDailyQuests,
+    CloseDailyQuests,
+    OpenQuests,
+    SelectDailyQuests,
+)
 from bot.state import ResolutionStatus
 
 
@@ -110,14 +115,25 @@ class DailyQuestsFlow:
             if self._cancelled():
                 return self._cancel(events)
             lobby = self._initial_lobby()
-            daily = self._act_and_wait(
-                OpenDailyQuests(),
+            quests = self._act_and_wait(
+                OpenQuests(),
                 lobby,
-                expected=_is_daily_quests,
+                expected=_is_quests,
                 abort_if=_has_incompatible_daily_navigation,
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
             )
+            if not _is_daily_quests(quests):
+                daily = self._act_and_wait(
+                    SelectDailyQuests(),
+                    quests,
+                    expected=_is_daily_quests,
+                    abort_if=_has_incompatible_daily_navigation,
+                    timeout=self.navigation_timeout,
+                    stable_for=self.navigation_stable_for,
+                )
+            else:
+                daily = quests
 
             no_op = STATUS_DAILY_QUESTS_CLAIMABLE not in daily.state.overlays
             claim_executed = False
@@ -242,6 +258,16 @@ def _is_daily_quests(snapshot: RuntimeSnapshot) -> bool:
         state.status is ResolutionStatus.RESOLVED
         and state.base_context == SCREEN_QUESTS
         and MODE_DAILY_QUESTS in state.overlays
+        and set(state.overlays)
+        <= {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE}
+    )
+
+
+def _is_quests(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return (
+        state.status is ResolutionStatus.RESOLVED
+        and state.base_context == SCREEN_QUESTS
         and set(state.overlays)
         <= {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE}
     )

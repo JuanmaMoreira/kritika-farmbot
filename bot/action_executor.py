@@ -35,7 +35,7 @@ from bot.semantic_actions import (
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
-    OpenDailyQuests,
+    OpenQuests,
     OpenMailbox,
     OpenBattleModeSelect,
     OpenCharacterSelect,
@@ -57,6 +57,7 @@ from bot.semantic_actions import (
     SelectCombineFuse,
     SelectCombineTransmute,
     SelectCharacterMail,
+    SelectDailyQuests,
     SelectQuickMenuLobby,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
@@ -140,13 +141,15 @@ DEFAULT_BLACK_MARKET_ACTION_TARGETS = BlackMarketActionTargets()
 class DailyQuestsActionTargets:
     """Normalized targets acquired from the live Daily Quests route."""
 
-    open_daily_quests: RelativePoint = (0.6540, 0.9200)
+    open_quests: RelativePoint = (0.6540, 0.9200)
+    select_daily_quests: RelativePoint = (0.2570, 0.2250)
     claim_all: RelativePoint = (0.6930, 0.1413)
     close_daily_quests: RelativePoint = (0.8223, 0.0989)
 
     def __post_init__(self) -> None:
         for point in (
-            self.open_daily_quests,
+            self.open_quests,
+            self.select_daily_quests,
             self.claim_all,
             self.close_daily_quests,
         ):
@@ -296,7 +299,9 @@ class EquipmentActionTargets:
     open_combine: RelativePoint = (0.5000, 0.6300)
     select_transmute: RelativePoint = (0.3000, 0.1800)
     select_fuse: RelativePoint = (0.2200, 0.1800)
-    open_combine_all: RelativePoint = (0.4500, 0.9200)
+    # Input-space target: the frame-space center is not equivalent on this
+    # rotated device.  Reconfirmed from a physical tap on 2026-08-30.
+    open_combine_all: RelativePoint = (0.6073, 0.9297)
     confirm_combine_all: RelativePoint = (0.4500, 0.7200)
     open_awakened_transmute: RelativePoint = (0.3300, 0.9300)
     open_ethereal_random_part: RelativePoint = (0.2700, 0.4300)
@@ -413,8 +418,10 @@ class ActionExecutor:
             return self.targets.open_black_market
         if isinstance(action, CloseBlackMarket):
             return self.targets.close_black_market
-        if isinstance(action, OpenDailyQuests):
-            return self.daily_quests_targets.open_daily_quests
+        if isinstance(action, OpenQuests):
+            return self.daily_quests_targets.open_quests
+        if isinstance(action, SelectDailyQuests):
+            return self.daily_quests_targets.select_daily_quests
         if isinstance(action, ClaimAllDailyQuests):
             return self.daily_quests_targets.claim_all
         if isinstance(action, CloseDailyQuests):

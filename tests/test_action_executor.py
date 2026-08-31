@@ -37,7 +37,7 @@ from bot.semantic_actions import (
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
-    OpenDailyQuests,
+    OpenQuests,
     OpenMailbox,
     OpenBattleModeSelect,
     OpenCharacterSelect,
@@ -59,6 +59,7 @@ from bot.semantic_actions import (
     SelectCombineFuse,
     SelectCombineTransmute,
     SelectCharacterMail,
+    SelectDailyQuests,
     SelectQuickMenuLobby,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
@@ -117,8 +118,12 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
     ("action", "target"),
     (
         (
-            OpenDailyQuests(),
-            DEFAULT_DAILY_QUESTS_ACTION_TARGETS.open_daily_quests,
+            OpenQuests(),
+            DEFAULT_DAILY_QUESTS_ACTION_TARGETS.open_quests,
+        ),
+        (
+            SelectDailyQuests(),
+            DEFAULT_DAILY_QUESTS_ACTION_TARGETS.select_daily_quests,
         ),
         (ClaimAllDailyQuests(), DEFAULT_DAILY_QUESTS_ACTION_TARGETS.claim_all),
         (
@@ -225,6 +230,10 @@ def test_executor_translates_only_acquired_equipment_combine_relief_actions(acti
 
     adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
     assert receipt.normalized_target == target
+
+
+def test_combine_all_uses_acquired_input_space_target_not_visual_frame_center():
+    assert DEFAULT_EQUIPMENT_ACTION_TARGETS.open_combine_all == (0.6073, 0.9297)
 
 
 @pytest.mark.parametrize("slot_index", range(16))

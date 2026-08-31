@@ -230,6 +230,18 @@ def test_timer_passively_reacquires_after_transient_unreadable_frames():
     assert tuple(item.sequence for item in result.fact.evidence) == (5,)
 
 
+def test_timer_rejects_out_of_range_ocr_and_reacquires_plausible_value():
+    result = timer_reader(
+        [1, 2],
+        ["41:19", "1:19"],
+    ).read_timer_remaining(after_sequence=0, timeout=15.0)
+
+    assert result.status is FactReadStatus.CONFIRMED
+    assert result.fact.value == 79
+    assert tuple(item.sequence for item in result.evidence) == (1, 2)
+    assert tuple(item.sequence for item in result.fact.evidence) == (2,)
+
+
 def test_timer_unreadable_reacquisition_remains_observation_bounded():
     result = timer_reader(
         list(range(1, 12)),

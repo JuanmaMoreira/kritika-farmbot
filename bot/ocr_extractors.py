@@ -32,6 +32,7 @@ from bot.state import ResolutionStatus
 
 RESOURCE_SAPPHIRES = "resource.sapphires"
 BATTLE_TIMER_REMAINING = "battle.timer_remaining"
+BATTLE_TIMER_MAX_SECONDS = 90
 SOCKET_SELL_ITEM_LEVEL = "item.socket.sell_level"
 
 # Survival's blue counter. The earlier candidate (0.845, 0.59, 0.945, 0.68)
@@ -274,6 +275,15 @@ def parse_duration_seconds(text: str) -> int | None:
     return total
 
 
+def parse_world_boss_timer_seconds(text: str) -> int | None:
+    """Parse only countdown values valid for a World Boss battle."""
+
+    value = parse_duration_seconds(text)
+    if value is None or value > BATTLE_TIMER_MAX_SECONDS:
+        return None
+    return value
+
+
 def parse_socket_sell_level(text: str) -> int | None:
     """Parse only the Socket Sell sentence carrying an Opal (Skill) level."""
 
@@ -307,7 +317,7 @@ def build_timer_extractor(engine: OcrEngine) -> OcrFactExtractor:
         context=SCREEN_WORLD_BOSS_BATTLE,
         region=WORLD_BOSS_TIMER_ROI,
         engine=engine,
-        parser=parse_duration_seconds,
+        parser=parse_world_boss_timer_seconds,
         preprocessing=TIMER_PREPROCESSING,
         confirmations=1,
         # The chat may temporarily cover the only visible timer location.
@@ -335,6 +345,7 @@ def build_socket_sell_level_extractor(engine: OcrEngine) -> OcrFactExtractor:
 
 
 __all__ = (
+    "BATTLE_TIMER_MAX_SECONDS",
     "BATTLE_TIMER_REMAINING",
     "RESOURCE_SAPPHIRES",
     "SOCKET_SELL_ITEM_LEVEL",
@@ -356,4 +367,5 @@ __all__ = (
     "parse_duration_seconds",
     "parse_integer",
     "parse_socket_sell_level",
+    "parse_world_boss_timer_seconds",
 )

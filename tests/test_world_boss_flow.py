@@ -390,6 +390,40 @@ def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle(
     flow.actions.execute.assert_not_called()
 
 
+def test_raid_complete_during_auto_battle_skips_timer_and_continues():
+    waits, _, transitions = happy_inputs()
+    raid = snapshot(
+        9,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    auto = Mock()
+    auto.ensure_on.return_value = auto_result(
+        sequence=8,
+        status=EnsureAutoBattleStatus.INTERRUPTED,
+    )
+    auto.ensure_on.return_value.detail = (
+        "observation interrupted by overlay.world_boss_raid_complete"
+    )
+    flow, observer, facts, _, _, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 20, 1, SCREEN_LOBBY),
+        waits=[*waits, raid],
+        transitions=transitions,
+        auto=auto,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.raid_complete_detected
+    assert result.initial_timer is None
+    assert result.wait_elapsed == 0
+    assert result.wait_checks == 0
+    assert all(item[0] != "timer" for item in facts.trace)
+    assert observer.observes == []
+    assert driver.calls[-1][0] == "world_boss.continue_after_raid"
+
+
 def test_previous_rewards_may_arrive_after_transient_world_boss_main():
     lobby = snapshot(2, base=SCREEN_LOBBY)
     transient_main = snapshot(5, base=SCREEN_WORLD_BOSS)

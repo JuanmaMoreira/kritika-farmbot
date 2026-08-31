@@ -26,7 +26,12 @@ from bot.runtime_observer import (
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
-from bot.semantic_actions import ClaimAllDailyQuests, CloseDailyQuests, OpenDailyQuests
+from bot.semantic_actions import (
+    ClaimAllDailyQuests,
+    CloseDailyQuests,
+    OpenQuests,
+    SelectDailyQuests,
+)
 from bot.state import ResolutionStatus, ResolvedState
 
 
@@ -144,7 +149,47 @@ def test_noop_without_claims_never_touches_claim_all_or_karats():
     assert result.status is FlowStatus.COMPLETED
     assert result.no_op
     assert result.event_count(DAILY_QUESTS_NOOP) == 1
-    assert actions == [OpenDailyQuests(), CloseDailyQuests()]
+    assert actions == [OpenQuests(), CloseDailyQuests()]
+
+
+def test_remembered_non_daily_tab_is_switched_to_daily_and_verified():
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    quests_a = snapshot(2, 2.0, base=SCREEN_QUESTS)
+    quests_b = snapshot(3, 2.3, base=SCREEN_QUESTS)
+    daily_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_b = snapshot(5, 3.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    returned_a = snapshot(6, 4.0, base=SCREEN_LOBBY)
+    returned_b = snapshot(7, 4.3, base=SCREEN_LOBBY)
+
+    result, actions, _, observer = run_flow(
+        lobby,
+        [
+            stable_pair(quests_a, quests_b),
+            stable_pair(daily_a, daily_b),
+            stable_pair(returned_a, returned_b),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.no_op
+    assert actions == [OpenQuests(), SelectDailyQuests(), CloseDailyQuests()]
+    assert [call.after_sequence for call in observer.calls] == [1, 3, 5]
+
+
+def test_daily_tab_selection_is_single_attempt_and_fails_without_claim_or_close():
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    quests_a = snapshot(2, 2.0, base=SCREEN_QUESTS)
+    quests_b = snapshot(3, 2.3, base=SCREEN_QUESTS)
+    result, actions, _, _ = run_flow(
+        lobby,
+        [
+            stable_pair(quests_a, quests_b),
+            RuntimeWaitTimeout(after_sequence=3, timeout=6.0, last_snapshot=None),
+        ],
+    )
+
+    assert result.status is FlowStatus.FAILED
+    assert actions == [OpenQuests(), SelectDailyQuests()]
 
 
 def test_claim_all_runs_once_and_requires_stable_status_disappearance():
@@ -172,7 +217,7 @@ def test_claim_all_runs_once_and_requires_stable_status_disappearance():
     assert result.claim_all_executed and result.claim_all_completed
     assert result.event_count(DAILY_QUESTS_CLAIM_ALL_EXECUTED) == 1
     assert result.event_count(DAILY_QUESTS_CLAIM_ALL_COMPLETED) == 1
-    assert actions == [OpenDailyQuests(), ClaimAllDailyQuests(), CloseDailyQuests()]
+    assert actions == [OpenQuests(), ClaimAllDailyQuests(), CloseDailyQuests()]
     assert actions.count(ClaimAllDailyQuests()) == 1
     assert observer.calls[1].stable_for == pytest.approx(0.5)
 
@@ -213,5 +258,5 @@ def test_cancellation_during_claim_wait_returns_cancelled_without_close():
     )
 
     assert result.status is FlowStatus.CANCELLED
-    assert actions == [OpenDailyQuests(), ClaimAllDailyQuests()]
+    assert actions == [OpenQuests(), ClaimAllDailyQuests()]
     assert any(event == "daily_quests.cancelled" for event, _ in events)

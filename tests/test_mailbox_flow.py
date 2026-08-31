@@ -188,13 +188,16 @@ def test_normal_processing_rejects_dark_spinner_phase_then_deletes_read_mail():
         base=SCREEN_MAILBOX,
         overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
     )
+    # A reward bubble can briefly hide the active Character Mail tab while
+    # the Mailbox base remains resolved. This is transit, not a postcondition.
+    delete_transit = snapshot(9, 6.0, base=SCREEN_MAILBOX)
     after_delete_a = snapshot(
-        9, 6.0, base=SCREEN_MAILBOX, overlays=character_overlays()
+        10, 6.2, base=SCREEN_MAILBOX, overlays=character_overlays()
     )
     after_delete_b = snapshot(
-        10, 6.6, base=SCREEN_MAILBOX, overlays=character_overlays()
+        11, 6.8, base=SCREEN_MAILBOX, overlays=character_overlays()
     )
-    returned = snapshot(11, 7.0, base=SCREEN_LOBBY)
+    returned = snapshot(12, 7.2, base=SCREEN_LOBBY)
 
     result, actions, _, observer = run_flow(
         lobby,
@@ -203,7 +206,7 @@ def test_normal_processing_rejects_dark_spinner_phase_then_deletes_read_mail():
             [character],
             [active],
             [dark_once, active_again, settled_a, settled_b],
-            [after_delete_a, after_delete_b],
+            [delete_transit, after_delete_a, after_delete_b],
             [returned],
         ],
     )

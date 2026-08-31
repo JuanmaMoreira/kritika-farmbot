@@ -8,6 +8,7 @@ from bot.catalog import POPUP_SOCKET_SELL, SCREEN_LOBBY, SCREEN_SOCKET, SCREEN_W
 from bot.capture import FrameSnapshot
 from bot.ocr import OcrResult
 from bot.ocr_extractors import (
+    BATTLE_TIMER_MAX_SECONDS,
     BATTLE_TIMER_REMAINING,
     RESOURCE_SAPPHIRES,
     SOCKET_SELL_ITEM_LEVEL,
@@ -21,6 +22,7 @@ from bot.ocr_extractors import (
     parse_duration_seconds,
     parse_integer,
     parse_socket_sell_level,
+    parse_world_boss_timer_seconds,
 )
 from bot.observations import ObservationBatch
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
@@ -93,6 +95,20 @@ def test_parse_integer(text, expected):
 )
 def test_parse_duration_seconds(text, expected):
     assert parse_duration_seconds(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("00:00", 0),
+        ("01:30", 90),
+        ("01:31", None),
+        ("41:19", None),
+    ],
+)
+def test_world_boss_timer_parser_rejects_values_above_business_limit(text, expected):
+    assert BATTLE_TIMER_MAX_SECONDS == 90
+    assert parse_world_boss_timer_seconds(text) == expected
 
 
 @pytest.mark.parametrize(

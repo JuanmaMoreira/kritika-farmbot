@@ -10,14 +10,16 @@ from bot.state import ResolutionStatus, ResolvedState
 from bot.temporal_observation import TemporalObserver, TemporalWindowStatus
 
 
-def snapshot(sequence, context="screen.world_boss_battle", overlays=()):
+def snapshot(sequence, context="screen.world_boss_battle", overlays=(), status=None):
     image = np.zeros((10, 20, 3), dtype=np.uint8)
     timestamp = sequence * 0.1
+    if status is None:
+        status = ResolutionStatus.RESOLVED if context else ResolutionStatus.UNKNOWN
     return RuntimeSnapshot(
         FrameSnapshot(image, timestamp, sequence),
         ObservationBatch(sequence, timestamp),
         ResolvedState(
-            ResolutionStatus.RESOLVED,
+            status,
             sequence,
             timestamp,
             base_context=context,
@@ -66,6 +68,52 @@ def test_context_mismatch_stops_window_immediately():
     assert result.status is TemporalWindowStatus.CONTEXT_MISMATCH
     assert result.last_sequence == 12
     assert observer.wait_until.call_count == 2
+
+
+def test_transient_unknown_is_skipped_within_the_bounded_window():
+    observer = Mock(spec=RuntimeObserver)
+    observer.wait_until.side_effect = [
+        snapshot(11),
+        snapshot(12, context=None),
+        snapshot(13),
+        snapshot(14),
+    ]
+    temporal = TemporalObserver(observer, clock=lambda: 0.0)
+
+    result = temporal.collect(
+        after_sequence=10,
+        context="screen.world_boss_battle",
+        frame_count=3,
+        sample_interval=0.1,
+        timeout=2.0,
+    )
+
+    assert result.status is TemporalWindowStatus.COMPLETE
+    assert [item.sequence for item in result.snapshots] == [11, 13, 14]
+    assert [
+        call.kwargs["after_sequence"] for call in observer.wait_until.call_args_list
+    ] == [10, 11, 12, 13]
+
+
+def test_interrupt_overlay_wins_even_when_base_is_temporarily_unknown():
+    observer = Mock(spec=RuntimeObserver)
+    observer.wait_until.side_effect = [
+        snapshot(11, context=None, overlays=("overlay.world_boss_raid_complete",)),
+    ]
+    temporal = TemporalObserver(observer, clock=lambda: 0.0)
+
+    result = temporal.collect(
+        after_sequence=10,
+        context="screen.world_boss_battle",
+        frame_count=3,
+        sample_interval=0.1,
+        timeout=2.0,
+        interrupt_overlays=frozenset(("overlay.world_boss_raid_complete",)),
+    )
+
+    assert result.status is TemporalWindowStatus.INTERRUPTED
+    assert result.last_sequence == 11
+    assert "overlay.world_boss_raid_complete" in result.detail
 
 
 def test_timeout_is_bounded_and_preserves_partial_window():

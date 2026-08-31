@@ -15,6 +15,7 @@ from bot.runtime_observer import (
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
+from bot.state import ResolutionStatus
 
 
 class TemporalWindowStatus(str, Enum):
@@ -94,27 +95,39 @@ class TemporalObserver:
                     )
                 snapshot = self.observer.wait_until(
                     lambda item: (
-                        not snapshots
-                        or item.timestamp - snapshots[-1].timestamp >= interval
+                        (
+                            not snapshots
+                            or item.timestamp - snapshots[-1].timestamp >= interval
+                        )
+                        and (
+                            item.state.status is ResolutionStatus.RESOLVED
+                            or bool(interrupt_overlays.intersection(item.state.overlays))
+                        )
                     ),
                     after_sequence=cursor,
                     timeout=remaining,
                     cancel_requested=cancel_requested,
                 )
                 cursor = snapshot.sequence
+                interruption = interrupt_overlays.intersection(snapshot.state.overlays)
+                if interruption:
+                    snapshots.append(snapshot)
+                    return TemporalWindow(
+                        TemporalWindowStatus.INTERRUPTED,
+                        tuple(snapshots),
+                        f"observation interrupted by {sorted(interruption)[0]}",
+                    )
+                if snapshot.state.status is not ResolutionStatus.RESOLVED:
+                    # A transient UNKNOWN/AMBIGUOUS frame consumes time but is
+                    # never evidence for the temporal fact or permission for input.
+                    continue
                 snapshots.append(snapshot)
                 if snapshot.state.base_context != context:
                     return TemporalWindow(
                         TemporalWindowStatus.CONTEXT_MISMATCH,
                         tuple(snapshots),
-                        f"fresh frame is not {context}",
-                    )
-                interruption = interrupt_overlays.intersection(snapshot.state.overlays)
-                if interruption:
-                    return TemporalWindow(
-                        TemporalWindowStatus.INTERRUPTED,
-                        tuple(snapshots),
-                        f"observation interrupted by {sorted(interruption)[0]}",
+                        "fresh resolved frame is "
+                        f"{snapshot.state.base_context}, expected {context}",
                     )
         except RuntimeWaitCancelled:
             return TemporalWindow(TemporalWindowStatus.CANCELLED, tuple(snapshots))

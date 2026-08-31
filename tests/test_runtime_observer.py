@@ -141,6 +141,7 @@ def test_wait_until_can_abort_on_an_incompatible_fresh_snapshot():
         )
 
     assert raised.value.snapshot.sequence == 11
+    assert "status=unknown base=None overlays=[]" in str(raised.value)
 
 
 def test_wait_until_can_require_condition_stability_across_fresh_frames():

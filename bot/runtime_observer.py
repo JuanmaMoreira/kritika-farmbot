@@ -115,8 +115,11 @@ class RuntimeWaitAborted(RuntimeError):
 
     def __init__(self, snapshot: RuntimeSnapshot) -> None:
         self.snapshot = snapshot
+        state = snapshot.state
         super().__init__(
-            f"runtime wait aborted by incompatible sequence {snapshot.sequence}"
+            f"runtime wait aborted by incompatible sequence {snapshot.sequence}: "
+            f"status={state.status.value} base={state.base_context} "
+            f"overlays={list(state.overlays)}"
         )
 
 

@@ -344,41 +344,50 @@ class EquipmentCombineRelief:
                 acknowledged = restored or acknowledged
             self._record("equipment_combine_relief.ethereal_defensive_no_material")
             return EquipmentCombineStrategyOutcome.FAILED, acknowledged or outcome, 0
-        animation = self._transition(
+        animation_or_completion = self._transition(
             "equipment_combine_relief.ethereal.confirm_mass_combine",
             ConfirmEtherealMassCombine(),
             outcome,
-            expected=_is_tappable_animation,
+            expected=lambda item: _is_tappable_animation(item) or _is_random_part_panel(item),
             precondition=_is_ethereal_confirm,
             tolerated=_is_combine_animation_transient,
             policy=self.single_action_policy,
         )
-        if animation is None:
+        if animation_or_completion is None:
             return EquipmentCombineStrategyOutcome.FAILED, outcome, 0
-        tapped = self.tap_through.run(
-            animation,
-            action=TapCombineAnimation(),
-            expected=_is_random_part_panel,
-            tappable=_is_tappable_animation,
-            transient=_is_combine_animation_transient,
-            cancel_requested=cancel_requested,
-            policy=self.animation_policy,
-        )
-        if tapped.outcome is TapThroughOutcome.CANCELLED:
-            return EquipmentCombineStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
-        if not tapped.succeeded:
-            return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
+        if _is_random_part_panel(animation_or_completion):
+            completion = animation_or_completion
+            tap_count = 0
+            self._record(
+                "equipment_combine_relief.ethereal_animation_completed_before_tappable"
+            )
+        else:
+            tapped = self.tap_through.run(
+                animation_or_completion,
+                action=TapCombineAnimation(),
+                expected=_is_random_part_panel,
+                tappable=_is_tappable_animation,
+                transient=_is_combine_animation_transient,
+                cancel_requested=cancel_requested,
+                policy=self.animation_policy,
+            )
+            if tapped.outcome is TapThroughOutcome.CANCELLED:
+                return EquipmentCombineStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
+            if not tapped.succeeded:
+                return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
+            completion = tapped.final_snapshot
+            tap_count = tapped.tap_count
         restored = self._transition(
             "equipment_combine_relief.ethereal.return_transmute",
             SelectCombineTransmute(),
-            tapped.final_snapshot,
+            completion,
             expected=lambda item: _is_transmute_menu(item) and STATUS_COMBINE_ETHEREAL_AVAILABLE not in item.state.overlays,
             precondition=_is_random_part_panel,
         )
         if restored is None:
-            return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
-        self._record("equipment_combine_relief.ethereal_effect", taps=tapped.tap_count)
-        return EquipmentCombineStrategyOutcome.EFFECT, restored, tapped.tap_count
+            return EquipmentCombineStrategyOutcome.FAILED, completion, tap_count
+        self._record("equipment_combine_relief.ethereal_effect", taps=tap_count)
+        return EquipmentCombineStrategyOutcome.EFFECT, restored, tap_count
 
     def _transition(self, name, action, before, *, expected, precondition, tolerated=lambda _: False, policy=None):
         result = self.transition.execute(

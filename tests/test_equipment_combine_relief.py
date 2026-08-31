@@ -221,6 +221,54 @@ def test_ethereal_effect_returns_to_transmute_and_clears_guard():
     assert [call[0] for call in driver.calls].index("equipment_combine_relief.ethereal.return_transmute") < [call[0] for call in driver.calls].index("equipment_combine_relief.select_fuse")
 
 
+def test_ethereal_direct_completion_still_requires_cleared_guard():
+    direct_completion = panel(6, PANEL_COMBINE_ETHEREAL_RANDOM_PART)
+    operation, driver, tapper = build(
+        mode(1, MODE_COMBINE_FUSE),
+        [
+            mode(2, MODE_COMBINE_TRANSMUTE, STATUS_COMBINE_ETHEREAL_AVAILABLE),
+            panel(3, PANEL_COMBINE_AWAKENED_TRANSMUTE),
+            panel(4, PANEL_COMBINE_ETHEREAL_RANDOM_PART),
+            panel(5, PANEL_COMBINE_ETHEREAL_RANDOM_PART, POPUP_ETHEREAL_MASS_COMBINE),
+            direct_completion,
+            mode(7, MODE_COMBINE_TRANSMUTE),
+            mode(8, MODE_COMBINE_FUSE),
+            snapshot(9, base=SCREEN_WORLD_BOSS),
+        ],
+    )
+
+    result = operation.run(plan())
+
+    assert result.outcome is EquipmentCombineReliefOutcome.RELIEVED
+    assert result.ethereal is EquipmentCombineStrategyOutcome.EFFECT
+    assert result.animation_taps == 0
+    assert tapper.calls == []
+    assert "equipment_combine_relief.ethereal_animation_completed_before_tappable" in {
+        name for name, _ in operation.events.records
+    }
+    assert driver.calls[5][0] == "equipment_combine_relief.ethereal.return_transmute"
+
+
+def test_ethereal_direct_popup_close_is_not_effect_when_guard_remains():
+    operation, _, tapper = build(
+        mode(1, MODE_COMBINE_FUSE),
+        [
+            mode(2, MODE_COMBINE_TRANSMUTE, STATUS_COMBINE_ETHEREAL_AVAILABLE),
+            panel(3, PANEL_COMBINE_AWAKENED_TRANSMUTE),
+            panel(4, PANEL_COMBINE_ETHEREAL_RANDOM_PART),
+            panel(5, PANEL_COMBINE_ETHEREAL_RANDOM_PART, POPUP_ETHEREAL_MASS_COMBINE),
+            panel(6, PANEL_COMBINE_ETHEREAL_RANDOM_PART),
+            mode(7, MODE_COMBINE_TRANSMUTE, STATUS_COMBINE_ETHEREAL_AVAILABLE),
+        ],
+    )
+
+    result = operation.run(plan())
+
+    assert result.outcome is EquipmentCombineReliefOutcome.FAILED
+    assert result.ethereal is EquipmentCombineStrategyOutcome.FAILED
+    assert tapper.calls == []
+
+
 def test_fuse_effect_is_evaluated_fresh_after_transmute():
     initial = mode(1, MODE_COMBINE_FUSE)
     operation, _, _ = build(

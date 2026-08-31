@@ -24,8 +24,13 @@ class CloseBlackMarket:
 
 
 @dataclass(frozen=True)
-class OpenDailyQuests:
-    """Request the direct Lobby -> Daily Quests action."""
+class OpenQuests:
+    """Request Lobby -> Quests, which restores the last visited tab."""
+
+
+@dataclass(frozen=True)
+class SelectDailyQuests:
+    """Request the Daily Quests tab from an already-confirmed Quests shell."""
 
 
 @dataclass(frozen=True)
@@ -336,7 +341,8 @@ class DismissWorldBossBagFull:
 SemanticAction = (
     OpenBlackMarket
     | CloseBlackMarket
-    | OpenDailyQuests
+    | OpenQuests
+    | SelectDailyQuests
     | ClaimAllDailyQuests
     | CloseDailyQuests
     | OpenMailbox
@@ -411,7 +417,7 @@ __all__ = (
     "DismissWorldBossBagFull",
     "DeleteReadCharacterMail",
     "OpenBlackMarket",
-    "OpenDailyQuests",
+    "OpenQuests",
     "OpenMailbox",
     "OpenBattleModeSelect",
     "OpenCharacterSelect",
@@ -429,6 +435,7 @@ __all__ = (
     "Swipe",
     "SelectLastVisibleCharacter",
     "SelectCharacterMail",
+    "SelectDailyQuests",
     "SelectQuickMenuLobby",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",

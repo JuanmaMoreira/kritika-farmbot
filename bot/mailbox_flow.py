@@ -229,7 +229,7 @@ class MailboxFlow:
                     DeleteReadCharacterMail(),
                     mailbox,
                     expected=_is_character_mail_without_read,
-                    abort_if=_has_incompatible_character_mail_state,
+                    abort_if=_has_incompatible_delete_state,
                     timeout=self.delete_timeout,
                     stable_for=self.delete_stable_for,
                 )
@@ -471,13 +471,13 @@ def _has_incompatible_processing_state(snapshot: RuntimeSnapshot) -> bool:
     )
 
 
-def _has_incompatible_character_mail_state(snapshot: RuntimeSnapshot) -> bool:
+def _has_incompatible_delete_state(snapshot: RuntimeSnapshot) -> bool:
     state = snapshot.state
     return (
         state.status is ResolutionStatus.AMBIGUOUS
         or (
             state.status is ResolutionStatus.RESOLVED
-            and not _is_character_mail(snapshot)
+            and state.base_context != SCREEN_MAILBOX
         )
         or bool(
             set(state.overlays)
