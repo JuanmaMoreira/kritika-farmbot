@@ -27,7 +27,9 @@ from bot.semantic_actions import (
 )
 from bot.send_stamina_flow import (
     SEND_STAMINA_ALL_EXECUTED,
+    SEND_STAMINA_ALL_NO_EFFECT,
     SEND_STAMINA_COMPLETED,
+    SEND_STAMINA_DAILY_PENDING,
     SEND_STAMINA_NOOP,
     SendStaminaFlow,
 )
@@ -205,21 +207,73 @@ def test_daily_active_taps_all_once_and_requires_stable_disappearance():
     assert observer.calls[1] == WaitCall(3, 3.0, 0.75)
 
 
-def test_completion_timeout_fails_without_retry_or_close():
+def test_ineffective_all_with_stable_daily_pending_is_nonfatal_and_closes():
     lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
     opened = stable_pair(
         friends(2, 2.0, daily_active=True),
         friends(3, 2.3, daily_active=True),
     )
-    still_active = [friends(4, 4.0, daily_active=True)]
+    still_active = friends(4, 4.0, daily_active=True)
+    confirmed_a = friends(5, 4.2, daily_active=True)
+    confirmed_b = friends(6, 5.0, daily_active=True)
+    closing = friends(7, 5.2, daily_active=True)
+    returned_a = snapshot(8, 5.5, base=SCREEN_LOBBY)
+    returned_b = snapshot(9, 5.8, base=SCREEN_LOBBY)
 
-    result, actions, events, _ = run_flow(lobby, [opened, still_active])
+    result, actions, events, observer = run_flow(
+        lobby,
+        [
+            opened,
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=3.0,
+                last_snapshot=still_active,
+            ),
+            [confirmed_a, confirmed_b],
+            [closing, returned_a, returned_b],
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.all_executed
+    assert result.all_no_effect and result.daily_pending
+    assert not result.daily_completed
+    assert actions == [
+        OpenFriends(),
+        SendStaminaToAllFriends(),
+        CloseFriends(),
+    ]
+    assert actions.count(SendStaminaToAllFriends()) == 1
+    assert result.event_count(SEND_STAMINA_COMPLETED) == 0
+    assert result.event_count(SEND_STAMINA_ALL_NO_EFFECT) == 1
+    assert result.event_count(SEND_STAMINA_DAILY_PENDING) == 1
+    assert not any(event == "send_stamina.failed" for event, _ in events)
+    assert observer.calls[2] == WaitCall(4, 3.0, 0.75)
+
+
+def test_completion_timeout_without_verified_daily_pending_remains_failure():
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    opened = stable_pair(
+        friends(2, 2.0, daily_active=True),
+        friends(3, 2.3, daily_active=True),
+    )
+
+    result, actions, events, _ = run_flow(
+        lobby,
+        [
+            opened,
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=3.0,
+                last_snapshot=None,
+            ),
+        ],
+    )
 
     assert result.status is FlowStatus.FAILED
     assert result.all_executed
     assert actions == [OpenFriends(), SendStaminaToAllFriends()]
-    assert actions.count(SendStaminaToAllFriends()) == 1
-    assert result.event_count(SEND_STAMINA_COMPLETED) == 0
+    assert not result.daily_pending
     assert any(event == "send_stamina.failed" for event, _ in events)
 
 

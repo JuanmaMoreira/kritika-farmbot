@@ -11,6 +11,7 @@ from bot.catalog import (
     SCREEN_WORLD_BOSS,
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
+    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
 )
 from bot.event_log import RuntimeEventStream
 from bot.productive_runtime import ProductiveRuntime
@@ -183,16 +184,30 @@ def test_clean_context_probe_tolerates_transient_unresolved_frames_for_five_seco
     }
 
 
-def test_clean_context_probe_accepts_one_guild_attendance_state():
+def test_clean_context_probe_accepts_guild_attendance_with_daily_badge():
     guild = _snapshot(
         17,
         status=ResolutionStatus.RESOLVED,
         base=SCREEN_GUILD,
-        overlays={STATUS_GUILD_ATTENDANCE_COMPLETED},
+        overlays={
+            STATUS_GUILD_ATTENDANCE_ACTIVE,
+            STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        },
     )
     runtime = _runtime(Observer(guild, guild), Events())
 
     assert runtime._current_clean_context() == SCREEN_GUILD
+
+
+def test_clean_context_probe_rejects_daily_badge_without_attendance_state():
+    guild = _snapshot(
+        17,
+        status=ResolutionStatus.RESOLVED,
+        base=SCREEN_GUILD,
+        overlays={STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE},
+    )
+
+    assert not productive._is_clean_base(guild, SCREEN_GUILD)
 
 
 def test_clean_context_probe_timeout_records_last_observed_state():
@@ -270,7 +285,10 @@ def test_productive_precondition_navigates_world_boss_via_quick_menu_to_guild(mo
         3,
         status=ResolutionStatus.RESOLVED,
         base=SCREEN_GUILD,
-        overlays={STATUS_GUILD_ATTENDANCE_ACTIVE},
+        overlays={
+            STATUS_GUILD_ATTENDANCE_ACTIVE,
+            STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        },
     )
     observer = Observer(world_boss, guild)
     runtime = _runtime(observer, Events())
@@ -306,7 +324,10 @@ def test_productive_precondition_navigates_lobby_directly_to_verified_guild(
         2,
         status=ResolutionStatus.RESOLVED,
         base=SCREEN_GUILD,
-        overlays={STATUS_GUILD_ATTENDANCE_ACTIVE},
+        overlays={
+            STATUS_GUILD_ATTENDANCE_ACTIVE,
+            STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        },
     )
     runtime = _runtime(Observer(lobby, guild), Events())
     calls = []

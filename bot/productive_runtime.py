@@ -20,6 +20,7 @@ from bot.catalog import (
     SCREEN_WORLD_BOSS,
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
+    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
     build_default_resolver,
 )
 from bot.config import RuntimeConfig
@@ -46,6 +47,9 @@ _CLEAN_CONTEXTS = frozenset({SCREEN_GUILD, SCREEN_LOBBY, SCREEN_WORLD_BOSS})
 _GUILD_ATTENDANCE_STATES = frozenset(
     {STATUS_GUILD_ATTENDANCE_ACTIVE, STATUS_GUILD_ATTENDANCE_COMPLETED}
 )
+_GUILD_COMPATIBLE_OVERLAYS = _GUILD_ATTENDANCE_STATES | {
+    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE
+}
 _CLEAN_CONTEXT_TIMEOUT = 5.0
 _CLEAN_CONTEXT_STABLE_FOR = 0.25
 
@@ -447,7 +451,8 @@ def _is_clean_base(snapshot, base: str) -> bool:
     state = snapshot.state
     overlays = set(state.overlays)
     compatible_overlays = (
-        len(overlays) == 1 and overlays <= _GUILD_ATTENDANCE_STATES
+        len(overlays & _GUILD_ATTENDANCE_STATES) == 1
+        and overlays <= _GUILD_COMPATIBLE_OVERLAYS
         if base == SCREEN_GUILD
         else not overlays
     )

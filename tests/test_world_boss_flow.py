@@ -22,6 +22,7 @@ from bot.catalog import (
     SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
+    STATUS_WORLD_BOSS_DAILY_ACTIVE,
 )
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
 from bot.equipment_combine_relief import (
@@ -37,7 +38,7 @@ from bot.runtime_facts import (
     FactReadStatus,
     RuntimeFact,
 )
-from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
+from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot, RuntimeWaitTimeout
 from bot.semantic_actions import (
     AcceptSocketInventoryFull,
     DismissWorldBossBagFull,
@@ -139,6 +140,8 @@ class Observer:
                    stable_for=0.0, cancel_requested=None):
         self.trace.append(("wait", after_sequence))
         item = self.waits.pop(0)
+        if isinstance(item, BaseException):
+            raise item
         assert condition(item)
         return item
 
@@ -270,7 +273,11 @@ def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
 
 def happy_inputs(*, previous=False):
     lobby = snapshot(2, base=SCREEN_LOBBY)
-    battle_modes = snapshot(3, base=SCREEN_BATTLE_MODE_SELECT)
+    battle_modes = snapshot(
+        3,
+        base=SCREEN_BATTLE_MODE_SELECT,
+        overlays=(STATUS_WORLD_BOSS_DAILY_ACTIVE,),
+    )
     selector = snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
     entered = (
         snapshot(5, overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,))
@@ -422,6 +429,39 @@ def test_raid_complete_during_auto_battle_skips_timer_and_continues():
     assert all(item[0] != "timer" for item in facts.trace)
     assert observer.observes == []
     assert driver.calls[-1][0] == "world_boss.continue_after_raid"
+
+
+def test_raid_complete_at_auto_battle_timeout_is_reacquired_and_continues():
+    waits, _, transitions = happy_inputs()
+    raid = snapshot(
+        9,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    auto = Mock()
+    auto.ensure_on.return_value = auto_result(
+        status=EnsureAutoBattleStatus.TIMEOUT,
+    )
+    auto.ensure_on.return_value.detail = "frames_collected=9/10"
+    flow, observer, facts, _, events, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 20, 1, SCREEN_LOBBY),
+        waits=[*waits, raid],
+        transitions=transitions,
+        auto=auto,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.raid_complete_detected
+    assert result.initial_timer is None
+    assert all(item[0] != "timer" for item in facts.trace)
+    assert observer.observes == []
+    assert driver.calls[-1][0] == "world_boss.continue_after_raid"
+    assert (
+        "world_boss.auto_battle_timeout_raid_probe",
+        {"outcome": "raid_complete"},
+    ) in events.records
 
 
 def test_previous_rewards_may_arrive_after_transient_world_boss_main():
@@ -1003,6 +1043,14 @@ def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():
 def test_auto_battle_failure_stops_before_timer_and_long_wait(status):
     waits, _, transitions = happy_inputs()
     transitions = transitions[:-1]
+    if status is EnsureAutoBattleStatus.TIMEOUT:
+        waits.append(
+            RuntimeWaitTimeout(
+                after_sequence=7,
+                timeout=15.0,
+                last_snapshot=None,
+            )
+        )
     auto = Mock()
     auto.ensure_on.return_value = auto_result(status=status)
     flow, observer, facts, _, _, _ = build_flow(

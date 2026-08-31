@@ -9,6 +9,7 @@ from bot.catalog import (
     SCREEN_LOBBY,
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
+    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
 )
 from bot.flow_contracts import FlowScope, FlowStatus
 from bot.guild_check_in_flow import (
@@ -150,16 +151,29 @@ def test_already_completed_is_successful_noop_without_input():
 
 
 def test_active_attendance_taps_once_and_requires_stable_completed_state():
-    active = snapshot(1, 1.0, overlays=(STATUS_GUILD_ATTENDANCE_ACTIVE,))
+    active = snapshot(
+        1,
+        1.0,
+        overlays=(
+            STATUS_GUILD_ATTENDANCE_ACTIVE,
+            STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        ),
+    )
     completed_a = snapshot(
         2,
         2.0,
-        overlays=(STATUS_GUILD_ATTENDANCE_COMPLETED,),
+        overlays=(
+            STATUS_GUILD_ATTENDANCE_COMPLETED,
+            STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        ),
     )
     completed_b = snapshot(
         3,
         2.8,
-        overlays=(STATUS_GUILD_ATTENDANCE_COMPLETED,),
+        overlays=(
+            STATUS_GUILD_ATTENDANCE_COMPLETED,
+            STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        ),
     )
 
     result, actions, _, observer = run_flow(active, (completed_a, completed_b))
@@ -171,6 +185,19 @@ def test_active_attendance_taps_once_and_requires_stable_completed_state():
     assert result.event_count(GUILD_CHECK_IN_TAP_EXECUTED) == 1
     assert result.event_count(GUILD_CHECK_IN_COMPLETED) == 1
     assert observer.calls == [WaitCall(1, 10.0, 0.75)]
+
+
+def test_daily_badge_without_attendance_never_authorizes_input():
+    daily_only = snapshot(
+        1,
+        1.0,
+        overlays=(STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,),
+    )
+
+    result, actions, _, _ = run_flow(daily_only)
+
+    assert result.status is FlowStatus.FAILED
+    assert actions == []
 
 
 def test_completion_timeout_fails_without_second_tap_or_success_event():

@@ -33,6 +33,8 @@ from bot.state import ResolutionStatus
 
 SEND_STAMINA_NOOP = "send_stamina.noop"
 SEND_STAMINA_ALL_EXECUTED = "send_stamina.all_executed"
+SEND_STAMINA_ALL_NO_EFFECT = "send_stamina.all_no_effect"
+SEND_STAMINA_DAILY_PENDING = "send_stamina.daily_pending"
 SEND_STAMINA_COMPLETED = "send_stamina.completed"
 
 _FRIENDS_STATES = frozenset({STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE})
@@ -42,6 +44,8 @@ _FRIENDS_STATES = frozenset({STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE})
 class SendStaminaFlowResult(FlowResult):
     no_op: bool = False
     all_executed: bool = False
+    all_no_effect: bool = False
+    daily_pending: bool = False
     daily_completed: bool = False
 
 
@@ -114,6 +118,9 @@ class SendStaminaFlow:
     def run(self) -> SendStaminaFlowResult:
         events: list[FlowEvent] = []
         all_executed = False
+        all_no_effect = False
+        daily_pending = False
+        daily_completed = False
         try:
             if self._cancelled():
                 return self._cancel(events, all_executed=False)
@@ -130,28 +137,51 @@ class SendStaminaFlow:
             no_op = not _is_daily_active(friends)
             if no_op:
                 self._append_event(events, SEND_STAMINA_NOOP)
+                daily_completed = True
             else:
                 if self._cancelled():
                     raise RuntimeWaitCancelled("send stamina flow cancelled")
                 self.actions.execute(SendStaminaToAllFriends(), friends.geometry)
                 all_executed = True
                 self._append_event(events, SEND_STAMINA_ALL_EXECUTED)
-                friends = self.observer.wait_until(
-                    _is_daily_completed,
-                    after_sequence=friends.sequence,
-                    timeout=self.completion_timeout,
-                    abort_if=_has_incompatible_daily_transition,
-                    cancel_requested=self.cancel_requested,
-                    stable_for=self.completion_stable_for,
-                )
-                assert _is_daily_completed(friends)
-                self._append_event(events, SEND_STAMINA_COMPLETED)
+                try:
+                    friends = self.observer.wait_until(
+                        _is_daily_completed,
+                        after_sequence=friends.sequence,
+                        timeout=self.completion_timeout,
+                        abort_if=_has_incompatible_daily_transition,
+                        cancel_requested=self.cancel_requested,
+                        stable_for=self.completion_stable_for,
+                    )
+                except RuntimeWaitTimeout as completion_timeout:
+                    anchor = completion_timeout.last_snapshot
+                    if anchor is None or not _is_daily_active(anchor):
+                        raise
+                    friends = self.observer.wait_until(
+                        _is_daily_active,
+                        after_sequence=anchor.sequence,
+                        timeout=self.completion_timeout,
+                        abort_if=_has_incompatible_daily_transition,
+                        cancel_requested=self.cancel_requested,
+                        stable_for=self.completion_stable_for,
+                    )
+                    all_no_effect = True
+                    daily_pending = True
+                    self._append_event(events, SEND_STAMINA_ALL_NO_EFFECT)
+                    self._append_event(events, SEND_STAMINA_DAILY_PENDING)
+                else:
+                    assert _is_daily_completed(friends)
+                    daily_completed = True
+                    self._append_event(events, SEND_STAMINA_COMPLETED)
 
             lobby = self._act_and_wait(
                 CloseFriends(),
                 friends,
                 expected=_is_clean_lobby,
-                abort_if=_has_incompatible_close_state,
+                abort_if=lambda snapshot: _has_incompatible_close_state(
+                    snapshot,
+                    allow_daily=daily_pending,
+                ),
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
             )
@@ -161,7 +191,9 @@ class SendStaminaFlow:
                 tuple(events),
                 no_op=no_op,
                 all_executed=all_executed,
-                daily_completed=True,
+                all_no_effect=all_no_effect,
+                daily_pending=daily_pending,
+                daily_completed=daily_completed,
             )
         except RuntimeWaitCancelled:
             return self._cancel(events, all_executed=all_executed)
@@ -349,7 +381,13 @@ def _has_incompatible_daily_transition(snapshot: RuntimeSnapshot) -> bool:
     )
 
 
-def _has_incompatible_close_state(snapshot: RuntimeSnapshot) -> bool:
+def _has_incompatible_close_state(
+    snapshot: RuntimeSnapshot,
+    *,
+    allow_daily: bool = False,
+) -> bool:
+    if allow_daily and _is_daily_active(snapshot):
+        return False
     state = snapshot.state
     return (
         state.status is ResolutionStatus.AMBIGUOUS
@@ -381,7 +419,9 @@ def _non_negative_duration(value: object, name: str) -> float:
 
 __all__ = (
     "SEND_STAMINA_ALL_EXECUTED",
+    "SEND_STAMINA_ALL_NO_EFFECT",
     "SEND_STAMINA_COMPLETED",
+    "SEND_STAMINA_DAILY_PENDING",
     "SEND_STAMINA_NOOP",
     "SendStaminaFlow",
     "SendStaminaFlowResult",

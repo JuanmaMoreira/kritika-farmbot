@@ -12,6 +12,7 @@ from bot.catalog import (
     SCREEN_GUILD,
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
+    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
 )
 from bot.component_contracts import ComponentRequirement
 from bot.event_log import EventSink
@@ -37,6 +38,9 @@ _ATTENDANCE_STATES = frozenset(
         STATUS_GUILD_ATTENDANCE_COMPLETED,
     }
 )
+_COMPATIBLE_OVERLAYS = _ATTENDANCE_STATES | {
+    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE
+}
 
 
 @dataclass(frozen=True)
@@ -219,10 +223,12 @@ def _is_attendance_completed(snapshot: RuntimeSnapshot) -> bool:
 
 def _is_guild_with_attendance(snapshot: RuntimeSnapshot, status: str) -> bool:
     state = snapshot.state
+    overlays = set(state.overlays)
     return (
         state.status is ResolutionStatus.RESOLVED
         and state.base_context == SCREEN_GUILD
-        and set(state.overlays) == {status}
+        and status in overlays
+        and overlays <= {status, STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE}
     )
 
 
@@ -231,7 +237,7 @@ def _has_incompatible_attendance_transition(snapshot: RuntimeSnapshot) -> bool:
     overlays = set(state.overlays)
     return (
         state.status is ResolutionStatus.AMBIGUOUS
-        or bool(overlays - _ATTENDANCE_STATES)
+        or bool(overlays - _COMPATIBLE_OVERLAYS)
         or _ATTENDANCE_STATES <= overlays
         or (
             state.status is ResolutionStatus.RESOLVED

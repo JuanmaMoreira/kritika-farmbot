@@ -25,6 +25,7 @@ from bot.catalog import (
     SCREEN_WORLD_BOSS_BATTLE,
     SEMANTIC_CONFIDENCE_THRESHOLD,
     STATUS_COMBINE_FUSE_AVAILABLE,
+    STATUS_WORLD_BOSS_DAILY_ACTIVE,
 )
 from bot.component_contracts import ComponentRequirement
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
@@ -285,7 +286,7 @@ class WorldBossFlow:
             "world_boss.open_battle_mode_select",
             OpenBattleModeSelect(),
             lobby,
-            expected=lambda item: _is_clean_base(item, SCREEN_BATTLE_MODE_SELECT),
+            expected=_is_battle_mode_select,
             precondition=lambda item: _is_clean_base(item, SCREEN_LOBBY),
             retryable_from=lambda item: _is_clean_base(item, SCREEN_LOBBY),
         )
@@ -298,8 +299,8 @@ class WorldBossFlow:
             OpenWorldBossSelector(),
             battle_modes,
             expected=_is_select_boss,
-            precondition=lambda item: _is_clean_base(item, SCREEN_BATTLE_MODE_SELECT),
-            retryable_from=lambda item: _is_clean_base(item, SCREEN_BATTLE_MODE_SELECT),
+            precondition=_is_battle_mode_select,
+            retryable_from=_is_battle_mode_select,
         )
         if selector is None:
             return self._transition_failure(transitions, sapphires)
@@ -551,10 +552,13 @@ class WorldBossFlow:
                 ensured.tap_count, transitions,
             )
         raid = None
-        if ensured.status is EnsureAutoBattleStatus.INTERRUPTED:
-            # A fast raid may finish while the temporal Auto Battle window is
-            # still being collected.  Reacquire the overlay passively and skip
-            # timer acquisition; completion is already the stronger signal.
+        if ensured.status in {
+            EnsureAutoBattleStatus.INTERRUPTED,
+            EnsureAutoBattleStatus.TIMEOUT,
+        }:
+            # A fast raid may finish during or exactly at the deadline of the
+            # temporal Auto Battle window. Reacquire the overlay passively and
+            # skip timer acquisition only when that stronger signal is present.
             auto_after = (
                 ensured.observations[-1].sequence
                 if ensured.observations
@@ -573,16 +577,30 @@ class WorldBossFlow:
                     ensured.tap_count, transitions,
                 )
             except RuntimeWaitTimeout:
-                return self._failed(
-                    "raid_complete_after_auto_interruption_timeout",
-                    sapphires=sapphires,
-                    flow_events=flow_events,
-                    previous_rewards=previous_rewards,
-                    auto_battle_initial=initial_auto,
-                    auto_battle_taps=ensured.tap_count,
-                    transitions=transitions,
+                if ensured.status is EnsureAutoBattleStatus.INTERRUPTED:
+                    return self._failed(
+                        "raid_complete_after_auto_interruption_timeout",
+                        sapphires=sapphires,
+                        flow_events=flow_events,
+                        previous_rewards=previous_rewards,
+                        auto_battle_initial=initial_auto,
+                        auto_battle_taps=ensured.tap_count,
+                        transitions=transitions,
+                    )
+                self._record_best_effort(
+                    "world_boss.auto_battle_timeout_raid_probe",
+                    outcome="timeout",
                 )
-        elif ensured.status is not EnsureAutoBattleStatus.SUCCESS:
+            else:
+                if ensured.status is EnsureAutoBattleStatus.TIMEOUT:
+                    self._record_best_effort(
+                        "world_boss.auto_battle_timeout_raid_probe",
+                        outcome="raid_complete",
+                    )
+        if (
+            ensured.status is not EnsureAutoBattleStatus.SUCCESS
+            and raid is None
+        ):
             return self._failed(
                 f"auto_battle_failed: {ensured.status.value}: "
                 f"{ensured.detail or 'no detail'}",
@@ -980,6 +998,14 @@ def _is_clean_base(snapshot: RuntimeSnapshot, context: str) -> bool:
         snapshot.state.status is ResolutionStatus.RESOLVED
         and snapshot.state.base_context == context
         and not snapshot.state.overlays
+    )
+
+
+def _is_battle_mode_select(snapshot: RuntimeSnapshot) -> bool:
+    return (
+        snapshot.state.status is ResolutionStatus.RESOLVED
+        and snapshot.state.base_context == SCREEN_BATTLE_MODE_SELECT
+        and set(snapshot.state.overlays) <= {STATUS_WORLD_BOSS_DAILY_ACTIVE}
     )
 
 
