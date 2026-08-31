@@ -11,6 +11,7 @@ from bot.catalog import (
     LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
     LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_DAILY_QUESTS_TITLE,
+    LANDMARK_GUILD_MESSAGE_TAB,
     ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
@@ -300,6 +301,20 @@ DAILY_QUESTS_ROW_CLAIM_SPEC = LocalCvSpec(
     calibration=LinearGapCalibration(
         negative_anchor=0.7896780371665955,
         positive_anchor=0.9804643988609314,
+    ),
+)
+
+# Stable Guild Message tab on the joined-guild shell. It sits well below the
+# transient check-in bubble and outside the upper dynamic chat band. The
+# current corpus contains 16 Guild positives (including Quick Menu over Guild)
+# and 307 cross-context negatives with a 0.613817 raw separation gap.
+GUILD_MESSAGE_TAB_SPEC = LocalCvSpec(
+    name=LANDMARK_GUILD_MESSAGE_TAB,
+    asset_path=Path("assets/ui/landmarks/guild-message-tab-current.png"),
+    region=(0.47, 0.53, 0.64, 0.69),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.345723956823349,
+        positive_anchor=0.9595406651496887,
     ),
 )
 
@@ -715,6 +730,7 @@ DEFAULT_LOCAL_CV_SPECS = (
     DAILY_QUESTS_TITLE_SPEC,
     DAILY_QUESTS_TAB_ACTIVE_SPEC,
     DAILY_QUESTS_ROW_CLAIM_SPEC,
+    GUILD_MESSAGE_TAB_SPEC,
     MAILBOX_TITLE_SPEC,
     MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC,
     MAILBOX_ROW_CLAIM_SPEC,

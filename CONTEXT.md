@@ -59,9 +59,17 @@ Raid Complete se acepta por presencia del overlay, independientemente de que la 
 
 Mailbox entra a Character Mail, omite Claim All sin claims y nunca lo reintenta. Si observa `activity.mailbox_claim_processing`, exige su ausencia estable; una fase oscura aislada reinicia la estabilidad. Si la actividad nunca aparece pero Character Mail con claims persiste estable, registra intento sin efecto y continúa. Leftovers son no fatales y no disparan liberación de inventario. Delete Read sólo se ejecuta con `status.mailbox_read_mail_present` y exige su desaparición estable; un frame transitorio `screen.mailbox` donde una burbuja tapa el tab consume espera pero no satisface éxito ni aborta. Inbox vacío no es postcondición.
 
+### Guild adquirido; flow pendiente
+
+La semántica productiva ya reconoce `screen.guild`, `status.guild_attendance_active` y `status.guild_attendance_completed`. El estado deriva del valor HSV de una franja interior del botón Attendance: pendiente es rojo brillante (`V 167.16–168.41`) y completado es oscuro/presionado (`V 81.89–84.58`). La ROI queda fuera del bubble transitorio y la lectura de ambos statuses se suprime mientras `menu.quick` está abierto. No existe todavía `GuildCheckInFlow`, intent de Attendance ni normalización hacia Guild.
+
+La transición HIL cambió de último pendiente curado a primer completado curado en menos de `0.749 s`; el bubble se desvaneció aparte y nunca fue señal de completion. Para el flow futuro, la evidencia recomienda timeout conservador de `10 s` y completion estable durante `0.75–1.0 s` sobre snapshots frescos de `screen.guild + status.guild_attendance_completed`.
+
+La navegación live `Lobby → Quick Menu → Guild` terminó en `screen.guild`, y Guild abrió Quick Menu con el layout desplazado. Esta evidencia habilita una futura incorporación, pero el allow-list productivo de `quick_menu_accessible` sigue limitado a Lobby y World Boss en este checkpoint.
+
 ### Sesión y Rotation
 
-`FlowRegistry` registra explícitamente `black_market` y `world_boss`, con metadata, contrato y factory compartidos por todos los frontends.
+`FlowRegistry` registra explícitamente `black_market`, `world_boss`, `daily_quests` y `mailbox`, con metadata, contrato y factory compartidos por todos los frontends.
 
 `SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default termina `… → Daily Quests → Mailbox → Rotation`. Si un flow anterior termina en World Boss, el boundary existente de precondiciones normaliza por `Quick Menu → Lobby` antes de Daily. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
 
@@ -84,6 +92,7 @@ Mailbox entra a Character Mail, omite Claim All sin claims y nunca lo reintenta.
 Contextos base productivos:
 
 - `screen.lobby`
+- `screen.guild`
 - `screen.quests`
 - `screen.mailbox`
 - `screen.character_select`
@@ -99,6 +108,8 @@ Overlays/popups productivos:
 - `menu.quick`
 - `mode.daily_quests`
 - `status.daily_quests_claimable`
+- `status.guild_attendance_active`
+- `status.guild_attendance_completed`
 - `mode.mailbox_character_mail`
 - `status.mailbox_claimable`
 - `status.mailbox_read_mail_present`
@@ -130,6 +141,7 @@ Facts productivos:
 - Socket: Equipment Home activo e `item.socket.incompatible_opal(slot)` sobre el velo rojo seleccionado o no seleccionado; `activity.socket.enhance_animation_tappable` sólo en fases oscuras inequívocas. El flash brillante queda sin autorización.
 - Combine: `landmark.combine_context` deriva `screen.combine` desde el tab estructural izquierdo o desde la actividad inequívoca durante la animación; así el frame tappable nunca necesita autorizar input desde `UNKNOWN`. Los tabs activos asignan modo. `indicator.combine_rows_upper`, `indicator.combine_row_bottom` e `indicator.combine_rows` son evidencia posicional y sólo su conjunción con el modo deriva disponibilidad. `activity.combine_animation_tappable` es común a Transmute, Ethereal y Fuse. Durante la animación Transmute puede seguir visible el `N` inferior real de Ethereal; sin tab Transmute activo no se deriva un status espurio.
 - Daily Quests: el `Claim` de filas visibles deriva `status.daily_quests_claimable` únicamente bajo el tab Daily activo. La recompensa de progreso independiente (30 karats en la adquisición) queda fuera de esa ROI y es un negativo confirmado. Tras Claim All, la desaparición estable del status mientras persisten `screen.quests + mode.daily_quests` es la señal adquirida de quiescencia; ausencia inicial admite success/no-op.
+- Guild: `landmark.guild_message_tab` resuelve el shell fuera del bubble y del chat superior. `GuildAttendanceDetector` clasifica exclusivamente la franja estable del fill rojo como active/completed, emite estados mutuamente excluyentes y no los emite bajo Quick Menu. El bubble sólo aporta una variante positiva de completion.
 - Character Mail: `Claim` y `Delete` de filas derivan statuses independientes sólo bajo el tab Character Mail activo. `activity.mailbox_claim_processing` observa la fase cyan del spinner central; como su rotación contiene frames oscuros, un negativo aislado no indica completion. La espera futura debe exigir ausencia estable en frames frescos, bounded y conservando `screen.mailbox`. Los bubbles transitorios no son señal principal.
 - La base Socket exige el tab izquierdo persistente en ROI `(0.16, 0.11, 0.26, 0.24)`, con cinco apariencias que cubren selected/unselected y el sombreado más fuerte de Enhance All. El encabezado superior derecho fue retirado como landmark porque el chat dinámico ocupa la banda observada `(0.44, 0.12, 0.85, 0.21)` y puede ocluirlo.
 - Battle Mode Select usa el título fijo de la tarjeta World Boss en ROI `(0.16, 0.58, 0.32, 0.68)`, fuera de esa banda. Sus variantes current/historical sustituyen al encabezado superior ocluible sin cambiar el contrato semántico.
@@ -141,10 +153,11 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free: **1104/1104 tests verdes**.
-- Corpus productivo ampliado: 300 frames × 45 detectores, **13500/13500** pares, 300/300 resoluciones y overlays, cero wrong/ambiguous. Los siete landmarks CV de Daily Quests/Mailbox separan positivos y negativos; su gap más estrecho es `landmark.mailbox_row_delete_button` (`0.081946`). El detector derivado de actividad Mailbox queda cubierto por tests dirigidos.
+- Suite hardware-free: **1121/1121 tests verdes**.
+- Corpus productivo ampliado: 319 frames × 47 detectores, **14993/14993** pares, 319/319 resoluciones y overlays, cero wrong/ambiguous. Los siete landmarks CV de Daily Quests/Mailbox separan positivos y negativos; su gap más estrecho es `landmark.mailbox_row_delete_button` (`0.081946`). Guild separa 16 positivos de 303 negativos con gap `0.613817`; su evaluator dirigido pasa 19/19, incluida la transición, el bubble y ambas rutas Quick Menu.
 - Adquisición HIL Daily Quests: apertura desde Lobby, Claim All con desaparición de `Claim`, estado estable con `Start`/ads, segundo Claim All no-op, recompensa de progreso separada y cierre a Lobby confirmados live.
 - Adquisición HIL Character Mail: Account Mail → Character Mail, Claim All con spinner/bubbles y transición `Claim → Delete`, quiescencia con Inbox aún 19, Delete Read Mail y cierre a Lobby confirmados live. Por límites de recompensa quedaron cinco mails reclamables; el estado residual se preserva como final válido y no dispara ninguna rutina para liberar espacio.
+- Adquisición HIL Guild: shell estable, Attendance pendiente, transición a oscuro/completado, completado ya asentado, `Lobby → Quick Menu → Guild` y `Guild → Quick Menu` confirmados live. La navegación aún no se integró en policy/runtime.
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
 - World Boss está validado hardware-free en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, ramas positivas únicas y segundas ramas negativas para Socket/Equipment Full, y Rotation desde World Boss.
 - Smoke HIL Enhance positivo: `Yes` llegó a Socket, GOLD produjo efecto, `TapThroughAnimation` ejecutó 6 taps guardados, Sell quedó `NOT_RUN` y `Back → World Boss` se verificó. La primera corrida expuso y luego corrigió un abort prematuro durante el frame transitorio World Boss sin popup.
@@ -170,4 +183,4 @@ Facts productivos:
 
 ## Próximo trabajo
 
-Daily Quests y Mailbox quedan cerrados como flows productivos sin smoke adicional: la evidencia HIL ya había fijado targets y señales, y tests/evaluator no dejaron una duda que requiriera hardware. El próximo trabajo vuelve a las deudas enumeradas en [`ROADMAP.md`](ROADMAP.md); no se avanza a routines ni a otro flow desde este checkpoint.
+La siguiente implementación propuesta es `GuildCheckInFlow` sobre la semántica ya adquirida y una normalización explícita/verificada `Quick Menu → Guild`, incorporando Guild al allow-list sólo junto con esa operación. Este checkpoint no avanza automáticamente a ese flow ni modifica `MinimalPreconditionEnsurer`.

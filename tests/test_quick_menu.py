@@ -1,6 +1,11 @@
 import pytest
 
-from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, SCREEN_WORLD_BOSS
+from bot.catalog import (
+    SCREEN_BATTLE_MODE_SELECT,
+    SCREEN_GUILD,
+    SCREEN_LOBBY,
+    SCREEN_WORLD_BOSS,
+)
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
 from bot.quick_menu import (
     DEFAULT_QUICK_MENU_POLICY,
@@ -18,6 +23,7 @@ def test_declared_context_has_quick_menu_capability():
 
 def test_undeclared_context_has_no_quick_menu_capability():
     assert not quick_menu_accessible(SCREEN_BATTLE_MODE_SELECT)
+    assert not quick_menu_accessible(SCREEN_GUILD)
     assert not quick_menu_accessible(None)
 
 

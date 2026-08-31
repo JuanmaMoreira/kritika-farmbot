@@ -25,6 +25,14 @@ from .black_market import (
 )
 from .engine import PerceptionDetector, PerceptionEngine
 from .combine import CombineContextDetector
+from .guild import (
+    GUILD_ATTENDANCE_ACTIVE_CALIBRATION,
+    GUILD_ATTENDANCE_COMPLETED_CALIBRATION,
+    GUILD_ATTENDANCE_CONFIDENCE_THRESHOLD,
+    GUILD_ATTENDANCE_REGION,
+    GuildAttendanceDetector,
+    GuildAttendanceReading,
+)
 from .local_cv import LocalCvDetection, LocalCvDetector
 from .mailbox import (
     MAILBOX_CLAIM_PROCESSING_CALIBRATION,
@@ -74,6 +82,7 @@ from .specs import (
     COMBINE_TRANSMUTE_ACTIVE_SPEC,
     DEFAULT_LOCAL_CV_SPECS,
     EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC,
+    GUILD_MESSAGE_TAB_SPEC,
     INSUFFICIENT_GOLD_PROMPT_SPEC,
     INVENTORY_FULL_OK_BUTTON_SPEC,
     LOBBY_TRADING_CENTER_LABEL_SPEC,
@@ -121,6 +130,7 @@ def build_default_perception(
             SocketEnhanceAnimationDetector(),
             CombineContextDetector(asset_root=root),
             MailboxClaimProcessingDetector(asset_root=root),
+            GuildAttendanceDetector(asset_root=root),
         )
     )
 
@@ -164,6 +174,13 @@ __all__ = (
     "CombineContextDetector",
     "DEFAULT_LOCAL_CV_SPECS",
     "EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC",
+    "GUILD_ATTENDANCE_ACTIVE_CALIBRATION",
+    "GUILD_ATTENDANCE_COMPLETED_CALIBRATION",
+    "GUILD_ATTENDANCE_CONFIDENCE_THRESHOLD",
+    "GUILD_ATTENDANCE_REGION",
+    "GUILD_MESSAGE_TAB_SPEC",
+    "GuildAttendanceDetector",
+    "GuildAttendanceReading",
     "INSUFFICIENT_GOLD_PROMPT_SPEC",
     "INVENTORY_FULL_OK_BUTTON_SPEC",
     "PURCHASE_CONFIRMATION_PROMPT_SPEC",

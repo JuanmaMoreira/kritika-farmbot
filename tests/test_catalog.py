@@ -38,6 +38,7 @@ from bot.catalog import (
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
+    SCREEN_GUILD,
     SCREEN_LOBBY,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
@@ -45,6 +46,8 @@ from bot.catalog import (
     STATUS_COMBINE_FUSE_AVAILABLE,
     STATUS_COMBINE_TRANSMUTE_AVAILABLE,
     STATUS_DAILY_QUESTS_CLAIMABLE,
+    STATUS_GUILD_ATTENDANCE_ACTIVE,
+    STATUS_GUILD_ATTENDANCE_COMPLETED,
     STATUS_MAILBOX_CLAIMABLE,
     STATUS_MAILBOX_READ_MAIL_PRESENT,
     SEMANTIC_CONFIDENCE_THRESHOLD,
@@ -83,6 +86,8 @@ def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
 
     expected_base = {
         POPUP_INVENTORY_FULL: SCREEN_BLACK_MARKET,
+        STATUS_GUILD_ATTENDANCE_ACTIVE: SCREEN_GUILD,
+        STATUS_GUILD_ATTENDANCE_COMPLETED: SCREEN_GUILD,
     }.get(overlay_rule.name)
     expected_status = (
         ResolutionStatus.RESOLVED
@@ -339,9 +344,9 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 10
-    assert len(OVERLAY_RULES) == 27
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 41
+    assert len(BASE_CONTEXT_RULES) == 11
+    assert len(OVERLAY_RULES) == 29
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 44
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

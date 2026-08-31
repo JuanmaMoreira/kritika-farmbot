@@ -11,6 +11,7 @@ SCREEN_CHARACTER_SELECT = "screen.character_select"
 SCREEN_BATTLE_MODE_SELECT = "screen.battle_mode_select"
 SCREEN_BLACK_MARKET = "screen.black_market"
 SCREEN_COMBINE = "screen.combine"
+SCREEN_GUILD = "screen.guild"
 SCREEN_MAILBOX = "screen.mailbox"
 SCREEN_QUESTS = "screen.quests"
 SCREEN_SOCKET = "screen.socket"
@@ -41,6 +42,8 @@ STATUS_COMBINE_ETHEREAL_AVAILABLE = "status.combine_ethereal_available"
 STATUS_COMBINE_FUSE_AVAILABLE = "status.combine_fuse_available"
 STATUS_COMBINE_TRANSMUTE_AVAILABLE = "status.combine_transmute_available"
 STATUS_DAILY_QUESTS_CLAIMABLE = "status.daily_quests_claimable"
+STATUS_GUILD_ATTENDANCE_ACTIVE = "status.guild_attendance_active"
+STATUS_GUILD_ATTENDANCE_COMPLETED = "status.guild_attendance_completed"
 STATUS_MAILBOX_CLAIMABLE = "status.mailbox_claimable"
 STATUS_MAILBOX_READ_MAIL_PRESENT = "status.mailbox_read_mail_present"
 
@@ -109,6 +112,11 @@ LANDMARK_DAILY_QUESTS_TAB_ACTIVE = "landmark.daily_quests_tab_active"
 LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON = (
     "landmark.daily_quests_row_claim_button"
 )
+LANDMARK_GUILD_MESSAGE_TAB = "landmark.guild_message_tab"
+INDICATOR_GUILD_ATTENDANCE_ACTIVE = "indicator.guild_attendance_active"
+INDICATOR_GUILD_ATTENDANCE_COMPLETED = (
+    "indicator.guild_attendance_completed"
+)
 LANDMARK_MAILBOX_TITLE = "landmark.mailbox_title"
 LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE = (
     "landmark.mailbox_character_mail_active"
@@ -123,12 +131,15 @@ SEMANTIC_OBSERVATION_NAMES = (
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
     INDICATOR_COMBINE_ROWS_UPPER,
+    INDICATOR_GUILD_ATTENDANCE_ACTIVE,
+    INDICATOR_GUILD_ATTENDANCE_COMPLETED,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
     LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
     LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_DAILY_QUESTS_TITLE,
+    LANDMARK_GUILD_MESSAGE_TAB,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
@@ -178,6 +189,11 @@ BASE_CONTEXT_RULES = (
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(
+        name=SCREEN_GUILD,
+        requires=(LANDMARK_GUILD_MESSAGE_TAB,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
         name=SCREEN_MAILBOX,
         requires=(LANDMARK_MAILBOX_TITLE,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
@@ -215,6 +231,22 @@ BASE_CONTEXT_RULES = (
 )
 
 OVERLAY_RULES = (
+    ContextRule(
+        name=STATUS_GUILD_ATTENDANCE_ACTIVE,
+        requires=(
+            LANDMARK_GUILD_MESSAGE_TAB,
+            INDICATOR_GUILD_ATTENDANCE_ACTIVE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_GUILD_ATTENDANCE_COMPLETED,
+        requires=(
+            LANDMARK_GUILD_MESSAGE_TAB,
+            INDICATOR_GUILD_ATTENDANCE_COMPLETED,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
     ContextRule(
         name=MODE_DAILY_QUESTS,
         requires=(LANDMARK_DAILY_QUESTS_TAB_ACTIVE,),

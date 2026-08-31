@@ -25,6 +25,7 @@ from bot.catalog import (
     LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
     LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_DAILY_QUESTS_TITLE,
+    LANDMARK_GUILD_MESSAGE_TAB,
     LANDMARK_COMBINE_ALL_TITLE,
     LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,
     LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,
@@ -79,6 +80,7 @@ from bot.catalog import (
     SCREEN_BLACK_MARKET,
     SCREEN_CHARACTER_SELECT,
     SCREEN_COMBINE,
+    SCREEN_GUILD,
     SCREEN_LOBBY,
     SCREEN_MAILBOX,
     SCREEN_QUESTS,
@@ -114,6 +116,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/equipment_inventory_full_semantic_manifest.json",
     "datasets/socket_inventory_relief_semantic_manifest.json",
     "datasets/daily_quests_mailbox_semantic_manifest.json",
+    "datasets/guild_semantic_manifest.json",
 )
 DEFAULT_WORKBENCH_MANIFEST = "datasets/workbench_evidence_manifest.json"
 DEFAULT_WORKBENCH_ARTIFACTS = "artifacts/workbench"
@@ -723,6 +726,8 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return entry.base_context == SCREEN_QUESTS
     if name == LANDMARK_DAILY_QUESTS_TAB_ACTIVE:
         return MODE_DAILY_QUESTS in entry.overlays
+    if name == LANDMARK_GUILD_MESSAGE_TAB:
+        return entry.base_context == SCREEN_GUILD
     if name == LANDMARK_MAILBOX_TITLE:
         return entry.base_context == SCREEN_MAILBOX
     if name == LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE:

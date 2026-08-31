@@ -19,6 +19,7 @@ from bot.catalog import (
     LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
     LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_DAILY_QUESTS_TITLE,
+    LANDMARK_GUILD_MESSAGE_TAB,
     LANDMARK_COMBINE_ALL_TITLE,
     LANDMARK_COMBINE_AWAKENED_TRANSMUTE_TITLE,
     LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,
@@ -54,7 +55,11 @@ from bot.catalog import (
 )
 from bot.capture import FrameSnapshot
 from bot.observations import ObservationSource
-from bot.perception import CombineContextDetector, build_default_perception
+from bot.perception import (
+    CombineContextDetector,
+    GuildAttendanceDetector,
+    build_default_perception,
+)
 from bot.perception.black_market import (
     BlackMarketGoldDetector,
     BlackMarketPurchasedDetector,
@@ -284,12 +289,13 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     assert tuple(
         detector.spec for detector in engine.detectors[:len(DEFAULT_LOCAL_CV_SPECS)]
     ) == DEFAULT_LOCAL_CV_SPECS
-    assert isinstance(engine.detectors[-6], BlackMarketGoldDetector)
-    assert isinstance(engine.detectors[-5], BlackMarketPurchasedDetector)
-    assert isinstance(engine.detectors[-4], SocketIncompatibleOpalDetector)
-    assert isinstance(engine.detectors[-3], SocketEnhanceAnimationDetector)
-    assert isinstance(engine.detectors[-2], CombineContextDetector)
-    assert isinstance(engine.detectors[-1], MailboxClaimProcessingDetector)
+    assert isinstance(engine.detectors[-7], BlackMarketGoldDetector)
+    assert isinstance(engine.detectors[-6], BlackMarketPurchasedDetector)
+    assert isinstance(engine.detectors[-5], SocketIncompatibleOpalDetector)
+    assert isinstance(engine.detectors[-4], SocketEnhanceAnimationDetector)
+    assert isinstance(engine.detectors[-3], CombineContextDetector)
+    assert isinstance(engine.detectors[-2], MailboxClaimProcessingDetector)
+    assert isinstance(engine.detectors[-1], GuildAttendanceDetector)
     assert len(created) == 2 * len(DEFAULT_LOCAL_CV_SPECS)
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
@@ -297,6 +303,7 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
         LANDMARK_DAILY_QUESTS_TITLE,
         LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
         LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+        LANDMARK_GUILD_MESSAGE_TAB,
         LANDMARK_MAILBOX_TITLE,
         LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE,
         LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
