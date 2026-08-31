@@ -2,7 +2,7 @@
 
 ## Qué es
 
-Kritika FarmBot 0.2 automatiza tareas por personaje de **Kritika: The White Knights** sobre un dispositivo Android físico. El runtime productivo vigente ejecuta Black Market, World Boss, Daily Quests y Mailbox, los compone en sesiones multicharacter y cambia de personaje con `StandardRotation`.
+Kritika FarmBot 0.2 automatiza tareas por personaje de **Kritika: The White Knights** sobre un dispositivo Android físico. El runtime productivo vigente ejecuta Black Market, World Boss, Daily Quests, Mailbox y Guild Check-In, los compone en sesiones multicharacter y cambia de personaje con `StandardRotation`.
 
 GUI Tkinter y CLI son frontends finos del mismo composition root. El código y los tests son la fuente de implementación; la cronología y las calibraciones viven en [`docs/HISTORY.md`](docs/HISTORY.md).
 
@@ -59,21 +59,21 @@ Raid Complete se acepta por presencia del overlay, independientemente de que la 
 
 Mailbox entra a Character Mail, omite Claim All sin claims y nunca lo reintenta. Si observa `activity.mailbox_claim_processing`, exige su ausencia estable; una fase oscura aislada reinicia la estabilidad. Si la actividad nunca aparece pero Character Mail con claims persiste estable, registra intento sin efecto y continúa. Leftovers son no fatales y no disparan liberación de inventario. Delete Read sólo se ejecuta con `status.mailbox_read_mail_present` y exige su desaparición estable; un frame transitorio `screen.mailbox` donde una burbuja tapa el tab consume espera pero no satisface éxito ni aborta. Inbox vacío no es postcondición.
 
-### Guild adquirido; flow pendiente
+### Guild Check-In
 
-La semántica productiva ya reconoce `screen.guild`, `status.guild_attendance_active` y `status.guild_attendance_completed`. El estado deriva del valor HSV de una franja interior del botón Attendance: pendiente es rojo brillante (`V 167.16–168.41`) y completado es oscuro/presionado (`V 81.89–84.58`). La ROI queda fuera del bubble transitorio y la lectura de ambos statuses se suprime mientras `menu.quick` está abierto. No existe todavía `GuildCheckInFlow`, intent de Attendance ni normalización hacia Guild.
+La semántica productiva reconoce `screen.guild`, `status.guild_attendance_active` y `status.guild_attendance_completed`. El estado deriva del valor HSV de una franja interior del botón Attendance: pendiente es rojo brillante (`V 167.16–168.41`) y completado es oscuro/presionado (`V 81.89–84.58`). La ROI queda fuera del bubble transitorio y la lectura de ambos statuses se suprime mientras `menu.quick` está abierto.
 
-La transición HIL cambió de último pendiente curado a primer completado curado en menos de `0.749 s`; el bubble se desvaneció aparte y nunca fue señal de completion. Para el flow futuro, la evidencia recomienda timeout conservador de `10 s` y completion estable durante `0.75–1.0 s` sobre snapshots frescos de `screen.guild + status.guild_attendance_completed`.
+`GuildCheckInFlow` es `PER_CHARACTER` con contrato `screen.guild → screen.guild`. Completado inicial es success/no-op; activo autoriza exactamente un `CheckInGuildAttendance` y espera hasta `10 s` por completion estable durante `0.75 s` sobre snapshots frescos. Timeout, estados incompatibles/contradictorios o postcondición no verificable fallan sin segundo tap; cancelación se propaga. El flow no navega ni usa `ControlledWait` o bubble text.
 
-La navegación live `Lobby → Quick Menu → Guild` terminó en `screen.guild`, y Guild abrió Quick Menu con el layout desplazado. Esta evidencia habilita una futura incorporación, pero el allow-list productivo de `quick_menu_accessible` sigue limitado a Lobby y World Boss en este checkpoint.
+La navegación live `Lobby → Quick Menu → Guild` terminó en `screen.guild`, y Guild abrió Quick Menu con el layout desplazado. El runtime promueve ambos targets de Guild, selecciona el layout según el origen y exige `screen.guild` observable. `MinimalPreconditionEnsurer` usa esa operación sólo para requisitos exactos Guild; si ya está en Guild no navega.
 
 ### Sesión y Rotation
 
-`FlowRegistry` registra explícitamente `black_market`, `world_boss`, `daily_quests` y `mailbox`, con metadata, contrato y factory compartidos por todos los frontends.
+`FlowRegistry` registra explícitamente `black_market`, `world_boss`, `daily_quests`, `mailbox` y `guild_check_in`, con metadata, contrato y factory compartidos por todos los frontends.
 
-`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default termina `… → Daily Quests → Mailbox → Rotation`. Si un flow anterior termina en World Boss, el boundary existente de precondiciones normaliza por `Quick Menu → Lobby` antes de Daily. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
+`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default termina `… → Daily Quests → Mailbox → Guild Check-In → Rotation`. El boundary de precondiciones normaliza únicamente a Lobby o Guild mediante sus rutas Quick Menu verificadas. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
 
-`StandardRotation` no es un flow. Requiere la capability `quick_menu_accessible`, abre Quick Menu, entra a Character Select, confirma el final mediante scroll observado A/T/B, verifica la selección de la última tarjeta, confirma y exige Lobby fresco. No identifica personajes. El allow-list productivo de Quick Menu contiene Lobby y World Boss, con layout interno específico para cada origen.
+`StandardRotation` no es un flow. Requiere la capability `quick_menu_accessible`, abre Quick Menu, entra a Character Select, confirma el final mediante scroll observado A/T/B, verifica la selección de la última tarjeta, confirma y exige Lobby fresco. No identifica personajes. El allow-list productivo contiene Lobby, World Boss y Guild; Guild conserva exactamente uno de sus statuses Attendance como estado de origen compatible y usa el layout desplazado.
 
 ### Runtime manual, GUI, logging y cancelación
 
@@ -153,11 +153,11 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free: **1121/1121 tests verdes**.
+- Suite hardware-free: **1141/1141 tests verdes**.
 - Corpus productivo ampliado: 319 frames × 47 detectores, **14993/14993** pares, 319/319 resoluciones y overlays, cero wrong/ambiguous. Los siete landmarks CV de Daily Quests/Mailbox separan positivos y negativos; su gap más estrecho es `landmark.mailbox_row_delete_button` (`0.081946`). Guild separa 16 positivos de 303 negativos con gap `0.613817`; su evaluator dirigido pasa 19/19, incluida la transición, el bubble y ambas rutas Quick Menu.
 - Adquisición HIL Daily Quests: apertura desde Lobby, Claim All con desaparición de `Claim`, estado estable con `Start`/ads, segundo Claim All no-op, recompensa de progreso separada y cierre a Lobby confirmados live.
 - Adquisición HIL Character Mail: Account Mail → Character Mail, Claim All con spinner/bubbles y transición `Claim → Delete`, quiescencia con Inbox aún 19, Delete Read Mail y cierre a Lobby confirmados live. Por límites de recompensa quedaron cinco mails reclamables; el estado residual se preserva como final válido y no dispara ninguna rutina para liberar espacio.
-- Adquisición HIL Guild: shell estable, Attendance pendiente, transición a oscuro/completado, completado ya asentado, `Lobby → Quick Menu → Guild` y `Guild → Quick Menu` confirmados live. La navegación aún no se integró en policy/runtime.
+- Adquisición HIL Guild: shell estable, Attendance pendiente, transición a oscuro/completado, completado ya asentado, `Lobby → Quick Menu → Guild` y `Guild → Quick Menu` confirmados live; los targets, policy, normalización y flow consumen esa evidencia.
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
 - World Boss está validado hardware-free en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, ramas positivas únicas y segundas ramas negativas para Socket/Equipment Full, y Rotation desde World Boss.
 - Smoke HIL Enhance positivo: `Yes` llegó a Socket, GOLD produjo efecto, `TapThroughAnimation` ejecutó 6 taps guardados, Sell quedó `NOT_RUN` y `Back → World Boss` se verificó. La primera corrida expuso y luego corrigió un abort prematuro durante el frame transitorio World Boss sin popup.
@@ -183,4 +183,4 @@ Facts productivos:
 
 ## Próximo trabajo
 
-La siguiente implementación propuesta es `GuildCheckInFlow` sobre la semántica ya adquirida y una normalización explícita/verificada `Quick Menu → Guild`, incorporando Guild al allow-list sólo junto con esa operación. Este checkpoint no avanza automáticamente a ese flow ni modifica `MinimalPreconditionEnsurer`.
+No se definió otro flow en este checkpoint. Categories/routines permanecen fuera de alcance; cualquier ampliación requiere contrato y evidencia propios.

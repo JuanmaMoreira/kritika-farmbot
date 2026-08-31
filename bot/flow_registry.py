@@ -8,6 +8,7 @@ from typing import Callable, Protocol
 from bot.black_market_flow import BlackMarketFlow
 from bot.daily_quests_flow import DailyQuestsFlow
 from bot.flow_contracts import FlowContract, FlowScope, PerCharacterFlow
+from bot.guild_check_in_flow import GuildCheckInFlow
 from bot.mailbox_flow import MailboxFlow
 from bot.world_boss_flow import WorldBossFlow
 
@@ -138,6 +139,15 @@ def _build_mailbox(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _build_guild_check_in(dependencies: FlowDependencies) -> PerCharacterFlow:
+    return GuildCheckInFlow(
+        dependencies.observer,
+        dependencies.actions,
+        dependencies.events,
+        cancel_requested=dependencies.cancel_requested,
+    )
+
+
 DEFAULT_FLOW_REGISTRY = FlowRegistry((
     FlowDefinition(
         "black_market",
@@ -166,6 +176,13 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
         MailboxFlow.scope,
         MailboxFlow.contract,
         _build_mailbox,
+    ),
+    FlowDefinition(
+        "guild_check_in",
+        "Guild Check-In",
+        GuildCheckInFlow.scope,
+        GuildCheckInFlow.contract,
+        _build_guild_check_in,
     ),
 ))
 

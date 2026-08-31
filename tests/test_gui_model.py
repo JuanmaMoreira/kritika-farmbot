@@ -34,6 +34,7 @@ def test_selection_is_populated_only_from_registry_and_defaults_active():
         "world_boss",
         "daily_quests",
         "mailbox",
+        "guild_check_in",
     )
 
 
@@ -46,15 +47,22 @@ def test_toggle_and_move_preserve_exact_active_order():
         "black_market",
         "daily_quests",
         "mailbox",
+        "guild_check_in",
     )
     model.set_enabled("world_boss", False)
-    assert model.active_ids == ("black_market", "daily_quests", "mailbox")
+    assert model.active_ids == (
+        "black_market",
+        "daily_quests",
+        "mailbox",
+        "guild_check_in",
+    )
     model.toggle("world_boss")
     assert model.active_ids == (
         "world_boss",
         "black_market",
         "daily_quests",
         "mailbox",
+        "guild_check_in",
     )
     assert not model.move_up("world_boss")
 

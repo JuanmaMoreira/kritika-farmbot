@@ -118,6 +118,17 @@ class SelectQuickMenuLobby:
 
 
 @dataclass(frozen=True)
+class SelectQuickMenuGuild:
+    """Request the Guild tile inside an already-confirmed Quick Menu."""
+
+    layout: QuickMenuLayout = QuickMenuLayout.LOBBY
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.layout, QuickMenuLayout):
+            raise ValueError("layout must be QuickMenuLayout")
+
+
+@dataclass(frozen=True)
 class OpenCharacterSelect:
     """Request the Character tile inside an already-open Quick Menu."""
 
@@ -126,6 +137,11 @@ class OpenCharacterSelect:
     def __post_init__(self) -> None:
         if not isinstance(self.layout, QuickMenuLayout):
             raise ValueError("layout must be QuickMenuLayout")
+
+
+@dataclass(frozen=True)
+class CheckInGuildAttendance:
+    """Request the active Attendance action on an already-confirmed Guild screen."""
 
 
 @dataclass(frozen=True)
@@ -356,7 +372,9 @@ SemanticAction = (
     | AcknowledgeInventoryFull
     | OpenQuickMenu
     | SelectQuickMenuLobby
+    | SelectQuickMenuGuild
     | OpenCharacterSelect
+    | CheckInGuildAttendance
     | Swipe
     | SelectLastVisibleCharacter
     | ConfirmCharacterSelection
@@ -406,6 +424,7 @@ __all__ = (
     "CloseBlackMarket",
     "ClaimAllCharacterMail",
     "ClaimAllDailyQuests",
+    "CheckInGuildAttendance",
     "CloseDailyQuests",
     "CloseMailbox",
     "ConfirmCharacterSelection",
@@ -437,6 +456,7 @@ __all__ = (
     "SelectCharacterMail",
     "SelectDailyQuests",
     "SelectQuickMenuLobby",
+    "SelectQuickMenuGuild",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",
     "SemanticAction",

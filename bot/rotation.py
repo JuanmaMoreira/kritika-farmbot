@@ -9,7 +9,14 @@ from numbers import Integral, Real
 from typing import Callable, Protocol, runtime_checkable
 
 from bot.action_executor import ActionExecutor
-from bot.catalog import MENU_QUICK, SCREEN_CHARACTER_SELECT, SCREEN_LOBBY
+from bot.catalog import (
+    MENU_QUICK,
+    SCREEN_CHARACTER_SELECT,
+    SCREEN_GUILD,
+    SCREEN_LOBBY,
+    STATUS_GUILD_ATTENDANCE_ACTIVE,
+    STATUS_GUILD_ATTENDANCE_COMPLETED,
+)
 from bot.component_contracts import (
     ComponentContract,
     ComponentRequirement,
@@ -243,7 +250,9 @@ class StandardRotation:
             expected=has_quick_menu,
             precondition=capable,
             retryable_from=capable,
-            abort_if=_has_unexpected_quick_menu_state,
+            abort_if=lambda snapshot: _has_unexpected_quick_menu_state(
+                snapshot, self.quick_menu_policy
+            ),
             policy=self.transition_policy,
         )
         transitions.append(_transition_trace(quick_menu_result))
@@ -266,7 +275,9 @@ class StandardRotation:
             ),
             precondition=has_quick_menu,
             retryable_from=has_quick_menu,
-            abort_if=_has_unexpected_character_select_transition,
+            abort_if=lambda snapshot: _has_unexpected_character_select_transition(
+                snapshot, self.quick_menu_policy
+            ),
             stable_for=self.scroll_profile.settle_for,
             policy=self.transition_policy,
         )
@@ -466,7 +477,7 @@ def _is_clean_quick_menu_capable(
     state = snapshot.state
     return (
         state.status is ResolutionStatus.RESOLVED
-        and not state.overlays
+        and _has_compatible_origin_overlays(state.base_context, state.overlays)
         and quick_menu_accessible(state.base_context, policy=policy)
     )
 
@@ -498,6 +509,8 @@ def _has_incompatible_quick_menu_precondition(
     policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
 ) -> bool:
     state = snapshot.state
+    if _is_clean_quick_menu_capable(snapshot, policy):
+        return False
     return (
         state.status is ResolutionStatus.AMBIGUOUS
         or bool(state.overlays)
@@ -508,21 +521,48 @@ def _has_incompatible_quick_menu_precondition(
     )
 
 
-def _has_unexpected_quick_menu_state(snapshot: RuntimeSnapshot) -> bool:
+def _has_unexpected_quick_menu_state(
+    snapshot: RuntimeSnapshot,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> bool:
     state = snapshot.state
+    if _has_quick_menu(snapshot, policy) or _is_clean_quick_menu_capable(
+        snapshot, policy
+    ):
+        return False
     return (
         state.status is ResolutionStatus.AMBIGUOUS
-        or bool(set(state.overlays) - {MENU_QUICK})
+        or bool(state.overlays)
     )
+
+
+def _has_compatible_origin_overlays(
+    base_context: str | None,
+    overlays,
+) -> bool:
+    values = set(overlays)
+    if base_context == SCREEN_GUILD:
+        return len(values) == 1 and values <= {
+            STATUS_GUILD_ATTENDANCE_ACTIVE,
+            STATUS_GUILD_ATTENDANCE_COMPLETED,
+        }
+    return not values
 
 
 def _has_unexpected_character_select_transition(
     snapshot: RuntimeSnapshot,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
 ) -> bool:
     state = snapshot.state
+    if (
+        _has_quick_menu(snapshot, policy)
+        or _is_clean_quick_menu_capable(snapshot, policy)
+        or _is_clean_base(snapshot, SCREEN_CHARACTER_SELECT)
+    ):
+        return False
     return (
         state.status is ResolutionStatus.AMBIGUOUS
-        or bool(set(state.overlays) - {MENU_QUICK})
+        or bool(state.overlays)
     )
 
 

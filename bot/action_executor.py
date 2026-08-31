@@ -21,6 +21,7 @@ from bot.semantic_actions import (
     AcknowledgeWorldBossPreviousRewards,
     ClaimAllCharacterMail,
     ClaimAllDailyQuests,
+    CheckInGuildAttendance,
     CloseBlackMarket,
     CloseDailyQuests,
     CloseMailbox,
@@ -59,6 +60,7 @@ from bot.semantic_actions import (
     SelectCharacterMail,
     SelectDailyQuests,
     SelectQuickMenuLobby,
+    SelectQuickMenuGuild,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -196,6 +198,8 @@ class RotationActionTargets:
     # closes Quick Menu from both Lobby and World Boss at the current geometry.
     open_quick_menu: RelativePoint = (0.1940, 0.0564)
     select_lobby: RelativePoint = (0.2020, 0.2050)
+    select_guild: RelativePoint = (0.2650, 0.6500)
+    select_guild_shifted: RelativePoint = (0.3946, 0.6500)
     open_character_select: RelativePoint = (0.0704, 0.7835)
     open_character_select_shifted: RelativePoint = (0.2000, 0.7835)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
@@ -205,6 +209,8 @@ class RotationActionTargets:
         for point in (
             self.open_quick_menu,
             self.select_lobby,
+            self.select_guild,
+            self.select_guild_shifted,
             self.open_character_select,
             self.open_character_select_shifted,
             self.last_visible_character,
@@ -214,6 +220,19 @@ class RotationActionTargets:
 
 
 DEFAULT_ROTATION_ACTION_TARGETS = RotationActionTargets()
+
+
+@dataclass(frozen=True)
+class GuildActionTargets:
+    """Normalized target acquired from the live Guild Attendance control."""
+
+    attendance: RelativePoint = (0.4330, 0.4300)
+
+    def __post_init__(self) -> None:
+        relative_point_to_pixel(self.attendance, 1, 1)
+
+
+DEFAULT_GUILD_ACTION_TARGETS = GuildActionTargets()
 
 
 @dataclass(frozen=True)
@@ -366,6 +385,7 @@ class ActionExecutor:
         ),
         mailbox_targets: MailboxActionTargets = DEFAULT_MAILBOX_ACTION_TARGETS,
         rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
+        guild_targets: GuildActionTargets = DEFAULT_GUILD_ACTION_TARGETS,
         battle_targets: BattleActionTargets = DEFAULT_BATTLE_ACTION_TARGETS,
         socket_targets: SocketActionTargets = DEFAULT_SOCKET_ACTION_TARGETS,
         equipment_targets: EquipmentActionTargets = DEFAULT_EQUIPMENT_ACTION_TARGETS,
@@ -380,6 +400,8 @@ class ActionExecutor:
             raise ValueError("mailbox_targets must be MailboxActionTargets")
         if not isinstance(rotation_targets, RotationActionTargets):
             raise ValueError("rotation_targets must be RotationActionTargets")
+        if not isinstance(guild_targets, GuildActionTargets):
+            raise ValueError("guild_targets must be GuildActionTargets")
         if not isinstance(battle_targets, BattleActionTargets):
             raise ValueError("battle_targets must be BattleActionTargets")
         if not isinstance(socket_targets, SocketActionTargets):
@@ -391,6 +413,7 @@ class ActionExecutor:
         self.daily_quests_targets = daily_quests_targets
         self.mailbox_targets = mailbox_targets
         self.rotation_targets = rotation_targets
+        self.guild_targets = guild_targets
         self.battle_targets = battle_targets
         self.socket_targets = socket_targets
         self.equipment_targets = equipment_targets
@@ -448,12 +471,20 @@ class ActionExecutor:
             return self.rotation_targets.open_quick_menu
         if isinstance(action, SelectQuickMenuLobby):
             return self.rotation_targets.select_lobby
+        if isinstance(action, SelectQuickMenuGuild):
+            return (
+                self.rotation_targets.select_guild
+                if action.layout is QuickMenuLayout.LOBBY
+                else self.rotation_targets.select_guild_shifted
+            )
         if isinstance(action, OpenCharacterSelect):
             return (
                 self.rotation_targets.open_character_select
                 if action.layout is QuickMenuLayout.LOBBY
                 else self.rotation_targets.open_character_select_shifted
             )
+        if isinstance(action, CheckInGuildAttendance):
+            return self.guild_targets.attendance
         if isinstance(action, SelectLastVisibleCharacter):
             return self.rotation_targets.last_visible_character
         if isinstance(action, ConfirmCharacterSelection):
@@ -559,10 +590,12 @@ __all__ = (
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
     "DEFAULT_DAILY_QUESTS_ACTION_TARGETS",
     "DEFAULT_EQUIPMENT_ACTION_TARGETS",
+    "DEFAULT_GUILD_ACTION_TARGETS",
     "DEFAULT_MAILBOX_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
     "FrameGeometry",
+    "GuildActionTargets",
     "DailyQuestsActionTargets",
     "EquipmentActionTargets",
     "RotationActionTargets",

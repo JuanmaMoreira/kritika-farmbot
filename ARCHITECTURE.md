@@ -40,7 +40,7 @@ GUI contains no business logic
 
 `bot/runtime.py` construye ADB, captura y facts. `bot/productive_runtime.py` es el composition root compartido: adquiere configuración, `AdbClient`, `ScrcpyFrameSource`, percepción, resolver, observer, OCR facts, Auto Battle, `ActionExecutor`, flows, Rotation y runner. El owner mantiene cleanup explícito de source, proceso, socket y forward, incluso ante fallo.
 
-`bot/flow_registry.py` es la única lista productiva de flows. Cada `FlowDefinition` declara id, display name, scope, contrato y factory; `FlowRegistry` valida y conserva orden explícito. No hay discovery, reflection ni plugin system. El registry actual contiene `black_market`, `world_boss`, `daily_quests` y `mailbox`, en ese orden default.
+`bot/flow_registry.py` es la única lista productiva de flows. Cada `FlowDefinition` declara id, display name, scope, contrato y factory; `FlowRegistry` valida y conserva orden explícito. No hay discovery, reflection ni plugin system. El registry actual contiene `black_market`, `world_boss`, `daily_quests`, `mailbox` y `guild_check_in`, en ese orden default.
 
 ## Capture y Perception
 
@@ -60,7 +60,7 @@ Las observaciones intra-Socket de velo rojo y fase oscura de Enhance son operati
 
 Daily Quests y Character Mail usan semántica y actions productivas separadas. `screen.quests`/`mode.daily_quests` separan el `Claim` de filas del reward de progreso; `screen.mailbox`/`mode.mailbox_character_mail` gatean `Claim` y `Delete` para no confundir Account Mail. El spinner cyan se expone como `activity.mailbox_claim_processing`, una observación operation-scoped que puede faltar durante fases oscuras de rotación. Perception no interpreta bubbles, no declara Inbox vacío y no decide si quedaron rewards reclamables.
 
-Guild tiene semántica adquirida pero ningún flow. `landmark.guild_message_tab` resuelve `screen.guild` desde una zona estable fuera del bubble superior. `GuildAttendanceDetector` mide una franja interior del fill del botón y emite exactamente uno de `indicator.guild_attendance_active/completed`; el resolver deriva los statuses correspondientes. El detector se calla bajo `menu.quick`, porque el overlay cubre parte del control y navegación no debe heredar un status de negocio. El bubble no se modela.
+Guild usa `landmark.guild_message_tab` para resolver `screen.guild` desde una zona estable fuera del bubble superior. `GuildAttendanceDetector` mide una franja interior del fill del botón y emite exactamente uno de `indicator.guild_attendance_active/completed`; el resolver deriva los statuses correspondientes. El detector se calla bajo `menu.quick`, porque el overlay cubre parte del control y navegación no debe heredar un status de negocio. El bubble no se modela.
 
 Equipment Inventory Full usa `popup.equipment_inventory_full` como overlay global, separado del caller. `screen.combine` deriva de un landmark compuesto que acepta el tab Fuse persistente o la actividad inequívoca de animación, evitando un estado `UNKNOWN` en la fase que consumirá `TapThroughAnimation`. Los modos activos y tres observaciones posicionales de `N` se combinan en el resolver para producir disponibilidad Transmute, Ethereal y Fuse. Los títulos de panel/modal aportan estados intermedios con consumidores futuros concretos. Las tres operaciones comparten `activity.combine_animation_tappable`; Perception no decide el orden ni si debe combinar.
 
@@ -78,7 +78,7 @@ La evaluación offline productiva conserva los manifests curados como fuente de 
 
 Los consumidores de Claim All reutilizan esa estabilidad: Daily Quests termina al desaparecer establemente `status.daily_quests_claimable` bajo su base/modo; Mailbox termina sólo tras ausencia estable de `activity.mailbox_claim_processing` y retorno estable del modo Character Mail. En Mailbox no basta un único frame sin spinner y la persistencia de `status.mailbox_claimable` después de la quiescencia representa leftovers, no procesamiento activo.
 
-La futura completion de Attendance deberá exigir `screen.guild + status.guild_attendance_completed` estable sobre frames frescos. La adquisición observó un upper bound curado menor a `0.749 s`; se recomienda budget de `10 s` y estabilidad de `0.75–1.0 s`, sin `ControlledWait`, bubble ni timing fijo como postcondición.
+La completion de Attendance exige `screen.guild + status.guild_attendance_completed` estable durante `0.75 s` sobre frames frescos, con budget de `10 s`. No usa `ControlledWait`, bubble ni timing fijo como postcondición.
 
 `TemporalObserver` reúne un número bounded de snapshots frescos, separados en el tiempo y context-correct. Un frame `UNKNOWN`/`AMBIGUOUS` transitorio consume budget pero no entra en la ventana ni autoriza input; un contexto incompatible ya resuelto aborta inmediatamente. Los overlays de interrupción declarados tienen prioridad sobre una base momentáneamente no resuelta. La primitive no clasifica ni ejecuta input. `AutoBattleDetector` es un extractor temporal que produce `setting.auto_battle = ON/OFF/UNKNOWN`.
 
@@ -141,6 +141,8 @@ No ejecuta input, retry, navegación ni recovery. Esperar disponibilidad futura 
 
 `DailyQuestsFlow` y `MailboxFlow` son `PER_CHARACTER`, declaran Lobby → Lobby y contienen únicamente su policy de negocio. `OpenQuests` valida primero el shell que restaura el último tab del personaje; `SelectDailyQuests` se ejecuta una vez sólo cuando falta `mode.daily_quests` y exige ese modo como postcondición. Claim All es single-attempt en ambos. Daily acepta no-op inicial y completa por desaparición estable del status. Mailbox separa onset bounded, actividad observada y quiescencia estable; ausencia de onset sólo es no-effect cuando los claims persisten de forma estable. Delete Read ocurre después de esa rama y únicamente con read mail observable; una oclusión transitoria del tab bajo `screen.mailbox` prolonga pasivamente la espera, mientras el éxito sigue exigiendo retorno estable a Character Mail sin Read. Leftovers son `FlowEvent` no fatal.
 
+`GuildCheckInFlow` es `PER_CHARACTER`, declara Guild → Guild y no contiene navegación. Completed inicial es no-op; Active autoriza un único tap y una espera fresca bounded por Completed estable. No existe retry del tap. Timeout, estados contradictorios/incompatibles y completion no verificable producen fallo conservador; cancelación se propaga.
+
 Las support operations siguen `check → operación bounded → recheck → continue/skip/fail`; no son flows, no entran en GUI/`FlowRegistry` y no permiten llamadas recursivas arbitrarias entre flows. El caller conserva la policy de cuándo invocarlas y entrega un return plan con acción y estado exacto esperado; la operación sólo reporta éxito después de verificar ese retorno.
 
 `SocketInventoryRelief` requiere `screen.socket` limpio, intenta Enhance All sólo con GOLD y, ante No Material, puede buscar de forma bounded un ópalo incompatible visible. Sell in Bulk se autoriza únicamente con velo rojo y un fact de nivel confirmado en `0`; lectura no confirmada o nivel distinto cancela la venta. Sus outcomes explícitos son `RELIEVED`, `NO_RELIEF_AVAILABLE`, `FAILED` y `CANCELLED`. `WorldBossFlow` posee tanto el `Yes` inicial como el permiso local de un único intento positivo por ejecución; una segunda aparición usa `No`. El único return plan compuesto productivamente es `ExitSocket → screen.world_boss`.
@@ -155,11 +157,11 @@ Después de Bulk, un frame Socket limpio puede preceder al landmark estable de E
 
 `RotationStrategy.advance()` es un contrato transversal. `StandardRotation` requiere la capability `quick_menu_accessible` y deja Lobby como única postcondición exitosa. Abre Quick Menu, Character Select, usa `ObservedScroll` hasta borde confirmado, verifica la selección visual de la tarjeta target, confirma y exige Lobby fresco. No conoce flows, nombres de personaje ni ADB.
 
-`quick_menu_accessible` es una capability de policy, no una pantalla ni un nodo de navegación. Su allow-list productivo contiene Lobby y World Boss. `menu.quick` sigue siendo un overlay observable; `bot/quick_menu.py` elige el layout del intent interno según el contexto de origen. Incorporar otro contexto requiere evidencia live, no inferencia desde metadata legacy.
+`quick_menu_accessible` es una capability de policy, no una pantalla ni un nodo de navegación. Su allow-list productivo contiene Lobby, World Boss y Guild. `menu.quick` sigue siendo un overlay observable; `bot/quick_menu.py` elige el layout del intent interno según el contexto de origen. Guild acepta exactamente un status Attendance al abrir el menú y usa el layout desplazado adquirido.
 
-La evidencia live ya confirma `Lobby → menu.quick → screen.guild` y que `screen.guild` abre `menu.quick` con el layout desplazado. El allow-list no se amplía en este checkpoint: hacerlo queda unido a la futura operación verificada hacia Guild y a su integración explícita, sin convertir Quick Menu en un grafo genérico.
+La operación productiva `Quick Menu → Guild` selecciona el target base o desplazado y exige `screen.guild` con un estado Attendance coherente como postcondición. La evidencia live confirma `Lobby → menu.quick → screen.guild` y que `screen.guild` abre `menu.quick` con el layout desplazado.
 
-`MinimalPreconditionEnsurer` conserva el boundary de normalización a Lobby. El composition root lo implementa mediante la ruta ya adquirida `screen.world_boss → menu.quick → screen.lobby`, de modo que un World Boss exitoso no obliga a cambiar su contrato para que Daily pueda ejecutarse después. `SessionRunner` continúa sin actions ni business logic.
+`MinimalPreconditionEnsurer` conserva callbacks separados para normalizar únicamente a Lobby o Guild. El composition root implementa ambas rutas con transiciones verificadas; un requisito Guild ya satisfecho no invoca navegación. No existe navigation graph ni generalización a otros destinos. `SessionRunner` continúa sin actions ni business logic.
 
 ## SessionRunner
 

@@ -10,7 +10,9 @@ from bot.catalog import (
     MENU_QUICK,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_CHARACTER_SELECT,
+    SCREEN_GUILD,
     SCREEN_LOBBY,
+    STATUS_GUILD_ATTENDANCE_COMPLETED,
 )
 from bot.character_select_scroll import CharacterSelectScrollProfile
 from bot.component_contracts import QUICK_MENU_ACCESS_REQUIREMENT
@@ -40,7 +42,9 @@ from bot.runtime_observer import (
 )
 from bot.semantic_actions import (
     ConfirmCharacterSelection,
+    OpenCharacterSelect,
     OpenQuickMenu,
+    QuickMenuLayout,
     SelectLastVisibleCharacter,
     Swipe,
 )
@@ -286,6 +290,62 @@ def test_rotation_delegates_scroll_algorithm_to_observed_scroll():
     assert arguments["config"] == rotation.scroll_profile.config()
     assert arguments["detector"] == rotation.scroll_profile.detector()
     assert SelectLastVisibleCharacter() in actions.actions
+
+
+def test_rotation_opens_shifted_quick_menu_from_completed_guild():
+    initial = _snapshot(
+        1,
+        base=SCREEN_GUILD,
+        overlays={STATUS_GUILD_ATTENDANCE_COMPLETED},
+    )
+    character_select = _snapshot(3, base=SCREEN_CHARACTER_SELECT)
+    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT)
+    measurement = ScrollAttemptMeasurement(
+        pre_sequence=3,
+        settled_sequence=4,
+        fresh_sample_count=2,
+        transient_peak_sequence=4,
+        max_transient_difference=0.14,
+        settled_difference=0.02,
+    )
+    delegated = DelegatingScroll(
+        ObservedScrollResult(
+            outcome=ObservedScrollOutcome.EDGE_REACHED,
+            final_snapshot=edge,
+            attempts=(measurement,),
+            attempt_kinds=(ScrollAttemptKind.EDGE_CANDIDATE,),
+            effective_gesture_count=1,
+            confirmation_count=1,
+        )
+    )
+    observer = ScriptedObserver(
+        [initial],
+        [
+            _snapshot(2, base=SCREEN_GUILD, overlays={MENU_QUICK}),
+            character_select,
+            _snapshot(
+                5,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame(edge.frame.image),
+            ),
+            _snapshot(6, base=SCREEN_LOBBY),
+        ],
+    )
+    actions = Actions()
+    rotation = StandardRotation(
+        observer,
+        actions,
+        Events(),
+        observed_scroll=delegated,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert actions.actions[:2] == [
+        OpenQuickMenu(),
+        OpenCharacterSelect(QuickMenuLayout.SHIFTED),
+    ]
 
 
 @pytest.mark.parametrize("character_count", (0, -1, 1.5, True))

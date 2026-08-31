@@ -14,15 +14,14 @@ Los smokes HIL cerraron Enhance positivo y No Material + venta segura. La segund
 
 La rama Equipment Inventory Full quedó cerrada para el caller confirmado World Boss: support operation independiente, orden fijo Transmute → Ethereal condicional → Fuse, acumulación sin short-circuit, animación común mediante `TapThroughAnimation`, postcondiciones por desaparición, retorno exacto y un único intento positivo por `run()`. Una segunda aparición usa el cierre negativo no fatal. No se agregó un flow ni una entrada de GUI/registry.
 
-Daily Quests y Character Mail quedaron cerrados como flows productivos `PER_CHARACTER`, ambos Lobby → Lobby. La selección default termina Daily Quests → Mailbox → Rotation; Claim All es single-attempt, Mailbox conserva leftovers no fatales y no existe ninguna rutina de liberación de espacio. La integración reutiliza el normalizador adquirido World Boss → Quick Menu → Lobby sin modificar la policy de flows anteriores ni `SessionRunner`.
+Daily Quests y Character Mail quedaron cerrados como flows productivos `PER_CHARACTER`, ambos Lobby → Lobby. La selección default los conserva antes de Guild Check-In; Claim All es single-attempt, Mailbox conserva leftovers no fatales y no existe ninguna rutina de liberación de espacio. La integración reutiliza el normalizador adquirido World Boss → Quick Menu → Lobby sin modificar la policy de flows anteriores ni `SessionRunner`.
 
-Guild quedó cerrado a nivel de adquisición semántica: shell, Attendance pendiente/completado, transición con bubble independiente, `Lobby → Quick Menu → Guild` y Quick Menu accesible desde Guild. Todavía no existe flow, intent de Attendance, normalizador a Guild ni ampliación del allow-list.
+Guild Check-In quedó cerrado productivamente: semántica pendiente/completado, intent single-tap, completion fresca estable, ruta verificada `Quick Menu → Guild`, normalización exacta, allow-list desde Guild y registro/selección GUI `PER_CHARACTER`. No se añadieron categories, routines ni grafo de navegación.
 
 ## Próximo trabajo
 
 ### Known future
 
-- Implementar `GuildCheckInFlow` con contrato Guild → Guild, no-op explícito cuando Attendance ya está completado, un único tap cuando está activo y completion fresca/estable bounded; añadir después la normalización verificada `Quick Menu → Guild` y sólo entonces incorporar Guild a `quick_menu_accessible`.
 - Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su recovery bounded antes de automatizarlo.
 - Ampliar retornos de Equipment Inventory Full a otros farming flows sólo con evidencia live específica; por ahora únicamente `Combine → Back → World Boss` está verificado.
 - Ampliar retornos de Socket a otros farming flows sólo con evidencia live específica; por ahora únicamente `Socket → Back → World Boss` está verificado.

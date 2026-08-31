@@ -9,6 +9,7 @@ from bot.action_executor import (
     DEFAULT_BATTLE_ACTION_TARGETS,
     DEFAULT_DAILY_QUESTS_ACTION_TARGETS,
     DEFAULT_EQUIPMENT_ACTION_TARGETS,
+    DEFAULT_GUILD_ACTION_TARGETS,
     DEFAULT_MAILBOX_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
     DEFAULT_SOCKET_ACTION_TARGETS,
@@ -23,6 +24,7 @@ from bot.semantic_actions import (
     AcknowledgeWorldBossPreviousRewards,
     ClaimAllCharacterMail,
     ClaimAllDailyQuests,
+    CheckInGuildAttendance,
     CloseBlackMarket,
     CloseDailyQuests,
     CloseMailbox,
@@ -61,6 +63,7 @@ from bot.semantic_actions import (
     SelectCharacterMail,
     SelectDailyQuests,
     SelectQuickMenuLobby,
+    SelectQuickMenuGuild,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -280,6 +283,10 @@ def test_executor_supports_each_row_major_black_market_slot(slot_index):
         (OpenQuickMenu(), DEFAULT_ROTATION_ACTION_TARGETS.open_quick_menu),
         (SelectQuickMenuLobby(), DEFAULT_ROTATION_ACTION_TARGETS.select_lobby),
         (
+            SelectQuickMenuGuild(),
+            DEFAULT_ROTATION_ACTION_TARGETS.select_guild,
+        ),
+        (
             OpenCharacterSelect(),
             DEFAULT_ROTATION_ACTION_TARGETS.open_character_select,
         ),
@@ -316,6 +323,31 @@ def test_shifted_quick_menu_uses_non_lobby_character_target():
     target = DEFAULT_ROTATION_ACTION_TARGETS.open_character_select_shifted
     adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
     assert target[0] - DEFAULT_ROTATION_ACTION_TARGETS.open_character_select[0] == pytest.approx(0.1296)
+
+
+def test_shifted_quick_menu_uses_acquired_guild_target():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    action = SelectQuickMenuGuild(QuickMenuLayout.SHIFTED)
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    target = DEFAULT_ROTATION_ACTION_TARGETS.select_guild_shifted
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert target[0] - DEFAULT_ROTATION_ACTION_TARGETS.select_guild[0] == pytest.approx(0.1296)
+
+
+def test_executor_translates_guild_attendance_to_acquired_button_target():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(
+        CheckInGuildAttendance(), FrameGeometry(width=2712, height=1224)
+    )
+
+    target = DEFAULT_GUILD_ACTION_TARGETS.attendance
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert receipt.normalized_target == target
 
 
 def test_quick_menu_uses_the_shared_live_confirmed_header_target():

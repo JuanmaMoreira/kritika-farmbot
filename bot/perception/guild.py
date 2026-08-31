@@ -53,7 +53,7 @@ class GuildAttendanceDetector:
     """Emit exactly one acquired Attendance state on a clean Guild screen.
 
     Quick Menu deliberately suppresses both state observations. Its overlay
-    covers part of the control and future navigation must not inherit a Guild
+    covers part of the control and menu navigation must not inherit a Guild
     business status alongside ``menu.quick``.
     """
 

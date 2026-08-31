@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Protocol, runtime_checkable
 
-from bot.catalog import SCREEN_LOBBY
+from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY
 from bot.component_contracts import (
     ComponentRequirement,
     QUICK_MENU_ACCESSIBLE,
@@ -44,11 +44,11 @@ class PreconditionEnsurer(Protocol):
 
 
 class MinimalPreconditionEnsurer:
-    """Normalize only exact Lobby requirements through the Quick Menu hub.
+    """Normalize exact Lobby or Guild requirements through Quick Menu.
 
-    ``navigate_to_lobby`` is the interaction boundary. A production adapter must
-    implement it with observed, verified transitions; the runner never receives
-    actions, coordinates, or ADB.
+    The two navigation callbacks are interaction boundaries. A production
+    adapter must implement observed, verified transitions; the runner never
+    receives actions, coordinates, or ADB.
     """
 
     def __init__(
@@ -56,16 +56,20 @@ class MinimalPreconditionEnsurer:
         current_context: Callable[[], str | None],
         *,
         navigate_to_lobby: Callable[[], bool] | None = None,
+        navigate_to_guild: Callable[[], bool] | None = None,
         quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
     ) -> None:
         if not callable(current_context):
             raise ValueError("current_context must be callable")
         if navigate_to_lobby is not None and not callable(navigate_to_lobby):
             raise ValueError("navigate_to_lobby must be callable or None")
+        if navigate_to_guild is not None and not callable(navigate_to_guild):
+            raise ValueError("navigate_to_guild must be callable or None")
         if not isinstance(quick_menu_policy, QuickMenuPolicy):
             raise ValueError("quick_menu_policy must be QuickMenuPolicy")
         self.current_context = current_context
         self.navigate_to_lobby = navigate_to_lobby
+        self.navigate_to_guild = navigate_to_guild
         self.quick_menu_policy = quick_menu_policy
 
     def ensure(self, requirement: ComponentRequirement) -> EnsureResult:
@@ -80,43 +84,19 @@ class MinimalPreconditionEnsurer:
                 before,
             )
 
-        if (
-            requirement.kind is RequirementKind.EXACT_STATE
-            and requirement.name == SCREEN_LOBBY
-            and self.quick_menu_policy.allows(before)
-        ):
-            if self.navigate_to_lobby is None:
-                return self._failed(
+        if requirement.kind is RequirementKind.EXACT_STATE:
+            navigation = {
+                SCREEN_LOBBY: (self.navigate_to_lobby, "lobby"),
+                SCREEN_GUILD: (self.navigate_to_guild, "guild"),
+            }.get(requirement.name)
+            if navigation is not None and self.quick_menu_policy.allows(before):
+                callback, destination = navigation
+                return self._navigate_and_verify(
                     requirement,
                     before,
-                    before,
-                    "quick_menu_lobby_navigation_unavailable",
+                    callback,
+                    destination,
                 )
-            try:
-                navigated = self.navigate_to_lobby() is True
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except Exception as error:
-                return self._failed(
-                    requirement,
-                    before,
-                    None,
-                    f"quick_menu_lobby_navigation_failed: {type(error).__name__}: {error}",
-                )
-            after = self._current_context()
-            if navigated and self._satisfies(after, requirement):
-                return EnsureResult(
-                    EnsureOutcome.NORMALIZED,
-                    requirement,
-                    before,
-                    after,
-                )
-            return self._failed(
-                requirement,
-                before,
-                after,
-                "quick_menu_lobby_postcondition_failed",
-            )
 
         return self._failed(
             requirement,
@@ -155,6 +135,47 @@ class MinimalPreconditionEnsurer:
         if requirement.name == QUICK_MENU_ACCESSIBLE:
             return self.quick_menu_policy.allows(context)
         return False
+
+    def _navigate_and_verify(
+        self,
+        requirement: ComponentRequirement,
+        before: str | None,
+        callback: Callable[[], bool] | None,
+        destination: str,
+    ) -> EnsureResult:
+        if callback is None:
+            return self._failed(
+                requirement,
+                before,
+                before,
+                f"quick_menu_{destination}_navigation_unavailable",
+            )
+        try:
+            navigated = callback() is True
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as error:
+            return self._failed(
+                requirement,
+                before,
+                None,
+                f"quick_menu_{destination}_navigation_failed: "
+                f"{type(error).__name__}: {error}",
+            )
+        after = self._current_context()
+        if navigated and self._satisfies(after, requirement):
+            return EnsureResult(
+                EnsureOutcome.NORMALIZED,
+                requirement,
+                before,
+                after,
+            )
+        return self._failed(
+            requirement,
+            before,
+            after,
+            f"quick_menu_{destination}_postcondition_failed",
+        )
 
     @staticmethod
     def _failed(

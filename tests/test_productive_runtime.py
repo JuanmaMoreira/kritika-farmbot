@@ -4,11 +4,23 @@ from types import SimpleNamespace
 import pytest
 
 import bot.productive_runtime as productive
-from bot.catalog import MENU_QUICK, SCREEN_LOBBY, SCREEN_WORLD_BOSS
+from bot.catalog import (
+    MENU_QUICK,
+    SCREEN_GUILD,
+    SCREEN_LOBBY,
+    SCREEN_WORLD_BOSS,
+    STATUS_GUILD_ATTENDANCE_ACTIVE,
+    STATUS_GUILD_ATTENDANCE_COMPLETED,
+)
 from bot.event_log import RuntimeEventStream
 from bot.productive_runtime import ProductiveRuntime
 from bot.runtime_observer import RuntimeWaitTimeout
-from bot.semantic_actions import OpenQuickMenu, SelectQuickMenuLobby
+from bot.semantic_actions import (
+    OpenQuickMenu,
+    QuickMenuLayout,
+    SelectQuickMenuGuild,
+    SelectQuickMenuLobby,
+)
 from bot.state import ResolutionStatus
 
 
@@ -170,6 +182,18 @@ def test_clean_context_probe_tolerates_transient_unresolved_frames_for_five_seco
     }
 
 
+def test_clean_context_probe_accepts_one_guild_attendance_state():
+    guild = _snapshot(
+        17,
+        status=ResolutionStatus.RESOLVED,
+        base=SCREEN_GUILD,
+        overlays={STATUS_GUILD_ATTENDANCE_COMPLETED},
+    )
+    runtime = _runtime(Observer(guild, guild), Events())
+
+    assert runtime._current_clean_context() == SCREEN_GUILD
+
+
 def test_clean_context_probe_timeout_records_last_observed_state():
     latest = _snapshot(
         29,
@@ -232,3 +256,63 @@ def test_productive_precondition_normalizes_world_boss_to_lobby(monkeypatch):
         ("precondition.select_lobby", SelectQuickMenuLobby()),
     ]
     assert runtime.build_preconditions().navigate_to_lobby is not None
+
+
+def test_productive_precondition_navigates_quick_menu_to_verified_guild(monkeypatch):
+    lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    quick_menu = _snapshot(
+        2, status=ResolutionStatus.UNKNOWN, overlays={MENU_QUICK}
+    )
+    guild = _snapshot(
+        3,
+        status=ResolutionStatus.RESOLVED,
+        base=SCREEN_GUILD,
+        overlays={STATUS_GUILD_ATTENDANCE_ACTIVE},
+    )
+    observer = Observer(lobby, guild)
+    runtime = _runtime(observer, Events())
+    calls = []
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append((name, action, before, kwargs))
+            final = quick_menu if len(calls) == 1 else guild
+            assert kwargs["expected"](final)
+            assert kwargs["precondition"](before)
+            assert not kwargs["abort_if"](final)
+            return SimpleNamespace(succeeded=True, final_snapshot=final)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+
+    assert runtime._navigate_to_guild()
+    assert [(name, action) for name, action, _, _ in calls] == [
+        ("precondition.open_quick_menu", OpenQuickMenu()),
+        (
+            "precondition.select_guild",
+            SelectQuickMenuGuild(QuickMenuLayout.LOBBY),
+        ),
+    ]
+    assert runtime.build_preconditions().navigate_to_guild is not None
+
+
+def test_guild_navigation_rejects_unverified_destination(monkeypatch):
+    lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    quick_menu = _snapshot(
+        2, status=ResolutionStatus.UNKNOWN, overlays={MENU_QUICK}
+    )
+    observer = Observer(lobby, lobby)
+    runtime = _runtime(observer, Events())
+    calls = []
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append(name)
+            if len(calls) == 1:
+                return SimpleNamespace(succeeded=True, final_snapshot=quick_menu)
+            assert not kwargs["expected"](lobby)
+            return SimpleNamespace(succeeded=False, final_snapshot=lobby)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+
+    assert not runtime._navigate_to_guild()
+    assert calls == ["precondition.open_quick_menu", "precondition.select_guild"]

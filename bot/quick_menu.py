@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from bot.catalog import SCREEN_LOBBY, SCREEN_WORLD_BOSS
+from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY, SCREEN_WORLD_BOSS
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
 from bot.observations import validate_semantic_name
-from bot.semantic_actions import OpenCharacterSelect, QuickMenuLayout
+from bot.semantic_actions import (
+    OpenCharacterSelect,
+    QuickMenuLayout,
+    SelectQuickMenuGuild,
+)
 
 
 @dataclass(frozen=True)
@@ -26,10 +30,10 @@ class QuickMenuPolicy:
         return semantic_context in self.accessible_from
 
 
-# Both contexts opened and safely closed the same Quick Menu overlay live using
-# the shared header target. No other context is inferred from legacy metadata.
+# These contexts opened the same Quick Menu overlay live using the shared header
+# target. Guild uses the acquired shifted layout; no other context is inferred.
 DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(
-    frozenset({SCREEN_LOBBY, SCREEN_WORLD_BOSS})
+    frozenset({SCREEN_GUILD, SCREEN_LOBBY, SCREEN_WORLD_BOSS})
 )
 
 
@@ -52,16 +56,32 @@ def open_character_select_action(
     the laterally shifted layout observed outside Lobby.
     """
 
+    return OpenCharacterSelect(_layout_for(origin_context, policy))
+
+
+def select_quick_menu_guild_action(
+    origin_context: str | None,
+    *,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> SelectQuickMenuGuild:
+    """Select Guild using the acquired layout for the approved origin."""
+
+    return SelectQuickMenuGuild(_layout_for(origin_context, policy))
+
+
+def _layout_for(
+    origin_context: str | None,
+    policy: QuickMenuPolicy,
+) -> QuickMenuLayout:
     if not policy.allows(origin_context):
         raise ValueError(
             "origin_context must be allowed by the Quick Menu policy"
         )
-    layout = (
+    return (
         QuickMenuLayout.LOBBY
         if origin_context == SCREEN_LOBBY
         else QuickMenuLayout.SHIFTED
     )
-    return OpenCharacterSelect(layout)
 
 
 __all__ = (
@@ -70,4 +90,5 @@ __all__ = (
     "QuickMenuPolicy",
     "open_character_select_action",
     "quick_menu_accessible",
+    "select_quick_menu_guild_action",
 )

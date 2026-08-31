@@ -12,18 +12,23 @@ from bot.quick_menu import (
     QuickMenuPolicy,
     open_character_select_action,
     quick_menu_accessible,
+    select_quick_menu_guild_action,
 )
-from bot.semantic_actions import OpenCharacterSelect, QuickMenuLayout
+from bot.semantic_actions import (
+    OpenCharacterSelect,
+    QuickMenuLayout,
+    SelectQuickMenuGuild,
+)
 
 
 def test_declared_context_has_quick_menu_capability():
     assert quick_menu_accessible(SCREEN_LOBBY)
     assert quick_menu_accessible(SCREEN_WORLD_BOSS)
+    assert quick_menu_accessible(SCREEN_GUILD)
 
 
 def test_undeclared_context_has_no_quick_menu_capability():
     assert not quick_menu_accessible(SCREEN_BATTLE_MODE_SELECT)
-    assert not quick_menu_accessible(SCREEN_GUILD)
     assert not quick_menu_accessible(None)
 
 
@@ -52,6 +57,15 @@ def test_non_lobby_capable_screen_uses_shifted_quick_menu_geometry():
     assert open_character_select_action(
         SCREEN_WORLD_BOSS
     ) == OpenCharacterSelect(QuickMenuLayout.SHIFTED)
+
+
+def test_guild_destination_uses_each_acquired_quick_menu_layout():
+    assert select_quick_menu_guild_action(SCREEN_LOBBY) == SelectQuickMenuGuild(
+        QuickMenuLayout.LOBBY
+    )
+    assert select_quick_menu_guild_action(SCREEN_GUILD) == SelectQuickMenuGuild(
+        QuickMenuLayout.SHIFTED
+    )
 
 
 def test_geometry_is_not_selected_for_an_undeclared_context():

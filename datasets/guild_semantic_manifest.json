@@ -24,7 +24,10 @@
       "guild_opened_quick_menu": true,
       "guild_tile_visible_in_lobby_layout": true,
       "guild_tile_visible_in_shifted_layout": true,
-      "action_target_not_promoted": true
+      "guild_target_lobby_layout": [0.265, 0.65],
+      "guild_target_shifted_layout": [0.3946, 0.65],
+      "attendance_target": [0.433, 0.43],
+      "targets_promoted_from_curated_live_evidence": true
     }
   },
   "entries": [

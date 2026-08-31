@@ -204,6 +204,12 @@ La adquisición HIL confirmó Daily Claim All positivo, no-op y reward independi
 
 El cierre hardware-free pasó 1090 tests y el evaluator incremental reutilizó 13500/13500 pares sin invalidaciones, con 300/300 resoluciones correctas. No se hizo smoke adicional porque la adquisición live previa ya cubría targets/transiciones y las validaciones no dejaron dudas de hardware.
 
+## Guild Check-In productivo
+
+La adquisición HIL confirmó `screen.guild`, Attendance activo/completado, la transición a botón oscuro, `Lobby → Quick Menu → Guild` y Quick Menu abierto desde Guild con layout desplazado. El cambio visual completó en menos de 0,749 s dentro de la evidencia curada; el bubble quedó explícitamente excluido de la señal.
+
+La implementación promovió targets normalizados para Guild en ambos layouts y para Attendance, añadió Guild a `quick_menu_accessible` y conectó una normalización exacta/verificada hacia `screen.guild`. `GuildCheckInFlow` permanece Guild → Guild: completed inicial es no-op, active habilita un solo tap y la completion exige estado completed fresco durante 0,75 s dentro de 10 s. No se añadieron retries de negocio, categories, routines ni un navigation graph.
+
 ## Decisiones y alternativas reemplazadas
 
 - El icono de oro de Lobby describe un shell persistente, no una pantalla base exclusiva.
