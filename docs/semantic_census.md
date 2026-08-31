@@ -192,12 +192,14 @@ Start, Auto Repeat, Auto Battle, timer y taps seguros. Una segunda evidencia reg
 Auto OFF/ON y sus métricas temporales, pero no promueve OCR, facts, parsers, acciones,
 detector temporal ni flow.
 
-## Señales Daily adquiridas para la fase siguiente
+## Señales Daily adquiridas y consumidores
 
 Un único asset current-season del badge verde alimenta tres observaciones con ROIs
 independientes: Friends All, Guild Attendance y World Boss en Battle Mode Select.
 Friends también promueve `screen.friends` y `landmark.friends_all_button`; la transición
-live confirma que All elimina el badge de forma estable y Close restaura Lobby. Guild
+live confirma que All elimina el badge de forma estable y Close restaura Lobby.
+`SendStaminaFlow` consume esa señal con tap único, espera fresca y retorno verificado.
+Guild
 conserva por separado el estado active/completed del botón y el badge Daily. Falta el
 negativo live `Attendance activo + Daily ausente`, por lo que ningún guard de Guild fue
 implementado. World Boss expone sólo elegibilidad externa futura; su flow general-purpose

@@ -9,6 +9,7 @@ from bot.action_executor import (
     DEFAULT_BATTLE_ACTION_TARGETS,
     DEFAULT_DAILY_QUESTS_ACTION_TARGETS,
     DEFAULT_EQUIPMENT_ACTION_TARGETS,
+    DEFAULT_FRIENDS_ACTION_TARGETS,
     DEFAULT_GUILD_ACTION_TARGETS,
     DEFAULT_MAILBOX_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
@@ -27,6 +28,7 @@ from bot.semantic_actions import (
     CheckInGuildAttendance,
     CloseBlackMarket,
     CloseDailyQuests,
+    CloseFriends,
     CloseMailbox,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
@@ -39,6 +41,7 @@ from bot.semantic_actions import (
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenFriends,
     OpenGuild,
     OpenQuests,
     OpenMailbox,
@@ -65,6 +68,7 @@ from bot.semantic_actions import (
     SelectDailyQuests,
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
+    SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -134,6 +138,12 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
             CloseDailyQuests(),
             DEFAULT_DAILY_QUESTS_ACTION_TARGETS.close_daily_quests,
         ),
+        (OpenFriends(), DEFAULT_FRIENDS_ACTION_TARGETS.open_friends),
+        (
+            SendStaminaToAllFriends(),
+            DEFAULT_FRIENDS_ACTION_TARGETS.send_all,
+        ),
+        (CloseFriends(), DEFAULT_FRIENDS_ACTION_TARGETS.close_friends),
         (OpenMailbox(), DEFAULT_MAILBOX_ACTION_TARGETS.open_mailbox),
         (
             SelectCharacterMail(),
@@ -147,7 +157,7 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
         (CloseMailbox(), DEFAULT_MAILBOX_ACTION_TARGETS.close_mailbox),
     ),
 )
-def test_executor_translates_daily_quests_and_mailbox_actions(action, target):
+def test_executor_translates_daily_quests_friends_and_mailbox_actions(action, target):
     adb = Mock()
     executor = ActionExecutor(adb)
     geometry = FrameGeometry(width=2712, height=1224)

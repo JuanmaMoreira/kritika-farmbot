@@ -31,6 +31,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se cerró el primer checkpoint operativo combinado: runtime manual y GUI Tkinter comparten registry, sesiones, cancelación y logging; una sesión GUI `Black Market → World Boss → Rotation` completó 28/28 personajes y 28 advances con business events conservadores, retries state-guarded y cero fallos técnicos.
 - Se incorporaron `DailyQuestsFlow` y `MailboxFlow` como flows productivos `PER_CHARACTER` Lobby → Lobby, con Claim All single-attempt, completion estable basada en estado, leftovers no fatales y Delete Read condicionado.
 - Se incorporó `GuildCheckInFlow` como flow productivo `PER_CHARACTER` Guild → Guild, con no-op completado, tap único y completion fresca estable. La normalización prioriza el acceso directo Lobby → Guild y conserva Quick Menu como fallback verificado desde otros contextos; Guild entró al allow-list y a la selección GUI sin crear categories, routines ni un grafo de navegación.
+- Se incorporó `SendStaminaFlow` como flow productivo `PER_CHARACTER` Lobby → Friends → Lobby, con guard Daily, All single-attempt, desaparición fresca estable y cierre verificado. Registry y GUI lo ordenan antes de Daily Quests sin añadir otros flows de Friends, categories ni routines.
 
 ### Changed
 

@@ -24,6 +24,7 @@ from bot.semantic_actions import (
     CheckInGuildAttendance,
     CloseBlackMarket,
     CloseDailyQuests,
+    CloseFriends,
     CloseMailbox,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
@@ -36,6 +37,7 @@ from bot.semantic_actions import (
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenFriends,
     OpenGuild,
     OpenQuests,
     OpenMailbox,
@@ -62,6 +64,7 @@ from bot.semantic_actions import (
     SelectDailyQuests,
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
+    SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
     SelectAvailableWorldBoss,
@@ -160,6 +163,22 @@ class DailyQuestsActionTargets:
 
 
 DEFAULT_DAILY_QUESTS_ACTION_TARGETS = DailyQuestsActionTargets()
+
+
+@dataclass(frozen=True)
+class FriendsActionTargets:
+    """Normalized targets acquired from the live Send Stamina route."""
+
+    open_friends: RelativePoint = (0.8374, 0.0784)
+    send_all: RelativePoint = (0.7750, 0.8900)
+    close_friends: RelativePoint = (0.8190, 0.0980)
+
+    def __post_init__(self) -> None:
+        for point in (self.open_friends, self.send_all, self.close_friends):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_FRIENDS_ACTION_TARGETS = FriendsActionTargets()
 
 
 @dataclass(frozen=True)
@@ -386,6 +405,7 @@ class ActionExecutor:
         daily_quests_targets: DailyQuestsActionTargets = (
             DEFAULT_DAILY_QUESTS_ACTION_TARGETS
         ),
+        friends_targets: FriendsActionTargets = DEFAULT_FRIENDS_ACTION_TARGETS,
         mailbox_targets: MailboxActionTargets = DEFAULT_MAILBOX_ACTION_TARGETS,
         rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
         guild_targets: GuildActionTargets = DEFAULT_GUILD_ACTION_TARGETS,
@@ -399,6 +419,8 @@ class ActionExecutor:
             raise ValueError("targets must be BlackMarketActionTargets")
         if not isinstance(daily_quests_targets, DailyQuestsActionTargets):
             raise ValueError("daily_quests_targets must be DailyQuestsActionTargets")
+        if not isinstance(friends_targets, FriendsActionTargets):
+            raise ValueError("friends_targets must be FriendsActionTargets")
         if not isinstance(mailbox_targets, MailboxActionTargets):
             raise ValueError("mailbox_targets must be MailboxActionTargets")
         if not isinstance(rotation_targets, RotationActionTargets):
@@ -414,6 +436,7 @@ class ActionExecutor:
         self.adb = adb
         self.targets = targets
         self.daily_quests_targets = daily_quests_targets
+        self.friends_targets = friends_targets
         self.mailbox_targets = mailbox_targets
         self.rotation_targets = rotation_targets
         self.guild_targets = guild_targets
@@ -452,6 +475,12 @@ class ActionExecutor:
             return self.daily_quests_targets.claim_all
         if isinstance(action, CloseDailyQuests):
             return self.daily_quests_targets.close_daily_quests
+        if isinstance(action, OpenFriends):
+            return self.friends_targets.open_friends
+        if isinstance(action, SendStaminaToAllFriends):
+            return self.friends_targets.send_all
+        if isinstance(action, CloseFriends):
+            return self.friends_targets.close_friends
         if isinstance(action, OpenMailbox):
             return self.mailbox_targets.open_mailbox
         if isinstance(action, SelectCharacterMail):
@@ -595,11 +624,13 @@ __all__ = (
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
     "DEFAULT_DAILY_QUESTS_ACTION_TARGETS",
     "DEFAULT_EQUIPMENT_ACTION_TARGETS",
+    "DEFAULT_FRIENDS_ACTION_TARGETS",
     "DEFAULT_GUILD_ACTION_TARGETS",
     "DEFAULT_MAILBOX_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
     "FrameGeometry",
+    "FriendsActionTargets",
     "GuildActionTargets",
     "DailyQuestsActionTargets",
     "EquipmentActionTargets",

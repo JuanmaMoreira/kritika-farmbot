@@ -20,6 +20,8 @@ Guild Check-In quedó cerrado productivamente: semántica pendiente/completado, 
 
 La adquisición Daily para la fase siguiente quedó promovida sin cambiar gameplay: Friends/All con transición del badge a ausencia y Close→Lobby, badge Attendance independiente del estado del botón y badge World Boss contextual en Battle Mode Select. Los tres reutilizan un asset visual con ROIs separadas. Queda pendiente el negativo live `Attendance activo + Daily ausente`.
 
+Send Stamina quedó cerrado como flow productivo `PER_CHARACTER` Lobby → Friends → Lobby: Daily ausente es no-op, Daily presente autoriza un único All y exige desaparición fresca estable antes de cerrar a Lobby. Registry y GUI lo ubican por defecto antes de Daily Quests. No se añadieron otros flows de Friends, categories ni routines.
+
 ## Próximo trabajo
 
 ### Known future
@@ -33,7 +35,6 @@ La adquisición Daily para la fase siguiente quedó promovida sin cambiar gamepl
 - Agregar estrategias Rotation identity-aware o MAIN/SUBS sólo si dejan de bastar MRU + `StandardRotation`.
 - Hacer polish de UI más adelante; la GUI actual ya es el frontend operativo.
 - Evaluar detector entrenado o fallback VLM provider-agnostic sólo ante un caso no cubierto y evidencia suficiente.
-- Implementar `SendStaminaFlow` sólo con el contrato Lobby → Friends → Lobby, guard Daily, un único tap All y desaparición estable del indicador.
 - Añadir el guard Daily a `GuildCheckInFlow` después de cerrar el negativo live `Attendance activo + Daily ausente`; no cambiar su completion por botón oscuro.
 - Diseñar la mínima eligibility Daily externa para World Boss sin convertirla en precondición interna de `WorldBossFlow` ni crear todavía un framework de routines.
 

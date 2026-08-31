@@ -40,7 +40,7 @@ GUI contains no business logic
 
 `bot/runtime.py` construye ADB, captura y facts. `bot/productive_runtime.py` es el composition root compartido: adquiere configuración, `AdbClient`, `ScrcpyFrameSource`, percepción, resolver, observer, OCR facts, Auto Battle, `ActionExecutor`, flows, Rotation y runner. El owner mantiene cleanup explícito de source, proceso, socket y forward, incluso ante fallo.
 
-`bot/flow_registry.py` es la única lista productiva de flows. Cada `FlowDefinition` declara id, display name, scope, contrato y factory; `FlowRegistry` valida y conserva orden explícito. No hay discovery, reflection ni plugin system. El registry actual contiene `black_market`, `world_boss`, `daily_quests`, `mailbox` y `guild_check_in`, en ese orden default.
+`bot/flow_registry.py` es la única lista productiva de flows. Cada `FlowDefinition` declara id, display name, scope, contrato y factory; `FlowRegistry` valida y conserva orden explícito. No hay discovery, reflection ni plugin system. El registry actual contiene `black_market`, `world_boss`, `send_stamina`, `daily_quests`, `mailbox` y `guild_check_in`, en ese orden default.
 
 ## Capture y Perception
 
@@ -143,9 +143,11 @@ No ejecuta input, retry, navegación ni recovery. Esperar disponibilidad futura 
 
 `DailyQuestsFlow` y `MailboxFlow` son `PER_CHARACTER`, declaran Lobby → Lobby y contienen únicamente su policy de negocio. `OpenQuests` valida primero el shell que restaura el último tab del personaje; `SelectDailyQuests` se ejecuta una vez sólo cuando falta `mode.daily_quests` y exige ese modo como postcondición. Claim All es single-attempt en ambos. Daily acepta no-op inicial y completa por desaparición estable del status. Mailbox separa onset bounded, actividad observada y quiescencia estable; ausencia de onset sólo es no-effect cuando los claims persisten de forma estable. Delete Read ocurre después de esa rama y únicamente con read mail observable; una oclusión transitoria del tab bajo `screen.mailbox` prolonga pasivamente la espera, mientras el éxito sigue exigiendo retorno estable a Character Mail sin Read. Leftovers son `FlowEvent` no fatal.
 
+`SendStaminaFlow` es `PER_CHARACTER`, declara Lobby → Lobby y verifica Friends como estado intermedio. La ausencia inicial de su status Daily es no-op y nunca autoriza All. La presencia autoriza un único `SendStaminaToAllFriends`; completion requiere ausencia fresca estable durante `0.75 s` con timeout de `3 s`. El flow cierra Friends y verifica Lobby en ambas ramas exitosas. No usa bubble, oscurecimiento de botones individuales, retry ni `ControlledWait`.
+
 `GuildCheckInFlow` es `PER_CHARACTER`, declara Guild → Guild y no contiene navegación. Completed inicial es no-op; Active autoriza un único tap y una espera fresca bounded por Completed estable. No existe retry del tap. Timeout, estados contradictorios/incompatibles y completion no verificable producen fallo conservador; cancelación se propaga.
 
-Los statuses `status.friends_send_stamina_daily_active`, `status.guild_attendance_daily_active` y `status.world_boss_daily_active` aún no tienen consumidores funcionales. En particular, `WorldBossFlow` sigue siendo general-purpose y no exige su Daily; cualquier elegibilidad futura pertenece fuera del flow. `GuildCheckInFlow`, registry, GUI, preconditions y actions permanecen sin cambios en este checkpoint.
+Los statuses `status.guild_attendance_daily_active` y `status.world_boss_daily_active` aún no tienen consumidores funcionales. En particular, `WorldBossFlow` sigue siendo general-purpose y no exige su Daily; cualquier elegibilidad futura pertenece fuera del flow. `GuildCheckInFlow` permanece sin el guard Daily hasta adquirir el negativo discriminante pendiente.
 
 Las support operations siguen `check → operación bounded → recheck → continue/skip/fail`; no son flows, no entran en GUI/`FlowRegistry` y no permiten llamadas recursivas arbitrarias entre flows. El caller conserva la policy de cuándo invocarlas y entrega un return plan con acción y estado exacto esperado; la operación sólo reporta éxito después de verificar ese retorno.
 

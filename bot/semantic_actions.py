@@ -44,6 +44,21 @@ class CloseDailyQuests:
 
 
 @dataclass(frozen=True)
+class OpenFriends:
+    """Request the direct Lobby -> Friends action."""
+
+
+@dataclass(frozen=True)
+class SendStaminaToAllFriends:
+    """Request All after the Friends Send Stamina Daily was confirmed active."""
+
+
+@dataclass(frozen=True)
+class CloseFriends:
+    """Request the Friends -> Lobby close action."""
+
+
+@dataclass(frozen=True)
 class OpenMailbox:
     """Request the Lobby -> Mailbox action."""
 
@@ -366,6 +381,9 @@ SemanticAction = (
     | SelectDailyQuests
     | ClaimAllDailyQuests
     | CloseDailyQuests
+    | OpenFriends
+    | SendStaminaToAllFriends
+    | CloseFriends
     | OpenMailbox
     | SelectCharacterMail
     | ClaimAllCharacterMail
@@ -432,6 +450,7 @@ __all__ = (
     "ClaimAllDailyQuests",
     "CheckInGuildAttendance",
     "CloseDailyQuests",
+    "CloseFriends",
     "CloseMailbox",
     "ConfirmCharacterSelection",
     "ContinueAfterWorldBossRaid",
@@ -443,6 +462,7 @@ __all__ = (
     "DeleteReadCharacterMail",
     "OpenBlackMarket",
     "OpenGuild",
+    "OpenFriends",
     "OpenQuests",
     "OpenMailbox",
     "OpenBattleModeSelect",
@@ -464,6 +484,7 @@ __all__ = (
     "SelectDailyQuests",
     "SelectQuickMenuLobby",
     "SelectQuickMenuGuild",
+    "SendStaminaToAllFriends",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",
     "SemanticAction",

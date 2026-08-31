@@ -2,7 +2,7 @@
 
 ## Qué es
 
-Kritika FarmBot 0.2 automatiza tareas por personaje de **Kritika: The White Knights** sobre un dispositivo Android físico. El runtime productivo vigente ejecuta Black Market, World Boss, Daily Quests, Mailbox y Guild Check-In, los compone en sesiones multicharacter y cambia de personaje con `StandardRotation`.
+Kritika FarmBot 0.2 automatiza tareas por personaje de **Kritika: The White Knights** sobre un dispositivo Android físico. El runtime productivo vigente ejecuta Black Market, World Boss, Send Stamina, Daily Quests, Mailbox y Guild Check-In, los compone en sesiones multicharacter y cambia de personaje con `StandardRotation`.
 
 GUI Tkinter y CLI son frontends finos del mismo composition root. El código y los tests son la fuente de implementación; la cronología y las calibraciones viven en [`docs/HISTORY.md`](docs/HISTORY.md).
 
@@ -59,9 +59,11 @@ Raid Complete se acepta por presencia del overlay, independientemente de que la 
 
 Mailbox entra a Character Mail, omite Claim All sin claims y nunca lo reintenta. Si observa `activity.mailbox_claim_processing`, exige su ausencia estable; una fase oscura aislada reinicia la estabilidad. Si la actividad nunca aparece pero Character Mail con claims persiste estable, registra intento sin efecto y continúa. Leftovers son no fatales y no disparan liberación de inventario. Delete Read sólo se ejecuta con `status.mailbox_read_mail_present` y exige su desaparición estable; un frame transitorio `screen.mailbox` donde una burbuja tapa el tab consume espera pero no satisface éxito ni aborta. Inbox vacío no es postcondición.
 
-### Semántica Daily adquirida, aún sin consumidores funcionales
+### Send Stamina
 
-Friends dispone ahora de `screen.friends`, `landmark.friends_all_button` y `status.friends_send_stamina_daily_active`. La transición live confirmó `badge presente → All una vez → badge ausente` conservando Friends: la ausencia apareció aproximadamente en `0.6–1.0 s` y quedó curada estable durante `0.798 s`; `Close → screen.lobby` también fue confirmado. El spinner/bubble y el oscurecimiento de botones individuales no forman parte de la condición de negocio. No existe todavía `SendStaminaFlow`, intent productivo ni entrada de registry/GUI.
+`SendStaminaFlow` es `PER_CHARACTER` con contrato `screen.lobby → screen.lobby` y verifica el estado intermedio `screen.friends`. Daily ausente es success/no-op sin tocar All. Daily presente autoriza exactamente un `SendStaminaToAllFriends`; la completion exige desaparición fresca del status durante `0.75 s` dentro de `3 s`, seguida de `CloseFriends → screen.lobby` verificado. Timeout, estado incompatible o postcondición no verificable fallan sin retry; cancelación se propaga. El spinner/bubble y el oscurecimiento de botones individuales no forman parte de la condición de negocio.
+
+### Semántica Daily restante sin consumidores funcionales
 
 Friends, Guild Attendance y la tarjeta World Boss comparten exactamente el mismo asset verde de Daily, pero lo observan con ROIs contextuales independientes. Guild expone `status.guild_attendance_daily_active` sin alterar la clasificación active/completed; World Boss expone `status.world_boss_daily_active` únicamente en Battle Mode Select. Esta última señal es evidencia para eligibility externa futura y no se incorporó a `WorldBossFlow`.
 
@@ -75,9 +77,9 @@ La navegación live `Lobby → Quick Menu → Guild` terminó en `screen.guild`,
 
 ### Sesión y Rotation
 
-`FlowRegistry` registra explícitamente `black_market`, `world_boss`, `daily_quests`, `mailbox` y `guild_check_in`, con metadata, contrato y factory compartidos por todos los frontends.
+`FlowRegistry` registra explícitamente `black_market`, `world_boss`, `send_stamina`, `daily_quests`, `mailbox` y `guild_check_in`, con metadata, contrato y factory compartidos por todos los frontends.
 
-`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default termina `… → Daily Quests → Mailbox → Guild Check-In → Rotation`. El boundary de precondiciones normaliza únicamente a Lobby o Guild mediante transiciones explícitas verificadas, priorizando el acceso directo Lobby → Guild. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
+`SessionRunner` ejecuta los flows seleccionados en orden para cada personaje, verifica precondición y una postcondición permitida después de cada componente, agrega business events y hace exactamente un `RotationStrategy.advance()` por personaje, incluido el retorno final que cierra el ciclo. La selección default conserva `… → Send Stamina → Daily Quests → Mailbox → Guild Check-In → Rotation`, de modo que el progreso de Send Stamina pueda reclamarse en Daily Quests durante el mismo personaje. El boundary de precondiciones normaliza únicamente a Lobby o Guild mediante transiciones explícitas verificadas, priorizando el acceso directo Lobby → Guild. Cancelación conserva progreso parcial; un fallo técnico, postcondición contradictoria o Rotation fallida abortan sin avanzar a ciegas.
 
 `StandardRotation` no es un flow. Requiere la capability `quick_menu_accessible`, abre Quick Menu, entra a Character Select, confirma el final mediante scroll observado A/T/B, verifica la selección de la última tarjeta, confirma y exige Lobby fresco. No identifica personajes. El allow-list productivo contiene Lobby, World Boss y Guild; Guild conserva exactamente uno de sus statuses Attendance como estado de origen compatible y usa el layout desplazado.
 
@@ -160,7 +162,7 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free: **1161/1161 tests verdes**.
+- Suite hardware-free: **1174/1174 tests verdes**.
 - Corpus productivo ampliado: 338 frames × 52 detectores, **17576/17576** pares, 338/338 resoluciones y overlays, cero wrong/ambiguous. Los cinco detectores nuevos tienen 0 FP/FN; sus gaps raw son `0.196432–0.357994`. El evaluator Daily dirigido pasa 22/22 y el evaluator Guild conserva 19/19.
 - Adquisición HIL Daily Quests: apertura desde Lobby, Claim All con desaparición de `Claim`, estado estable con `Start`/ads, segundo Claim All no-op, recompensa de progreso separada y cierre a Lobby confirmados live.
 - Adquisición HIL Character Mail: Account Mail → Character Mail, Claim All con spinner/bubbles y transición `Claim → Delete`, quiescencia con Inbox aún 19, Delete Read Mail y cierre a Lobby confirmados live. Por límites de recompensa quedaron cinco mails reclamables; el estado residual se preserva como final válido y no dispara ninguna rutina para liberar espacio.
@@ -192,4 +194,4 @@ Facts productivos:
 
 ## Próximo trabajo
 
-Siguiente fase propuesta, todavía no implementada: `SendStaminaFlow` Lobby→Friends→Lobby con guard Daily y tap único; guard Daily conservador en `GuildCheckInFlow` una vez cerrado el negativo pendiente; y una eligibility externa mínima que consulte World Boss Daily sin modificar `WorldBossFlow`. Categories/routines permanecen fuera de alcance.
+Siguiente fase propuesta, todavía no implementada: guard Daily conservador en `GuildCheckInFlow` una vez cerrado el negativo pendiente y una eligibility externa mínima que consulte World Boss Daily sin modificar `WorldBossFlow`. Categories/routines y otros flows de Friends permanecen fuera de alcance.

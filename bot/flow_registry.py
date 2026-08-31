@@ -10,6 +10,7 @@ from bot.daily_quests_flow import DailyQuestsFlow
 from bot.flow_contracts import FlowContract, FlowScope, PerCharacterFlow
 from bot.guild_check_in_flow import GuildCheckInFlow
 from bot.mailbox_flow import MailboxFlow
+from bot.send_stamina_flow import SendStaminaFlow
 from bot.world_boss_flow import WorldBossFlow
 
 
@@ -130,6 +131,15 @@ def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _build_send_stamina(dependencies: FlowDependencies) -> PerCharacterFlow:
+    return SendStaminaFlow(
+        dependencies.observer,
+        dependencies.actions,
+        dependencies.events,
+        cancel_requested=dependencies.cancel_requested,
+    )
+
+
 def _build_mailbox(dependencies: FlowDependencies) -> PerCharacterFlow:
     return MailboxFlow(
         dependencies.observer,
@@ -162,6 +172,13 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
         WorldBossFlow.scope,
         WorldBossFlow.contract,
         _build_world_boss,
+    ),
+    FlowDefinition(
+        "send_stamina",
+        "Send Stamina",
+        SendStaminaFlow.scope,
+        SendStaminaFlow.contract,
+        _build_send_stamina,
     ),
     FlowDefinition(
         "daily_quests",
