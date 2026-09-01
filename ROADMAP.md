@@ -22,10 +22,14 @@ La adquisición Daily para la fase siguiente quedó promovida sin cambiar gamepl
 
 Send Stamina quedó cerrado como flow productivo `PER_CHARACTER` Lobby → Friends → Lobby: Daily ausente es no-op, Daily presente autoriza un único All y exige desaparición fresca estable antes de cerrar a Lobby. Registry y GUI lo ubican por defecto antes de Daily Quests. No se añadieron otros flows de Friends, categories ni routines.
 
+La adquisición Pet Summon quedó promovida sin implementar gameplay: Manage/Summon/resultado/Pet Combine, Daily activa/ausente, Epic disponible/apagado y mensaje de fragmentos, Premium ticket/GOLD y selectors, GOLD insuficiente, Pet Full, resultado estructural y cierres/retornos. La evaluación global conserva cero wrong/ambiguous sobre 386 frames. No se implementaron `SummonPetDailyFlow`, `PetSummonSpaceRelief`, Normal, Ethereal ni limpieza.
+
 ## Próximo trabajo
 
 ### Known future
 
+- Implementar `SummonPetDailyFlow` con guard Daily estricto, prioridad Epic → Premium, siempre `1(Open)`, resultado verificado y retorno al contexto contractual. Epic no disponible habilita el fallback; GOLD insuficiente termina no fatal con Daily pendiente.
+- Diseñar `PetSummonSpaceRelief` sólo después y como support operation separada. La evidencia vigente termina en `screen.pet_combine`; no autoriza todavía venta, slots, Mass Evolve u otra estrategia.
 - Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su recovery bounded antes de automatizarlo.
 - Ampliar retornos de Equipment Inventory Full a otros farming flows sólo con evidencia live específica; por ahora únicamente `Combine → Back → World Boss` está verificado.
 - Ampliar retornos de Socket a otros farming flows sólo con evidencia live específica; por ahora únicamente `Socket → Back → World Boss` está verificado.

@@ -67,6 +67,14 @@ Mailbox entra a Character Mail, omite Claim All sin claims y nunca lo reintenta.
 
 Friends, Guild Attendance y la tarjeta World Boss comparten exactamente el mismo asset verde de Daily, pero lo observan con ROIs contextuales independientes. Guild expone `status.guild_attendance_daily_active` sin alterar la clasificación active/completed; World Boss expone `status.world_boss_daily_active` únicamente en Battle Mode Select. Esta última señal es evidencia para eligibility externa futura: `WorldBossFlow` la tolera como overlay contextual, pero no la consume para decidir participación.
 
+### Pet Summon adquirido, todavía sin flow
+
+La semántica necesaria para un futuro `SummonPetDailyFlow` quedó promovida sin gameplay: `screen.pets_manage`, `screen.pet_summon`, `screen.pet_summon_result` y el destino `screen.pet_combine`. El shell de Pets y los tabs activos evitan el título centrado `Pets`, que el chat puede ocluir. El badge verde sobre Summon deriva `status.pet_summon_daily_active`; se confirmó presente antes del Epic y ausente después del summon exitoso.
+
+Epic expone estados mutuamente excluyentes disponible/no disponible a partir del brillo estable de la tarjeta, sin OCR de fragmentos. Los positivos confirmados fueron `237/10`; el negativo fue `7/10`, con ground truth humano de que `0..9` comparte el mismo render apagado. La lectura se suprime mientras un selector o popup cubre la pantalla. Premium distingue sólo las variantes observables ticket/GOLD y sus selectores; el juego, no el futuro flow, decide cuál recurso consume. Un resultado exitoso se reconoce por banner dorado + panel de pergamino, independientes de identidad y rareza del pet.
+
+También están adquiridos el mensaje defensivo de fragmentos insuficientes, `popup.insufficient_gold` reutilizado para Premium y `popup.pet_inventory_full`. `No` en GOLD insuficiente vuelve a Summon sin consumo; será un business outcome no fatal con la Daily pendiente. `Yes` en Pet Full llega a `screen.pet_combine`, verificado por tab Combine activo + `Select a pet to evolve.`. No existe todavía `SummonPetDailyFlow`, `PetSummonSpaceRelief`, limpieza, venta, compra de slots ni interacción con Normal/Ethereal.
+
 ### Guild Check-In
 
 La semántica productiva reconoce `screen.guild`, `status.guild_attendance_active`, `status.guild_attendance_completed` y el status independiente `status.guild_attendance_daily_active`. Attendance deriva del valor HSV de una franja interior del botón: pendiente es rojo brillante (`V 167.16–168.41`) y completado es oscuro/presionado (`V 81.89–84.58`). La ROI queda fuera del bubble transitorio y la lectura de ambos estados del botón se suprime mientras `menu.quick` está abierto. Navegación y flow toleran el status Daily junto al estado de Attendance, pero no lo consumen como autorización de negocio.
@@ -103,6 +111,10 @@ Contextos base productivos:
 - `screen.guild`
 - `screen.quests`
 - `screen.mailbox`
+- `screen.pets_manage`
+- `screen.pet_summon`
+- `screen.pet_summon_result`
+- `screen.pet_combine`
 - `screen.character_select`
 - `screen.battle_mode_select`
 - `screen.black_market`
@@ -121,6 +133,16 @@ Overlays/popups productivos:
 - `mode.mailbox_character_mail`
 - `status.mailbox_claimable`
 - `status.mailbox_read_mail_present`
+- `status.pet_summon_daily_active`
+- `status.pet_epic_available`
+- `status.pet_epic_unavailable`
+- `status.pet_premium_ticket_available`
+- `status.pet_premium_gold`
+- `overlay.pet_epic_selector`
+- `overlay.pet_premium_ticket_selector`
+- `overlay.pet_premium_gold_selector`
+- `popup.pet_epic_insufficient_fragments`
+- `popup.pet_inventory_full`
 - `popup.purchase_confirmation`
 - `popup.insufficient_gold`
 - `popup.inventory_full`
@@ -151,6 +173,7 @@ Facts productivos:
 - Daily Quests: el `Claim` de filas visibles deriva `status.daily_quests_claimable` únicamente bajo el tab Daily activo. La recompensa de progreso independiente (30 karats en la adquisición) queda fuera de esa ROI y es un negativo confirmado. Tras Claim All, la desaparición estable del status mientras persisten `screen.quests + mode.daily_quests` es la señal adquirida de quiescencia; ausencia inicial admite success/no-op.
 - Friends/Daily: el título y All resuelven `screen.friends`; el badge posicional deriva `status.friends_send_stamina_daily_active`. Su desaparición estable es la señal de negocio adquirida y el bubble queda fuera de la ROI.
 - Guild: `landmark.guild_message_tab` resuelve el shell fuera del bubble y del chat superior. `GuildAttendanceDetector` clasifica exclusivamente la franja estable del fill rojo como active/completed, emite estados mutuamente excluyentes y no los emite bajo Quick Menu. Un detector separado observa el badge Daily junto a Attendance; el bubble sólo aporta una variante positiva de completion.
+- Pet Summon: el shell superior y los tabs izquierdos resuelven Manage/Summon/Combine sin usar el título ocluible. El badge Daily es posicional. Epic usa luminancia de la tarjeta sólo en Summon limpio; selectors y popups inhiben esa lectura. Ticket/GOLD son estados visuales, no una elección de policy. Banner + pergamino constituyen la señal estructural común de summon completado. Pet Full sólo aporta la transición adquirida a Pet Combine; no autoriza ninguna limpieza.
 - Character Mail: `Claim` y `Delete` de filas derivan statuses independientes sólo bajo el tab Character Mail activo. `activity.mailbox_claim_processing` observa la fase cyan del spinner central; como su rotación contiene frames oscuros, un negativo aislado no indica completion. La espera futura debe exigir ausencia estable en frames frescos, bounded y conservando `screen.mailbox`. Los bubbles transitorios no son señal principal.
 - La base Socket exige el tab izquierdo persistente en ROI `(0.16, 0.11, 0.26, 0.24)`, con cinco apariencias que cubren selected/unselected y el sombreado más fuerte de Enhance All. El encabezado superior derecho fue retirado como landmark porque el chat dinámico ocupa la banda observada `(0.44, 0.12, 0.85, 0.21)` y puede ocluirlo.
 - Battle Mode Select usa el título fijo de la tarjeta World Boss en ROI `(0.16, 0.58, 0.32, 0.68)`, fuera de esa banda. Sus variantes current/historical sustituyen al encabezado superior ocluible sin cambiar el contrato semántico. `status.world_boss_daily_active` deriva sólo del badge en la esquina de esa tarjeta; badges simultáneos de Monster Wave/Tower son negativos contextuales.
@@ -162,12 +185,13 @@ Facts productivos:
 
 ## Estado de validación
 
-- Suite hardware-free: **1174/1174 tests verdes**.
-- Corpus productivo ampliado: 338 frames × 52 detectores, **17576/17576** pares, 338/338 resoluciones y overlays, cero wrong/ambiguous. Los cinco detectores nuevos tienen 0 FP/FN; sus gaps raw son `0.196432–0.357994`. El evaluator Daily dirigido pasa 22/22 y el evaluator Guild conserva 19/19.
+- Suite hardware-free: **1224/1224 tests verdes**.
+- Corpus productivo ampliado: 386 frames × 68 detectores, **26248/26248** pares, 386/386 resoluciones y overlays, cero wrong/ambiguous. La evaluación incluye todos los detectores nuevos contra el corpus histórico y todos los detectores productivos contra las 48 capturas Pet nuevas. El evaluator Pet dirigido pasa 18/18; Daily conserva 22/22 y Guild 19/19.
 - Adquisición HIL Daily Quests: apertura desde Lobby, Claim All con desaparición de `Claim`, estado estable con `Start`/ads, segundo Claim All no-op, recompensa de progreso separada y cierre a Lobby confirmados live.
 - Adquisición HIL Character Mail: Account Mail → Character Mail, Claim All con spinner/bubbles y transición `Claim → Delete`, quiescencia con Inbox aún 19, Delete Read Mail y cierre a Lobby confirmados live. Por límites de recompensa quedaron cinco mails reclamables; el estado residual se preserva como final válido y no dispara ninguna rutina para liberar espacio.
 - Adquisición HIL Guild: shell estable, Attendance pendiente, transición a oscuro/completado, completado ya asentado, `Lobby → Quick Menu → Guild` y `Guild → Quick Menu` confirmados live; los targets, policy, normalización y flow consumen esa evidencia.
 - Adquisición HIL Daily: Friends activo/inactivo, transición All, ausencia estable y Close→Lobby; Guild activo con Daily y completado sin Daily; World Boss activo/inactivo con otros badges aún visibles. La combinación Guild `Attendance activo + Daily ausente` no pudo reproducirse y queda como negativo pendiente.
+- La adquisición HIL Pet Summon cubrió Manage con chat, Daily activa/ausente, Epic disponible/no disponible y su mensaje defensivo, Premium ticket/GOLD, los tres selectors, resultados Epic/Premium, GOLD insuficiente, Pet Full, cierres a Summon y `Yes → Pet Combine`. Todo input fue navegación humana; no se ejecutó flow ni relief.
 - Black Market está validado en ramas de compra, no GOLD, Insufficient Gold, Inventory Full, verificación de Purchased y sesión completa previa 28/28.
 - World Boss está validado hardware-free en sapphires insuficientes, Previous Rewards, batalla/Raid Complete, ramas positivas únicas y segundas ramas negativas para Socket/Equipment Full, y Rotation desde World Boss.
 - Smoke HIL Enhance positivo: `Yes` llegó a Socket, GOLD produjo efecto, `TapThroughAnimation` ejecutó 6 taps guardados, Sell quedó `NOT_RUN` y `Back → World Boss` se verificó. La primera corrida expuso y luego corrigió un abort prematuro durante el frame transitorio World Boss sin popup.
@@ -190,8 +214,9 @@ Facts productivos:
 - `ConflictResolver`, recovery transversal e isolation/continuation unattended siguen futuros. Los retries locales verificados no se trasladan a esa capa.
 - Timings y retries pueden seguir ajustándose sólo a partir de logs productivos; no hay necesidad de tuning preventivo.
 - Falta validar live `Attendance activo + Daily ausente` antes de usar ausencia de Daily como guard definitivo de Guild; el detector visual y la independencia de reglas están cubiertos, pero esa combinación no tiene ground truth físico.
+- Pet Summon sólo tiene evidencia de una temporada/render y un único ejemplo apagado (`7/10`), aunque el usuario confirmó equivalencia visual para `0..9`. El resultado estructural cubre tres summons, no todas las rarezas posibles. La transición Pet Full sólo está adquirida hasta Pet Combine; cualquier relief requiere diseño y evidencia separados.
 - `main.py` y módulos legacy preservados no son entrypoints productivos. `AdsManager` continúa standalone y desacoplado.
 
 ## Próximo trabajo
 
-Siguiente fase propuesta, todavía no implementada: guard Daily conservador en `GuildCheckInFlow` una vez cerrado el negativo pendiente y una eligibility externa mínima que consulte World Boss Daily sin modificar `WorldBossFlow`. Categories/routines y otros flows de Friends permanecen fuera de alcance.
+Siguiente fase propuesta, todavía no implementada: `SummonPetDailyFlow` conservador, autorizado únicamente por `status.pet_summon_daily_active`, con prioridad Epic → Premium, selector unitario y resultado estructural verificado. Epic no disponible cae a Premium; GOLD insuficiente termina no fatal con Daily pendiente; Pet Full delegará a un futuro `PetSummonSpaceRelief` y no debe diseñar limpieza dentro del flow. Normal, Ethereal y estrategias de espacio siguen fuera de alcance.

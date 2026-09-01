@@ -20,6 +20,9 @@ from bot.catalog import (
     INDICATOR_COMBINE_ROWS_UPPER,
     INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
     INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    INDICATOR_PET_PREMIUM_GOLD,
+    INDICATOR_PET_PREMIUM_TICKET,
+    INDICATOR_PET_SUMMON_DAILY_ACTIVE,
     INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_BLACK_MARKET_TITLE,
@@ -31,6 +34,18 @@ from bot.catalog import (
     LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
     LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
     LANDMARK_MAILBOX_TITLE,
+    LANDMARK_PETS_MANAGE_ACTIVE,
+    LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+    LANDMARK_PET_COMBINE_ACTIVE,
+    LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+    LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+    LANDMARK_PET_EPIC_SELECTOR,
+    LANDMARK_PET_INVENTORY_FULL_PROMPT,
+    LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
+    LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
+    LANDMARK_PET_SUMMON_ACTIVE,
+    LANDMARK_PET_SUMMON_RESULT_BANNER,
+    LANDMARK_PET_SUMMON_RESULT_PARCHMENT,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
@@ -262,7 +277,8 @@ CHARACTER_SELECT_HEADER_SPEC = LocalCvSpec(
         0.11212418300653594,
     ),
     calibration=LinearGapCalibration(
-        negative_anchor=0.2776434123516083,
+        # Premium summon result banners are the closest confirmed negative.
+        negative_anchor=0.410758376121521,
         positive_anchor=0.43373382091522217,
     ),
 )
@@ -790,6 +806,180 @@ COMBINE_ANIMATION_TAPPABLE_SPEC = LocalCvSpec(
     ),
 )
 
+# Pets uses a shared top-shell control rather than the centered ``Pets`` title,
+# which live chat messages can occlude.  Active tabs then identify the exact
+# destination without relying on pet identity, inventory count or character.
+PETS_SHELL_SUMMON_PACKAGE_SPEC = LocalCvSpec(
+    name=LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-shell-summon-package-current.png"
+    ),
+    region=(0.55, 0.01, 0.76, 0.12),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5397682785987854,
+        positive_anchor=0.9736979603767395,
+    ),
+)
+
+PETS_MANAGE_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_PETS_MANAGE_ACTIVE,
+    asset_path=Path("assets/ui/landmarks/pets-manage-active-current.png"),
+    region=(0.23, 0.12, 0.35, 0.24),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.4655766785144806,
+        positive_anchor=0.9806886911392212,
+    ),
+)
+
+PET_SUMMON_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_SUMMON_ACTIVE,
+    asset_path=Path("assets/ui/landmarks/pet-summon-active-current.png"),
+    region=(0.15, 0.12, 0.27, 0.24),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5615880489349365,
+        positive_anchor=0.838320791721344,
+    ),
+)
+
+PET_COMBINE_ACTIVE_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_COMBINE_ACTIVE,
+    asset_path=Path("assets/ui/landmarks/pet-combine-active-current.png"),
+    region=(0.30, 0.12, 0.43, 0.24),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.3940369188785553,
+        positive_anchor=0.9823662638664246,
+    ),
+)
+
+PET_COMBINE_EVOLVE_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-combine-evolve-prompt-current.png"
+    ),
+    region=(0.20, 0.20, 0.46, 0.34),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.49720194935798645,
+        positive_anchor=0.9909647107124329,
+    ),
+)
+
+# The green Daily badge is the same current-season rendering already shared
+# by Friends, Guild and World Boss.  Its Pets ROI is left of the chat overlay
+# and remains visible from both Manage and Summon.
+PET_SUMMON_DAILY_SPEC = LocalCvSpec(
+    name=INDICATOR_PET_SUMMON_DAILY_ACTIVE,
+    asset_path=Path("assets/ui/indicators/daily-mission-badge-current.png"),
+    region=(0.15, 0.08, 0.21, 0.20),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6557286381721497,
+        positive_anchor=0.97370445728302,
+    ),
+)
+
+PET_PREMIUM_TICKET_SPEC = LocalCvSpec(
+    name=INDICATOR_PET_PREMIUM_TICKET,
+    asset_path=Path("assets/ui/landmarks/pet-premium-ticket-current.png"),
+    region=(0.32, 0.78, 0.42, 0.95),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.47573623061180115,
+        positive_anchor=0.9745630621910095,
+    ),
+)
+
+PET_PREMIUM_GOLD_SPEC = LocalCvSpec(
+    name=INDICATOR_PET_PREMIUM_GOLD,
+    asset_path=Path("assets/ui/landmarks/pet-premium-gold-current.png"),
+    region=(0.32, 0.78, 0.42, 0.95),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6196065545082092,
+        positive_anchor=0.9882810115814209,
+    ),
+)
+
+PET_EPIC_SELECTOR_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_EPIC_SELECTOR,
+    asset_path=Path("assets/ui/landmarks/pet-epic-selector-current.png"),
+    region=(0.48, 0.52, 0.72, 0.84),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7997300624847412,
+        positive_anchor=0.9999725818634033,
+    ),
+)
+
+PET_PREMIUM_TICKET_SELECTOR_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-premium-ticket-selector-current.png"
+    ),
+    region=(0.30, 0.52, 0.56, 0.84),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.8574437499046326,
+        positive_anchor=0.9999744892120361,
+    ),
+)
+
+PET_PREMIUM_GOLD_SELECTOR_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-premium-gold-selector-current.png"
+    ),
+    region=(0.48, 0.52, 0.70, 0.84),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.8085889220237732,
+        positive_anchor=0.9958579540252686,
+    ),
+)
+
+PET_EPIC_INSUFFICIENT_FRAGMENTS_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-epic-insufficient-fragments-current.png"
+    ),
+    region=(0.30, 0.53, 0.70, 0.82),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.2740575671195984,
+        positive_anchor=0.9999713897705078,
+    ),
+)
+
+# Result identity, rarity and stats vary.  The stable gold banner curl and
+# parchment edge are independent structural signals and must agree.
+PET_SUMMON_RESULT_BANNER_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_SUMMON_RESULT_BANNER,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-summon-result-banner-current.png"
+    ),
+    region=(0.28, 0.01, 0.48, 0.22),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7271584272384644,
+        positive_anchor=0.9185329079627991,
+    ),
+)
+
+PET_SUMMON_RESULT_PARCHMENT_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_SUMMON_RESULT_PARCHMENT,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-summon-result-parchment-current.png"
+    ),
+    region=(0.32, 0.60, 0.48, 0.98),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.754900336265564,
+        positive_anchor=0.9997232556343079,
+    ),
+)
+
+PET_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_INVENTORY_FULL_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-inventory-full-prompt-current.png"
+    ),
+    region=(0.32, 0.32, 0.69, 0.63),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5635122060775757,
+        positive_anchor=0.9883360266685486,
+    ),
+)
+
 DEFAULT_LOCAL_CV_SPECS = (
     LOBBY_TRADING_CENTER_LABEL_SPEC,
     CHARACTER_SELECT_HEADER_SPEC,
@@ -836,4 +1026,19 @@ DEFAULT_LOCAL_CV_SPECS = (
     COMBINE_ETHEREAL_MASS_PROMPT_SPEC,
     COMBINE_ETHEREAL_NO_MATERIAL_PROMPT_SPEC,
     COMBINE_ANIMATION_TAPPABLE_SPEC,
+    PETS_SHELL_SUMMON_PACKAGE_SPEC,
+    PETS_MANAGE_ACTIVE_SPEC,
+    PET_SUMMON_ACTIVE_SPEC,
+    PET_COMBINE_ACTIVE_SPEC,
+    PET_COMBINE_EVOLVE_PROMPT_SPEC,
+    PET_SUMMON_DAILY_SPEC,
+    PET_PREMIUM_TICKET_SPEC,
+    PET_PREMIUM_GOLD_SPEC,
+    PET_EPIC_SELECTOR_SPEC,
+    PET_PREMIUM_TICKET_SELECTOR_SPEC,
+    PET_PREMIUM_GOLD_SELECTOR_SPEC,
+    PET_EPIC_INSUFFICIENT_FRAGMENTS_SPEC,
+    PET_SUMMON_RESULT_BANNER_SPEC,
+    PET_SUMMON_RESULT_PARCHMENT_SPEC,
+    PET_INVENTORY_FULL_PROMPT_SPEC,
 )

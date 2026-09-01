@@ -14,6 +14,10 @@ SCREEN_COMBINE = "screen.combine"
 SCREEN_FRIENDS = "screen.friends"
 SCREEN_GUILD = "screen.guild"
 SCREEN_MAILBOX = "screen.mailbox"
+SCREEN_PET_COMBINE = "screen.pet_combine"
+SCREEN_PET_SUMMON = "screen.pet_summon"
+SCREEN_PET_SUMMON_RESULT = "screen.pet_summon_result"
+SCREEN_PETS_MANAGE = "screen.pets_manage"
 SCREEN_QUESTS = "screen.quests"
 SCREEN_SOCKET = "screen.socket"
 SCREEN_WORLD_BOSS = "screen.world_boss"
@@ -30,6 +34,15 @@ POPUP_EQUIPMENT_INVENTORY_FULL = "popup.equipment_inventory_full"
 POPUP_COMBINE_ALL = "popup.combine_all"
 POPUP_ETHEREAL_MASS_COMBINE = "popup.ethereal_mass_combine"
 POPUP_ETHEREAL_NO_MATERIAL = "popup.ethereal_no_material"
+POPUP_PET_EPIC_INSUFFICIENT_FRAGMENTS = (
+    "popup.pet_epic_insufficient_fragments"
+)
+POPUP_PET_INVENTORY_FULL = "popup.pet_inventory_full"
+OVERLAY_PET_EPIC_SELECTOR = "overlay.pet_epic_selector"
+OVERLAY_PET_PREMIUM_GOLD_SELECTOR = "overlay.pet_premium_gold_selector"
+OVERLAY_PET_PREMIUM_TICKET_SELECTOR = (
+    "overlay.pet_premium_ticket_selector"
+)
 OVERLAY_WORLD_BOSS_SELECT_BOSS = "overlay.world_boss_select_boss"
 OVERLAY_WORLD_BOSS_RAID_COMPLETE = "overlay.world_boss_raid_complete"
 MENU_QUICK = "menu.quick"
@@ -53,6 +66,13 @@ STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE = (
 )
 STATUS_MAILBOX_CLAIMABLE = "status.mailbox_claimable"
 STATUS_MAILBOX_READ_MAIL_PRESENT = "status.mailbox_read_mail_present"
+STATUS_PET_EPIC_AVAILABLE = "status.pet_epic_available"
+STATUS_PET_EPIC_UNAVAILABLE = "status.pet_epic_unavailable"
+STATUS_PET_PREMIUM_GOLD = "status.pet_premium_gold"
+STATUS_PET_PREMIUM_TICKET_AVAILABLE = (
+    "status.pet_premium_ticket_available"
+)
+STATUS_PET_SUMMON_DAILY_ACTIVE = "status.pet_summon_daily_active"
 STATUS_WORLD_BOSS_DAILY_ACTIVE = "status.world_boss_daily_active"
 
 LANDMARK_LOBBY_TRADING_CENTER_LABEL = (
@@ -140,6 +160,41 @@ LANDMARK_MAILBOX_CHARACTER_MAIL_ACTIVE = (
 LANDMARK_MAILBOX_ROW_CLAIM_BUTTON = "landmark.mailbox_row_claim_button"
 LANDMARK_MAILBOX_ROW_DELETE_BUTTON = "landmark.mailbox_row_delete_button"
 ACTIVITY_MAILBOX_CLAIM_PROCESSING = "activity.mailbox_claim_processing"
+LANDMARK_PETS_SHELL_SUMMON_PACKAGE = (
+    "landmark.pets_shell_summon_package"
+)
+LANDMARK_PETS_MANAGE_ACTIVE = "landmark.pets_manage_active"
+LANDMARK_PET_COMBINE_ACTIVE = "landmark.pet_combine_active"
+LANDMARK_PET_COMBINE_EVOLVE_PROMPT = (
+    "landmark.pet_combine_evolve_prompt"
+)
+LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS = (
+    "landmark.pet_epic_insufficient_fragments"
+)
+LANDMARK_PET_EPIC_SELECTOR = "landmark.pet_epic_selector"
+LANDMARK_PET_INVENTORY_FULL_PROMPT = (
+    "landmark.pet_inventory_full_prompt"
+)
+LANDMARK_PET_PREMIUM_GOLD_SELECTOR = (
+    "landmark.pet_premium_gold_selector"
+)
+LANDMARK_PET_PREMIUM_TICKET_SELECTOR = (
+    "landmark.pet_premium_ticket_selector"
+)
+LANDMARK_PET_SUMMON_ACTIVE = "landmark.pet_summon_active"
+LANDMARK_PET_SUMMON_RESULT_BANNER = (
+    "landmark.pet_summon_result_banner"
+)
+LANDMARK_PET_SUMMON_RESULT_PARCHMENT = (
+    "landmark.pet_summon_result_parchment"
+)
+INDICATOR_PET_EPIC_AVAILABLE = "indicator.pet_epic_available"
+INDICATOR_PET_EPIC_UNAVAILABLE = "indicator.pet_epic_unavailable"
+INDICATOR_PET_PREMIUM_GOLD = "indicator.pet_premium_gold"
+INDICATOR_PET_PREMIUM_TICKET = "indicator.pet_premium_ticket"
+INDICATOR_PET_SUMMON_DAILY_ACTIVE = (
+    "indicator.pet_summon_daily_active"
+)
 INDICATOR_WORLD_BOSS_DAILY_ACTIVE = "indicator.world_boss_daily_active"
 
 SEMANTIC_OBSERVATION_NAMES = (
@@ -152,6 +207,11 @@ SEMANTIC_OBSERVATION_NAMES = (
     INDICATOR_GUILD_ATTENDANCE_ACTIVE,
     INDICATOR_GUILD_ATTENDANCE_COMPLETED,
     INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    INDICATOR_PET_EPIC_AVAILABLE,
+    INDICATOR_PET_EPIC_UNAVAILABLE,
+    INDICATOR_PET_PREMIUM_GOLD,
+    INDICATOR_PET_PREMIUM_TICKET,
+    INDICATOR_PET_SUMMON_DAILY_ACTIVE,
     INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
     LANDMARK_BLACK_MARKET_TITLE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
@@ -169,6 +229,18 @@ SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_MAILBOX_ROW_CLAIM_BUTTON,
     LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
     LANDMARK_MAILBOX_TITLE,
+    LANDMARK_PETS_MANAGE_ACTIVE,
+    LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+    LANDMARK_PET_COMBINE_ACTIVE,
+    LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+    LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+    LANDMARK_PET_EPIC_SELECTOR,
+    LANDMARK_PET_INVENTORY_FULL_PROMPT,
+    LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
+    LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
+    LANDMARK_PET_SUMMON_ACTIVE,
+    LANDMARK_PET_SUMMON_RESULT_BANNER,
+    LANDMARK_PET_SUMMON_RESULT_PARCHMENT,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
@@ -231,6 +303,39 @@ BASE_CONTEXT_RULES = (
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(
+        name=SCREEN_PETS_MANAGE,
+        requires=(
+            LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+            LANDMARK_PETS_MANAGE_ACTIVE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_PET_SUMMON,
+        requires=(
+            LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+            LANDMARK_PET_SUMMON_ACTIVE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_PET_COMBINE,
+        requires=(
+            LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+            LANDMARK_PET_COMBINE_ACTIVE,
+            LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_PET_SUMMON_RESULT,
+        requires=(
+            LANDMARK_PET_SUMMON_RESULT_BANNER,
+            LANDMARK_PET_SUMMON_RESULT_PARCHMENT,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
         name=SCREEN_COMBINE,
         requires=(LANDMARK_COMBINE_CONTEXT,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
@@ -258,6 +363,86 @@ BASE_CONTEXT_RULES = (
 )
 
 OVERLAY_RULES = (
+    ContextRule(
+        name=STATUS_PET_SUMMON_DAILY_ACTIVE,
+        requires=(
+            LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+            INDICATOR_PET_SUMMON_DAILY_ACTIVE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_PET_EPIC_AVAILABLE,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            INDICATOR_PET_EPIC_AVAILABLE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_PET_EPIC_UNAVAILABLE,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            INDICATOR_PET_EPIC_UNAVAILABLE,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_PET_PREMIUM_TICKET_AVAILABLE,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            INDICATOR_PET_PREMIUM_TICKET,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_PET_PREMIUM_GOLD,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            INDICATOR_PET_PREMIUM_GOLD,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=OVERLAY_PET_EPIC_SELECTOR,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            LANDMARK_PET_EPIC_SELECTOR,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=OVERLAY_PET_PREMIUM_TICKET_SELECTOR,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=OVERLAY_PET_PREMIUM_GOLD_SELECTOR,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_PET_INVENTORY_FULL,
+        requires=(
+            LANDMARK_PET_SUMMON_ACTIVE,
+            LANDMARK_PET_INVENTORY_FULL_PROMPT,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
     ContextRule(
         name=STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
         requires=(

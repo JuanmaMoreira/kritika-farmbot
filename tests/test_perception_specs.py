@@ -127,7 +127,7 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
         0.11212418300653594,
     )
     assert CHARACTER_SELECT_HEADER_SPEC.calibration.negative_anchor == (
-        pytest.approx(0.2776434123516083)
+        pytest.approx(0.410758376121521)
     )
     assert BLACK_MARKET_TITLE_SPEC.asset_path.as_posix() == (
         "assets/ui/landmarks/black-market-title-frame-current.png"

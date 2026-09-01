@@ -15,6 +15,9 @@ from bot.catalog import (
     INDICATOR_COMBINE_ROWS_UPPER,
     INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
     INDICATOR_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    INDICATOR_PET_PREMIUM_GOLD,
+    INDICATOR_PET_PREMIUM_TICKET,
+    INDICATOR_PET_SUMMON_DAILY_ACTIVE,
     INDICATOR_WORLD_BOSS_DAILY_ACTIVE,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_BLACK_MARKET_TITLE,
@@ -41,6 +44,18 @@ from bot.catalog import (
     LANDMARK_MAILBOX_ROW_DELETE_BUTTON,
     LANDMARK_MAILBOX_TITLE,
     LANDMARK_MONSTER_WAVE_ENTRY_TITLE,
+    LANDMARK_PETS_MANAGE_ACTIVE,
+    LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+    LANDMARK_PET_COMBINE_ACTIVE,
+    LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+    LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+    LANDMARK_PET_EPIC_SELECTOR,
+    LANDMARK_PET_INVENTORY_FULL_PROMPT,
+    LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
+    LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
+    LANDMARK_PET_SUMMON_ACTIVE,
+    LANDMARK_PET_SUMMON_RESULT_BANNER,
+    LANDMARK_PET_SUMMON_RESULT_PARCHMENT,
     LANDMARK_PURCHASE_CONFIRMATION_PROMPT,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
@@ -63,6 +78,7 @@ from bot.observations import ObservationSource
 from bot.perception import (
     CombineContextDetector,
     GuildAttendanceDetector,
+    PetEpicAvailabilityDetector,
     build_default_perception,
 )
 from bot.perception.black_market import (
@@ -294,13 +310,14 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     assert tuple(
         detector.spec for detector in engine.detectors[:len(DEFAULT_LOCAL_CV_SPECS)]
     ) == DEFAULT_LOCAL_CV_SPECS
-    assert isinstance(engine.detectors[-7], BlackMarketGoldDetector)
-    assert isinstance(engine.detectors[-6], BlackMarketPurchasedDetector)
-    assert isinstance(engine.detectors[-5], SocketIncompatibleOpalDetector)
-    assert isinstance(engine.detectors[-4], SocketEnhanceAnimationDetector)
-    assert isinstance(engine.detectors[-3], CombineContextDetector)
-    assert isinstance(engine.detectors[-2], MailboxClaimProcessingDetector)
-    assert isinstance(engine.detectors[-1], GuildAttendanceDetector)
+    assert isinstance(engine.detectors[-8], BlackMarketGoldDetector)
+    assert isinstance(engine.detectors[-7], BlackMarketPurchasedDetector)
+    assert isinstance(engine.detectors[-6], SocketIncompatibleOpalDetector)
+    assert isinstance(engine.detectors[-5], SocketEnhanceAnimationDetector)
+    assert isinstance(engine.detectors[-4], CombineContextDetector)
+    assert isinstance(engine.detectors[-3], MailboxClaimProcessingDetector)
+    assert isinstance(engine.detectors[-2], GuildAttendanceDetector)
+    assert isinstance(engine.detectors[-1], PetEpicAvailabilityDetector)
     assert len(created) == 2 * len(DEFAULT_LOCAL_CV_SPECS)
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
@@ -348,6 +365,21 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
         LANDMARK_COMBINE_ETHEREAL_MASS_PROMPT,
         LANDMARK_COMBINE_ETHEREAL_NO_MATERIAL_PROMPT,
         ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
+        LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
+        LANDMARK_PETS_MANAGE_ACTIVE,
+        LANDMARK_PET_SUMMON_ACTIVE,
+        LANDMARK_PET_COMBINE_ACTIVE,
+        LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+        INDICATOR_PET_SUMMON_DAILY_ACTIVE,
+        INDICATOR_PET_PREMIUM_TICKET,
+        INDICATOR_PET_PREMIUM_GOLD,
+        LANDMARK_PET_EPIC_SELECTOR,
+        LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
+        LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
+        LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+        LANDMARK_PET_SUMMON_RESULT_BANNER,
+        LANDMARK_PET_SUMMON_RESULT_PARCHMENT,
+        LANDMARK_PET_INVENTORY_FULL_PROMPT,
     )
     assert LANDMARK_MONSTER_WAVE_ENTRY_TITLE not in {
         spec.name for spec in DEFAULT_LOCAL_CV_SPECS

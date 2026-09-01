@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_local": "2026-08-31",
+    "source": "live_scrcpy_with_human_navigation",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat_one_condition_at_a_time",
+    "scope": "Observational semantics and transition evidence for a future SummonPetDailyFlow; no flow, PetSummonSpaceRelief, Normal, Ethereal, pet sale, slot purchase or Mass Evolve implementation",
+    "privacy": "Full screenshots remain ignored local evidence; promoted crops exclude character identity and device identity",
+    "chat_overlay": {
+      "observed_region_approx": [0.44, 0.12, 0.85, 0.21],
+      "excluded_landmark": "centered Pets title",
+      "screen_identity": "shared Pets shell plus active tab, outside the observed chat content"
+    },
+    "daily": {
+      "signal": "green Daily mission badge above the Summon tab",
+      "asset": "assets/ui/indicators/daily-mission-badge-current.png",
+      "ground_truth": "human-confirmed active before Epic summon and absent after successful Epic summon"
+    },
+    "epic": {
+      "available_ground_truth": "237/10 means 23 summons; exact count is intentionally not read",
+      "unavailable_ground_truth": "7/10; human-confirmed any numerator from 0 through 9 has the same dim card",
+      "interaction": "one tap opens 1(Open)/10(Open); 1(Open) starts the summon animation",
+      "insufficient_fragments": "touching outside does not close the message; touching the message closes it and returns to Summon"
+    },
+    "premium": {
+      "ticket": "5/1 then 4/1 after one summon; last ticket automatically changes the card to GOLD",
+      "gold": "cost displayed as 800000; balance decreased by exactly 800000 after one summon",
+      "policy_boundary": "the game chooses ticket or GOLD; the future flow only selects Premium and 1(Open)",
+      "ticket_selector": ["1(Open)", "5(Open)"],
+      "gold_selector": ["1(Open)", "10(Open)", "30(Open)", "50(Open)"]
+    },
+    "result": {
+      "stable_signal": "gold rarity/name banner plus parchment stats panel; pet identity and rarity are variable",
+      "safe_close_target_approx": [0.90, 0.50],
+      "close_destination": "screen.pet_summon"
+    },
+    "insufficient_gold": {
+      "message": "Insufficient Gold. Would you like to purchase Gold?",
+      "no_destination": "screen.pet_summon",
+      "no_consumption": true,
+      "future_outcome": "INSUFFICIENT_GOLD non-fatal; Daily remains pending",
+      "yes_purchase_path": "out_of_scope"
+    },
+    "pet_full": {
+      "message": "Bag is full. You need at least 1 empty slot to continue. Organize your bag by using either Enhance or Evolve.",
+      "yes_destination": "screen.pet_combine",
+      "destination_signal": "active Combine tab plus Select a pet to evolve prompt",
+      "future_delegation": "PetSummonSpaceRelief; cleanup is not designed here"
+    }
+  },
+  "entries": [
+    {"path":"screencaps/semantic/pet_summon/manage/01.png","base_context":"screen.pets_manage","overlays":["status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pets_manage_active","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/manage/02.png","base_context":"screen.pets_manage","overlays":["status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pets_manage_active","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/manage/03.png","base_context":"screen.pets_manage","overlays":["status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pets_manage_active","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/summon-daily-active/01.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_ticket_available","status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_ticket","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-daily-active/02.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_ticket_available","status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_ticket","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-daily-active/03.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_ticket_available","status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_ticket","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/summon-epic-available-premium-ticket/01.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_ticket_available"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_ticket"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-epic-available-premium-ticket/02.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_ticket_available"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_ticket"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-epic-available-premium-ticket/03.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_ticket_available"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_ticket"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/epic-selector/01.png","base_context":"screen.pet_summon","overlays":["overlay.pet_epic_selector","status.pet_premium_ticket_available","status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_epic_selector","indicator.pet_premium_ticket","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/epic-selector/02.png","base_context":"screen.pet_summon","overlays":["overlay.pet_epic_selector","status.pet_premium_ticket_available","status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_epic_selector","indicator.pet_premium_ticket","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/epic-selector/03.png","base_context":"screen.pet_summon","overlays":["overlay.pet_epic_selector","status.pet_premium_ticket_available","status.pet_summon_daily_active"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_epic_selector","indicator.pet_premium_ticket","indicator.pet_summon_daily_active"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/epic-result/01.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/epic-result/02.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/epic-result/03.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/premium-ticket-selector/01.png","base_context":"screen.pet_summon","overlays":["overlay.pet_premium_ticket_selector","status.pet_premium_ticket_available"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_premium_ticket_selector","indicator.pet_premium_ticket"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-ticket-selector/02.png","base_context":"screen.pet_summon","overlays":["overlay.pet_premium_ticket_selector","status.pet_premium_ticket_available"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_premium_ticket_selector","indicator.pet_premium_ticket"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-ticket-selector/03.png","base_context":"screen.pet_summon","overlays":["overlay.pet_premium_ticket_selector","status.pet_premium_ticket_available"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_premium_ticket_selector","indicator.pet_premium_ticket"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/premium-ticket-result/01.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-ticket-result/02.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-ticket-result/03.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/summon-premium-gold/01.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-premium-gold/02.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-premium-gold/03.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_gold"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/premium-gold-selector/01.png","base_context":"screen.pet_summon","overlays":["overlay.pet_premium_gold_selector","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_premium_gold_selector","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-gold-selector/02.png","base_context":"screen.pet_summon","overlays":["overlay.pet_premium_gold_selector","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_premium_gold_selector","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-gold-selector/03.png","base_context":"screen.pet_summon","overlays":["overlay.pet_premium_gold_selector","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_premium_gold_selector","indicator.pet_premium_gold"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/premium-gold-result/01.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-gold-result/02.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-gold-result/03.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/summon-epic-unavailable/01.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_unavailable","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_unavailable","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-epic-unavailable/02.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_unavailable","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_unavailable","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-epic-unavailable/03.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_unavailable","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_unavailable","indicator.pet_premium_gold"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/epic-insufficient-fragments/01.png","base_context":"screen.pet_summon","overlays":["popup.pet_epic_insufficient_fragments","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_epic_insufficient_fragments","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/epic-insufficient-fragments/02.png","base_context":"screen.pet_summon","overlays":["popup.pet_epic_insufficient_fragments","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_epic_insufficient_fragments","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/epic-insufficient-fragments/03.png","base_context":"screen.pet_summon","overlays":["popup.pet_epic_insufficient_fragments","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_epic_insufficient_fragments","indicator.pet_premium_gold"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/pet-inventory-full/01.png","base_context":"screen.pet_summon","overlays":["popup.pet_inventory_full","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_inventory_full_prompt","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/pet-inventory-full/02.png","base_context":"screen.pet_summon","overlays":["popup.pet_inventory_full","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_inventory_full_prompt","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/pet-inventory-full/03.png","base_context":"screen.pet_summon","overlays":["popup.pet_inventory_full","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.pet_inventory_full_prompt","indicator.pet_premium_gold"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/pet-combine/01.png","base_context":"screen.pet_combine","overlays":[],"observations":["landmark.pets_shell_summon_package","landmark.pet_combine_active","landmark.pet_combine_evolve_prompt"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/pet-combine/02.png","base_context":"screen.pet_combine","overlays":[],"observations":["landmark.pets_shell_summon_package","landmark.pet_combine_active","landmark.pet_combine_evolve_prompt"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/pet-combine/03.png","base_context":"screen.pet_combine","overlays":[],"observations":["landmark.pets_shell_summon_package","landmark.pet_combine_active","landmark.pet_combine_evolve_prompt"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/premium-insufficient-gold/01.png","base_context":"screen.pet_summon","overlays":["popup.insufficient_gold","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.insufficient_gold_prompt","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-insufficient-gold/02.png","base_context":"screen.pet_summon","overlays":["popup.insufficient_gold","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.insufficient_gold_prompt","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/premium-insufficient-gold/03.png","base_context":"screen.pet_summon","overlays":["popup.insufficient_gold","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","landmark.insufficient_gold_prompt","indicator.pet_premium_gold"],"review_status":"confirmed"},
+
+    {"path":"screencaps/semantic/pet_summon/summon-insufficient-gold-closed/01.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-insufficient-gold-closed/02.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_gold"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon/summon-insufficient-gold-closed/03.png","base_context":"screen.pet_summon","overlays":["status.pet_epic_available","status.pet_premium_gold"],"observations":["landmark.pets_shell_summon_package","landmark.pet_summon_active","indicator.pet_epic_available","indicator.pet_premium_gold"],"review_status":"confirmed"}
+  ]
+}
