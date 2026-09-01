@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_local": "2026-09-01",
+    "source": "live_scrcpy_with_human_navigation",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat_one_condition_at_a_time",
+    "scope": "Observational semantics only for a future PetSummonSpaceRelief; no relief outcomes, support operation, SummonPetDailyFlow, sale, slot purchase, Legendary/Ethereal strategy or extreme soft-block resolution",
+    "deduplication": "Equivalent states reuse one production semantic across branches; entries retain only route or tier diversity that changes evidence",
+    "combine_all": {
+      "availability_guard": "no reliable visual enabled/disabled guard was observed; the button stays actionable and the resulting popup is authoritative",
+      "confirmation": "Combine All up to [Legendary Pet]?",
+      "effect": "screen.pet_combine_result plus activity.combine_animation_tappable, then stable screen.pet_combine after dismissal",
+      "no_effect": "popup.pet_combine_no_material",
+      "capacity_block": "popup.pet_epic_runes_full"
+    },
+    "low_tier_candidates": {
+      "semantic": "candidate.pet_low_tier",
+      "value": ["normal", "rare"],
+      "location": "observation region identifies one of the 4x4 visible grid slots",
+      "normal_signal": "unambiguous green tier frame",
+      "rare_signal": "unambiguous blue tier frame",
+      "excluded": "purple Epic and every higher/ambiguous frame",
+      "identity_boundary": "pet portrait and name are never identifiers"
+    },
+    "mass_evolve": {
+      "selection_mode": "mode.pet_mass_evolve_selection; Cancel is required before changing Pets tabs",
+      "confirmation": "one popup.pet_mass_evolve_confirmation; landmark value is normal or rare from the explicit tier text",
+      "effect": "the shared screen.pet_combine_result/activity, followed by stable screen.pet_combine",
+      "normal_observed_postcondition": "Item Count changed from 204 to 161 after result dismissal; count OCR is not required by runtime"
+    },
+    "epic_runes_full": {
+      "semantic": "popup.pet_epic_runes_full",
+      "equivalent_routes": ["Combine All", "Rare Mass Evolve"],
+      "no": "returns to the underlying Pet Combine state",
+      "yes": "moves to screen.pet_summon; only the Epic route is in scope"
+    },
+    "epic_opening": {
+      "guard": "status.pet_epic_available and overlay.pet_epic_selector; never an assumed fragment count",
+      "discount_events": "availability follows the game's bright/dim card rendering, so temporary 7-rune cost is supported without a hardcoded 10-rune threshold",
+      "iteration": "select 1(Open), require screen.pet_summon_result, dismiss to fresh screen.pet_summon, then re-evaluate",
+      "stop": ["status.pet_epic_unavailable", "popup.pet_inventory_full", "explicit maximum iterations", "cancellation or incompatible state"]
+    },
+    "non_resolvable_soft_block": {
+      "not_a_new_popup": true,
+      "condition": "pet inventory remains full after Combine All made no progress; no Normal candidate is available; a safe Rare candidate reaches popup.pet_epic_runes_full; Epic opening reaches popup.pet_inventory_full",
+      "future_outcome": "NO_RELIEF_AVAILABLE, not technical failure"
+    }
+  },
+  "entries": [
+    {"path":"screencaps/semantic/pet_summon_space_relief/combine-all-confirm/01.png","base_context":"screen.pet_combine","overlays":["popup.pet_combine_all"],"observations":["landmark.pet_combine_all_confirm"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/combine-all-confirm/03.png","base_context":"screen.pet_combine","overlays":["popup.pet_combine_all"],"observations":["landmark.pet_combine_all_confirm"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/combine-no-material/01.png","base_context":"screen.pet_combine","overlays":["popup.pet_combine_no_material"],"observations":["landmark.pet_combine_no_material"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/epic-runes-full/01.png","base_context":"screen.pet_combine","overlays":["popup.pet_epic_runes_full"],"observations":["landmark.pet_epic_runes_full"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/epic-runes-full/03.png","base_context":"screen.pet_combine","overlays":["popup.pet_epic_runes_full","mode.pet_mass_evolve_selection"],"observations":["landmark.pet_epic_runes_full","landmark.pet_mass_evolve_selection"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/rare-candidates/01.png","base_context":"screen.pet_combine","overlays":[],"observations":["candidate.pet_low_tier"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/mass-evolve-selected/01.png","base_context":"screen.pet_combine","overlays":["mode.pet_mass_evolve_selection"],"observations":["landmark.pet_mass_evolve_selection"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/mass-evolve-selected/02.png","base_context":"screen.pet_combine","overlays":["mode.pet_mass_evolve_selection"],"observations":["landmark.pet_mass_evolve_selection"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/mass-evolve-normal-confirm/01.png","base_context":"screen.pet_combine","overlays":["popup.pet_mass_evolve_confirmation","mode.pet_mass_evolve_selection"],"observations":["landmark.pet_mass_evolve_confirmation","landmark.pet_mass_evolve_selection"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/mass-evolve-rare-confirm/01.png","base_context":"screen.pet_combine","overlays":["popup.pet_mass_evolve_confirmation","mode.pet_mass_evolve_selection"],"observations":["landmark.pet_mass_evolve_confirmation","landmark.pet_mass_evolve_selection"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/combine-result/01.png","base_context":"screen.pet_combine_result","overlays":[],"observations":["landmark.pet_combine_result","activity.combine_animation_tappable"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/mass-evolve-result/01.png","base_context":"screen.pet_combine_result","overlays":[],"observations":["landmark.pet_combine_result","activity.combine_animation_tappable"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/epic-open-result/01.png","base_context":"screen.pet_summon_result","overlays":[],"observations":["landmark.pet_summon_result_banner","landmark.pet_summon_result_parchment"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/pet_summon_space_relief/soft-block-pet-full/01.png","base_context":"screen.pet_summon","overlays":["popup.pet_inventory_full","status.pet_premium_gold"],"observations":["landmark.pet_inventory_full_prompt"],"review_status":"confirmed"}
+  ]
+}

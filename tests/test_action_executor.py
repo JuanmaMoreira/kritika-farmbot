@@ -12,16 +12,19 @@ from bot.action_executor import (
     DEFAULT_FRIENDS_ACTION_TARGETS,
     DEFAULT_GUILD_ACTION_TARGETS,
     DEFAULT_MAILBOX_ACTION_TARGETS,
+    DEFAULT_PET_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
     DEFAULT_SOCKET_ACTION_TARGETS,
     FrameGeometry,
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
+    AcceptPetInventoryFull,
     AcceptSocketInventoryFull,
     AcknowledgeEtherealNoMaterial,
     AcknowledgeSocketNoMaterial,
     AcknowledgeInventoryFull,
+    AcknowledgePetCombineNoMaterial,
     AcknowledgeWorldBossPreviousRewards,
     ClaimAllCharacterMail,
     ClaimAllDailyQuests,
@@ -30,17 +33,29 @@ from bot.semantic_actions import (
     CloseDailyQuests,
     CloseFriends,
     CloseMailbox,
+    ClosePets,
+    ClosePetSummonResult,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
     CancelSocketSell,
     CloseSocketEnhanceAll,
     ConfirmCombineAll,
     ConfirmEtherealMassCombine,
+    ConfirmPetCombineAll,
+    ConfirmPetMassEvolve,
     DismissWorldBossBagFull,
     DeleteReadCharacterMail,
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenPets,
+    OpenEpicPetSummon,
+    OpenPremiumPetSummon,
+    OpenSingleEpicPet,
+    OpenTenEpicPets,
+    OpenSinglePremiumPet,
+    OpenPetCombineAll,
+    OpenPetMassEvolve,
     OpenFriends,
     OpenGuild,
     OpenQuests,
@@ -59,6 +74,8 @@ from bot.semantic_actions import (
     QuickMenuLayout,
     OpenWorldBossSelector,
     RejectInsufficientGold,
+    RejectPetEpicRunesFull,
+    RejectPetInventoryFull,
     RejectSocketInventoryFull,
     SelectSocketEnhanceGold,
     SelectSocketOpalSlot,
@@ -66,6 +83,9 @@ from bot.semantic_actions import (
     SelectCombineTransmute,
     SelectCharacterMail,
     SelectDailyQuests,
+    SelectPetCombine,
+    SelectPetLowTierCandidate,
+    SelectPetSummon,
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
     SendStaminaToAllFriends,
@@ -77,6 +97,8 @@ from bot.semantic_actions import (
     ToggleAutoBattle,
     TapSocketEnhanceAnimation,
     TapCombineAnimation,
+    CancelPetMassEvolveSelection,
+    NextPetCombinePage,
     StartWorldBossBattle,
 )
 
@@ -167,6 +189,58 @@ def test_executor_translates_daily_quests_friends_and_mailbox_actions(action, ta
     expected = (int(target[0] * 2712), int(target[1] * 1224))
     adb.tap.assert_called_once_with(*expected)
     assert receipt.normalized_target == target
+
+
+@pytest.mark.parametrize(
+    ("action", "target"),
+    (
+        (OpenPets(), DEFAULT_PET_ACTION_TARGETS.open_pets),
+        (SelectPetSummon(), DEFAULT_PET_ACTION_TARGETS.select_summon),
+        (SelectPetCombine(), DEFAULT_PET_ACTION_TARGETS.select_combine),
+        (ClosePets(), DEFAULT_PET_ACTION_TARGETS.close_pets),
+        (OpenEpicPetSummon(), DEFAULT_PET_ACTION_TARGETS.open_epic),
+        (OpenPremiumPetSummon(), DEFAULT_PET_ACTION_TARGETS.open_premium),
+        (OpenSingleEpicPet(), DEFAULT_PET_ACTION_TARGETS.open_single_epic),
+        (OpenTenEpicPets(), DEFAULT_PET_ACTION_TARGETS.open_ten_epic),
+        (OpenSinglePremiumPet(), DEFAULT_PET_ACTION_TARGETS.open_single_premium),
+        (ClosePetSummonResult(), DEFAULT_PET_ACTION_TARGETS.close_summon_result),
+        (AcceptPetInventoryFull(), DEFAULT_PET_ACTION_TARGETS.accept_inventory_full),
+        (RejectPetInventoryFull(), DEFAULT_PET_ACTION_TARGETS.reject_inventory_full),
+        (OpenPetCombineAll(), DEFAULT_PET_ACTION_TARGETS.open_combine_all),
+        (ConfirmPetCombineAll(), DEFAULT_PET_ACTION_TARGETS.confirm_combine_all),
+        (
+            AcknowledgePetCombineNoMaterial(),
+            DEFAULT_PET_ACTION_TARGETS.acknowledge_combine_no_material,
+        ),
+        (RejectPetEpicRunesFull(), DEFAULT_PET_ACTION_TARGETS.reject_epic_runes_full),
+        (OpenPetMassEvolve(), DEFAULT_PET_ACTION_TARGETS.open_mass_evolve),
+        (ConfirmPetMassEvolve(), DEFAULT_PET_ACTION_TARGETS.confirm_mass_evolve),
+        (
+            CancelPetMassEvolveSelection(),
+            DEFAULT_PET_ACTION_TARGETS.cancel_mass_evolve_selection,
+        ),
+        (NextPetCombinePage(), DEFAULT_PET_ACTION_TARGETS.next_combine_page),
+    ),
+)
+def test_executor_translates_only_acquired_pet_routes(action, target):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1224))
+    assert receipt.normalized_target == target
+
+
+def test_pet_candidate_target_comes_only_from_the_safe_observation_center():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    action = SelectPetLowTierCandidate((0.581, 0.385))
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    assert receipt.normalized_target == action.target
+    adb.tap.assert_called_once_with(int(0.581 * 2712), int(0.385 * 1224))
 
 
 @pytest.mark.parametrize(

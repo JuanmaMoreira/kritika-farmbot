@@ -59,6 +59,116 @@ class CloseFriends:
 
 
 @dataclass(frozen=True)
+class OpenPets:
+    """Request the direct Lobby -> Pets action."""
+
+
+@dataclass(frozen=True)
+class SelectPetSummon:
+    """Request the Summon tab from an already-confirmed Pets surface."""
+
+
+@dataclass(frozen=True)
+class SelectPetCombine:
+    """Request the Combine tab from an already-confirmed Pets surface."""
+
+
+@dataclass(frozen=True)
+class ClosePets:
+    """Request the Pets -> Lobby back action."""
+
+
+@dataclass(frozen=True)
+class OpenEpicPetSummon:
+    """Open the Epic summon selector after availability was observed."""
+
+
+@dataclass(frozen=True)
+class OpenPremiumPetSummon:
+    """Open Premium without deciding whether the game consumes ticket or GOLD."""
+
+
+@dataclass(frozen=True)
+class OpenSingleEpicPet:
+    """Request exactly 1 (Open) from the Epic selector."""
+
+
+@dataclass(frozen=True)
+class OpenTenEpicPets:
+    """Request exactly one 10 (Open) batch from the Epic selector."""
+
+
+@dataclass(frozen=True)
+class OpenSinglePremiumPet:
+    """Request exactly 1 (Open) from either Premium selector."""
+
+
+@dataclass(frozen=True)
+class ClosePetSummonResult:
+    """Dismiss one already-confirmed stable pet summon result."""
+
+
+@dataclass(frozen=True)
+class AcceptPetInventoryFull:
+    """Take the safe Yes route from Pet Full to Pet Combine."""
+
+
+@dataclass(frozen=True)
+class RejectPetInventoryFull:
+    """Take No from Pet Full and return to Pet Summon."""
+
+
+@dataclass(frozen=True)
+class OpenPetCombineAll:
+    """Request Combine All on the Pet Combine surface."""
+
+
+@dataclass(frozen=True)
+class ConfirmPetCombineAll:
+    """Confirm the already-observed Pet Combine All popup."""
+
+
+@dataclass(frozen=True)
+class AcknowledgePetCombineNoMaterial:
+    """Acknowledge the non-destructive Pet Combine no-material popup."""
+
+
+@dataclass(frozen=True)
+class RejectPetEpicRunesFull:
+    """Choose No on the Epic-runes capacity prompt."""
+
+
+@dataclass(frozen=True)
+class SelectPetLowTierCandidate:
+    """Select the center supplied by one safe candidate observation."""
+
+    target: RelativePoint
+
+    def __post_init__(self) -> None:
+        relative_point_to_pixel(self.target, 1, 1)
+
+
+@dataclass(frozen=True)
+class OpenPetMassEvolve:
+    """Request Mass Evolve after a safe candidate entered selection mode."""
+
+
+@dataclass(frozen=True)
+class ConfirmPetMassEvolve:
+    """Confirm a tier-verified Normal or Rare Mass Evolve popup."""
+
+
+@dataclass(frozen=True)
+class CancelPetMassEvolveSelection:
+    """Leave Mass Evolve selection before changing Pets tabs."""
+
+
+@dataclass(frozen=True)
+class NextPetCombinePage:
+    """Advance one visible Pet Combine grid page inside a bounded search."""
+
+
+@dataclass(frozen=True)
 class OpenMailbox:
     """Request the Lobby -> Mailbox action."""
 
@@ -384,6 +494,27 @@ SemanticAction = (
     | OpenFriends
     | SendStaminaToAllFriends
     | CloseFriends
+    | OpenPets
+    | SelectPetSummon
+    | SelectPetCombine
+    | ClosePets
+    | OpenEpicPetSummon
+    | OpenPremiumPetSummon
+    | OpenSingleEpicPet
+    | OpenTenEpicPets
+    | OpenSinglePremiumPet
+    | ClosePetSummonResult
+    | AcceptPetInventoryFull
+    | RejectPetInventoryFull
+    | OpenPetCombineAll
+    | ConfirmPetCombineAll
+    | AcknowledgePetCombineNoMaterial
+    | RejectPetEpicRunesFull
+    | SelectPetLowTierCandidate
+    | OpenPetMassEvolve
+    | ConfirmPetMassEvolve
+    | CancelPetMassEvolveSelection
+    | NextPetCombinePage
     | OpenMailbox
     | SelectCharacterMail
     | ClaimAllCharacterMail
@@ -445,6 +576,8 @@ __all__ = (
     "AcknowledgeSocketNoMaterial",
     "AcknowledgeWorldBossPreviousRewards",
     "AcknowledgeInventoryFull",
+    "AcknowledgePetCombineNoMaterial",
+    "AcceptPetInventoryFull",
     "CloseBlackMarket",
     "ClaimAllCharacterMail",
     "ClaimAllDailyQuests",
@@ -452,12 +585,17 @@ __all__ = (
     "CloseDailyQuests",
     "CloseFriends",
     "CloseMailbox",
+    "ClosePets",
+    "ClosePetSummonResult",
     "ConfirmCharacterSelection",
     "ContinueAfterWorldBossRaid",
     "CancelSocketSell",
     "CloseSocketEnhanceAll",
     "ConfirmCombineAll",
     "ConfirmEtherealMassCombine",
+    "ConfirmPetCombineAll",
+    "ConfirmPetMassEvolve",
+    "CancelPetMassEvolveSelection",
     "DismissWorldBossBagFull",
     "DeleteReadCharacterMail",
     "OpenBlackMarket",
@@ -465,6 +603,14 @@ __all__ = (
     "OpenFriends",
     "OpenQuests",
     "OpenMailbox",
+    "OpenPets",
+    "OpenEpicPetSummon",
+    "OpenPremiumPetSummon",
+    "OpenSingleEpicPet",
+    "OpenTenEpicPets",
+    "OpenSinglePremiumPet",
+    "OpenPetCombineAll",
+    "OpenPetMassEvolve",
     "OpenBattleModeSelect",
     "OpenCharacterSelect",
     "OpenQuickMenu",
@@ -475,6 +621,8 @@ __all__ = (
     "OpenWorldBossSelector",
     "RejectInsufficientGold",
     "RejectSocketInventoryFull",
+    "RejectPetEpicRunesFull",
+    "RejectPetInventoryFull",
     "SelectSocketEnhanceGold",
     "SelectSocketOpalSlot",
     "SellSocketInBulk",
@@ -482,6 +630,9 @@ __all__ = (
     "SelectLastVisibleCharacter",
     "SelectCharacterMail",
     "SelectDailyQuests",
+    "SelectPetCombine",
+    "SelectPetLowTierCandidate",
+    "SelectPetSummon",
     "SelectQuickMenuLobby",
     "SelectQuickMenuGuild",
     "SendStaminaToAllFriends",
@@ -501,4 +652,5 @@ __all__ = (
     "SelectCombineTransmute",
     "StartWorldBossBattle",
     "TapCombineAnimation",
+    "NextPetCombinePage",
 )

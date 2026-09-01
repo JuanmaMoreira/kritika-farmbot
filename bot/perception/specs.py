@@ -37,10 +37,16 @@ from bot.catalog import (
     LANDMARK_PETS_MANAGE_ACTIVE,
     LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
     LANDMARK_PET_COMBINE_ACTIVE,
+    LANDMARK_PET_COMBINE_ALL_CONFIRM,
     LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+    LANDMARK_PET_COMBINE_NO_MATERIAL,
+    LANDMARK_PET_COMBINE_RESULT,
     LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+    LANDMARK_PET_EPIC_RUNES_FULL,
     LANDMARK_PET_EPIC_SELECTOR,
     LANDMARK_PET_INVENTORY_FULL_PROMPT,
+    LANDMARK_PET_MASS_EVOLVE_CONFIRMATION,
+    LANDMARK_PET_MASS_EVOLVE_SELECTION,
     LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
     LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
     LANDMARK_PET_SUMMON_ACTIVE,
@@ -863,6 +869,95 @@ PET_COMBINE_EVOLVE_PROMPT_SPEC = LocalCvSpec(
     ),
 )
 
+PET_COMBINE_ALL_CONFIRM_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_COMBINE_ALL_CONFIRM,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-combine-all-confirm-current.png"
+    ),
+    region=(0.30, 0.28, 0.70, 0.68),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.7114535570144653,
+        positive_anchor=0.9998928308486938,
+    ),
+)
+
+PET_COMBINE_NO_MATERIAL_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_COMBINE_NO_MATERIAL,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-combine-no-material-current.png"
+    ),
+    region=(0.30, 0.30, 0.72, 0.68),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.6387714147567749,
+        positive_anchor=0.9990760684013367,
+    ),
+)
+
+PET_EPIC_RUNES_FULL_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_EPIC_RUNES_FULL,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-epic-runes-full-current.png"
+    ),
+    region=(0.28, 0.30, 0.72, 0.68),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.4534972310066223,
+        positive_anchor=0.9998713135719299,
+    ),
+)
+
+PET_MASS_EVOLVE_SELECTION_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_MASS_EVOLVE_SELECTION,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-mass-evolve-selection-current.png"
+    ),
+    region=(0.45, 0.18, 0.88, 0.36),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.43726101517677307,
+        positive_anchor=0.910892903804779,
+    ),
+)
+
+# Both tiers are the same confirmation state.  The dedicated detector chooses
+# one unambiguous template and carries ``normal``/``rare`` as observation value.
+PET_MASS_EVOLVE_NORMAL_CONFIRM_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_MASS_EVOLVE_CONFIRMATION,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-mass-evolve-normal-confirm-current.png"
+    ),
+    region=(0.28, 0.30, 0.72, 0.68),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.8459215760231018,
+        positive_anchor=0.9998160004615784,
+    ),
+)
+
+PET_MASS_EVOLVE_RARE_CONFIRM_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_MASS_EVOLVE_CONFIRMATION,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-mass-evolve-rare-confirm-current.png"
+    ),
+    region=(0.28, 0.30, 0.72, 0.68),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.8459072709083557,
+        positive_anchor=0.9998140335083008,
+    ),
+)
+
+# Pet Combine All and Mass Evolve share this RESULT rendering.  Emitting the
+# existing activity lets the generic bounded tap-through primitive remain
+# unchanged while preserving the operation-independent visual state.
+PET_COMBINE_RESULT_TAPPABLE_SPEC = LocalCvSpec(
+    name=LANDMARK_PET_COMBINE_RESULT,
+    asset_path=Path(
+        "assets/ui/landmarks/pet-combine-result-tappable-current.png"
+    ),
+    region=(0.28, 0.01, 0.72, 0.22),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.5981482267379761,
+        positive_anchor=0.9361693263053894,
+    ),
+)
+
 # The green Daily badge is the same current-season rendering already shared
 # by Friends, Guild and World Boss.  Its Pets ROI is left of the chat overlay
 # and remains visible from both Manage and Summon.
@@ -1030,7 +1125,11 @@ DEFAULT_LOCAL_CV_SPECS = (
     PETS_MANAGE_ACTIVE_SPEC,
     PET_SUMMON_ACTIVE_SPEC,
     PET_COMBINE_ACTIVE_SPEC,
+    PET_COMBINE_ALL_CONFIRM_SPEC,
     PET_COMBINE_EVOLVE_PROMPT_SPEC,
+    PET_COMBINE_NO_MATERIAL_SPEC,
+    PET_EPIC_RUNES_FULL_SPEC,
+    PET_MASS_EVOLVE_SELECTION_SPEC,
     PET_SUMMON_DAILY_SPEC,
     PET_PREMIUM_TICKET_SPEC,
     PET_PREMIUM_GOLD_SPEC,

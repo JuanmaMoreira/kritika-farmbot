@@ -22,14 +22,14 @@ La adquisición Daily para la fase siguiente quedó promovida sin cambiar gamepl
 
 Send Stamina quedó cerrado como flow productivo `PER_CHARACTER` Lobby → Friends → Lobby: Daily ausente es no-op, Daily presente autoriza un único All y exige desaparición fresca estable antes de cerrar a Lobby. Registry y GUI lo ubican por defecto antes de Daily Quests. No se añadieron otros flows de Friends, categories ni routines.
 
-La adquisición Pet Summon quedó promovida sin implementar gameplay: Manage/Summon/resultado/Pet Combine, Daily activa/ausente, Epic disponible/apagado y mensaje de fragmentos, Premium ticket/GOLD y selectors, GOLD insuficiente, Pet Full, resultado estructural y cierres/retornos. La evaluación global conserva cero wrong/ambiguous sobre 386 frames. No se implementaron `SummonPetDailyFlow`, `PetSummonSpaceRelief`, Normal, Ethereal ni limpieza.
+Summon Pet Daily quedó cerrado como flow productivo `PER_CHARACTER` Lobby → Lobby y registrado antes de Daily Quests. Daily ausente es no-op; Daily presente aplica Epic → Premium, siempre `1 (Open)`, sin branching propio entre ticket/GOLD. Resultado estable y desaparición de Daily completan; GOLD insuficiente y resolución manual de Pet Full son business outcomes no fatales.
+
+`PetSummonSpaceRelief` quedó cerrado como support operation independiente: dos Combine All como máximo, búsqueda paginada bounded sólo de Normal/Rare, Mass Evolve con confirmación exacta de tier, `Cancel` previo al cambio de tab, una única apertura Epic `10 (Open)` y cierre bounded de sus resultados. `TapThroughAnimation` verifica efectos. Los outcomes separan relief, soft block, fallo técnico y cancelación; venta, slots, Epic+ ambiguo, Legendary/Ethereal y resolución destructiva siguen excluidos.
 
 ## Próximo trabajo
 
 ### Known future
 
-- Implementar `SummonPetDailyFlow` con guard Daily estricto, prioridad Epic → Premium, siempre `1(Open)`, resultado verificado y retorno al contexto contractual. Epic no disponible habilita el fallback; GOLD insuficiente termina no fatal con Daily pendiente.
-- Diseñar `PetSummonSpaceRelief` sólo después y como support operation separada. La evidencia vigente termina en `screen.pet_combine`; no autoriza todavía venta, slots, Mass Evolve u otra estrategia.
 - Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su recovery bounded antes de automatizarlo.
 - Ampliar retornos de Equipment Inventory Full a otros farming flows sólo con evidencia live específica; por ahora únicamente `Combine → Back → World Boss` está verificado.
 - Ampliar retornos de Socket a otros farming flows sólo con evidencia live específica; por ahora únicamente `Socket → Back → World Boss` está verificado.

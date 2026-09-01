@@ -9,6 +9,7 @@ from bot.flow_contracts import FlowScope
 from bot.guild_check_in_flow import GuildCheckInFlow
 from bot.mailbox_flow import MailboxFlow
 from bot.send_stamina_flow import SendStaminaFlow
+from bot.summon_pet_daily_flow import SummonPetDailyFlow
 from bot.world_boss_flow import WorldBossFlow
 
 
@@ -19,6 +20,7 @@ def test_default_registry_is_explicit_and_preserves_selection_order():
         "black_market",
         "world_boss",
         "send_stamina",
+        "summon_pet_daily",
         "daily_quests",
         "mailbox",
         "guild_check_in",
@@ -29,6 +31,7 @@ def test_default_registry_is_explicit_and_preserves_selection_order():
     ]
     ids = [item.id for item in registry.definitions]
     assert ids.index("send_stamina") < ids.index("daily_quests")
+    assert ids.index("summon_pet_daily") < ids.index("daily_quests")
 
 
 def test_registry_metadata_matches_productive_flow_contracts():
@@ -36,6 +39,7 @@ def test_registry_metadata_matches_productive_flow_contracts():
     world_boss = DEFAULT_FLOW_REGISTRY.get("world_boss")
     daily_quests = DEFAULT_FLOW_REGISTRY.get("daily_quests")
     send_stamina = DEFAULT_FLOW_REGISTRY.get("send_stamina")
+    summon_pet_daily = DEFAULT_FLOW_REGISTRY.get("summon_pet_daily")
     mailbox = DEFAULT_FLOW_REGISTRY.get("mailbox")
     guild = DEFAULT_FLOW_REGISTRY.get("guild_check_in")
 
@@ -47,6 +51,9 @@ def test_registry_metadata_matches_productive_flow_contracts():
     assert send_stamina.display_name == "Send Stamina"
     assert send_stamina.scope is FlowScope.PER_CHARACTER
     assert send_stamina.contract == SendStaminaFlow.contract
+    assert summon_pet_daily.display_name == "Summon Pet Daily"
+    assert summon_pet_daily.scope is FlowScope.PER_CHARACTER
+    assert summon_pet_daily.contract == SummonPetDailyFlow.contract
     assert daily_quests.display_name == "Daily Quests"
     assert daily_quests.scope is FlowScope.PER_CHARACTER
     assert daily_quests.contract == DailyQuestsFlow.contract
@@ -89,3 +96,19 @@ def test_send_stamina_factory_builds_the_productive_flow_from_shared_dependencie
     flow = DEFAULT_FLOW_REGISTRY.get("send_stamina").build(dependencies)
 
     assert isinstance(flow, SendStaminaFlow)
+
+
+def test_summon_pet_daily_factory_receives_the_independent_relief_operation():
+    relief = SimpleNamespace(run=lambda *a, **k: None)
+    dependencies = SimpleNamespace(
+        observer=SimpleNamespace(observe=lambda: None, wait_until=lambda *a, **k: None),
+        actions=SimpleNamespace(execute=lambda *a, **k: None),
+        events=SimpleNamespace(record=lambda *a, **k: None),
+        pet_summon_space_relief=relief,
+        cancel_requested=lambda: False,
+    )
+
+    flow = DEFAULT_FLOW_REGISTRY.get("summon_pet_daily").build(dependencies)
+
+    assert isinstance(flow, SummonPetDailyFlow)
+    assert flow.pet_summon_space_relief is relief

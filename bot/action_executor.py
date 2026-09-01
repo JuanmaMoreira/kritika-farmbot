@@ -14,9 +14,11 @@ from bot.geometry import (
 )
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
+    AcceptPetInventoryFull,
     AcceptSocketInventoryFull,
     AcknowledgeEtherealNoMaterial,
     AcknowledgeInventoryFull,
+    AcknowledgePetCombineNoMaterial,
     AcknowledgeSocketNoMaterial,
     AcknowledgeWorldBossPreviousRewards,
     ClaimAllCharacterMail,
@@ -26,17 +28,29 @@ from bot.semantic_actions import (
     CloseDailyQuests,
     CloseFriends,
     CloseMailbox,
+    ClosePets,
+    ClosePetSummonResult,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
     CancelSocketSell,
     CloseSocketEnhanceAll,
     ConfirmCombineAll,
     ConfirmEtherealMassCombine,
+    ConfirmPetCombineAll,
+    ConfirmPetMassEvolve,
     DismissWorldBossBagFull,
     DeleteReadCharacterMail,
     ExitSocket,
     ExitCombine,
     OpenBlackMarket,
+    OpenPets,
+    OpenEpicPetSummon,
+    OpenPremiumPetSummon,
+    OpenSingleEpicPet,
+    OpenTenEpicPets,
+    OpenSinglePremiumPet,
+    OpenPetCombineAll,
+    OpenPetMassEvolve,
     OpenFriends,
     OpenGuild,
     OpenQuests,
@@ -55,6 +69,8 @@ from bot.semantic_actions import (
     QuickMenuLayout,
     OpenWorldBossSelector,
     RejectInsufficientGold,
+    RejectPetEpicRunesFull,
+    RejectPetInventoryFull,
     RejectSocketInventoryFull,
     SelectSocketEnhanceGold,
     SelectSocketOpalSlot,
@@ -62,6 +78,9 @@ from bot.semantic_actions import (
     SelectCombineTransmute,
     SelectCharacterMail,
     SelectDailyQuests,
+    SelectPetCombine,
+    SelectPetLowTierCandidate,
+    SelectPetSummon,
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
     SendStaminaToAllFriends,
@@ -74,6 +93,8 @@ from bot.semantic_actions import (
     ToggleAutoBattle,
     TapSocketEnhanceAnimation,
     TapCombineAnimation,
+    CancelPetMassEvolveSelection,
+    NextPetCombinePage,
     StartWorldBossBattle,
 )
 
@@ -179,6 +200,60 @@ class FriendsActionTargets:
 
 
 DEFAULT_FRIENDS_ACTION_TARGETS = FriendsActionTargets()
+
+
+@dataclass(frozen=True)
+class PetActionTargets:
+    """Normalized targets acquired from the Pet Summon and Combine routes."""
+
+    open_pets: RelativePoint = (0.8599, 0.7745)
+    select_summon: RelativePoint = (0.2030, 0.1800)
+    select_combine: RelativePoint = (0.3610, 0.1800)
+    close_pets: RelativePoint = (0.8000, 0.0700)
+    open_epic: RelativePoint = (0.5730, 0.8700)
+    open_premium: RelativePoint = (0.4100, 0.8700)
+    open_single_epic: RelativePoint = (0.5630, 0.7420)
+    open_ten_epic: RelativePoint = (0.6370, 0.7420)
+    open_single_premium: RelativePoint = (0.3950, 0.7420)
+    close_summon_result: RelativePoint = (0.9000, 0.5000)
+    accept_inventory_full: RelativePoint = (0.4320, 0.6300)
+    reject_inventory_full: RelativePoint = (0.5680, 0.6300)
+    open_combine_all: RelativePoint = (0.6073, 0.9297)
+    confirm_combine_all: RelativePoint = (0.4320, 0.6300)
+    acknowledge_combine_no_material: RelativePoint = (0.5000, 0.6300)
+    reject_epic_runes_full: RelativePoint = (0.5680, 0.6300)
+    open_mass_evolve: RelativePoint = (0.7520, 0.8000)
+    confirm_mass_evolve: RelativePoint = (0.4320, 0.6300)
+    cancel_mass_evolve_selection: RelativePoint = (0.4800, 0.2600)
+    next_combine_page: RelativePoint = (0.8020, 0.9300)
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.open_pets,
+            self.select_summon,
+            self.select_combine,
+            self.close_pets,
+            self.open_epic,
+            self.open_premium,
+            self.open_single_epic,
+            self.open_ten_epic,
+            self.open_single_premium,
+            self.close_summon_result,
+            self.accept_inventory_full,
+            self.reject_inventory_full,
+            self.open_combine_all,
+            self.confirm_combine_all,
+            self.acknowledge_combine_no_material,
+            self.reject_epic_runes_full,
+            self.open_mass_evolve,
+            self.confirm_mass_evolve,
+            self.cancel_mass_evolve_selection,
+            self.next_combine_page,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_PET_ACTION_TARGETS = PetActionTargets()
 
 
 @dataclass(frozen=True)
@@ -406,6 +481,7 @@ class ActionExecutor:
             DEFAULT_DAILY_QUESTS_ACTION_TARGETS
         ),
         friends_targets: FriendsActionTargets = DEFAULT_FRIENDS_ACTION_TARGETS,
+        pet_targets: PetActionTargets = DEFAULT_PET_ACTION_TARGETS,
         mailbox_targets: MailboxActionTargets = DEFAULT_MAILBOX_ACTION_TARGETS,
         rotation_targets: RotationActionTargets = DEFAULT_ROTATION_ACTION_TARGETS,
         guild_targets: GuildActionTargets = DEFAULT_GUILD_ACTION_TARGETS,
@@ -421,6 +497,8 @@ class ActionExecutor:
             raise ValueError("daily_quests_targets must be DailyQuestsActionTargets")
         if not isinstance(friends_targets, FriendsActionTargets):
             raise ValueError("friends_targets must be FriendsActionTargets")
+        if not isinstance(pet_targets, PetActionTargets):
+            raise ValueError("pet_targets must be PetActionTargets")
         if not isinstance(mailbox_targets, MailboxActionTargets):
             raise ValueError("mailbox_targets must be MailboxActionTargets")
         if not isinstance(rotation_targets, RotationActionTargets):
@@ -437,6 +515,7 @@ class ActionExecutor:
         self.targets = targets
         self.daily_quests_targets = daily_quests_targets
         self.friends_targets = friends_targets
+        self.pet_targets = pet_targets
         self.mailbox_targets = mailbox_targets
         self.rotation_targets = rotation_targets
         self.guild_targets = guild_targets
@@ -481,6 +560,48 @@ class ActionExecutor:
             return self.friends_targets.send_all
         if isinstance(action, CloseFriends):
             return self.friends_targets.close_friends
+        if isinstance(action, OpenPets):
+            return self.pet_targets.open_pets
+        if isinstance(action, SelectPetSummon):
+            return self.pet_targets.select_summon
+        if isinstance(action, SelectPetCombine):
+            return self.pet_targets.select_combine
+        if isinstance(action, ClosePets):
+            return self.pet_targets.close_pets
+        if isinstance(action, OpenEpicPetSummon):
+            return self.pet_targets.open_epic
+        if isinstance(action, OpenPremiumPetSummon):
+            return self.pet_targets.open_premium
+        if isinstance(action, OpenSingleEpicPet):
+            return self.pet_targets.open_single_epic
+        if isinstance(action, OpenTenEpicPets):
+            return self.pet_targets.open_ten_epic
+        if isinstance(action, OpenSinglePremiumPet):
+            return self.pet_targets.open_single_premium
+        if isinstance(action, ClosePetSummonResult):
+            return self.pet_targets.close_summon_result
+        if isinstance(action, AcceptPetInventoryFull):
+            return self.pet_targets.accept_inventory_full
+        if isinstance(action, RejectPetInventoryFull):
+            return self.pet_targets.reject_inventory_full
+        if isinstance(action, OpenPetCombineAll):
+            return self.pet_targets.open_combine_all
+        if isinstance(action, ConfirmPetCombineAll):
+            return self.pet_targets.confirm_combine_all
+        if isinstance(action, AcknowledgePetCombineNoMaterial):
+            return self.pet_targets.acknowledge_combine_no_material
+        if isinstance(action, RejectPetEpicRunesFull):
+            return self.pet_targets.reject_epic_runes_full
+        if isinstance(action, SelectPetLowTierCandidate):
+            return action.target
+        if isinstance(action, OpenPetMassEvolve):
+            return self.pet_targets.open_mass_evolve
+        if isinstance(action, ConfirmPetMassEvolve):
+            return self.pet_targets.confirm_mass_evolve
+        if isinstance(action, CancelPetMassEvolveSelection):
+            return self.pet_targets.cancel_mass_evolve_selection
+        if isinstance(action, NextPetCombinePage):
+            return self.pet_targets.next_combine_page
         if isinstance(action, OpenMailbox):
             return self.mailbox_targets.open_mailbox
         if isinstance(action, SelectCharacterMail):
@@ -627,6 +748,7 @@ __all__ = (
     "DEFAULT_FRIENDS_ACTION_TARGETS",
     "DEFAULT_GUILD_ACTION_TARGETS",
     "DEFAULT_MAILBOX_ACTION_TARGETS",
+    "DEFAULT_PET_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
     "FrameGeometry",
@@ -636,6 +758,7 @@ __all__ = (
     "EquipmentActionTargets",
     "RotationActionTargets",
     "MailboxActionTargets",
+    "PetActionTargets",
     "SocketActionTargets",
     "SwipeExecution",
 )

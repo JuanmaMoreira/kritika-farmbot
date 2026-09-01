@@ -29,6 +29,7 @@ from bot.equipment_combine_relief import EquipmentCombineRelief
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry
 from bot.perception import build_default_perception
+from bot.pet_summon_space_relief import PetSummonSpaceRelief
 from bot.preconditions import MinimalPreconditionEnsurer
 from bot.quick_menu import quick_menu_accessible, select_quick_menu_guild_action
 from bot.rotation import StandardRotation
@@ -76,6 +77,7 @@ class ProductiveRuntime:
     auto_battle: AutoBattleEnsurer
     socket_relief: SocketInventoryRelief
     equipment_combine_relief: EquipmentCombineRelief
+    pet_summon_space_relief: PetSummonSpaceRelief
     events: RuntimeEventStream
     cancel_token: CancellationToken
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY
@@ -411,6 +413,12 @@ def open_productive_runtime(
                 verified_transition=transition,
                 tap_through=tap_through,
             )
+            pet_summon_space_relief = PetSummonSpaceRelief(
+                observer,
+                actions,
+                events,
+                tap_through=tap_through,
+            )
             yield ProductiveRuntime(
                 config,
                 observer,
@@ -419,6 +427,7 @@ def open_productive_runtime(
                 auto_battle,
                 socket_relief,
                 equipment_combine_relief,
+                pet_summon_space_relief,
                 events,
                 token,
                 registry,

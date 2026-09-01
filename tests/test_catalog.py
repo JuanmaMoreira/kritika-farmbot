@@ -351,9 +351,9 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 16
-    assert len(OVERLAY_RULES) == 42
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 66
+    assert len(BASE_CONTEXT_RULES) == 17
+    assert len(OVERLAY_RULES) == 47
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 73
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

@@ -46,22 +46,23 @@ Ejecutar desde la raíz del repositorio. El wrapper resuelve el Python, ADB y sc
 .\tools\agent_run.ps1 tools.run_flow black_market
 .\tools\agent_run.ps1 tools.run_flow world_boss --debug
 .\tools\agent_run.ps1 tools.run_flow send_stamina
+.\tools\agent_run.ps1 tools.run_flow summon_pet_daily
 .\tools\agent_run.ps1 tools.run_flow daily_quests
 .\tools\agent_run.ps1 tools.run_flow mailbox
 .\tools\agent_run.ps1 tools.run_flow guild_check_in
 
 # Ejecutar una sesión; el orden escrito se conserva
-.\tools\agent_run.ps1 tools.run_session black_market world_boss send_stamina daily_quests mailbox guild_check_in --characters 2
+.\tools\agent_run.ps1 tools.run_session black_market world_boss send_stamina summon_pet_daily daily_quests mailbox guild_check_in --characters 2
 
 # Sin --characters se usa el default productivo actual: 28
-.\tools\agent_run.ps1 tools.run_session black_market world_boss send_stamina daily_quests mailbox guild_check_in --debug
+.\tools\agent_run.ps1 tools.run_session black_market world_boss send_stamina summon_pet_daily daily_quests mailbox guild_check_in --debug
 ```
 
 La consola normal muestra `INFO`, `WARNING` y `ERROR`; `--debug` agrega facts OCR, transiciones, grace/retries y telemetría de `ControlledWait`. Cada ejecución crea un `.log` estructurado bajo `logs/`, con timestamp e id de sesión. No se guardan frames.
 
 `Ctrl+C` solicita cancelación segura; pulsarlo una segunda vez fuerza la interrupción. El resumen final distingue `COMPLETED`, `FAILED` y `CANCELLED`. Exit codes: `0` completado, `1` fallo del flow/sesión, `2` argumentos/config/runtime inválidos y `130` cancelado.
 
-El usuario debe dejar el personaje actual en la precondición declarada o en un contexto que el normalizador soporte explícitamente. La selección default ubica Send Stamina antes de Daily Quests, seguida por Mailbox y Guild Check-In. Si World Boss termina en su pantalla principal, el boundary de precondiciones usa la ruta adquirida `World Boss → Quick Menu → Lobby`; Guild usa acceso directo desde Lobby o Quick Menu desde contextos compatibles. Una sesión rota exactamente una vez después de los flows de cada personaje, incluido el último retorno que cierra el ciclo.
+El usuario debe dejar el personaje actual en la precondición declarada o en un contexto que el normalizador soporte explícitamente. La selección default ubica Send Stamina y Summon Pet Daily antes de Daily Quests, seguida por Mailbox y Guild Check-In. Si World Boss termina en su pantalla principal, el boundary de precondiciones usa la ruta adquirida `World Boss → Quick Menu → Lobby`; Guild usa acceso directo desde Lobby o Quick Menu desde contextos compatibles. Una sesión rota exactamente una vez después de los flows de cada personaje, incluido el último retorno que cierra el ciclo.
 
 ## Documentación
 

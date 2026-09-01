@@ -15,6 +15,7 @@ SCREEN_FRIENDS = "screen.friends"
 SCREEN_GUILD = "screen.guild"
 SCREEN_MAILBOX = "screen.mailbox"
 SCREEN_PET_COMBINE = "screen.pet_combine"
+SCREEN_PET_COMBINE_RESULT = "screen.pet_combine_result"
 SCREEN_PET_SUMMON = "screen.pet_summon"
 SCREEN_PET_SUMMON_RESULT = "screen.pet_summon_result"
 SCREEN_PETS_MANAGE = "screen.pets_manage"
@@ -38,6 +39,12 @@ POPUP_PET_EPIC_INSUFFICIENT_FRAGMENTS = (
     "popup.pet_epic_insufficient_fragments"
 )
 POPUP_PET_INVENTORY_FULL = "popup.pet_inventory_full"
+POPUP_PET_COMBINE_ALL = "popup.pet_combine_all"
+POPUP_PET_COMBINE_NO_MATERIAL = "popup.pet_combine_no_material"
+POPUP_PET_EPIC_RUNES_FULL = "popup.pet_epic_runes_full"
+POPUP_PET_MASS_EVOLVE_CONFIRMATION = (
+    "popup.pet_mass_evolve_confirmation"
+)
 OVERLAY_PET_EPIC_SELECTOR = "overlay.pet_epic_selector"
 OVERLAY_PET_PREMIUM_GOLD_SELECTOR = "overlay.pet_premium_gold_selector"
 OVERLAY_PET_PREMIUM_TICKET_SELECTOR = (
@@ -50,6 +57,7 @@ MODE_COMBINE_FUSE = "mode.combine_fuse"
 MODE_COMBINE_TRANSMUTE = "mode.combine_transmute"
 MODE_DAILY_QUESTS = "mode.daily_quests"
 MODE_MAILBOX_CHARACTER_MAIL = "mode.mailbox_character_mail"
+MODE_PET_MASS_EVOLVE_SELECTION = "mode.pet_mass_evolve_selection"
 PANEL_COMBINE_AWAKENED_TRANSMUTE = "panel.combine_awakened_transmute"
 PANEL_COMBINE_ETHEREAL_RANDOM_PART = "panel.combine_ethereal_random_part"
 STATUS_COMBINE_ETHEREAL_AVAILABLE = "status.combine_ethereal_available"
@@ -168,6 +176,20 @@ LANDMARK_PET_COMBINE_ACTIVE = "landmark.pet_combine_active"
 LANDMARK_PET_COMBINE_EVOLVE_PROMPT = (
     "landmark.pet_combine_evolve_prompt"
 )
+LANDMARK_PET_COMBINE_ALL_CONFIRM = (
+    "landmark.pet_combine_all_confirm"
+)
+LANDMARK_PET_COMBINE_NO_MATERIAL = (
+    "landmark.pet_combine_no_material"
+)
+LANDMARK_PET_COMBINE_RESULT = "landmark.pet_combine_result"
+LANDMARK_PET_EPIC_RUNES_FULL = "landmark.pet_epic_runes_full"
+LANDMARK_PET_MASS_EVOLVE_CONFIRMATION = (
+    "landmark.pet_mass_evolve_confirmation"
+)
+LANDMARK_PET_MASS_EVOLVE_SELECTION = (
+    "landmark.pet_mass_evolve_selection"
+)
 LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS = (
     "landmark.pet_epic_insufficient_fragments"
 )
@@ -195,11 +217,13 @@ INDICATOR_PET_PREMIUM_TICKET = "indicator.pet_premium_ticket"
 INDICATOR_PET_SUMMON_DAILY_ACTIVE = (
     "indicator.pet_summon_daily_active"
 )
+CANDIDATE_PET_LOW_TIER = "candidate.pet_low_tier"
 INDICATOR_WORLD_BOSS_DAILY_ACTIVE = "indicator.world_boss_daily_active"
 
 SEMANTIC_OBSERVATION_NAMES = (
     ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
     ACTIVITY_MAILBOX_CLAIM_PROCESSING,
+    CANDIDATE_PET_LOW_TIER,
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
     INDICATOR_COMBINE_ROWS_UPPER,
@@ -232,10 +256,16 @@ SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_PETS_MANAGE_ACTIVE,
     LANDMARK_PETS_SHELL_SUMMON_PACKAGE,
     LANDMARK_PET_COMBINE_ACTIVE,
+    LANDMARK_PET_COMBINE_ALL_CONFIRM,
     LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
+    LANDMARK_PET_COMBINE_NO_MATERIAL,
+    LANDMARK_PET_COMBINE_RESULT,
     LANDMARK_PET_EPIC_INSUFFICIENT_FRAGMENTS,
+    LANDMARK_PET_EPIC_RUNES_FULL,
     LANDMARK_PET_EPIC_SELECTOR,
     LANDMARK_PET_INVENTORY_FULL_PROMPT,
+    LANDMARK_PET_MASS_EVOLVE_CONFIRMATION,
+    LANDMARK_PET_MASS_EVOLVE_SELECTION,
     LANDMARK_PET_PREMIUM_GOLD_SELECTOR,
     LANDMARK_PET_PREMIUM_TICKET_SELECTOR,
     LANDMARK_PET_SUMMON_ACTIVE,
@@ -325,6 +355,11 @@ BASE_CONTEXT_RULES = (
             LANDMARK_PET_COMBINE_ACTIVE,
             LANDMARK_PET_COMBINE_EVOLVE_PROMPT,
         ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=SCREEN_PET_COMBINE_RESULT,
+        requires=(LANDMARK_PET_COMBINE_RESULT,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(
@@ -440,6 +475,46 @@ OVERLAY_RULES = (
         requires=(
             LANDMARK_PET_SUMMON_ACTIVE,
             LANDMARK_PET_INVENTORY_FULL_PROMPT,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_PET_COMBINE_ALL,
+        requires=(
+            LANDMARK_PET_COMBINE_ACTIVE,
+            LANDMARK_PET_COMBINE_ALL_CONFIRM,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_PET_COMBINE_NO_MATERIAL,
+        requires=(
+            LANDMARK_PET_COMBINE_ACTIVE,
+            LANDMARK_PET_COMBINE_NO_MATERIAL,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_PET_EPIC_RUNES_FULL,
+        requires=(
+            LANDMARK_PET_COMBINE_ACTIVE,
+            LANDMARK_PET_EPIC_RUNES_FULL,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_PET_MASS_EVOLVE_CONFIRMATION,
+        requires=(
+            LANDMARK_PET_COMBINE_ACTIVE,
+            LANDMARK_PET_MASS_EVOLVE_CONFIRMATION,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=MODE_PET_MASS_EVOLVE_SELECTION,
+        requires=(
+            LANDMARK_PET_COMBINE_ACTIVE,
+            LANDMARK_PET_MASS_EVOLVE_SELECTION,
         ),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),

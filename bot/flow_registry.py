@@ -11,6 +11,7 @@ from bot.flow_contracts import FlowContract, FlowScope, PerCharacterFlow
 from bot.guild_check_in_flow import GuildCheckInFlow
 from bot.mailbox_flow import MailboxFlow
 from bot.send_stamina_flow import SendStaminaFlow
+from bot.summon_pet_daily_flow import SummonPetDailyFlow
 from bot.world_boss_flow import WorldBossFlow
 
 
@@ -21,6 +22,7 @@ class FlowDependencies(Protocol):
     auto_battle: object
     socket_relief: object
     equipment_combine_relief: object
+    pet_summon_space_relief: object
     events: object
     cancel_requested: Callable[[], bool]
 
@@ -131,6 +133,16 @@ def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _build_summon_pet_daily(dependencies: FlowDependencies) -> PerCharacterFlow:
+    return SummonPetDailyFlow(
+        dependencies.observer,
+        dependencies.actions,
+        dependencies.events,
+        dependencies.pet_summon_space_relief,
+        cancel_requested=dependencies.cancel_requested,
+    )
+
+
 def _build_send_stamina(dependencies: FlowDependencies) -> PerCharacterFlow:
     return SendStaminaFlow(
         dependencies.observer,
@@ -179,6 +191,13 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
         SendStaminaFlow.scope,
         SendStaminaFlow.contract,
         _build_send_stamina,
+    ),
+    FlowDefinition(
+        "summon_pet_daily",
+        "Summon Pet Daily",
+        SummonPetDailyFlow.scope,
+        SummonPetDailyFlow.contract,
+        _build_summon_pet_daily,
     ),
     FlowDefinition(
         "daily_quests",
