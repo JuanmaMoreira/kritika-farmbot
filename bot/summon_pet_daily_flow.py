@@ -13,7 +13,6 @@ from bot.catalog import (
     OVERLAY_PET_PREMIUM_TICKET_SELECTOR,
     POPUP_INSUFFICIENT_GOLD,
     POPUP_PET_INVENTORY_FULL,
-    SCREEN_LOBBY,
     SCREEN_PET_COMBINE,
     SCREEN_PET_SUMMON,
     SCREEN_PET_SUMMON_RESULT,
@@ -40,9 +39,7 @@ from bot.runtime_observer import (
 from bot.semantic_actions import (
     AcceptPetInventoryFull,
     ClosePetSummonResult,
-    ClosePets,
     OpenEpicPetSummon,
-    OpenPets,
     OpenPremiumPetSummon,
     OpenSingleEpicPet,
     OpenSinglePremiumPet,
@@ -109,9 +106,10 @@ class SummonPetDailyFlow:
     name = "summon_pet_daily"
     scope = FlowScope.PER_CHARACTER
     contract = FlowContract(
-        precondition=ComponentRequirement.exact_state(SCREEN_LOBBY),
+        precondition=ComponentRequirement.exact_state(SCREEN_PETS_MANAGE),
         successful_postconditions=(
-            ComponentRequirement.exact_state(SCREEN_LOBBY),
+            ComponentRequirement.exact_state(SCREEN_PETS_MANAGE),
+            ComponentRequirement.exact_state(SCREEN_PET_SUMMON),
         ),
     )
 
@@ -164,18 +162,9 @@ class SummonPetDailyFlow:
         try:
             if self._cancelled():
                 raise RuntimeWaitCancelled("summon pet daily flow cancelled")
-            lobby = self._initial_lobby()
-            pets = self._act_and_wait(
-                OpenPets(),
-                lobby,
-                expected=_is_clean_pets_surface,
-                retryable_from=_is_clean_lobby,
-                timeout=self.navigation_timeout,
-                stable_for=self.navigation_stable_for,
-            )
+            pets = self._initial_manage()
             if STATUS_PET_SUMMON_DAILY_ACTIVE not in pets.state.overlays:
                 self._append_event(events, SUMMON_PET_DAILY_NOOP)
-                self._close_to_lobby(pets)
                 return SummonPetDailyFlowResult(
                     FlowStatus.COMPLETED,
                     tuple(events),
@@ -189,7 +178,7 @@ class SummonPetDailyFlow:
                     SelectPetSummon(),
                     pets,
                     expected=_is_summon_daily_active,
-                    retryable_from=_is_clean_pets_surface,
+                    retryable_from=_is_clean_manage,
                     timeout=self.navigation_timeout,
                     stable_for=self.navigation_stable_for,
                 )
@@ -207,7 +196,6 @@ class SummonPetDailyFlow:
                         stable_for=self.outcome_stable_for,
                     )
                     self._append_event(events, SUMMON_PET_DAILY_COMPLETED)
-                    self._close_to_lobby(summon)
                     return SummonPetDailyFlowResult(
                         FlowStatus.COMPLETED,
                         tuple(events),
@@ -229,7 +217,6 @@ class SummonPetDailyFlow:
                     self._append_event(
                         events, SUMMON_PET_DAILY_INSUFFICIENT_GOLD
                     )
-                    self._close_to_lobby(summon)
                     return SummonPetDailyFlowResult(
                         FlowStatus.COMPLETED,
                         tuple(events),
@@ -252,7 +239,6 @@ class SummonPetDailyFlow:
                     self._append_event(
                         events, SUMMON_PET_DAILY_MANUAL_RESOLUTION
                     )
-                    self._close_to_lobby(summon)
                     return SummonPetDailyFlowResult(
                         FlowStatus.COMPLETED,
                         tuple(events),
@@ -289,7 +275,14 @@ class SummonPetDailyFlow:
                     self._append_event(
                         events, SUMMON_PET_DAILY_MANUAL_RESOLUTION
                     )
-                    self._close_to_lobby(relief.final_snapshot)
+                    summon = self._act_and_wait(
+                        SelectPetSummon(),
+                        relief.final_snapshot,
+                        expected=_is_summon_daily_active,
+                        retryable_from=_is_clean_combine,
+                        timeout=self.navigation_timeout,
+                        stable_for=self.navigation_stable_for,
+                    )
                     return SummonPetDailyFlowResult(
                         FlowStatus.COMPLETED,
                         tuple(events),
@@ -369,35 +362,20 @@ class SummonPetDailyFlow:
             stable_for=self.outcome_stable_for,
         )
 
-    def _initial_lobby(self) -> RuntimeSnapshot:
+    def _initial_manage(self) -> RuntimeSnapshot:
         initial = self.observer.observe()
-        if _is_clean_lobby(initial):
+        if _is_clean_manage(initial):
             return initial
         if not _is_passive_unknown(initial):
-            raise RuntimeError("precondition_lobby_failed")
+            raise RuntimeError("precondition_pet_manage_failed")
         return self.observer.wait_until(
-            _is_clean_lobby,
+            _is_clean_manage,
             after_sequence=initial.sequence,
             timeout=self.navigation_timeout,
             abort_if=lambda snapshot: _known_incompatible(
-                snapshot, _is_clean_lobby, _is_passive_unknown
+                snapshot, _is_clean_manage, _is_passive_unknown
             ),
             cancel_requested=self.cancel_requested,
-            stable_for=self.navigation_stable_for,
-        )
-
-    def _close_to_lobby(self, current: RuntimeSnapshot) -> RuntimeSnapshot:
-        return self._act_and_wait(
-            ClosePets(),
-            current,
-            expected=_is_clean_lobby,
-            retryable_from=lambda snapshot: (
-                _is_clean_pets_surface(snapshot)
-                or _is_summon_daily_active(snapshot)
-                or _is_summon_daily_completed(snapshot)
-                or _is_clean_combine(snapshot)
-            ),
-            timeout=self.navigation_timeout,
             stable_for=self.navigation_stable_for,
         )
 
@@ -454,25 +432,16 @@ class SummonPetDailyFlow:
             return False
 
 
-def _is_clean_lobby(snapshot: RuntimeSnapshot) -> bool:
+def _is_clean_manage(snapshot: RuntimeSnapshot) -> bool:
     return (
         snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_LOBBY
-        and not snapshot.state.overlays
+        and snapshot.state.base_context == SCREEN_PETS_MANAGE
+        and set(snapshot.state.overlays) <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
     )
 
 
 def _is_passive_unknown(snapshot: RuntimeSnapshot) -> bool:
     return snapshot.state.status is ResolutionStatus.UNKNOWN and not snapshot.state.overlays
-
-
-def _is_clean_pets_surface(snapshot: RuntimeSnapshot) -> bool:
-    if snapshot.state.status is not ResolutionStatus.RESOLVED:
-        return False
-    overlays = set(snapshot.state.overlays)
-    if snapshot.state.base_context in {SCREEN_PETS_MANAGE, SCREEN_PET_COMBINE}:
-        return overlays <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
-    return _is_summon_ready(snapshot)
 
 
 def _is_clean_combine(snapshot: RuntimeSnapshot) -> bool:

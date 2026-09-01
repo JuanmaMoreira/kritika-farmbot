@@ -32,8 +32,8 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Se incorporaron `DailyQuestsFlow` y `MailboxFlow` como flows productivos `PER_CHARACTER` Lobby → Lobby, con Claim All single-attempt, completion estable basada en estado, leftovers no fatales y Delete Read condicionado.
 - Se incorporó `GuildCheckInFlow` como flow productivo `PER_CHARACTER` Guild → Guild, con no-op completado, tap único y completion fresca estable. La normalización prioriza el acceso directo Lobby → Guild y conserva Quick Menu como fallback verificado desde otros contextos; Guild entró al allow-list y a la selección GUI sin crear categories, routines ni un grafo de navegación.
 - Se incorporó `SendStaminaFlow` como flow productivo `PER_CHARACTER` Lobby → Friends → Lobby, con guard Daily, All single-attempt, desaparición fresca estable y cierre verificado. Registry y GUI lo ordenan antes de Daily Quests sin añadir otros flows de Friends, categories ni routines.
-- Se incorporó `SummonPetDailyFlow` como flow productivo `PER_CHARACTER` Lobby → Pets → Lobby, con guard Daily, prioridad Epic → Premium, `1 (Open)`, resultado y completion verificadas, GOLD insuficiente no fatal y un único retry delegado ante Pet Full.
-- Se incorporó `PetSummonSpaceRelief` como support operation no destructiva: Combine All, búsqueda bounded de candidatos Normal/Rare, Mass Evolve con tier verificado, un único Epic `10 (Open)`, segundo Combine All y outcomes explícitos. Venta de pets, slots y tiers Epic+ permanecen fuera de alcance.
+- Se incorporó `SummonPetDailyFlow` como flow productivo `PER_CHARACTER` Manage → Manage/Summon, con guard Daily, prioridad Epic → Premium, `1 (Open)`, resultado y completion verificadas, GOLD insuficiente no fatal y un único retry delegado ante Pet Full.
+- Se incorporó `PetSummonSpaceRelief` como support operation incidental no destructiva: un único Combine All con resultado y retorno verificables, más outcomes explícitos para efecto, no-progreso seguro, fallo técnico y cancelación. El mantenimiento general de Pets permanece fuera de alcance.
 
 ### Changed
 
@@ -43,6 +43,8 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 - Los assets runtime dejaron de quedar ocultos por una regla global para imágenes.
 - `bot/screen.py` quedó como módulo transicional de matching OpenCV puro; los scripts manuales redundantes de `testing/` y el debugger de contextos legacy fueron retirados.
 - `AGENTS.md` incorporó como regla canónica el protocolo human-in-the-loop: chat + `steer` como canal principal y Workbench únicamente como instrumentación explícita.
+- `PetSummonSpaceRelief` se redujo a un único Combine All; búsqueda low-tier, Mass Evolve, navegación a Summon, apertura Epic y segundo Combine All dejaron de formar parte de su runtime sin retirar la semántica, assets ni regresiones perceptivas adquiridas.
+- La entrada a Pets pasó al boundary de precondiciones y `SummonPetDailyFlow` dejó de cerrar preventivamente a Lobby. Manage y Summon son postcondiciones explícitas y ambas encadenan Quick Menu → Guild desde composición.
 
 ### Preserved
 

@@ -92,8 +92,7 @@ class MailboxFlow:
         *,
         navigation_timeout: float = 6.0,
         activity_onset_timeout: float = 2.0,
-        processing_timeout: float = 20.0,
-        no_effect_timeout: float = 3.0,
+        processing_timeout: float = 30.0,
         delete_timeout: float = 6.0,
         navigation_stable_for: float = 0.25,
         processing_stable_for: float = 0.75,
@@ -123,9 +122,6 @@ class MailboxFlow:
         )
         self.processing_timeout = _positive_duration(
             processing_timeout, "processing_timeout"
-        )
-        self.no_effect_timeout = _positive_duration(
-            no_effect_timeout, "no_effect_timeout"
         )
         self.delete_timeout = _positive_duration(delete_timeout, "delete_timeout")
         self.navigation_stable_for = _non_negative_duration(
@@ -191,15 +187,24 @@ class MailboxFlow:
                 except RuntimeWaitTimeout as onset_timeout:
                     anchor = onset_timeout.last_snapshot or mailbox
                     mailbox = self.observer.wait_until(
-                        _is_character_mail_claimable_without_activity,
+                        _is_character_mail_without_activity,
                         after_sequence=anchor.sequence,
-                        timeout=self.no_effect_timeout,
+                        timeout=self.processing_timeout,
                         abort_if=_has_incompatible_processing_state,
                         cancel_requested=self.cancel_requested,
-                        stable_for=self.no_effect_stable_for,
+                        stable_for=max(
+                            self.no_effect_stable_for,
+                            self.processing_stable_for,
+                        ),
                     )
-                    claim_all_no_effect = True
-                    self._append_event(events, MAILBOX_CLAIM_ALL_NO_EFFECT)
+                    if _has_status(mailbox, STATUS_MAILBOX_CLAIMABLE):
+                        claim_all_no_effect = True
+                        self._append_event(events, MAILBOX_CLAIM_ALL_NO_EFFECT)
+                    else:
+                        processing_completed = True
+                        self._append_event(
+                            events, MAILBOX_CLAIM_PROCESSING_COMPLETED
+                        )
                 else:
                     processing_observed = True
                     self._append_event(
@@ -383,15 +388,6 @@ def _is_character_mail(snapshot: RuntimeSnapshot) -> bool:
 def _is_character_mail_without_activity(snapshot: RuntimeSnapshot) -> bool:
     return _is_character_mail(snapshot) and not _has_claim_processing_activity(
         snapshot
-    )
-
-
-def _is_character_mail_claimable_without_activity(
-    snapshot: RuntimeSnapshot,
-) -> bool:
-    return (
-        _is_character_mail_without_activity(snapshot)
-        and _has_status(snapshot, STATUS_MAILBOX_CLAIMABLE)
     )
 
 

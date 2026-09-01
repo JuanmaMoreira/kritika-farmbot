@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY, SCREEN_WORLD_BOSS
+from bot.catalog import (
+    SCREEN_GUILD,
+    SCREEN_LOBBY,
+    SCREEN_PET_SUMMON,
+    SCREEN_PETS_MANAGE,
+    SCREEN_WORLD_BOSS,
+)
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
 from bot.observations import validate_semantic_name
 from bot.semantic_actions import (
@@ -31,9 +37,17 @@ class QuickMenuPolicy:
 
 
 # These contexts opened the same Quick Menu overlay live using the shared header
-# target. Guild uses the acquired shifted layout; no other context is inferred.
+# target. Every non-Lobby origin uses the acquired shifted layout.
 DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(
-    frozenset({SCREEN_GUILD, SCREEN_LOBBY, SCREEN_WORLD_BOSS})
+    frozenset(
+        {
+            SCREEN_GUILD,
+            SCREEN_LOBBY,
+            SCREEN_PET_SUMMON,
+            SCREEN_PETS_MANAGE,
+            SCREEN_WORLD_BOSS,
+        }
+    )
 )
 
 

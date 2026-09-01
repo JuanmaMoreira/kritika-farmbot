@@ -46,19 +46,26 @@ def snapshot(sequence, image=None, context=SCREEN_WORLD_BOSS_BATTLE, overlays=()
     )
 
 
-def detector_for(frames, *, off=3.0, on=7.0):
+def detector_for(
+    frames, *, off=3.0, on=7.0, frame_count=None, minimum_frame_count=None
+):
     observer = Mock(spec=RuntimeObserver)
     temporal = Mock()
     temporal.collect.return_value = TemporalWindow(
         TemporalWindowStatus.COMPLETE,
         tuple(snapshot(index + 1, frame) for index, frame in enumerate(frames)),
     )
+    target_count = len(frames) if frame_count is None else frame_count
+    minimum_count = (
+        target_count if minimum_frame_count is None else minimum_frame_count
+    )
     calibration = AutoBattleCalibration(
         roi=(0.0, 0.0, 1.0, 1.0),
         border_fraction=0.2,
         off_threshold=off,
         on_threshold=on,
-        frame_count=len(frames),
+        frame_count=target_count,
+        minimum_frame_count=minimum_count,
         sample_interval=0.1,
         timeout=2.0,
     )
@@ -101,8 +108,15 @@ def test_product_calibration_preserves_live_roi_threshold_gap_and_window():
     assert calibration.off_threshold == 2.0
     assert calibration.on_threshold == 5.0
     assert calibration.frame_count == 10
+    assert calibration.minimum_frame_count == 9
     assert calibration.sample_interval == 0.1
     assert calibration.timeout == 8.0
+
+
+@pytest.mark.parametrize("minimum_frame_count", (True, 1, 9.0, 11))
+def test_calibration_rejects_invalid_minimum_frame_count(minimum_frame_count):
+    with pytest.raises(ValueError):
+        AutoBattleCalibration(minimum_frame_count=minimum_frame_count)
 
 
 @pytest.mark.parametrize(
@@ -122,6 +136,54 @@ def test_temporal_detector_preserves_bounded_acquisition_failures(window_status,
     result = detector.observe(after_sequence=10)
 
     assert result.status is expected
+    assert result.fact is None
+
+
+@pytest.mark.parametrize(
+    ("frames", "expected"),
+    (
+        ([changing_border(0) for _ in range(9)], AutoBattleState.OFF),
+        (
+            [changing_border(value) for value in (0, 255, 0, 255, 0, 255, 0, 255, 0)],
+            AutoBattleState.ON,
+        ),
+    ),
+)
+def test_one_sample_short_timeout_preserves_classifiable_evidence(frames, expected):
+    detector = detector_for(
+        frames,
+        frame_count=10,
+        minimum_frame_count=9,
+    )
+    detector.temporal.collect.return_value = TemporalWindow(
+        TemporalWindowStatus.TIMEOUT,
+        tuple(snapshot(index + 1, frame) for index, frame in enumerate(frames)),
+        "frames_collected=9/10",
+    )
+
+    result = detector.observe(after_sequence=0)
+
+    assert result.status is FactReadStatus.CONFIRMED
+    assert result.fact.value is expected
+    assert len(result.evidence) == 9
+
+
+def test_timeout_below_minimum_frame_count_remains_timeout():
+    frames = [changing_border(0) for _ in range(8)]
+    detector = detector_for(
+        frames,
+        frame_count=10,
+        minimum_frame_count=9,
+    )
+    detector.temporal.collect.return_value = TemporalWindow(
+        TemporalWindowStatus.TIMEOUT,
+        tuple(snapshot(index + 1, frame) for index, frame in enumerate(frames)),
+        "frames_collected=8/10",
+    )
+
+    result = detector.observe(after_sequence=0)
+
+    assert result.status is FactReadStatus.TIMEOUT
     assert result.fact is None
 
 

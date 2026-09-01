@@ -8,6 +8,7 @@
   "roi": [0.835, 0.018, 0.89, 0.078],
   "border_fraction": 0.22,
   "frame_count": 10,
+  "minimum_frame_count": 9,
   "window_duration_seconds": [1.188, 1.875],
   "sample_interval_seconds": 0.1,
   "thresholds": {

@@ -45,6 +45,7 @@ from bot.state import ResolutionStatus, ResolvedState
 @dataclass
 class WaitCall:
     after_sequence: int
+    timeout: float
     stable_for: float
 
 
@@ -67,7 +68,7 @@ class ScriptedObserver:
         cancel_requested=None,
         stable_for=0.0,
     ):
-        self.calls.append(WaitCall(after_sequence, stable_for))
+        self.calls.append(WaitCall(after_sequence, timeout, stable_for))
         script = self.scripts.pop(0)
         if isinstance(script, BaseException):
             raise script
@@ -234,7 +235,7 @@ def test_claim_all_without_activity_is_single_attempt_and_leftovers_are_nonfatal
     character = snapshot(3, 3.0, base=SCREEN_MAILBOX, overlays=claims)
     still_claims = snapshot(4, 4.0, base=SCREEN_MAILBOX, overlays=claims)
     confirmed_a = snapshot(5, 5.0, base=SCREEN_MAILBOX, overlays=claims)
-    confirmed_b = snapshot(6, 5.6, base=SCREEN_MAILBOX, overlays=claims)
+    confirmed_b = snapshot(6, 5.8, base=SCREEN_MAILBOX, overlays=claims)
     returned = snapshot(7, 6.0, base=SCREEN_LOBBY)
     onset_timeout = RuntimeWaitTimeout(
         after_sequence=3,
@@ -254,6 +255,68 @@ def test_claim_all_without_activity_is_single_attempt_and_leftovers_are_nonfatal
     assert result.event_count(MAILBOX_DELETE_READ_SKIPPED) == 1
     assert actions.count(ClaimAllCharacterMail()) == 1
     assert DeleteReadCharacterMail() not in actions
+
+
+def test_claim_all_can_complete_when_short_processing_onset_is_not_observed():
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    account = snapshot(2, 2.0, base=SCREEN_MAILBOX)
+    claims = character_overlays(STATUS_MAILBOX_CLAIMABLE)
+    character = snapshot(3, 3.0, base=SCREEN_MAILBOX, overlays=claims)
+    after_claim = snapshot(
+        4,
+        4.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_a = snapshot(
+        5,
+        5.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_b = snapshot(
+        6,
+        5.8,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    after_delete_a = snapshot(
+        7, 6.0, base=SCREEN_MAILBOX, overlays=character_overlays()
+    )
+    after_delete_b = snapshot(
+        8, 6.6, base=SCREEN_MAILBOX, overlays=character_overlays()
+    )
+    returned = snapshot(9, 7.0, base=SCREEN_LOBBY)
+    onset_timeout = RuntimeWaitTimeout(
+        after_sequence=3,
+        timeout=2.0,
+        last_snapshot=after_claim,
+    )
+
+    result, actions, _, observer = run_flow(
+        lobby,
+        [
+            [account],
+            [character],
+            onset_timeout,
+            [settled_a, settled_b],
+            [after_delete_a, after_delete_b],
+            [returned],
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert not result.processing_observed
+    assert result.processing_completed
+    assert not result.claim_all_no_effect
+    assert not result.claims_leftover
+    assert result.event_count(MAILBOX_CLAIM_PROCESSING_OBSERVED) == 0
+    assert result.event_count(MAILBOX_CLAIM_PROCESSING_COMPLETED) == 1
+    assert result.event_count(MAILBOX_CLAIM_ALL_NO_EFFECT) == 0
+    assert actions.count(ClaimAllCharacterMail()) == 1
+    assert actions.count(DeleteReadCharacterMail()) == 1
+    assert observer.calls[3].timeout == pytest.approx(30.0)
+    assert observer.calls[3].stable_for == pytest.approx(0.75)
 
 
 def test_no_claims_or_read_mail_is_mailbox_noop():
@@ -358,7 +421,7 @@ def test_processing_completion_timeout_fails_without_delete_or_close():
     active = snapshot(4, 4.0, base=SCREEN_MAILBOX, activity=True)
     timeout = RuntimeWaitTimeout(
         after_sequence=4,
-        timeout=20.0,
+        timeout=30.0,
         last_snapshot=active,
     )
 

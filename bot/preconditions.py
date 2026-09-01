@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Protocol, runtime_checkable
 
-from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY
+from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY, SCREEN_PETS_MANAGE
 from bot.component_contracts import (
     ComponentRequirement,
     QUICK_MENU_ACCESSIBLE,
@@ -56,6 +56,7 @@ class MinimalPreconditionEnsurer:
         current_context: Callable[[], str | None],
         *,
         navigate_to_lobby: Callable[[], bool] | None = None,
+        navigate_to_pets_manage: Callable[[], bool] | None = None,
         navigate_lobby_to_guild: Callable[[], bool] | None = None,
         navigate_to_guild: Callable[[], bool] | None = None,
         quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
@@ -64,6 +65,10 @@ class MinimalPreconditionEnsurer:
             raise ValueError("current_context must be callable")
         if navigate_to_lobby is not None and not callable(navigate_to_lobby):
             raise ValueError("navigate_to_lobby must be callable or None")
+        if navigate_to_pets_manage is not None and not callable(
+            navigate_to_pets_manage
+        ):
+            raise ValueError("navigate_to_pets_manage must be callable or None")
         if navigate_lobby_to_guild is not None and not callable(
             navigate_lobby_to_guild
         ):
@@ -74,6 +79,7 @@ class MinimalPreconditionEnsurer:
             raise ValueError("quick_menu_policy must be QuickMenuPolicy")
         self.current_context = current_context
         self.navigate_to_lobby = navigate_to_lobby
+        self.navigate_to_pets_manage = navigate_to_pets_manage
         self.navigate_lobby_to_guild = navigate_lobby_to_guild
         self.navigate_to_guild = navigate_to_guild
         self.quick_menu_policy = quick_menu_policy
@@ -107,6 +113,19 @@ class MinimalPreconditionEnsurer:
                     before,
                     self.navigate_lobby_to_guild,
                     "direct_guild",
+                )
+            if (
+                requirement.name == SCREEN_PETS_MANAGE
+                and (
+                    before == SCREEN_LOBBY
+                    or self.quick_menu_policy.allows(before)
+                )
+            ):
+                return self._navigate_and_verify(
+                    requirement,
+                    before,
+                    self.navigate_to_pets_manage,
+                    "pets_manage",
                 )
             if (
                 requirement.name == SCREEN_GUILD

@@ -25,7 +25,7 @@ from bot.runtime_facts import (
     FactReadStatus,
     RuntimeFact,
 )
-from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
+from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot, RuntimeWaitTimeout
 from bot.semantic_actions import (
     CancelSocketSell,
     ExitSocket,
@@ -107,12 +107,16 @@ class Observer:
     def __init__(self, initial, waits=()):
         self.initial = initial
         self.waits = list(waits)
+        self.calls = []
 
     def observe(self):
         return self.initial
 
     def wait_until(self, condition, **kwargs):
+        self.calls.append(kwargs)
         value = self.waits.pop(0)
+        if isinstance(value, BaseException):
+            raise value
         assert condition(value)
         return value
 
@@ -252,6 +256,81 @@ def test_enhance_gold_effect_short_circuits_sell_and_returns_verified():
     assert actions.calls == []
 
 
+def test_late_clean_socket_confirms_effect_when_tappable_phase_was_not_sampled():
+    initial = snapshot(1, base=SCREEN_SOCKET)
+    late_clean = snapshot(3, base=SCREEN_SOCKET)
+    confirmed_clean = snapshot(4, base=SCREEN_SOCKET)
+    operation, observer, _, facts, events, transitions, tap = build(
+        initial,
+        [
+            snapshot(2, base=SCREEN_SOCKET, overlays=(POPUP_SOCKET_ENHANCE_ALL,)),
+            late_clean,
+            snapshot(5, base=SCREEN_WORLD_BOSS),
+        ],
+        waits=[confirmed_clean],
+    )
+
+    result = operation.run(plan())
+
+    assert result.outcome is SocketReliefOutcome.RELIEVED
+    assert result.enhance is SocketStrategyOutcome.EFFECT
+    assert result.sell is SocketStrategyOutcome.NOT_RUN
+    assert result.animation_taps == 0
+    assert result.final_snapshot.state.base_context == SCREEN_WORLD_BOSS
+    assert facts.calls == []
+    assert tap.calls == []
+    gold_call = next(
+        call
+        for call in transitions.calls
+        if isinstance(call[1], SelectSocketEnhanceGold)
+    )
+    assert gold_call[3]["retryable_from"](late_clean) is False
+    assert gold_call[3]["abort_if"](late_clean) is False
+    assert observer.calls[0]["after_sequence"] == late_clean.sequence
+    assert any(
+        event == "socket_relief.enhance_effect"
+        and fields.get("completion")
+        == "clean_socket_without_sampled_tappable_phase"
+        for event, fields in events.records
+    )
+
+
+def test_single_late_clean_socket_without_confirmation_remains_failure():
+    initial = snapshot(1, base=SCREEN_SOCKET)
+    late_clean = snapshot(3, base=SCREEN_SOCKET)
+    confirmation_timeout = RuntimeWaitTimeout(
+        after_sequence=late_clean.sequence,
+        timeout=6.0,
+        last_snapshot=late_clean,
+    )
+    operation, _, _, _, events, transitions, tap = build(
+        initial,
+        [
+            snapshot(2, base=SCREEN_SOCKET, overlays=(POPUP_SOCKET_ENHANCE_ALL,)),
+            late_clean,
+        ],
+        waits=[confirmation_timeout],
+    )
+
+    result = operation.run(plan())
+
+    assert result.outcome is SocketReliefOutcome.FAILED
+    assert result.enhance is SocketStrategyOutcome.FAILED
+    assert result.sell is SocketStrategyOutcome.NOT_RUN
+    assert tap.calls == []
+    assert len(
+        [
+            call
+            for call in transitions.calls
+            if isinstance(call[1], SelectSocketEnhanceGold)
+        ]
+    ) == 1
+    assert (
+        "socket_relief.enhance_failed",
+        {"reason": "late_socket_unstable"},
+    ) in events.records
+
+
 def test_no_material_closes_modal_then_zero_candidates_returns_no_relief():
     initial = snapshot(1, base=SCREEN_SOCKET)
     equipment = snapshot(6, base=SCREEN_SOCKET, equipment=True)
@@ -269,7 +348,7 @@ def test_no_material_closes_modal_then_zero_candidates_returns_no_relief():
 
 def test_enhance_timeout_without_explicit_outcome_fails_and_never_sells():
     initial = snapshot(1, base=SCREEN_SOCKET)
-    operation, _, _, facts, _, transitions, _ = build(
+    operation, _, _, facts, events, transitions, _ = build(
         initial,
         [
             snapshot(2, base=SCREEN_SOCKET, overlays=(POPUP_SOCKET_ENHANCE_ALL,)),
@@ -282,6 +361,10 @@ def test_enhance_timeout_without_explicit_outcome_fails_and_never_sells():
     assert result.outcome is SocketReliefOutcome.FAILED
     assert facts.calls == []
     assert not any(isinstance(call[1], OpenSocketEquipmentHome) for call in transitions.calls)
+    assert (
+        "socket_relief.enhance_failed",
+        {"reason": "timeout"},
+    ) in events.records
 
 
 def test_red_candidate_level_zero_uses_bulk_and_requires_slot_disappearance():

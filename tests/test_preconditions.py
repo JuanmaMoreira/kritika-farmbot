@@ -2,6 +2,7 @@ from bot.catalog import (
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_GUILD,
     SCREEN_LOBBY,
+    SCREEN_PETS_MANAGE,
     SCREEN_WORLD_BOSS,
 )
 from bot.component_contracts import (
@@ -91,6 +92,24 @@ def test_exact_guild_from_lobby_prioritizes_direct_verified_navigation():
     assert result.context_before == SCREEN_LOBBY
     assert result.context_after == SCREEN_GUILD
     assert calls == ["direct"]
+
+
+def test_exact_pet_manage_from_lobby_uses_composition_navigation():
+    contexts = iter((SCREEN_LOBBY, SCREEN_PETS_MANAGE))
+    calls = []
+    ensurer = MinimalPreconditionEnsurer(
+        lambda: next(contexts),
+        navigate_to_pets_manage=lambda: calls.append("pets") or True,
+    )
+
+    result = ensurer.ensure(
+        ComponentRequirement.exact_state(SCREEN_PETS_MANAGE)
+    )
+
+    assert result.outcome is EnsureOutcome.NORMALIZED
+    assert result.context_before == SCREEN_LOBBY
+    assert result.context_after == SCREEN_PETS_MANAGE
+    assert calls == ["pets"]
 
 
 def test_exact_guild_from_world_boss_uses_quick_menu_fallback():

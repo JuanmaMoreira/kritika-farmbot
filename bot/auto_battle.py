@@ -43,6 +43,7 @@ class AutoBattleCalibration:
     off_threshold: float = 2.0
     on_threshold: float = 5.0
     frame_count: int = 10
+    minimum_frame_count: int = 9
     sample_interval: float = 0.10
     timeout: float = 8.0
 
@@ -68,13 +69,17 @@ class AutoBattleCalibration:
             raise ValueError("thresholds must satisfy 0 <= off < on")
         if self.sample_interval < 0.0 or self.timeout <= 0.0:
             raise ValueError("sample_interval must be non-negative and timeout positive")
-        if (
-            isinstance(self.frame_count, bool)
-            or not isinstance(self.frame_count, Integral)
-            or self.frame_count < 2
-        ):
-            raise ValueError("frame_count must be an integer >= 2")
-        object.__setattr__(self, "frame_count", int(self.frame_count))
+        for name in ("frame_count", "minimum_frame_count"):
+            value = getattr(self, name)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, Integral)
+                or value < 2
+            ):
+                raise ValueError(f"{name} must be an integer >= 2")
+            object.__setattr__(self, name, int(value))
+        if self.minimum_frame_count > self.frame_count:
+            raise ValueError("minimum_frame_count cannot exceed frame_count")
 
 
 DEFAULT_AUTO_BATTLE_CALIBRATION = AutoBattleCalibration()
@@ -119,7 +124,14 @@ class AutoBattleDetector:
             TemporalWindowStatus.CANCELLED: FactReadStatus.CANCELLED,
             TemporalWindowStatus.FAILURE: FactReadStatus.FAILURE,
         }
-        if window.status is not TemporalWindowStatus.COMPLETE:
+        classifiable_timeout = (
+            window.status is TemporalWindowStatus.TIMEOUT
+            and len(window.snapshots) >= self.calibration.minimum_frame_count
+        )
+        if (
+            window.status is not TemporalWindowStatus.COMPLETE
+            and not classifiable_timeout
+        ):
             return FactReadResult(status_map[window.status], detail=window.detail)
 
         try:

@@ -9,7 +9,6 @@ from bot.catalog import (
     OVERLAY_PET_PREMIUM_TICKET_SELECTOR,
     POPUP_INSUFFICIENT_GOLD,
     POPUP_PET_INVENTORY_FULL,
-    SCREEN_LOBBY,
     SCREEN_PET_COMBINE,
     SCREEN_PET_SUMMON,
     SCREEN_PET_SUMMON_RESULT,
@@ -30,7 +29,6 @@ from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot, RuntimeWaitTimeo
 from bot.semantic_actions import (
     AcceptPetInventoryFull,
     ClosePetSummonResult,
-    ClosePets,
     OpenEpicPetSummon,
     OpenPremiumPetSummon,
     OpenSingleEpicPet,
@@ -64,10 +62,6 @@ def snapshot(sequence, base, overlays=()):
         RuntimeFacts(),
         FrameGeometry.from_frame(image),
     )
-
-
-def lobby(sequence):
-    return snapshot(sequence, SCREEN_LOBBY)
 
 
 def manage(sequence, daily):
@@ -171,8 +165,8 @@ def relief_result(outcome, final, error=None):
     return PetSummonSpaceReliefResult(outcome, final, error=error)
 
 
-def build(scripted, *, relief=(), cancel=lambda: False):
-    observer = Observer(lobby(1), scripted)
+def build(scripted, *, initial=None, relief=(), cancel=lambda: False):
+    observer = Observer(initial or manage(1, False), scripted)
     actions = Actions()
     events = Events()
     relief = Relief(relief)
@@ -194,14 +188,23 @@ def event_kinds(result):
     return {event.kind for event in result.events}
 
 
+def test_contract_is_manage_to_manage_or_summon():
+    assert SummonPetDailyFlow.contract.precondition.name == SCREEN_PETS_MANAGE
+    assert {
+        requirement.name
+        for requirement in SummonPetDailyFlow.contract.successful_postconditions
+    } == {SCREEN_PETS_MANAGE, SCREEN_PET_SUMMON}
+
+
 def test_daily_absent_is_successful_noop_without_entering_summon():
-    flow, actions, _, relief, _ = build([manage(2, False), lobby(3)])
+    flow, actions, _, relief, _ = build([])
 
     result_value = flow.run()
 
     assert result_value.status is FlowStatus.COMPLETED
     assert result_value.no_op and result_value.daily_completed
     assert SUMMON_PET_DAILY_NOOP in event_kinds(result_value)
+    assert actions.calls == []
     assert not any(isinstance(action, SelectPetSummon) for action in actions.calls)
     assert relief.calls == []
 
@@ -209,13 +212,12 @@ def test_daily_absent_is_successful_noop_without_entering_summon():
 def test_epic_available_uses_one_open_and_requires_stable_result_then_daily_absence():
     flow, actions, _, _, observer = build(
         [
-            manage(2, True),
             summon(3, STATUS_PET_EPIC_AVAILABLE),
             epic_selector(4),
             result(5),
             summon(6, STATUS_PET_EPIC_AVAILABLE, daily=False),
-            lobby(7),
-        ]
+        ],
+        initial=manage(1, True),
     )
 
     result_value = flow.run()
@@ -238,13 +240,12 @@ def test_epic_available_uses_one_open_and_requires_stable_result_then_daily_abse
 def test_epic_unavailable_uses_same_premium_policy_for_ticket_or_gold(selector, resource):
     flow, actions, _, _, _ = build(
         [
-            manage(2, True),
             summon(3, STATUS_PET_EPIC_UNAVAILABLE, resource=resource),
             premium_selector(4, selector, resource),
             result(5),
             summon(6, STATUS_PET_EPIC_UNAVAILABLE, daily=False, resource=resource),
-            lobby(7),
-        ]
+        ],
+        initial=manage(1, True),
     )
 
     result_value = flow.run()
@@ -259,13 +260,12 @@ def test_insufficient_gold_is_nonfatal_and_leaves_daily_pending():
     active = summon(3, STATUS_PET_EPIC_UNAVAILABLE)
     flow, actions, _, relief, _ = build(
         [
-            manage(2, True),
             active,
             premium_selector(4, OVERLAY_PET_PREMIUM_GOLD_SELECTOR, STATUS_PET_PREMIUM_GOLD),
             summon(5, STATUS_PET_EPIC_UNAVAILABLE, popup=POPUP_INSUFFICIENT_GOLD),
             summon(6, STATUS_PET_EPIC_UNAVAILABLE),
-            lobby(7),
-        ]
+        ],
+        initial=manage(1, True),
     )
 
     result_value = flow.run()
@@ -281,7 +281,6 @@ def test_pet_full_relief_success_retries_once_and_can_complete_daily():
     relief_final = combine(7)
     flow, actions, _, relief, _ = build(
         [
-            manage(2, True),
             summon(3, STATUS_PET_EPIC_AVAILABLE),
             epic_selector(4),
             summon(5, STATUS_PET_EPIC_AVAILABLE, popup=POPUP_PET_INVENTORY_FULL),
@@ -290,8 +289,8 @@ def test_pet_full_relief_success_retries_once_and_can_complete_daily():
             premium_selector(9, OVERLAY_PET_PREMIUM_GOLD_SELECTOR, STATUS_PET_PREMIUM_GOLD),
             result(10),
             summon(11, STATUS_PET_EPIC_UNAVAILABLE, daily=False),
-            lobby(12),
         ],
+        initial=manage(1, True),
         relief=[relief_result(PetSummonSpaceReliefOutcome.RELIEVED, relief_final)],
     )
 
@@ -306,15 +305,15 @@ def test_pet_full_relief_success_retries_once_and_can_complete_daily():
 
 def test_relief_unavailable_is_manual_resolution_not_technical_failure():
     relief_final = combine(7)
-    flow, _, _, relief, _ = build(
+    flow, actions, _, relief, _ = build(
         [
-            manage(2, True),
             summon(3, STATUS_PET_EPIC_AVAILABLE),
             epic_selector(4),
             summon(5, STATUS_PET_EPIC_AVAILABLE, popup=POPUP_PET_INVENTORY_FULL),
             combine(6),
-            lobby(8),
+            summon(8, STATUS_PET_EPIC_AVAILABLE),
         ],
+        initial=manage(1, True),
         relief=[
             relief_result(
                 PetSummonSpaceReliefOutcome.NO_RELIEF_AVAILABLE, relief_final
@@ -329,13 +328,13 @@ def test_relief_unavailable_is_manual_resolution_not_technical_failure():
     assert SUMMON_PET_DAILY_SPACE_RELIEF_UNAVAILABLE in event_kinds(result_value)
     assert SUMMON_PET_DAILY_MANUAL_RESOLUTION in event_kinds(result_value)
     assert len(relief.calls) == 1
+    assert isinstance(actions.calls[-1], SelectPetSummon)
 
 
 def test_retry_pet_full_never_invokes_second_relief():
     relief_final = combine(7)
     flow, actions, _, relief, _ = build(
         [
-            manage(2, True),
             summon(3, STATUS_PET_EPIC_AVAILABLE),
             epic_selector(4),
             summon(5, STATUS_PET_EPIC_AVAILABLE, popup=POPUP_PET_INVENTORY_FULL),
@@ -344,8 +343,8 @@ def test_retry_pet_full_never_invokes_second_relief():
             epic_selector(9),
             summon(10, STATUS_PET_EPIC_AVAILABLE, popup=POPUP_PET_INVENTORY_FULL),
             summon(11, STATUS_PET_EPIC_AVAILABLE),
-            lobby(12),
         ],
+        initial=manage(1, True),
         relief=[relief_result(PetSummonSpaceReliefOutcome.RELIEVED, relief_final)],
     )
 
@@ -368,12 +367,12 @@ def test_retry_pet_full_never_invokes_second_relief():
 def test_relief_failure_and_cancellation_propagate(outcome, expected_status):
     flow, _, _, relief, _ = build(
         [
-            manage(2, True),
             summon(3, STATUS_PET_EPIC_AVAILABLE),
             epic_selector(4),
             summon(5, STATUS_PET_EPIC_AVAILABLE, popup=POPUP_PET_INVENTORY_FULL),
             combine(6),
         ],
+        initial=manage(1, True),
         relief=[relief_result(outcome, combine(7), error="relief failed" if outcome is PetSummonSpaceReliefOutcome.FAILED else None)],
     )
 
@@ -389,15 +388,15 @@ def test_initial_cancellation_and_incompatible_outcome_send_no_unsafe_followup()
 
     failed_flow, failed_actions, _, _, _ = build(
         [
-            manage(2, True),
             summon(3, STATUS_PET_EPIC_AVAILABLE),
             epic_selector(4),
-            lobby(5),
-        ]
+            snapshot(5, SCREEN_PETS_MANAGE),
+        ],
+        initial=manage(1, True),
     )
     failed = failed_flow.run()
 
     assert cancelled.status is FlowStatus.CANCELLED
     assert cancelled_actions.calls == []
     assert failed.status is FlowStatus.FAILED
-    assert not any(isinstance(action, ClosePets) for action in failed_actions.calls)
+    assert len(failed_actions.calls) == 3

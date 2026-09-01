@@ -2,7 +2,13 @@ from dataclasses import dataclass
 
 import pytest
 
-from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY
+from bot.catalog import (
+    SCREEN_BATTLE_MODE_SELECT,
+    SCREEN_GUILD,
+    SCREEN_LOBBY,
+    SCREEN_PET_SUMMON,
+    SCREEN_PETS_MANAGE,
+)
 from bot.component_contracts import (
     ComponentContract,
     ComponentRequirement,
@@ -74,6 +80,8 @@ def _runner(
     context_values=None,
     default_context=SCREEN_LOBBY,
     navigate_to_lobby=None,
+    navigate_to_pets_manage=None,
+    navigate_to_guild=None,
     quick_menu_policy=None,
     cancel_requested=lambda: False,
     context_factory=None,
@@ -95,6 +103,8 @@ def _runner(
         preconditions=MinimalPreconditionEnsurer(
             current_context,
             navigate_to_lobby=navigate_to_lobby,
+            navigate_to_pets_manage=navigate_to_pets_manage,
+            navigate_to_guild=navigate_to_guild,
             **precondition_args,
         ),
         events=events,
@@ -491,6 +501,56 @@ def test_session_normalizes_through_quick_menu_for_next_exact_lobby_flow():
     assert result.status is SessionStatus.COMPLETED
     assert navigation_calls == ["quick_menu_to_lobby"]
     assert trace.count("lobby_only.run") == 1
+
+
+@pytest.mark.parametrize("pet_exit", [SCREEN_PETS_MANAGE, SCREEN_PET_SUMMON])
+def test_session_chains_pet_exit_directly_to_guild_without_lobby(pet_exit):
+    trace = []
+    pet = Flow(
+        "summon_pet_daily",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+        FlowContract(
+            ComponentRequirement.exact_state(SCREEN_PETS_MANAGE),
+            (
+                ComponentRequirement.exact_state(SCREEN_PETS_MANAGE),
+                ComponentRequirement.exact_state(SCREEN_PET_SUMMON),
+            ),
+        ),
+    )
+    guild = Flow(
+        "guild_check_in",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+        FlowContract(
+            ComponentRequirement.exact_state(SCREEN_GUILD),
+            (ComponentRequirement.exact_state(SCREEN_GUILD),),
+        ),
+    )
+    rotation = Rotation(1, trace)
+    navigation_calls = []
+    runner, _ = _runner(
+        1,
+        [pet, guild],
+        rotation,
+        context_values=[
+            SCREEN_PETS_MANAGE,
+            pet_exit,
+            pet_exit,
+            SCREEN_GUILD,
+            SCREEN_GUILD,
+            SCREEN_GUILD,
+            SCREEN_LOBBY,
+        ],
+        navigate_to_lobby=lambda: navigation_calls.append("lobby") or True,
+        navigate_to_guild=lambda: navigation_calls.append("guild") or True,
+    )
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.COMPLETED
+    assert navigation_calls == ["guild"]
+    assert trace[:2] == ["summon_pet_daily.run", "guild_check_in.run"]
 
 
 def test_session_aborts_when_required_lobby_normalization_fails():

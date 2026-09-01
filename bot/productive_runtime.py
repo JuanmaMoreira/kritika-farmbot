@@ -17,7 +17,14 @@ from bot.catalog import (
     MENU_QUICK,
     SCREEN_GUILD,
     SCREEN_LOBBY,
+    SCREEN_PET_SUMMON,
+    SCREEN_PETS_MANAGE,
     SCREEN_WORLD_BOSS,
+    STATUS_PET_EPIC_AVAILABLE,
+    STATUS_PET_EPIC_UNAVAILABLE,
+    STATUS_PET_PREMIUM_GOLD,
+    STATUS_PET_PREMIUM_TICKET_AVAILABLE,
+    STATUS_PET_SUMMON_DAILY_ACTIVE,
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
     STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
@@ -35,7 +42,13 @@ from bot.quick_menu import quick_menu_accessible, select_quick_menu_guild_action
 from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
 from bot.runtime_observer import RuntimeObserver, RuntimeWaitCancelled, RuntimeWaitTimeout
-from bot.semantic_actions import OpenGuild, OpenQuickMenu, SelectQuickMenuLobby
+from bot.semantic_actions import (
+    ClosePets,
+    OpenGuild,
+    OpenPets,
+    OpenQuickMenu,
+    SelectQuickMenuLobby,
+)
 from bot.session import SessionPlan, SessionResult, SessionRunner
 from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
@@ -44,13 +57,30 @@ from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-_CLEAN_CONTEXTS = frozenset({SCREEN_GUILD, SCREEN_LOBBY, SCREEN_WORLD_BOSS})
+_CLEAN_CONTEXTS = frozenset(
+    {
+        SCREEN_GUILD,
+        SCREEN_LOBBY,
+        SCREEN_PET_SUMMON,
+        SCREEN_PETS_MANAGE,
+        SCREEN_WORLD_BOSS,
+    }
+)
 _GUILD_ATTENDANCE_STATES = frozenset(
     {STATUS_GUILD_ATTENDANCE_ACTIVE, STATUS_GUILD_ATTENDANCE_COMPLETED}
 )
 _GUILD_COMPATIBLE_OVERLAYS = _GUILD_ATTENDANCE_STATES | {
     STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE
 }
+_PET_SUMMON_STATUSES = frozenset(
+    {
+        STATUS_PET_EPIC_AVAILABLE,
+        STATUS_PET_EPIC_UNAVAILABLE,
+        STATUS_PET_PREMIUM_GOLD,
+        STATUS_PET_PREMIUM_TICKET_AVAILABLE,
+        STATUS_PET_SUMMON_DAILY_ACTIVE,
+    }
+)
 _CLEAN_CONTEXT_TIMEOUT = 5.0
 _CLEAN_CONTEXT_STABLE_FOR = 0.25
 
@@ -98,6 +128,7 @@ class ProductiveRuntime:
         return MinimalPreconditionEnsurer(
             lambda: self._current_clean_context(),
             navigate_to_lobby=self._navigate_to_lobby,
+            navigate_to_pets_manage=self._navigate_to_pets_manage,
             navigate_lobby_to_guild=self._navigate_lobby_to_guild,
             navigate_to_guild=self._navigate_to_guild,
         )
@@ -223,7 +254,7 @@ class ProductiveRuntime:
             return None
 
     def _navigate_to_lobby(self) -> bool:
-        """Normalize any acquired Quick Menu-capable origin to Lobby."""
+        """Normalize an acquired origin to Lobby with its verified direct route."""
 
         initial = self.observer.observe()
         if _is_clean_base(initial, SCREEN_LOBBY):
@@ -241,6 +272,27 @@ class ProductiveRuntime:
             grace_timeout=2.0,
             max_attempts=2,
         )
+        if origin in {SCREEN_PETS_MANAGE, SCREEN_PET_SUMMON}:
+            lobby = transition.execute(
+                "precondition.close_pets",
+                ClosePets(),
+                initial,
+                expected=lambda snapshot: _is_clean_base(
+                    snapshot, SCREEN_LOBBY
+                ),
+                precondition=lambda snapshot: _is_clean_base(
+                    snapshot, origin
+                ),
+                retryable_from=lambda snapshot: _is_clean_base(
+                    snapshot, origin
+                ),
+                abort_if=lambda snapshot: _has_incompatible_destination_state(
+                    snapshot, origin, SCREEN_LOBBY
+                ),
+                stable_for=_CLEAN_CONTEXT_STABLE_FOR,
+                policy=policy,
+            )
+            return lobby.succeeded and not self.cancel_requested()
         opened = transition.execute(
             "precondition.open_quick_menu",
             OpenQuickMenu(),
@@ -322,6 +374,52 @@ class ProductiveRuntime:
             policy=policy,
         )
         return guild.succeeded and not self.cancel_requested()
+
+    def _navigate_to_pets_manage(self) -> bool:
+        """Normalize an acquired origin to Lobby, then open Pets on Manage."""
+
+        initial = self.observer.observe()
+        if _is_clean_base(initial, SCREEN_PETS_MANAGE):
+            return True
+        if not _is_clean_base(initial, SCREEN_LOBBY):
+            origin = initial.state.base_context
+            if (
+                origin is None
+                or not quick_menu_accessible(origin)
+                or not _is_clean_base(initial, origin)
+                or not self._navigate_to_lobby()
+            ):
+                return False
+            initial = self.observer.observe()
+        if not _is_clean_base(initial, SCREEN_LOBBY):
+            return False
+
+        transition = VerifiedTransition(self.observer, self.actions, self.events)
+        policy = VerifiedTransitionPolicy(
+            normal_timeout=6.0,
+            grace_timeout=2.0,
+            max_attempts=2,
+        )
+        pets = transition.execute(
+            "precondition.open_pets",
+            OpenPets(),
+            initial,
+            expected=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_PETS_MANAGE
+            ),
+            precondition=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_LOBBY
+            ),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_LOBBY
+            ),
+            abort_if=lambda snapshot: _has_incompatible_destination_state(
+                snapshot, SCREEN_LOBBY, SCREEN_PETS_MANAGE
+            ),
+            stable_for=_CLEAN_CONTEXT_STABLE_FOR,
+            policy=policy,
+        )
+        return pets.succeeded and not self.cancel_requested()
 
     def _navigate_lobby_to_guild(self) -> bool:
         """Use the acquired direct Lobby target and verify Guild."""
@@ -459,12 +557,21 @@ def _is_clean_known_context(snapshot) -> bool:
 def _is_clean_base(snapshot, base: str) -> bool:
     state = snapshot.state
     overlays = set(state.overlays)
-    compatible_overlays = (
-        len(overlays & _GUILD_ATTENDANCE_STATES) == 1
-        and overlays <= _GUILD_COMPATIBLE_OVERLAYS
-        if base == SCREEN_GUILD
-        else not overlays
-    )
+    if base == SCREEN_GUILD:
+        compatible_overlays = (
+            len(overlays & _GUILD_ATTENDANCE_STATES) == 1
+            and overlays <= _GUILD_COMPATIBLE_OVERLAYS
+        )
+    elif base == SCREEN_PETS_MANAGE:
+        compatible_overlays = overlays <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
+    elif base == SCREEN_PET_SUMMON:
+        epic = overlays & {
+            STATUS_PET_EPIC_AVAILABLE,
+            STATUS_PET_EPIC_UNAVAILABLE,
+        }
+        compatible_overlays = len(epic) == 1 and overlays <= _PET_SUMMON_STATUSES
+    else:
+        compatible_overlays = not overlays
     return (
         state.status is ResolutionStatus.RESOLVED
         and state.base_context == base

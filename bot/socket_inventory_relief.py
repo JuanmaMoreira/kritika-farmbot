@@ -22,6 +22,7 @@ from bot.perception.socket import (
 from bot.runtime_facts import FactReadStatus
 from bot.runtime_observer import (
     RuntimeSnapshot,
+    RuntimeWaitAborted,
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
@@ -274,18 +275,66 @@ class SocketInventoryRelief:
             return SocketStrategyOutcome.FAILED, current, 0
         if cancel_requested():
             return SocketStrategyOutcome.CANCELLED, modal, 0
-        outcome = self._transition(
+        enhance_result = self._transition_result(
             "socket_relief.enhance_gold",
             SelectSocketEnhanceGold(),
             modal,
             expected=lambda item: _is_tappable_animation(item)
             or _is_no_material(item),
             precondition=_is_enhance_modal,
+            tolerated=_is_clean_socket,
             policy=self.single_action_policy,
         )
-        if outcome is None:
-            self._record("socket_relief.enhance_failed", reason="outcome_timeout")
-            return SocketStrategyOutcome.FAILED, modal, 0
+        outcome = enhance_result.final_snapshot
+        if not enhance_result.succeeded:
+            if not _is_clean_socket(outcome):
+                self._record(
+                    "socket_relief.enhance_failed",
+                    reason=enhance_result.outcome.value,
+                )
+                return SocketStrategyOutcome.FAILED, outcome, 0
+            try:
+                outcome = self.observer.wait_until(
+                    _is_clean_socket,
+                    after_sequence=outcome.sequence,
+                    timeout=self.normal_policy.normal_timeout,
+                    abort_if=lambda item: (
+                        _is_tappable_animation(item)
+                        or _is_no_material(item)
+                        or _known_incompatible(
+                            item,
+                            _is_clean_socket,
+                            lambda _: False,
+                        )
+                    ),
+                    stable_for=self.stable_for,
+                    cancel_requested=cancel_requested,
+                )
+            except RuntimeWaitCancelled:
+                return SocketStrategyOutcome.CANCELLED, outcome, 0
+            except RuntimeWaitAborted as error:
+                outcome = error.snapshot
+                if not (
+                    _is_tappable_animation(outcome)
+                    or _is_no_material(outcome)
+                ):
+                    self._record(
+                        "socket_relief.enhance_failed",
+                        reason="late_terminal_incompatible",
+                    )
+                    return SocketStrategyOutcome.FAILED, outcome, 0
+            except RuntimeWaitTimeout:
+                self._record(
+                    "socket_relief.enhance_failed",
+                    reason="late_socket_unstable",
+                )
+                return SocketStrategyOutcome.FAILED, outcome, 0
+        if _is_clean_socket(outcome):
+            self._record(
+                "socket_relief.enhance_effect",
+                completion="clean_socket_without_sampled_tappable_phase",
+            )
+            return SocketStrategyOutcome.EFFECT, outcome, 0
         if _is_tappable_animation(outcome):
             self._record("socket_relief.enhance_effect")
             tapped = self.tap_through.run(
@@ -464,6 +513,28 @@ class SocketInventoryRelief:
         tolerated=lambda item: False,
         policy=None,
     ):
+        result = self._transition_result(
+            name,
+            action,
+            before,
+            expected=expected,
+            precondition=precondition,
+            tolerated=tolerated,
+            policy=policy,
+        )
+        return result.final_snapshot if result.succeeded else None
+
+    def _transition_result(
+        self,
+        name,
+        action,
+        before,
+        *,
+        expected,
+        precondition,
+        tolerated=lambda item: False,
+        policy=None,
+    ):
         selected_policy = policy or self.normal_policy
         result = self.transition.execute(
             name,
@@ -485,7 +556,7 @@ class SocketInventoryRelief:
             outcome=result.outcome.value,
             attempts=result.attempt_count,
         )
-        return result.final_snapshot if result.succeeded else None
+        return result
 
     def _cancelled(self, **kwargs):
         self._record("socket_relief.cancelled")

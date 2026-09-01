@@ -4,6 +4,8 @@ from bot.catalog import (
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_GUILD,
     SCREEN_LOBBY,
+    SCREEN_PET_SUMMON,
+    SCREEN_PETS_MANAGE,
     SCREEN_WORLD_BOSS,
 )
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
@@ -25,6 +27,8 @@ def test_declared_context_has_quick_menu_capability():
     assert quick_menu_accessible(SCREEN_LOBBY)
     assert quick_menu_accessible(SCREEN_WORLD_BOSS)
     assert quick_menu_accessible(SCREEN_GUILD)
+    assert quick_menu_accessible(SCREEN_PETS_MANAGE)
+    assert quick_menu_accessible(SCREEN_PET_SUMMON)
 
 
 def test_undeclared_context_has_no_quick_menu_capability():
@@ -56,6 +60,13 @@ def test_lobby_uses_base_quick_menu_geometry():
 def test_non_lobby_capable_screen_uses_shifted_quick_menu_geometry():
     assert open_character_select_action(
         SCREEN_WORLD_BOSS
+    ) == OpenCharacterSelect(QuickMenuLayout.SHIFTED)
+
+    assert open_character_select_action(
+        SCREEN_PETS_MANAGE
+    ) == OpenCharacterSelect(QuickMenuLayout.SHIFTED)
+    assert open_character_select_action(
+        SCREEN_PET_SUMMON
     ) == OpenCharacterSelect(QuickMenuLayout.SHIFTED)
 
 

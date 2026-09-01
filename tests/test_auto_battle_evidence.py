@@ -24,6 +24,11 @@ def test_curated_live_calibration_has_safe_unknown_gap_and_zero_errors():
     assert thresholds["off_maximum"] < thresholds["on_minimum"]
     assert thresholds["on_minimum"] < results["minimum_on_activity"]
     assert tuple(payload["roi"]) == DEFAULT_AUTO_BATTLE_CALIBRATION.roi
+    assert payload["frame_count"] == DEFAULT_AUTO_BATTLE_CALIBRATION.frame_count
+    assert (
+        payload["minimum_frame_count"]
+        == DEFAULT_AUTO_BATTLE_CALIBRATION.minimum_frame_count
+    )
     assert thresholds["off_maximum"] == DEFAULT_AUTO_BATTLE_CALIBRATION.off_threshold
     assert thresholds["on_minimum"] == DEFAULT_AUTO_BATTLE_CALIBRATION.on_threshold
 

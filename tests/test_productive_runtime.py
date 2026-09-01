@@ -8,16 +8,23 @@ from bot.catalog import (
     MENU_QUICK,
     SCREEN_GUILD,
     SCREEN_LOBBY,
+    SCREEN_PET_SUMMON,
+    SCREEN_PETS_MANAGE,
     SCREEN_WORLD_BOSS,
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
     STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    STATUS_PET_EPIC_AVAILABLE,
+    STATUS_PET_PREMIUM_GOLD,
+    STATUS_PET_SUMMON_DAILY_ACTIVE,
 )
 from bot.event_log import RuntimeEventStream
 from bot.productive_runtime import ProductiveRuntime
 from bot.runtime_observer import RuntimeWaitTimeout
 from bot.semantic_actions import (
+    ClosePets,
     OpenGuild,
+    OpenPets,
     OpenQuickMenu,
     QuickMenuLayout,
     SelectQuickMenuGuild,
@@ -192,6 +199,30 @@ def test_clean_context_probe_tolerates_transient_unresolved_frames_for_five_seco
     }
 
 
+@pytest.mark.parametrize(
+    ("base", "overlays"),
+    (
+        (SCREEN_PETS_MANAGE, ()),
+        (SCREEN_PETS_MANAGE, (STATUS_PET_SUMMON_DAILY_ACTIVE,)),
+        (
+            SCREEN_PET_SUMMON,
+            (STATUS_PET_EPIC_AVAILABLE, STATUS_PET_PREMIUM_GOLD),
+        ),
+    ),
+)
+def test_clean_context_probe_accepts_stable_pet_flow_outputs(base, overlays):
+    pet = _snapshot(
+        1,
+        status=ResolutionStatus.RESOLVED,
+        base=base,
+        overlays=overlays,
+    )
+    observer = Observer(pet, pet)
+
+    assert _runtime(observer, Events())._current_clean_context() == base
+    assert observer.wait_calls == []
+
+
 def test_clean_context_probe_accepts_guild_attendance_with_daily_badge():
     guild = _snapshot(
         17,
@@ -322,6 +353,125 @@ def test_productive_precondition_navigates_world_boss_via_quick_menu_to_guild(mo
         ),
     ]
     assert runtime.build_preconditions().navigate_to_guild is not None
+
+
+@pytest.mark.parametrize(
+    ("origin", "overlays"),
+    (
+        (SCREEN_PETS_MANAGE, (STATUS_PET_SUMMON_DAILY_ACTIVE,)),
+        (
+            SCREEN_PET_SUMMON,
+            (
+                STATUS_PET_EPIC_AVAILABLE,
+                STATUS_PET_PREMIUM_GOLD,
+                STATUS_PET_SUMMON_DAILY_ACTIVE,
+            ),
+        ),
+    ),
+)
+def test_productive_precondition_navigates_pet_exit_directly_to_guild(
+    monkeypatch, origin, overlays
+):
+    pet = _snapshot(
+        1,
+        status=ResolutionStatus.RESOLVED,
+        base=origin,
+        overlays=overlays,
+    )
+    quick_menu = _snapshot(
+        2, status=ResolutionStatus.UNKNOWN, overlays={MENU_QUICK}
+    )
+    guild = _snapshot(
+        3,
+        status=ResolutionStatus.RESOLVED,
+        base=SCREEN_GUILD,
+        overlays={
+            STATUS_GUILD_ATTENDANCE_ACTIVE,
+            STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+        },
+    )
+    runtime = _runtime(Observer(pet, guild), Events())
+    calls = []
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append((name, action))
+            final = quick_menu if len(calls) == 1 else guild
+            assert kwargs["precondition"](before)
+            assert kwargs["expected"](final)
+            return SimpleNamespace(succeeded=True, final_snapshot=final)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+
+    assert runtime._navigate_to_guild()
+    assert calls == [
+        ("precondition.open_quick_menu", OpenQuickMenu()),
+        (
+            "precondition.select_guild",
+            SelectQuickMenuGuild(QuickMenuLayout.SHIFTED),
+        ),
+    ]
+
+
+def test_productive_precondition_opens_pet_manage_from_lobby(monkeypatch):
+    lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    manage = _snapshot(
+        2,
+        status=ResolutionStatus.RESOLVED,
+        base=SCREEN_PETS_MANAGE,
+        overlays={STATUS_PET_SUMMON_DAILY_ACTIVE},
+    )
+    runtime = _runtime(Observer(lobby, manage), Events())
+    calls = []
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append((name, action))
+            assert kwargs["precondition"](before)
+            assert kwargs["expected"](manage)
+            return SimpleNamespace(succeeded=True, final_snapshot=manage)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+
+    assert runtime._navigate_to_pets_manage()
+    assert calls == [("precondition.open_pets", OpenPets())]
+    assert runtime.build_preconditions().navigate_to_pets_manage is not None
+
+
+@pytest.mark.parametrize(
+    ("origin", "overlays"),
+    (
+        (SCREEN_PETS_MANAGE, ()),
+        (
+            SCREEN_PET_SUMMON,
+            (STATUS_PET_EPIC_AVAILABLE, STATUS_PET_PREMIUM_GOLD),
+        ),
+    ),
+)
+def test_productive_precondition_closes_pet_exit_directly_to_lobby(
+    monkeypatch, origin, overlays
+):
+    pet = _snapshot(
+        1,
+        status=ResolutionStatus.RESOLVED,
+        base=origin,
+        overlays=overlays,
+    )
+    lobby = _snapshot(2, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    runtime = _runtime(Observer(pet, lobby), Events())
+    calls = []
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append((name, action))
+            assert kwargs["precondition"](before)
+            assert kwargs["expected"](lobby)
+            return SimpleNamespace(succeeded=True, final_snapshot=lobby)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+
+    assert runtime._navigate_to_lobby()
+    assert calls == [("precondition.close_pets", ClosePets())]
 
 
 def test_productive_precondition_navigates_lobby_directly_to_verified_guild(

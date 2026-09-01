@@ -39,6 +39,7 @@ Reglas permanentes para cualquier trabajo de Codex en este repositorio.
 
 - Verificar referencias antes de borrar datos, capturas o assets potencialmente valiosos.
 - No versionar datasets grandes, `screencaps/`, `artifacts/`, logs, caches, `.env` ni `AGENT_LOCAL.md`. Los manifests curados y assets runtime bajo `assets/` sí pueden versionarse.
+- Tratar la adquisición raw bajo `artifacts/` como temporal: la evidencia productiva son los manifests, frames curados y assets promovidos. Al cerrar una adquisición, revisar y purgar caches, derivados y raw redundante ya consolidado; preservar casos raros o costosos de reproducir y nunca descartar evidencia potencialmente valiosa sin verificar antes sus referencias.
 - No persistir identidad de dispositivo o usuario salvo necesidad del dato. No hacer push sin instrucción explícita ni reescribir historia. El tag `legacy-pre-hybrid` preserva el runtime anterior.
 - Preservar cambios ajenos. Antes de commit, revisar `git status --short` y diff acotado; después confirmar tree limpio.
 - Preferir output conciso (`pytest -q`, `git status --short`, `git diff --stat`, `git log --oneline`, `rg` acotado). Ampliar sólo el error y contexto necesarios.
