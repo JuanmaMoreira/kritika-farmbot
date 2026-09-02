@@ -25,6 +25,15 @@ from .black_market import (
 )
 from .engine import PerceptionDetector, PerceptionEngine
 from .combine import CombineContextDetector
+from .daily_quests import (
+    DAILY_QUESTS_PROGRESS_REWARD_CALIBRATION,
+    DAILY_QUESTS_PROGRESS_REWARD_CONFIDENCE_THRESHOLD,
+    DAILY_QUESTS_PROGRESS_REWARD_HSV_LOWER,
+    DAILY_QUESTS_PROGRESS_REWARD_HSV_UPPER,
+    DAILY_QUESTS_PROGRESS_REWARD_REGION,
+    DailyQuestsProgressRewardDetector,
+    DailyQuestsProgressRewardReading,
+)
 from .guild import (
     GUILD_ATTENDANCE_ACTIVE_CALIBRATION,
     GUILD_ATTENDANCE_COMPLETED_CALIBRATION,
@@ -179,6 +188,7 @@ def build_default_perception(
             SocketIncompatibleOpalDetector(asset_root=root),
             SocketEnhanceAnimationDetector(),
             CombineContextDetector(asset_root=root),
+            DailyQuestsProgressRewardDetector(asset_root=root),
             MailboxClaimProcessingDetector(asset_root=root),
             GuildAttendanceDetector(asset_root=root),
             PetEpicAvailabilityDetector(asset_root=root),
@@ -226,6 +236,13 @@ __all__ = (
     "COMBINE_ROWS_UPPER_INDICATOR_SPEC",
     "COMBINE_TRANSMUTE_ACTIVE_SPEC",
     "CombineContextDetector",
+    "DAILY_QUESTS_PROGRESS_REWARD_CALIBRATION",
+    "DAILY_QUESTS_PROGRESS_REWARD_CONFIDENCE_THRESHOLD",
+    "DAILY_QUESTS_PROGRESS_REWARD_HSV_LOWER",
+    "DAILY_QUESTS_PROGRESS_REWARD_HSV_UPPER",
+    "DAILY_QUESTS_PROGRESS_REWARD_REGION",
+    "DailyQuestsProgressRewardDetector",
+    "DailyQuestsProgressRewardReading",
     "DEFAULT_LOCAL_CV_SPECS",
     "EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC",
     "FRIENDS_ALL_BUTTON_SPEC",

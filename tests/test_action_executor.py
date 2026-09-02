@@ -28,6 +28,7 @@ from bot.semantic_actions import (
     AcknowledgeWorldBossPreviousRewards,
     ClaimAllCharacterMail,
     ClaimAllDailyQuests,
+    ClaimDailyQuestsProgressReward,
     CheckInGuildAttendance,
     CloseBlackMarket,
     CloseDailyQuests,
@@ -156,6 +157,10 @@ def test_executor_translates_semantic_action_to_frame_pixel_tap(action, target):
             DEFAULT_DAILY_QUESTS_ACTION_TARGETS.select_daily_quests,
         ),
         (ClaimAllDailyQuests(), DEFAULT_DAILY_QUESTS_ACTION_TARGETS.claim_all),
+        (
+            ClaimDailyQuestsProgressReward(),
+            DEFAULT_DAILY_QUESTS_ACTION_TARGETS.claim_progress_reward,
+        ),
         (
             CloseDailyQuests(),
             DEFAULT_DAILY_QUESTS_ACTION_TARGETS.close_daily_quests,

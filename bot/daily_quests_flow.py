@@ -13,6 +13,7 @@ from bot.catalog import (
     SCREEN_LOBBY,
     SCREEN_QUESTS,
     STATUS_DAILY_QUESTS_CLAIMABLE,
+    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
 )
 from bot.component_contracts import ComponentRequirement
 from bot.event_log import EventSink
@@ -26,6 +27,7 @@ from bot.runtime_observer import (
 )
 from bot.semantic_actions import (
     ClaimAllDailyQuests,
+    ClaimDailyQuestsProgressReward,
     CloseDailyQuests,
     OpenQuests,
     SelectDailyQuests,
@@ -36,6 +38,20 @@ from bot.state import ResolutionStatus
 DAILY_QUESTS_NOOP = "daily_quests.noop"
 DAILY_QUESTS_CLAIM_ALL_EXECUTED = "daily_quests.claim_all_executed"
 DAILY_QUESTS_CLAIM_ALL_COMPLETED = "daily_quests.claim_all_completed"
+DAILY_QUESTS_PROGRESS_REWARD_EXECUTED = (
+    "daily_quests.progress_reward_executed"
+)
+DAILY_QUESTS_PROGRESS_REWARD_COMPLETED = (
+    "daily_quests.progress_reward_completed"
+)
+
+_DAILY_QUESTS_OVERLAYS = frozenset(
+    {
+        MODE_DAILY_QUESTS,
+        STATUS_DAILY_QUESTS_CLAIMABLE,
+        STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -43,6 +59,8 @@ class DailyQuestsFlowResult(FlowResult):
     no_op: bool = False
     claim_all_executed: bool = False
     claim_all_completed: bool = False
+    progress_reward_executed: bool = False
+    progress_reward_completed: bool = False
 
 
 class _Observer(Protocol):
@@ -61,7 +79,7 @@ class _Observer(Protocol):
 
 
 class DailyQuestsFlow:
-    """Claim visible Daily Quest rows once and return to Lobby."""
+    """Claim Daily Quest rows and any independently unlocked progress reward."""
 
     name = "daily_quests"
     scope = FlowScope.PER_CHARACTER
@@ -135,12 +153,9 @@ class DailyQuestsFlow:
             else:
                 daily = quests
 
-            no_op = STATUS_DAILY_QUESTS_CLAIMABLE not in daily.state.overlays
             claim_executed = False
             claim_completed = False
-            if no_op:
-                self._append_event(events, DAILY_QUESTS_NOOP)
-            else:
+            if STATUS_DAILY_QUESTS_CLAIMABLE in daily.state.overlays:
                 claim_executed = True
                 self._append_event(events, DAILY_QUESTS_CLAIM_ALL_EXECUTED)
                 daily = self._act_and_wait(
@@ -153,6 +168,33 @@ class DailyQuestsFlow:
                 )
                 claim_completed = True
                 self._append_event(events, DAILY_QUESTS_CLAIM_ALL_COMPLETED)
+
+            progress_executed = False
+            progress_completed = False
+            if (
+                STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE
+                in daily.state.overlays
+            ):
+                progress_executed = True
+                self._append_event(
+                    events, DAILY_QUESTS_PROGRESS_REWARD_EXECUTED
+                )
+                daily = self._act_and_wait(
+                    ClaimDailyQuestsProgressReward(),
+                    daily,
+                    expected=_is_daily_quests_fully_settled,
+                    abort_if=_has_incompatible_daily_state,
+                    timeout=self.claim_timeout,
+                    stable_for=self.claim_stable_for,
+                )
+                progress_completed = True
+                self._append_event(
+                    events, DAILY_QUESTS_PROGRESS_REWARD_COMPLETED
+                )
+
+            no_op = not claim_executed and not progress_executed
+            if no_op:
+                self._append_event(events, DAILY_QUESTS_NOOP)
 
             lobby = self._act_and_wait(
                 CloseDailyQuests(),
@@ -169,6 +211,8 @@ class DailyQuestsFlow:
                 no_op=no_op,
                 claim_all_executed=claim_executed,
                 claim_all_completed=claim_completed,
+                progress_reward_executed=progress_executed,
+                progress_reward_completed=progress_completed,
             )
         except RuntimeWaitCancelled:
             return self._cancel(events)
@@ -259,7 +303,7 @@ def _is_daily_quests(snapshot: RuntimeSnapshot) -> bool:
         and state.base_context == SCREEN_QUESTS
         and MODE_DAILY_QUESTS in state.overlays
         and set(state.overlays)
-        <= {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE}
+        <= _DAILY_QUESTS_OVERLAYS
     )
 
 
@@ -269,7 +313,7 @@ def _is_quests(snapshot: RuntimeSnapshot) -> bool:
         state.status is ResolutionStatus.RESOLVED
         and state.base_context == SCREEN_QUESTS
         and set(state.overlays)
-        <= {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE}
+        <= _DAILY_QUESTS_OVERLAYS
     )
 
 
@@ -277,6 +321,14 @@ def _is_daily_quests_settled(snapshot: RuntimeSnapshot) -> bool:
     return (
         _is_daily_quests(snapshot)
         and STATUS_DAILY_QUESTS_CLAIMABLE not in snapshot.state.overlays
+    )
+
+
+def _is_daily_quests_fully_settled(snapshot: RuntimeSnapshot) -> bool:
+    return (
+        _is_daily_quests_settled(snapshot)
+        and STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE
+        not in snapshot.state.overlays
     )
 
 
@@ -305,7 +357,7 @@ def _has_incompatible_daily_navigation(snapshot: RuntimeSnapshot) -> bool:
         state.status is ResolutionStatus.AMBIGUOUS
         or bool(
             set(state.overlays)
-            - {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE}
+            - _DAILY_QUESTS_OVERLAYS
         )
         or (
             state.status is ResolutionStatus.RESOLVED
@@ -324,7 +376,7 @@ def _has_incompatible_daily_state(snapshot: RuntimeSnapshot) -> bool:
         )
         or bool(
             set(state.overlays)
-            - {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE}
+            - _DAILY_QUESTS_OVERLAYS
         )
     )
 
@@ -335,7 +387,7 @@ def _has_incompatible_close_state(snapshot: RuntimeSnapshot) -> bool:
         state.status is ResolutionStatus.AMBIGUOUS
         or bool(
             set(state.overlays)
-            - {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE}
+            - _DAILY_QUESTS_OVERLAYS
         )
         or (
             state.status is ResolutionStatus.RESOLVED
@@ -366,6 +418,8 @@ __all__ = (
     "DAILY_QUESTS_CLAIM_ALL_COMPLETED",
     "DAILY_QUESTS_CLAIM_ALL_EXECUTED",
     "DAILY_QUESTS_NOOP",
+    "DAILY_QUESTS_PROGRESS_REWARD_COMPLETED",
+    "DAILY_QUESTS_PROGRESS_REWARD_EXECUTED",
     "DailyQuestsFlow",
     "DailyQuestsFlowResult",
 )

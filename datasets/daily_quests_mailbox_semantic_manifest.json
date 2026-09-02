@@ -5,7 +5,7 @@
     "human_ground_truth": "confirmed_in_chat",
     "scope": "Daily Quests and Character Mail semantics only; no flows or gameplay implementation",
     "interpretation": {
-      "daily_quests": "Claim All removes visible per-row Claim actions; Start, Video, Claimed and the independent progress reward are relevant negatives. A second Claim All was a confirmed no-op.",
+      "daily_quests": "Claim All removes visible per-row Claim actions; Start, Video and Claimed are row-claim negatives. The independent progress reward is labeled separately: cyan is claimable and gray is already claimed. A second Claim All was a confirmed no-op.",
       "mailbox": "The central spinner remains present while Claim All processes and disappears at quiescence. Inbox count remains unchanged until read mail is deleted. Five unclaimable rewards remained after Delete read mail because reward capacity was exhausted.",
       "bubbles": "Transient acquired/MAX-limit bubbles are retained in processing evidence but are not promoted as completion semantics."
     }
@@ -65,19 +65,22 @@
     {
       "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claim/01.png",
       "base_context": "screen.quests",
-      "overlays": ["mode.daily_quests"],
+      "overlays": ["mode.daily_quests", "status.daily_quests_progress_reward_claimable"],
+      "observations": ["indicator.daily_quests_progress_reward_claimable"],
       "review_status": "confirmed"
     },
     {
       "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claim/02.png",
       "base_context": "screen.quests",
-      "overlays": ["mode.daily_quests"],
+      "overlays": ["mode.daily_quests", "status.daily_quests_progress_reward_claimable"],
+      "observations": ["indicator.daily_quests_progress_reward_claimable"],
       "review_status": "confirmed"
     },
     {
       "path": "screencaps/semantic/daily-quests-mailbox/daily-progress-claim/03.png",
       "base_context": "screen.quests",
-      "overlays": ["mode.daily_quests"],
+      "overlays": ["mode.daily_quests", "status.daily_quests_progress_reward_claimable"],
+      "observations": ["indicator.daily_quests_progress_reward_claimable"],
       "review_status": "confirmed"
     },
     {

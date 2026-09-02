@@ -64,6 +64,9 @@ STATUS_COMBINE_ETHEREAL_AVAILABLE = "status.combine_ethereal_available"
 STATUS_COMBINE_FUSE_AVAILABLE = "status.combine_fuse_available"
 STATUS_COMBINE_TRANSMUTE_AVAILABLE = "status.combine_transmute_available"
 STATUS_DAILY_QUESTS_CLAIMABLE = "status.daily_quests_claimable"
+STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE = (
+    "status.daily_quests_progress_reward_claimable"
+)
 STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE = (
     "status.friends_send_stamina_daily_active"
 )
@@ -148,6 +151,9 @@ LANDMARK_DAILY_QUESTS_TAB_ACTIVE = "landmark.daily_quests_tab_active"
 LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON = (
     "landmark.daily_quests_row_claim_button"
 )
+INDICATOR_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE = (
+    "indicator.daily_quests_progress_reward_claimable"
+)
 LANDMARK_FRIENDS_TITLE = "landmark.friends_title"
 LANDMARK_FRIENDS_ALL_BUTTON = "landmark.friends_all_button"
 INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE = (
@@ -227,6 +233,7 @@ SEMANTIC_OBSERVATION_NAMES = (
     INDICATOR_COMBINE_ROW_BOTTOM,
     INDICATOR_COMBINE_ROWS,
     INDICATOR_COMBINE_ROWS_UPPER,
+    INDICATOR_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     INDICATOR_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
     INDICATOR_GUILD_ATTENDANCE_ACTIVE,
     INDICATOR_GUILD_ATTENDANCE_COMPLETED,
@@ -569,6 +576,14 @@ OVERLAY_RULES = (
         requires=(
             LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
             LANDMARK_DAILY_QUESTS_ROW_CLAIM_BUTTON,
+        ),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+        requires=(
+            LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
+            INDICATOR_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
         ),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),

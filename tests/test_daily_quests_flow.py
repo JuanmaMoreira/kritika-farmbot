@@ -10,11 +10,14 @@ from bot.catalog import (
     SCREEN_LOBBY,
     SCREEN_QUESTS,
     STATUS_DAILY_QUESTS_CLAIMABLE,
+    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
 )
 from bot.daily_quests_flow import (
     DAILY_QUESTS_CLAIM_ALL_COMPLETED,
     DAILY_QUESTS_CLAIM_ALL_EXECUTED,
     DAILY_QUESTS_NOOP,
+    DAILY_QUESTS_PROGRESS_REWARD_COMPLETED,
+    DAILY_QUESTS_PROGRESS_REWARD_EXECUTED,
     DailyQuestsFlow,
 )
 from bot.flow_contracts import FlowStatus
@@ -28,6 +31,7 @@ from bot.runtime_observer import (
 )
 from bot.semantic_actions import (
     ClaimAllDailyQuests,
+    ClaimDailyQuestsProgressReward,
     CloseDailyQuests,
     OpenQuests,
     SelectDailyQuests,
@@ -220,6 +224,106 @@ def test_claim_all_runs_once_and_requires_stable_status_disappearance():
     assert actions == [OpenQuests(), ClaimAllDailyQuests(), CloseDailyQuests()]
     assert actions.count(ClaimAllDailyQuests()) == 1
     assert observer.calls[1].stable_for == pytest.approx(0.5)
+
+
+def test_claim_all_reevaluates_and_claims_newly_unlocked_progress_reward():
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    claimable = (MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE)
+    progress = (
+        MODE_DAILY_QUESTS,
+        STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+    )
+    opened_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable)
+    opened_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable)
+    progress_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=progress)
+    progress_b = snapshot(5, 3.6, base=SCREEN_QUESTS, overlays=progress)
+    still_progress = snapshot(6, 4.0, base=SCREEN_QUESTS, overlays=progress)
+    settled_a = snapshot(7, 4.2, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    settled_b = snapshot(8, 4.8, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    lobby_a = snapshot(9, 5.0, base=SCREEN_LOBBY)
+    lobby_b = snapshot(10, 5.3, base=SCREEN_LOBBY)
+
+    result, actions, _, observer = run_flow(
+        lobby,
+        [
+            stable_pair(opened_a, opened_b),
+            stable_pair(progress_a, progress_b),
+            [still_progress, settled_a, settled_b],
+            stable_pair(lobby_a, lobby_b),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert not result.no_op
+    assert result.claim_all_executed and result.claim_all_completed
+    assert result.progress_reward_executed and result.progress_reward_completed
+    assert result.event_count(DAILY_QUESTS_PROGRESS_REWARD_EXECUTED) == 1
+    assert result.event_count(DAILY_QUESTS_PROGRESS_REWARD_COMPLETED) == 1
+    assert actions == [
+        OpenQuests(),
+        ClaimAllDailyQuests(),
+        ClaimDailyQuestsProgressReward(),
+        CloseDailyQuests(),
+    ]
+    assert [call.after_sequence for call in observer.calls] == [1, 3, 5, 8]
+
+
+def test_already_available_progress_reward_is_claimed_without_claim_all():
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    progress = (
+        MODE_DAILY_QUESTS,
+        STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+    )
+    progress_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=progress)
+    progress_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=progress)
+    settled_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    settled_b = snapshot(5, 3.6, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    lobby_a = snapshot(6, 4.0, base=SCREEN_LOBBY)
+    lobby_b = snapshot(7, 4.3, base=SCREEN_LOBBY)
+
+    result, actions, _, _ = run_flow(
+        lobby,
+        [
+            stable_pair(progress_a, progress_b),
+            stable_pair(settled_a, settled_b),
+            stable_pair(lobby_a, lobby_b),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert not result.no_op
+    assert not result.claim_all_executed
+    assert result.progress_reward_executed and result.progress_reward_completed
+    assert actions == [
+        OpenQuests(),
+        ClaimDailyQuestsProgressReward(),
+        CloseDailyQuests(),
+    ]
+
+
+def test_progress_reward_claim_is_single_attempt_and_requires_disappearance():
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    progress = (
+        MODE_DAILY_QUESTS,
+        STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+    )
+    progress_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=progress)
+    progress_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=progress)
+
+    result, actions, _, _ = run_flow(
+        lobby,
+        [
+            stable_pair(progress_a, progress_b),
+            RuntimeWaitTimeout(
+                after_sequence=3, timeout=8.0, last_snapshot=progress_b
+            ),
+        ],
+    )
+
+    assert result.status is FlowStatus.FAILED
+    assert actions.count(ClaimDailyQuestsProgressReward()) == 1
+    assert ClaimAllDailyQuests() not in actions
+    assert CloseDailyQuests() not in actions
 
 
 @pytest.mark.parametrize(

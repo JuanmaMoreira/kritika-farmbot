@@ -23,6 +23,7 @@ from bot.semantic_actions import (
     AcknowledgeWorldBossPreviousRewards,
     ClaimAllCharacterMail,
     ClaimAllDailyQuests,
+    ClaimDailyQuestsProgressReward,
     CheckInGuildAttendance,
     CloseBlackMarket,
     CloseDailyQuests,
@@ -171,6 +172,7 @@ class DailyQuestsActionTargets:
     open_quests: RelativePoint = (0.6540, 0.9200)
     select_daily_quests: RelativePoint = (0.2570, 0.2250)
     claim_all: RelativePoint = (0.6930, 0.1413)
+    claim_progress_reward: RelativePoint = (0.6890, 0.3252)
     close_daily_quests: RelativePoint = (0.8223, 0.0989)
 
     def __post_init__(self) -> None:
@@ -178,6 +180,7 @@ class DailyQuestsActionTargets:
             self.open_quests,
             self.select_daily_quests,
             self.claim_all,
+            self.claim_progress_reward,
             self.close_daily_quests,
         ):
             relative_point_to_pixel(point, 1, 1)
@@ -552,6 +555,8 @@ class ActionExecutor:
             return self.daily_quests_targets.select_daily_quests
         if isinstance(action, ClaimAllDailyQuests):
             return self.daily_quests_targets.claim_all
+        if isinstance(action, ClaimDailyQuestsProgressReward):
+            return self.daily_quests_targets.claim_progress_reward
         if isinstance(action, CloseDailyQuests):
             return self.daily_quests_targets.close_daily_quests
         if isinstance(action, OpenFriends):

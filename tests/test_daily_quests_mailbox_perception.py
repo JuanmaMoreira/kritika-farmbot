@@ -6,17 +6,23 @@ import cv2
 from bot.capture import FrameSnapshot
 from bot.catalog import (
     ACTIVITY_MAILBOX_CLAIM_PROCESSING,
+    INDICATOR_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     MODE_DAILY_QUESTS,
     MODE_MAILBOX_CHARACTER_MAIL,
     SCREEN_MAILBOX,
     SCREEN_QUESTS,
     STATUS_DAILY_QUESTS_CLAIMABLE,
+    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     STATUS_MAILBOX_CLAIMABLE,
     STATUS_MAILBOX_READ_MAIL_PRESENT,
     build_default_resolver,
 )
 from bot.observations import ObservationBatch
-from bot.perception import MailboxClaimProcessingDetector, build_default_perception
+from bot.perception import (
+    DailyQuestsProgressRewardDetector,
+    MailboxClaimProcessingDetector,
+    build_default_perception,
+)
 from bot.state import ResolutionStatus
 from tools.semantic_slice_evaluation import load_manifest
 
@@ -58,7 +64,7 @@ def test_curated_representatives_resolve_the_confirmed_states():
         assert state.overlays == entry.overlays, entry.path
 
 
-def test_daily_row_claim_status_excludes_the_independent_progress_reward():
+def test_daily_row_and_progress_reward_statuses_are_independent():
     grouped = _entries_by_group()
     _, claimable = _resolve(grouped["daily-claimable"][0])
     _, progress_reward = _resolve(grouped["daily-progress-claim"][0], 2)
@@ -68,10 +74,36 @@ def test_daily_row_claim_status_excludes_the_independent_progress_reward():
     assert {MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE} <= set(
         claimable.overlays
     )
-    for state in (progress_reward, settled_noop):
-        assert state.base_context == SCREEN_QUESTS
-        assert MODE_DAILY_QUESTS in state.overlays
-        assert STATUS_DAILY_QUESTS_CLAIMABLE not in state.overlays
+    assert STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE not in claimable.overlays
+
+    assert progress_reward.base_context == SCREEN_QUESTS
+    assert {
+        MODE_DAILY_QUESTS,
+        STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+    } <= set(progress_reward.overlays)
+    assert STATUS_DAILY_QUESTS_CLAIMABLE not in progress_reward.overlays
+
+    assert settled_noop.base_context == SCREEN_QUESTS
+    assert settled_noop.overlays == (MODE_DAILY_QUESTS,)
+
+
+def test_progress_reward_detector_separates_active_cyan_from_all_curated_negatives():
+    grouped = _entries_by_group()
+    detector = DailyQuestsProgressRewardDetector(asset_root=ROOT)
+
+    for entry in grouped["daily-progress-claim"]:
+        names = {item.name for item in detector.detect(_read(entry))}
+        assert INDICATOR_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE in names, entry.path
+
+    for group_name in (
+        "daily-progress-claimed",
+        "daily-settled",
+        "daily-claimable",
+        "lobby",
+        "mailbox-account",
+    ):
+        for entry in grouped[group_name]:
+            assert detector.detect(_read(entry)) == (), entry.path
 
 
 def test_mailbox_processing_activity_is_scoped_and_stable_states_are_negative():

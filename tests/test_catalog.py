@@ -10,9 +10,11 @@ from bot.catalog import (
     BASE_CONTEXT_RULES,
     LANDMARK_BATTLE_MODE_SELECT_HEADER,
     LANDMARK_CHARACTER_SELECT_HEADER,
+    LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
     LANDMARK_EQUIPMENT_INVENTORY_FULL_PROMPT,
     LANDMARK_INSUFFICIENT_GOLD_PROMPT,
     LANDMARK_INVENTORY_FULL_OK_BUTTON,
+    INDICATOR_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     LANDMARK_LOBBY_TRADING_CENTER_LABEL,
     LANDMARK_QUICK_MENU_LOBBY_TILE,
     LANDMARK_WORLD_BOSS_BATTLE_CURRENT_DAMAGE,
@@ -47,6 +49,7 @@ from bot.catalog import (
     STATUS_COMBINE_FUSE_AVAILABLE,
     STATUS_COMBINE_TRANSMUTE_AVAILABLE,
     STATUS_DAILY_QUESTS_CLAIMABLE,
+    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE,
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
@@ -119,6 +122,10 @@ def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
         STATUS_DAILY_QUESTS_CLAIMABLE: (
             MODE_DAILY_QUESTS,
             STATUS_DAILY_QUESTS_CLAIMABLE,
+        ),
+        STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE: (
+            MODE_DAILY_QUESTS,
+            STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
         ),
         STATUS_MAILBOX_CLAIMABLE: (
             MODE_MAILBOX_CHARACTER_MAIL,
@@ -352,8 +359,8 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
     assert len(BASE_CONTEXT_RULES) == 17
-    assert len(OVERLAY_RULES) == 47
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 73
+    assert len(OVERLAY_RULES) == 48
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 74
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 
@@ -361,6 +368,23 @@ def test_quick_menu_is_an_overlay_with_its_own_landmark():
     quick_rule = next(rule for rule in OVERLAY_RULES if rule.name == MENU_QUICK)
 
     assert quick_rule.requires == (LANDMARK_QUICK_MENU_LOBBY_TILE,)
+
+
+def test_daily_progress_reward_requires_daily_tab_and_specific_indicator():
+    rule = next(
+        item
+        for item in OVERLAY_RULES
+        if item.name == STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE
+    )
+
+    assert rule.requires == tuple(
+        sorted(
+            (
+                LANDMARK_DAILY_QUESTS_TAB_ACTIVE,
+                INDICATOR_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+            )
+        )
+    )
 
 
 def test_lobby_requires_only_the_trading_center_label():

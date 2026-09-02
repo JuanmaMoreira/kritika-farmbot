@@ -39,6 +39,11 @@ class ClaimAllDailyQuests:
 
 
 @dataclass(frozen=True)
+class ClaimDailyQuestsProgressReward:
+    """Claim the independently observed 30-Karat Daily progress reward."""
+
+
+@dataclass(frozen=True)
 class CloseDailyQuests:
     """Request the Daily Quests -> Lobby close action."""
 
@@ -490,6 +495,7 @@ SemanticAction = (
     | OpenQuests
     | SelectDailyQuests
     | ClaimAllDailyQuests
+    | ClaimDailyQuestsProgressReward
     | CloseDailyQuests
     | OpenFriends
     | SendStaminaToAllFriends
@@ -581,6 +587,7 @@ __all__ = (
     "CloseBlackMarket",
     "ClaimAllCharacterMail",
     "ClaimAllDailyQuests",
+    "ClaimDailyQuestsProgressReward",
     "CheckInGuildAttendance",
     "CloseDailyQuests",
     "CloseFriends",

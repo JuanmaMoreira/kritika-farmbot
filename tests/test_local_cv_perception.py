@@ -81,6 +81,7 @@ from bot.capture import FrameSnapshot
 from bot.observations import ObservationSource
 from bot.perception import (
     CombineContextDetector,
+    DailyQuestsProgressRewardDetector,
     GuildAttendanceDetector,
     PetCombineResultDetector,
     PetEpicAvailabilityDetector,
@@ -317,11 +318,12 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     assert tuple(
         detector.spec for detector in engine.detectors[:len(DEFAULT_LOCAL_CV_SPECS)]
     ) == DEFAULT_LOCAL_CV_SPECS
-    assert isinstance(engine.detectors[-11], BlackMarketGoldDetector)
-    assert isinstance(engine.detectors[-10], BlackMarketPurchasedDetector)
-    assert isinstance(engine.detectors[-9], SocketIncompatibleOpalDetector)
-    assert isinstance(engine.detectors[-8], SocketEnhanceAnimationDetector)
-    assert isinstance(engine.detectors[-7], CombineContextDetector)
+    assert isinstance(engine.detectors[-12], BlackMarketGoldDetector)
+    assert isinstance(engine.detectors[-11], BlackMarketPurchasedDetector)
+    assert isinstance(engine.detectors[-10], SocketIncompatibleOpalDetector)
+    assert isinstance(engine.detectors[-9], SocketEnhanceAnimationDetector)
+    assert isinstance(engine.detectors[-8], CombineContextDetector)
+    assert isinstance(engine.detectors[-7], DailyQuestsProgressRewardDetector)
     assert isinstance(engine.detectors[-6], MailboxClaimProcessingDetector)
     assert isinstance(engine.detectors[-5], GuildAttendanceDetector)
     assert isinstance(engine.detectors[-4], PetEpicAvailabilityDetector)
