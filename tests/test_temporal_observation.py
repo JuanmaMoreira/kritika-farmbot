@@ -170,6 +170,37 @@ def test_four_second_budget_collects_ten_frames_under_observed_processing_latenc
     assert round(fake.current, 3) == 3.0
 
 
+def test_twelve_second_budget_collects_ten_frames_at_one_second_each():
+    class FakeClock:
+        current = 0.0
+
+        def __call__(self):
+            return self.current
+
+    fake = FakeClock()
+    observer = Mock(spec=RuntimeObserver)
+
+    def next_snapshot(*args, **kwargs):
+        sequence = observer.wait_until.call_count + 30
+        fake.current += 1.0
+        return snapshot(sequence)
+
+    observer.wait_until.side_effect = next_snapshot
+    temporal = TemporalObserver(observer, clock=fake)
+
+    result = temporal.collect(
+        after_sequence=30,
+        context="screen.world_boss_battle",
+        frame_count=10,
+        sample_interval=0.1,
+        timeout=12.0,
+    )
+
+    assert result.status is TemporalWindowStatus.COMPLETE
+    assert len(result.snapshots) == 10
+    assert fake.current == pytest.approx(10.0)
+
+
 def test_elapsed_deadline_diagnostic_reports_partial_collection():
     class FakeClock:
         current = 0.0

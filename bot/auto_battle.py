@@ -45,7 +45,7 @@ class AutoBattleCalibration:
     frame_count: int = 10
     minimum_frame_count: int = 9
     sample_interval: float = 0.10
-    timeout: float = 8.0
+    timeout: float = 12.0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "roi", normalize_relative_region(self.roi))

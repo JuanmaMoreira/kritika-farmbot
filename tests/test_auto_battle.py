@@ -110,7 +110,7 @@ def test_product_calibration_preserves_live_roi_threshold_gap_and_window():
     assert calibration.frame_count == 10
     assert calibration.minimum_frame_count == 9
     assert calibration.sample_interval == 0.1
-    assert calibration.timeout == 8.0
+    assert calibration.timeout == 12.0
 
 
 @pytest.mark.parametrize("minimum_frame_count", (True, 1, 9.0, 11))
@@ -195,7 +195,7 @@ def test_temporal_detector_forwards_request_sequence_as_freshness_baseline():
     assert detector.temporal.collect.call_args.kwargs["after_sequence"] == 99
 
 
-def test_product_detector_forwards_eight_second_acquisition_budget():
+def test_product_detector_forwards_twelve_second_acquisition_budget():
     observer = Mock(spec=RuntimeObserver)
     temporal = Mock()
     temporal.collect.return_value = TemporalWindow(
@@ -209,7 +209,7 @@ def test_product_detector_forwards_eight_second_acquisition_budget():
     request = temporal.collect.call_args.kwargs
     assert request["frame_count"] == 10
     assert request["sample_interval"] == 0.1
-    assert request["timeout"] == 8.0
+    assert request["timeout"] == 12.0
 
 
 def fact(state, sequence):
