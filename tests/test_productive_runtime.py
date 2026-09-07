@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import Mock
 from types import SimpleNamespace
 
 import pytest
@@ -106,7 +107,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     config = object()
     adb = Adb()
     events = RuntimeEventStream()
-    observer = object()
+    observer = Mock()
     actions = object()
     facts = object()
     auto = object()
@@ -122,7 +123,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     monkeypatch.setattr(productive, "ActionExecutor", lambda value: actions)
     monkeypatch.setattr(productive, "build_default_perception", lambda root: object())
     monkeypatch.setattr(productive, "build_default_resolver", lambda: object())
-    monkeypatch.setattr(productive, "RuntimeObserver", lambda *args: observer)
+    monkeypatch.setattr(productive, "RuntimeObserver", lambda *args, **kwargs: observer)
     monkeypatch.setattr(productive, "build_runtime_fact_reader", lambda value, events: facts)
     monkeypatch.setattr(productive, "AutoBattleDetector", lambda value: object())
     monkeypatch.setattr(productive, "AutoBattleEnsurer", lambda detector, action: auto)
@@ -156,6 +157,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
         assert source.entered and not source.exited
 
     assert source.exited
+    observer.flush_analysis_metrics.assert_called_once_with()
 
 
 def test_legacy_equipment_inventory_relief_name_has_no_compatibility_alias():

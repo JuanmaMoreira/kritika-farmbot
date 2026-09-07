@@ -34,6 +34,9 @@ from bot.catalog import (
 )
 from bot.config import RuntimeConfig
 from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtime_event_stream
+from bot.event_context import event_scope, operation_scope
+from bot.flow_contracts import publish_flow_events
+from bot.failure_cause import FailureCause
 from bot.equipment_combine_relief import EquipmentCombineRelief
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry
@@ -185,6 +188,18 @@ class ProductiveRuntime:
         )
 
     def run_flow(self, definition: FlowDefinition) -> FlowResult:
+        with event_scope(character_index=1, flow=definition.id, session_id=None), operation_scope(definition.id):
+            try:
+                return self._run_flow(definition)
+            except BaseException as error:
+                self.events.record(
+                    "flow.failed", component=definition.id,
+                    error=f"{type(error).__name__}: {error}",
+                    failure=FailureCause.from_error(error, kind="exception").payload(),
+                )
+                raise
+
+    def _run_flow(self, definition: FlowDefinition) -> FlowResult:
         flow = self.build_flow(definition)
         preconditions = self.build_preconditions()
         self.events.record("flow.started", component=flow.name, flow=flow.name)
@@ -223,20 +238,10 @@ class ProductiveRuntime:
             component=flow.name,
             flow=flow.name,
             error=result.error,
+            failure=result.failure.payload() if result.failure else None,
             business_event_count=len(result.events),
         )
-        for business_event in result.events:
-            event_name = (
-                business_event.kind
-                if business_event.kind.startswith(f"{flow.name}.")
-                else f"{flow.name}.{business_event.kind}"
-            )
-            self.events.record(
-                event_name,
-                character_index=1,
-                character_name=None,
-                detail=business_event.detail,
-            )
+        publish_flow_events(self.events, flow.name, result.events, character_index=1, character_name=None)
         return result
 
     def run_session(
@@ -569,6 +574,7 @@ def open_productive_runtime(
                 source,
                 build_default_perception(PROJECT_ROOT),
                 build_default_resolver(),
+                events=events,
             )
             facts = build_runtime_fact_reader(observer, events=events)
             auto_battle = AutoBattleEnsurer(AutoBattleDetector(observer), actions)
@@ -607,24 +613,28 @@ def open_productive_runtime(
                 events,
                 tap_through=tap_through,
             )
-            yield ProductiveRuntime(
-                config,
-                observer,
-                actions,
-                facts,
-                auto_battle,
-                socket_relief,
-                equipment_combine_relief,
-                pet_summon_space_relief,
-                events,
-                token,
-                registry,
-            )
+            try:
+                yield ProductiveRuntime(
+                    config,
+                    observer,
+                    actions,
+                    facts,
+                    auto_battle,
+                    socket_relief,
+                    equipment_combine_relief,
+                    pet_summon_space_relief,
+                    events,
+                    token,
+                    registry,
+                )
+            finally:
+                observer.flush_analysis_metrics()
         events.record("runtime.completed")
     except BaseException as error:
         events.record(
             "runtime.failed",
             error=f"{type(error).__name__}: {error}",
+            failure=FailureCause.from_error(error, kind="exception").payload(),
         )
         raise
     finally:
@@ -634,7 +644,7 @@ def open_productive_runtime(
 def default_log_path(kind: str, *, directory: str | Path = PROJECT_ROOT / "logs") -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     session_id = uuid4().hex[:8]
-    return Path(directory) / f"{timestamp}_{kind}_{session_id}.log"
+    return Path(directory) / f"{timestamp}_{kind}_{session_id}.jsonl"
 
 
 def _is_clean_known_context(snapshot) -> bool:

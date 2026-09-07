@@ -13,6 +13,7 @@ from types import MappingProxyType
 from typing import Callable, Mapping, Protocol, TextIO
 
 from bot.observations import validate_semantic_name
+from bot.event_context import event_context, new_correlation_id
 
 
 class EventSink(Protocol):
@@ -48,12 +49,13 @@ class RuntimeEvent:
 
     def payload(self) -> dict[str, object]:
         return {
+            **self.fields,
+            "schema_version": 1,
             "timestamp": self.timestamp.astimezone(timezone.utc).isoformat(),
             "level": self.level.name,
             "component": self.component,
             "event": self.event,
             "message": self.message,
-            **self.fields,
         }
 
 
@@ -102,10 +104,13 @@ class RuntimeEventStream:
         consumers: tuple[RuntimeEventConsumer, ...] = (),
         *,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        run_id: str | None = None,
     ) -> None:
         if not callable(now):
             raise ValueError("now must be callable")
         self._now = now
+        self.run_id = run_id or new_correlation_id()
+        self._event_sequence = 0
         self._consumers = list(consumers)
         self._lock = threading.Lock()
 
@@ -131,9 +136,17 @@ class RuntimeEventStream:
         message: str | None = None,
         **fields: object,
     ) -> RuntimeEvent:
-        item = RuntimeEvent(self._now(), level, component, event, fields, message)
         with self._lock:
+            self._event_sequence += 1
+            sequence = self._event_sequence
             consumers = tuple(self._consumers)
+        context = event_context()
+        context["run_id"] = context["run_id"] or self.run_id
+        fields["run_id"] = fields.get("run_id") or context["run_id"]
+        item = RuntimeEvent(
+            self._now(), level, component, event,
+            {**context, **fields, "event_sequence": sequence}, message,
+        )
         for consumer in consumers:
             try:
                 consumer(item)
@@ -143,6 +156,22 @@ class RuntimeEventStream:
         return item
 
     def record(self, event: str, **fields: object) -> None:
+        try:
+            self._record(event, **fields)
+        except Exception:
+            # A clock, encoder or malformed diagnostic cannot change runtime policy.
+            pass
+
+    def _record(self, event: str, **fields: object) -> None:
+        fields.setdefault("event_role", (
+            "lifecycle" if event in {
+                "runtime.started", "runtime.completed", "runtime.failed", "runtime.closed",
+                "session.started", "session.completed", "session.failed", "session.cancelled",
+                "session.character.started", "session.character.completed",
+                "flow.started", "flow.completed", "flow.failed", "flow.cancelled",
+                "rotation.started", "rotation.completed", "rotation.failed",
+            } else "diagnostic"
+        ))
         level_value = fields.pop("level", None)
         component_value = fields.pop("component", None)
         message = fields.pop("message", None)
@@ -154,8 +183,8 @@ class RuntimeEventStream:
         self.emit(level, component, event, message=message if isinstance(message, str) else None, **fields)
 
 
-class JsonLineEventLog:
-    """Append timestamp + event JSON records without import-time side effects."""
+class JsonLineEventLog(RuntimeEventStream):
+    """Compatibility entry point for smoke tools, using the canonical pipeline."""
 
     def __init__(
         self,
@@ -166,25 +195,15 @@ class JsonLineEventLog:
         self.path = Path(path)
         if self.path == Path("."):
             raise ValueError("path must identify a log file")
-        self._now = now
-        self._lock = threading.Lock()
+        super().__init__((JsonLineEventConsumer(self.path),), now=now)
 
-    def record(self, event: str, **fields: object) -> None:
-        name = validate_semantic_name(event)
-        timestamp = self._now()
-        if not isinstance(timestamp, datetime):
-            raise ValueError("now() must return datetime")
-        if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
-        payload = dict(fields)
-        payload.update({
-            "timestamp": timestamp.astimezone(timezone.utc).isoformat(),
-            "event": name,
-        })
-        with self._lock:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("a", encoding="utf-8") as stream:
-                stream.write(json.dumps(payload, sort_keys=True) + "\n")
+
+def record_best_effort(sink: EventSink | None, event: str, **fields: object) -> None:
+    try:
+        if sink is not None:
+            sink.record(event, **fields)
+    except Exception:
+        pass
 
 
 def build_runtime_event_stream(
@@ -221,6 +240,8 @@ def format_runtime_event(item: RuntimeEvent) -> str:
 
 def _event_metadata(event: str) -> tuple[EventLevel, str]:
     name = validate_semantic_name(event)
+    if name in {"runtime_wait.completed", "perception.analyze_summary"}:
+        return EventLevel.DEBUG, name.split(".", 1)[0]
     if name.startswith("transition.") or ".transition" in name:
         return EventLevel.DEBUG, "transition"
     if name.startswith("controlled_wait.") or ".controlled_wait" in name or ".wait." in name:

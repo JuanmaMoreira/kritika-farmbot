@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from unittest.mock import Mock
 
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
@@ -454,10 +455,11 @@ def test_hil_double_tap_then_real_wait_tolerates_selector_and_checks_clean_retur
         summon(9, STATUS_PET_EPIC_AVAILABLE, daily=True),
     ])
     now = [0.0]
-    observer = object.__new__(RuntimeObserver)
-    observer.poll_interval = 0.02
-    observer._clock = lambda: now[0]
-    observer._sleeper = lambda seconds: now.__setitem__(0, now[0] + seconds)
+    observer = RuntimeObserver(
+        Mock(), Mock(), Mock(), poll_interval=0.02,
+        clock=lambda: now[0], metrics_clock=lambda: now[0],
+        sleeper=lambda seconds: now.__setitem__(0, now[0] + seconds),
+    )
 
     def observe():
         current = next(frames)

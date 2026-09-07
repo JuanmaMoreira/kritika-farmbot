@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from numbers import Integral, Real
 from typing import Callable
@@ -10,6 +10,9 @@ from typing import Callable
 from bot.component_contracts import ComponentContract, ComponentRequirement
 from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventSink
+from bot.event_context import event_context, event_scope, new_correlation_id, operation_scope
+from bot.failure_cause import FailureCause
+from bot.flow_contracts import publish_flow_events
 from bot.flow_contracts import (
     FlowEvent,
     FlowContract,
@@ -118,6 +121,16 @@ class SessionResult:
     failure_character_index: int | None = None
     failure_flow: str | None = None
     failure_cause: str | None = None
+    failure: FailureCause | None = field(default=None, kw_only=True)
+    run_id: str | None = field(default=None, kw_only=True)
+    session_id: str | None = field(default=None, kw_only=True)
+
+    def __post_init__(self):
+        context = event_context()
+        object.__setattr__(self, "run_id", self.run_id or context["run_id"])
+        object.__setattr__(self, "session_id", self.session_id or context["session_id"])
+        if self.failure_cause is not None and self.failure is None:
+            object.__setattr__(self, "failure", FailureCause.from_error(self.failure_cause, kind="session_failure"))
 
     @property
     def events(self) -> tuple[FlowEvent, ...]:
@@ -170,6 +183,14 @@ class SessionRunner:
         self.character_context_factory = character_context_factory
 
     def run(self) -> SessionResult:
+        with event_scope(
+            run_id=event_context()["run_id"] or getattr(self.events, "run_id", None) or new_correlation_id(),
+            session_id=new_correlation_id(), character_index=None, flow=None,
+            operation_id=None, parent_operation_id=None, step=None,
+        ):
+            return self._run()
+
+    def _run(self) -> SessionResult:
         character_results: list[SessionCharacterResult] = []
         advances_completed = 0
         self._record("session.started", character_count=self.plan.character_count)
@@ -178,184 +199,199 @@ class SessionRunner:
             if self._cancelled():
                 return self._cancel(character_results, advances_completed)
 
-            context = self._character_context(index)
-            self._record(
-                "session.character.started",
-                character_index=index,
-                character_count=self.plan.character_count,
-                character_name=context.name,
-            )
-            flow_results: list[FlowResult] = []
-            for flow in self.plan.flows:
-                if self._cancelled():
-                    character_results.append(
-                        SessionCharacterResult(index, context, tuple(flow_results))
-                    )
-                    return self._cancel(character_results, advances_completed)
-
-                ensured = self._ensure(flow.contract.precondition)
-                if not ensured.succeeded:
-                    character_results.append(
-                        SessionCharacterResult(index, context, tuple(flow_results))
-                    )
-                    return self._fail(
-                        character_results,
-                        advances_completed,
-                        index=index,
-                        flow=flow.name,
-                        cause=(
-                            "flow_precondition_failed: "
-                            f"{ensured.error or 'unknown'}"
-                        ),
-                    )
-
+            with event_scope(character_index=index):
+                context = self._character_context(index)
                 self._record(
-                    "flow.started",
-                    component=flow.name,
-                    flow=flow.name,
+                    "session.character.started",
+                    character_index=index,
+                    character_count=self.plan.character_count,
+                    character_name=context.name,
+                )
+                flow_results: list[FlowResult] = []
+                for flow in self.plan.flows:
+                    with event_scope(flow=flow.name), operation_scope(flow.name):
+                        if self._cancelled():
+                            character_results.append(
+                                SessionCharacterResult(index, context, tuple(flow_results))
+                            )
+                            return self._cancel(character_results, advances_completed)
+
+                        ensured = self._ensure(flow.contract.precondition)
+                        if not ensured.succeeded:
+                            character_results.append(
+                                SessionCharacterResult(index, context, tuple(flow_results))
+                            )
+                            return self._fail(
+                                character_results,
+                                advances_completed,
+                                index=index,
+                                flow=flow.name,
+                                cause=(
+                                    "flow_precondition_failed: "
+                                    f"{ensured.error or 'unknown'}"
+                                ),
+                            )
+
+                        self._record(
+                            "flow.started",
+                            component=flow.name,
+                            flow=flow.name,
+                            character_index=index,
+                            character_name=context.name,
+                        )
+                        result = self._run_flow(flow)
+                        flow_results.append(result)
+                        self._record_flow_events(flow.name, result.events, index, context)
+                        if result.status is FlowStatus.CANCELLED:
+                            self._record(
+                                "flow.cancelled",
+                                component=flow.name,
+                                flow=flow.name,
+                                character_index=index,
+                            )
+                            character_results.append(
+                                SessionCharacterResult(index, context, tuple(flow_results))
+                            )
+                            return self._cancel(character_results, advances_completed)
+                        if result.status is FlowStatus.FAILED:
+                            self._record(
+                                "flow.failed",
+                                component=flow.name,
+                                flow=flow.name,
+                                character_index=index,
+                                error=result.error,
+                                failure=result.failure.payload() if result.failure else None,
+                            )
+                            character_results.append(
+                                SessionCharacterResult(index, context, tuple(flow_results))
+                            )
+                            return self._fail(
+                                character_results,
+                                advances_completed,
+                                index=index,
+                                flow=flow.name,
+                                cause=result.error or "flow_failed",
+                                failure=result.failure,
+                            )
+                        if not self._current_satisfies_any(
+                            flow.contract.successful_postconditions
+                        ):
+                            self._record(
+                                "flow.failed", component=flow.name, flow=flow.name,
+                                error="flow_completed_outside_successful_postconditions",
+                                failure=FailureCause.from_error(
+                                    "flow_completed_outside_successful_postconditions",
+                                    kind="postcondition_rejected",
+                                ).payload(),
+                            )
+                            character_results.append(
+                                SessionCharacterResult(index, context, tuple(flow_results))
+                            )
+                            return self._fail(
+                                character_results,
+                                advances_completed,
+                                index=index,
+                                flow=flow.name,
+                                cause="flow_completed_outside_successful_postconditions",
+                            )
+                        self._record(
+                            "flow.completed",
+                            component=flow.name,
+                            flow=flow.name,
+                            character_index=index,
+                            business_event_count=len(result.events),
+                        )
+                        if self._cancelled():
+                            character_results.append(
+                                SessionCharacterResult(index, context, tuple(flow_results))
+                            )
+                            return self._cancel(character_results, advances_completed)
+
+                with event_scope(flow=None), operation_scope("rotation"):
+                    rotation_contract = self.plan.rotation_strategy.contract
+                    ensured = self._ensure(rotation_contract.precondition)
+                    if not ensured.succeeded:
+                        character_results.append(
+                            SessionCharacterResult(index, context, tuple(flow_results))
+                        )
+                        return self._fail(
+                            character_results,
+                            advances_completed,
+                            index=index,
+                            cause=(
+                                "rotation_precondition_failed: "
+                                f"{ensured.error or 'unknown'}"
+                            ),
+                        )
+
+                    self._record(
+                        "rotation.started",
+                        component="rotation",
+                        character_index=index,
+                    )
+                    rotation_result = self._advance()
+                    if not rotation_result.succeeded:
+                        self._record(
+                            "rotation.failed",
+                            component="rotation",
+                            character_index=index,
+                            error=rotation_result.error,
+                            failure=rotation_result.failure.payload() if rotation_result.failure else None,
+                        )
+                        character_results.append(
+                            SessionCharacterResult(
+                                index,
+                                context,
+                                tuple(flow_results),
+                                advance_result=rotation_result,
+                            )
+                        )
+                        return self._fail(
+                            character_results,
+                            advances_completed,
+                            index=index,
+                            cause=rotation_result.error or "rotation_failed",
+                            failure=rotation_result.failure,
+                        )
+                    if not self._current_satisfies_any(
+                        rotation_contract.successful_postconditions
+                    ):
+                        character_results.append(
+                            SessionCharacterResult(
+                                index,
+                                context,
+                                tuple(flow_results),
+                                advance_result=rotation_result,
+                            )
+                        )
+                        return self._fail(
+                            character_results,
+                            advances_completed,
+                            index=index,
+                            cause="rotation_completed_outside_successful_postconditions",
+                        )
+
+                    advances_completed += 1
+                    self._record(
+                        "rotation.completed",
+                        component="rotation",
+                        character_index=index,
+                        advances_completed=advances_completed,
+                    )
+                    character_results.append(
+                        SessionCharacterResult(
+                            index,
+                            context,
+                            tuple(flow_results),
+                            advance_result=rotation_result,
+                            completed=True,
+                        )
+                    )
+                self._record(
+                    "session.character.completed",
                     character_index=index,
                     character_name=context.name,
                 )
-                result = self._run_flow(flow)
-                flow_results.append(result)
-                self._record_flow_events(flow.name, result.events, index, context)
-                if result.status is FlowStatus.CANCELLED:
-                    self._record(
-                        "flow.cancelled",
-                        component=flow.name,
-                        flow=flow.name,
-                        character_index=index,
-                    )
-                    character_results.append(
-                        SessionCharacterResult(index, context, tuple(flow_results))
-                    )
-                    return self._cancel(character_results, advances_completed)
-                if result.status is FlowStatus.FAILED:
-                    self._record(
-                        "flow.failed",
-                        component=flow.name,
-                        flow=flow.name,
-                        character_index=index,
-                        error=result.error,
-                    )
-                    character_results.append(
-                        SessionCharacterResult(index, context, tuple(flow_results))
-                    )
-                    return self._fail(
-                        character_results,
-                        advances_completed,
-                        index=index,
-                        flow=flow.name,
-                        cause=result.error or "flow_failed",
-                    )
-                if not self._current_satisfies_any(
-                    flow.contract.successful_postconditions
-                ):
-                    character_results.append(
-                        SessionCharacterResult(index, context, tuple(flow_results))
-                    )
-                    return self._fail(
-                        character_results,
-                        advances_completed,
-                        index=index,
-                        flow=flow.name,
-                        cause="flow_completed_outside_successful_postconditions",
-                    )
-                self._record(
-                    "flow.completed",
-                    component=flow.name,
-                    flow=flow.name,
-                    character_index=index,
-                    business_event_count=len(result.events),
-                )
-                if self._cancelled():
-                    character_results.append(
-                        SessionCharacterResult(index, context, tuple(flow_results))
-                    )
-                    return self._cancel(character_results, advances_completed)
-
-            rotation_contract = self.plan.rotation_strategy.contract
-            ensured = self._ensure(rotation_contract.precondition)
-            if not ensured.succeeded:
-                character_results.append(
-                    SessionCharacterResult(index, context, tuple(flow_results))
-                )
-                return self._fail(
-                    character_results,
-                    advances_completed,
-                    index=index,
-                    cause=(
-                        "rotation_precondition_failed: "
-                        f"{ensured.error or 'unknown'}"
-                    ),
-                )
-
-            self._record(
-                "rotation.started",
-                component="rotation",
-                character_index=index,
-            )
-            rotation_result = self._advance()
-            if not rotation_result.succeeded:
-                self._record(
-                    "rotation.failed",
-                    component="rotation",
-                    character_index=index,
-                    error=rotation_result.error,
-                )
-                character_results.append(
-                    SessionCharacterResult(
-                        index,
-                        context,
-                        tuple(flow_results),
-                        advance_result=rotation_result,
-                    )
-                )
-                return self._fail(
-                    character_results,
-                    advances_completed,
-                    index=index,
-                    cause=rotation_result.error or "rotation_failed",
-                )
-            if not self._current_satisfies_any(
-                rotation_contract.successful_postconditions
-            ):
-                character_results.append(
-                    SessionCharacterResult(
-                        index,
-                        context,
-                        tuple(flow_results),
-                        advance_result=rotation_result,
-                    )
-                )
-                return self._fail(
-                    character_results,
-                    advances_completed,
-                    index=index,
-                    cause="rotation_completed_outside_successful_postconditions",
-                )
-
-            advances_completed += 1
-            self._record(
-                "rotation.completed",
-                component="rotation",
-                character_index=index,
-                advances_completed=advances_completed,
-            )
-            character_results.append(
-                SessionCharacterResult(
-                    index,
-                    context,
-                    tuple(flow_results),
-                    advance_result=rotation_result,
-                    completed=True,
-                )
-            )
-            self._record(
-                "session.character.completed",
-                character_index=index,
-                character_name=context.name,
-            )
 
         result = SessionResult(
             SessionStatus.COMPLETED,
@@ -397,6 +433,7 @@ class SessionRunner:
             return FlowResult(
                 FlowStatus.FAILED,
                 error=f"{type(error).__name__}: {error}",
+                failure=FailureCause.from_error(error, kind="exception"),
             )
 
     def _advance(self) -> RotationResult:
@@ -410,6 +447,7 @@ class SessionRunner:
             return RotationResult(
                 RotationOutcome.ABORTED,
                 error=f"{type(error).__name__}: {error}",
+                failure=FailureCause.from_error(error, kind="exception"),
             )
 
     def _ensure(self, requirement: ComponentRequirement) -> EnsureResult:
@@ -455,19 +493,10 @@ class SessionRunner:
         index: int,
         context: CharacterContext,
     ) -> None:
-        for event in flow_events:
-            fields: dict[str, object] = {
-                "character_index": index,
-                "character_name": context.name,
-            }
-            if event.detail is not None:
-                fields["detail"] = event.detail
-            event_name = (
-                event.kind
-                if event.kind.startswith(f"{flow_name}.")
-                else f"{flow_name}.{event.kind}"
-            )
-            self._record(event_name, **fields)
+        publish_flow_events(
+            self.events, flow_name, flow_events,
+            character_index=index, character_name=context.name,
+        )
 
     def _cancel(
         self,
@@ -495,6 +524,7 @@ class SessionRunner:
         index: int,
         cause: str,
         flow: str | None = None,
+        failure: FailureCause | None = None,
     ) -> SessionResult:
         result = SessionResult(
             SessionStatus.FAILED,
@@ -504,12 +534,14 @@ class SessionRunner:
             failure_character_index=index,
             failure_flow=flow,
             failure_cause=cause,
+            failure=failure,
         )
         self._record(
             "session.failed",
             character_index=index,
             flow=flow,
             cause=cause,
+            failure=result.failure.payload() if result.failure else None,
             advances_completed=advances_completed,
         )
         return result

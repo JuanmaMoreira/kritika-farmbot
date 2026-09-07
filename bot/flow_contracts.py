@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Protocol, runtime_checkable
+from types import MappingProxyType
+from typing import Mapping, Protocol, runtime_checkable
 
 from bot.component_contracts import ComponentContract
+from bot.event_log import record_best_effort
+from bot.failure_cause import FailureCause
 
 
 class FlowScope(str, Enum):
@@ -30,8 +34,13 @@ class FlowEvent:
 
     kind: str
     detail: str | None = None
+    fields: Mapping[str, object] = field(default_factory=dict, kw_only=True)
+    created_at: datetime = field(
+        default_factory=lambda: datetime.now(timezone.utc), kw_only=True, compare=False,
+    )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "fields", MappingProxyType(dict(self.fields)))
         if not isinstance(self.kind, str) or not self.kind.strip():
             raise ValueError("kind must be a non-empty string")
         object.__setattr__(self, "kind", self.kind.strip())
@@ -48,8 +57,11 @@ class FlowResult:
     status: FlowStatus
     events: tuple[FlowEvent, ...] = ()
     error: str | None = None
+    failure: FailureCause | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
+        if self.error is not None and self.failure is None:
+            object.__setattr__(self, "failure", FailureCause.from_error(self.error))
         object.__setattr__(self, "events", tuple(self.events))
         if not isinstance(self.status, FlowStatus):
             raise ValueError("status must be FlowStatus")
@@ -77,6 +89,19 @@ class PerCharacterFlow(Protocol):
     contract: FlowContract
 
     def run(self) -> FlowResult: ...
+
+
+def publish_flow_events(sink, flow_name: str, events: tuple[FlowEvent, ...], **context):
+    """Runner-owned publication of business outcomes; results retain their data."""
+    for event in events:
+        name = event.kind if event.kind.startswith(f"{flow_name}.") else f"{flow_name}.{event.kind}"
+        record_best_effort(
+            sink, name, **{
+                **event.fields, **context, "flow": flow_name,
+                "detail": event.detail, "event_role": "business",
+                "created_at": event.created_at.isoformat(),
+            },
+        )
 
 
 __all__ = (

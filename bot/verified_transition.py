@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
+import time
 from enum import Enum
 from numbers import Integral, Real
 from typing import Callable, Protocol
 
 from bot.action_executor import ActionExecutor
 from bot.event_log import EventSink
+from bot.event_context import operation_scope
+from bot.failure_cause import FailureCause
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
@@ -75,6 +78,9 @@ class VerifiedTransitionResult:
     grace_wait_count: int
     final_snapshot: RuntimeSnapshot
     error: str | None = None
+    elapsed: float | None = field(default=None, kw_only=True)
+    operation_id: str | None = field(default=None, kw_only=True)
+    failure: FailureCause | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
@@ -144,6 +150,8 @@ class VerifiedTransition:
         actions: ActionExecutor,
         events: EventSink | None = None,
         obstruction_recovery: ObstructionRecovery | None = None,
+        *,
+        metrics_clock: Callable[[], float] = time.perf_counter,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -159,6 +167,13 @@ class VerifiedTransition:
         self.actions = actions
         self.events = events
         self.obstruction_recovery = obstruction_recovery
+        self._metrics_clock = metrics_clock
+
+    def _metrics_now(self):
+        try:
+            return self._metrics_clock()
+        except Exception:
+            return 0.0
 
     def execute(
         self,
@@ -172,6 +187,57 @@ class VerifiedTransition:
         retryable_from: Callable[[RuntimeSnapshot], bool] | None = None,
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
         stable_for: float = 0.0,
+    ) -> VerifiedTransitionResult:
+        with operation_scope(name) as context:
+            started = self._metrics_now()
+            progress = {"attempt": 0, "grace_count": 0}
+            try:
+                result = self._execute(
+                    name, action, before, expected=expected, policy=policy,
+                    precondition=precondition, retryable_from=retryable_from,
+                    abort_if=abort_if, stable_for=stable_for,
+                    _progress=progress,
+                )
+            except BaseException as error:
+                failure = getattr(error, "failure", None) or FailureCause.from_error(
+                    error, kind="exception",
+                )
+                self._record(
+                    "transition.completed", transition=name,
+                    outcome="cancelled" if isinstance(error, RuntimeWaitCancelled) else "failed",
+                    elapsed=max(0.0, self._metrics_now() - started),
+                    **progress,
+                    before_sequence=getattr(before, "sequence", None),
+                    error=f"{type(error).__name__}: {error}", failure=failure.payload(),
+                )
+                raise
+            result = replace(
+                result, elapsed=max(0.0, self._metrics_now() - started),
+                operation_id=context["operation_id"],
+            )
+            self._record(
+                "transition.completed", transition=name,
+                attempt=result.attempt_count, grace_count=result.grace_wait_count,
+                outcome=result.outcome.value, error=result.error,
+                elapsed=result.elapsed, before_sequence=before.sequence,
+                final_sequence=result.final_snapshot.sequence,
+                failure=result.failure.payload() if result.failure else None,
+            )
+            return result
+
+    def _execute(
+        self,
+        name: str,
+        action: SemanticAction,
+        before: RuntimeSnapshot,
+        *,
+        expected: Callable[[RuntimeSnapshot], bool],
+        policy: VerifiedTransitionPolicy,
+        precondition: Callable[[RuntimeSnapshot], bool] | None = None,
+        retryable_from: Callable[[RuntimeSnapshot], bool] | None = None,
+        abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
+        stable_for: float = 0.0,
+        _progress: dict,
     ) -> VerifiedTransitionResult:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("name must be a non-empty string")
@@ -246,6 +312,7 @@ class VerifiedTransition:
             current = before
         grace_wait_count = 0
         for attempt in range(1, policy.max_attempts + 1):
+            _progress["attempt"] = attempt
             try:
                 self.actions.execute(action, current.geometry)
             except (KeyboardInterrupt, SystemExit):
@@ -258,6 +325,7 @@ class VerifiedTransition:
                     grace_wait_count,
                     current,
                     f"{type(error).__name__}: {error}",
+                    failure=FailureCause.from_error(error, kind="exception", sequence=current.sequence),
                 )
 
             normal = self._wait(
@@ -297,6 +365,7 @@ class VerifiedTransition:
                 nominal_timeout=policy.normal_timeout,
             )
             grace_wait_count += 1
+            _progress["grace_count"] = grace_wait_count
             self._record(
                 "transition.grace_started",
                 transition=name,
@@ -346,6 +415,7 @@ class VerifiedTransition:
                     grace_wait_count,
                     grace.last_snapshot or grace_anchor,
                     f"{type(error).__name__}: {error}",
+                    failure=FailureCause.from_error(error, kind="exception", sequence=(grace.last_snapshot or grace_anchor).sequence),
                 )
             latest_wait = grace.last_snapshot or grace_anchor
             if observed.sequence <= latest_wait.sequence:
@@ -556,6 +626,8 @@ class VerifiedTransition:
         grace_wait_count: int,
         final_snapshot: RuntimeSnapshot,
         error: str | None = None,
+        *,
+        failure: FailureCause | None = None,
     ) -> VerifiedTransitionResult:
         result = VerifiedTransitionResult(
             name=name,
@@ -564,14 +636,10 @@ class VerifiedTransition:
             grace_wait_count=grace_wait_count,
             final_snapshot=final_snapshot,
             error=error,
-        )
-        self._record(
-            "transition.completed",
-            transition=name,
-            attempt=attempt_count,
-            grace_count=grace_wait_count,
-            outcome=outcome.value,
-            error=error,
+            failure=failure or (
+                FailureCause.from_error(error, kind=outcome.value, step=name, sequence=final_snapshot.sequence)
+                if error is not None else None
+            ),
         )
         return result
 

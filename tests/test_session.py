@@ -203,8 +203,15 @@ def test_business_events_are_aggregated_logged_and_do_not_abort():
     assert result.low_gold_count == 1
     assert result.inventory_full_count == 1
     assert rotation.calls == 1
-    assert ("black_market.low_gold", {"character_index": 1, "character_name": None}) in events.records
-    assert ("black_market.inventory_full", {"character_index": 1, "character_name": None}) in events.records
+    for name in ("black_market.low_gold", "black_market.inventory_full"):
+        records = [fields for event, fields in events.records if event == name]
+        assert len(records) == 1
+        expected = {
+            "character_index": 1, "character_name": None,
+            "flow": "black_market", "detail": None, "event_role": "business",
+        }
+        assert expected.items() <= records[0].items()
+        assert records[0]["created_at"]
 
 
 def test_already_qualified_business_event_is_not_double_prefixed():

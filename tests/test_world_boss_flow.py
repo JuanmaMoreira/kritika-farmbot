@@ -1,4 +1,5 @@
 from pathlib import Path
+from bot.flow_contracts import publish_flow_events
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -240,6 +241,7 @@ def test_cancellation_raised_by_verified_transition_stays_cancelled():
     )
     driver.execute = Mock(side_effect=RuntimeWaitCancelled("cancelled during cleanup"))
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
     assert result.status is FlowStatus.CANCELLED
     assert driver.execute.call_count == 1
 
@@ -318,6 +320,7 @@ def test_insufficient_sapphires_completes_in_lobby_without_any_navigation_input(
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.sapphires == 4
@@ -343,6 +346,7 @@ def test_sapphires_fact_failure_fails_without_navigation(status):
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert result.error.startswith("sapphires_fact_failed")
@@ -366,6 +370,7 @@ def test_complete_flow_handles_optional_previous_rewards_and_finishes_world_boss
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.previous_rewards is previous
@@ -403,6 +408,7 @@ def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle(
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.wait_elapsed == pytest.approx(67)
@@ -435,6 +441,7 @@ def test_raid_complete_during_auto_battle_skips_timer_and_continues():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.raid_complete_detected
@@ -479,6 +486,7 @@ def test_auto_battle_timeout_without_raid_evidence_continues_through_timer():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.raid_complete_detected
@@ -539,6 +547,7 @@ def test_previous_rewards_may_arrive_after_transient_world_boss_main():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.previous_rewards
@@ -594,6 +603,7 @@ def test_inventory_full_uses_one_positive_relief_then_no_and_completes_nonfatall
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.inventory_full
@@ -664,6 +674,7 @@ def test_successful_socket_relief_returns_and_world_boss_continues_normally():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.raid_complete_detected
@@ -704,6 +715,7 @@ def test_positive_allowance_is_not_consumed_when_socket_entry_is_unverified():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert "world_boss.accept_inventory_full_failed" in result.error
@@ -754,6 +766,7 @@ def test_socket_relief_cancel_and_failure_stop_before_another_world_boss_start(
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is expected_status
     assert (error_text is None) or error_text in result.error
@@ -845,6 +858,7 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.bag_full
@@ -913,6 +927,7 @@ def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert "world_boss.dismiss_bag_full_failed" in result.error
@@ -1000,6 +1015,7 @@ def test_equipment_combine_relief_cancel_and_failure_stop_before_another_start(
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is expected_status
     assert error_text is None or error_text in result.error
@@ -1032,6 +1048,7 @@ def test_each_navigation_or_ack_failure_aborts_without_later_input(
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert expected_name in result.error
@@ -1068,6 +1085,7 @@ def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert "world_boss.continue_after_raid_failed" in result.error
@@ -1115,6 +1133,7 @@ def test_auto_battle_inconclusive_continues_to_timer_and_long_wait(status):
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.raid_complete_detected
@@ -1159,6 +1178,7 @@ def test_auto_battle_failure_after_tap_continues_without_more_input():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.auto_battle_initial is AutoBattleState.OFF
@@ -1188,6 +1208,7 @@ def test_flow_uses_single_pass_quick_check_once_per_battle():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     auto.ensure_on_quick.assert_called_once()
@@ -1217,6 +1238,7 @@ def test_auto_battle_context_mismatch_still_fails_before_timer():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert result.error.startswith("auto_battle_failed")
@@ -1252,6 +1274,7 @@ def test_timer_inconclusive_uses_bounded_fallback_and_completes(status):
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.initial_timer == BATTLE_TIMER_MAX_SECONDS
@@ -1286,6 +1309,7 @@ def test_timer_context_mismatch_still_fails_before_controlled_wait():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert result.error.startswith("timer_fact_failed")
@@ -1319,6 +1343,7 @@ def test_navigation_transition_outcomes_are_preserved(outcome, expected_error):
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     if expected_error is None:
         assert result.error is not None
@@ -1595,6 +1620,7 @@ def test_meteor_full_after_start_rejects_once_and_completes_for_character():
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.COMPLETED
     assert result.meteor_full
@@ -1662,6 +1688,7 @@ def test_meteor_full_reject_failure_is_structured_and_does_not_claim_completion(
     )
 
     result = flow.run()
+    publish_flow_events(flow.events, flow.name, result.events)
 
     assert result.status is FlowStatus.FAILED
     assert "world_boss.reject_meteor_full_failed" in result.error

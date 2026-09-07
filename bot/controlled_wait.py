@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from numbers import Real
 from typing import Callable
 
 from bot.event_log import EventSink
+from bot.event_context import operation_scope
+from bot.failure_cause import FailureCause
 
 
 class ControlledWaitOutcome(str, Enum):
@@ -26,6 +28,7 @@ class ControlledWaitResult:
     elapsed: float
     poll_count: int
     error: str | None = None
+    failure: FailureCause | None = field(default=None, kw_only=True)
 
     @property
     def succeeded(self) -> bool:
@@ -59,6 +62,22 @@ class ControlledWait:
         self.label = label.strip()
 
     def wait(
+        self,
+        *,
+        expected_duration: float | None = None,
+        deadline: float | None = None,
+        completion_condition: Callable[[], bool] | None = None,
+        terminal_condition: Callable[[], bool] | None = None,
+        cancel_requested: Callable[[], bool] = lambda: False,
+    ) -> ControlledWaitResult:
+        with operation_scope(self.label):
+            return self._wait(
+                expected_duration=expected_duration, deadline=deadline,
+                completion_condition=completion_condition,
+                terminal_condition=terminal_condition, cancel_requested=cancel_requested,
+            )
+
+    def _wait(
         self,
         *,
         expected_duration: float | None = None,
@@ -133,6 +152,7 @@ class ControlledWait:
                     started,
                     polls,
                     f"{type(error).__name__}: {error}",
+                    failure=FailureCause.from_error(error, kind="exception"),
                 )
 
             now = self._clock()
@@ -152,12 +172,18 @@ class ControlledWait:
         started: float,
         polls: int,
         error: str | None = None,
+        *,
+        failure: FailureCause | None = None,
     ) -> ControlledWaitResult:
         result = ControlledWaitResult(
             outcome,
             elapsed=max(0.0, self._clock() - started),
             poll_count=polls,
             error=error,
+            failure=failure or (
+                FailureCause.from_error(error or outcome.value, kind=outcome.value)
+                if outcome in {ControlledWaitOutcome.FAILED, ControlledWaitOutcome.TIMEOUT} else None
+            ),
         )
         event = {
             ControlledWaitOutcome.COMPLETED: "controlled_wait.completed",
@@ -172,6 +198,7 @@ class ControlledWait:
             actual_elapsed=result.elapsed,
             poll_count=result.poll_count,
             error=error,
+            failure=result.failure.payload() if result.failure else None,
         )
         return result
 

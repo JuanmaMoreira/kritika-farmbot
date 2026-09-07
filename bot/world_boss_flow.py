@@ -31,6 +31,7 @@ from bot.catalog import (
 from bot.component_contracts import ComponentRequirement
 from bot.controlled_wait import ControlledWait, ControlledWaitOutcome
 from bot.event_log import EventSink
+from bot.failure_cause import FailureCause
 from bot.equipment_combine_relief import (
     EquipmentCombineReliefOutcome,
     EquipmentCombineReturnPlan,
@@ -241,20 +242,25 @@ class WorldBossFlow:
             max_attempts=transition_max_attempts,
         )
         self.verified_transition = verified_transition or VerifiedTransition(
-            observer, actions
+            observer, actions, events
         )
 
     def run(self) -> WorldBossFlowResult:
+        flow_events: list[FlowEvent] = []
         try:
-            return self._run()
+            return self._run(flow_events)
         except (KeyboardInterrupt, SystemExit):
             raise
         except RuntimeWaitCancelled:
-            return WorldBossFlowResult(status=FlowStatus.CANCELLED)
+            return WorldBossFlowResult(status=FlowStatus.CANCELLED, events=tuple(flow_events))
         except Exception as error:
-            return self._failed(f"{type(error).__name__}: {error}")
+            return WorldBossFlowResult(
+                status=FlowStatus.FAILED, events=tuple(flow_events),
+                error=f"{type(error).__name__}: {error}",
+                failure=FailureCause.from_error(error, kind="exception"),
+            )
 
-    def _run(self) -> WorldBossFlowResult:
+    def _run(self, flow_events: list[FlowEvent]) -> WorldBossFlowResult:
         # Deliberately the first runtime operation: no observation or input precedes it.
         sapphire_read = self.facts.read_sapphires(
             after_sequence=0,
@@ -273,8 +279,7 @@ class WorldBossFlow:
         sapphires = sapphire_fact.value
         self._record_best_effort("world_boss.sapphires_read", value=sapphires)
         if sapphires < 5:
-            event = FlowEvent(WORLD_BOSS_INSUFFICIENT_SAPPHIRES)
-            self._record_best_effort(event.kind, sapphires=sapphires)
+            event = FlowEvent(WORLD_BOSS_INSUFFICIENT_SAPPHIRES, fields=dict(sapphires=sapphires))
             return WorldBossFlowResult(
                 status=FlowStatus.COMPLETED,
                 events=(event,),
@@ -325,7 +330,6 @@ class WorldBossFlow:
         if entered is None:
             return self._transition_failure(transitions, sapphires)
 
-        flow_events: list[FlowEvent] = []
         if not _is_previous_rewards(entered):
             # The World Boss base can resolve briefly before Previous Rewards is
             # presented.  Treat both as outcomes of selecting the boss and wait
@@ -343,7 +347,6 @@ class WorldBossFlow:
         if previous_rewards:
             event = FlowEvent(WORLD_BOSS_PREVIOUS_REWARDS)
             flow_events.append(event)
-            self._record_best_effort(event.kind)
             entered = self._transition(
                 transitions,
                 "world_boss.ack_previous_rewards",
@@ -392,9 +395,8 @@ class WorldBossFlow:
 
             if _is_world_boss_inventory_full(battle):
                 if socket_relief_attempted:
-                    event = FlowEvent(WORLD_BOSS_INVENTORY_FULL)
+                    event = FlowEvent(WORLD_BOSS_INVENTORY_FULL, fields=dict(branch="negative_after_relief"))
                     flow_events.append(event)
-                    self._record_best_effort(event.kind, branch="negative_after_relief")
                     returned = self._transition(
                         transitions,
                         "world_boss.reject_inventory_full",
@@ -466,9 +468,8 @@ class WorldBossFlow:
 
             if _is_world_boss_bag_full(battle):
                 if equipment_combine_relief_attempted:
-                    event = FlowEvent(WORLD_BOSS_BAG_FULL)
+                    event = FlowEvent(WORLD_BOSS_BAG_FULL, fields=dict(branch="negative_after_relief"))
                     flow_events.append(event)
-                    self._record_best_effort(event.kind, branch="negative_after_relief")
                     returned = self._transition(
                         transitions,
                         "world_boss.dismiss_bag_full",
@@ -544,9 +545,8 @@ class WorldBossFlow:
                 # for Meteorites (sale/combine/expand out of scope). Reject
                 # once with No, verify a clean World Boss, and complete this
                 # character without retrying Start. Manual cleanup follows.
-                event = FlowEvent(WORLD_BOSS_METEOR_FULL)
+                event = FlowEvent(WORLD_BOSS_METEOR_FULL, fields=dict(branch="negative_no_relief"))
                 flow_events.append(event)
-                self._record_best_effort(event.kind, branch="negative_no_relief")
                 returned = self._transition(
                     transitions,
                     "world_boss.reject_meteor_full",
@@ -823,13 +823,6 @@ class WorldBossFlow:
             policy=self.transition_policy,
         )
         transitions.append(result)
-        self._record_best_effort(
-            "world_boss.transition",
-            name=name,
-            outcome=result.outcome.value,
-            attempts=result.attempt_count,
-            grace=result.grace_wait_count,
-        )
         return result.final_snapshot if result.succeeded else None
 
     def _wait_for_raid_complete(self, timer: int):

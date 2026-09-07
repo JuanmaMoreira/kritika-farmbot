@@ -9,6 +9,9 @@ from numbers import Integral, Real
 from typing import Callable, Protocol
 
 from bot.action_executor import FrameGeometry
+from bot.event_context import event_context, operation_scope
+from bot.event_log import EventSink, record_best_effort
+from bot.failure_cause import FailureCause
 from bot.capture import FrameSnapshot
 from bot.observations import ObservationBatch
 from bot.perception.black_market import (
@@ -139,6 +142,8 @@ class RuntimeObserver:
         poll_interval: float = 0.02,
         clock: Callable[[], float] = time.monotonic,
         sleeper: Callable[[float], None] = time.sleep,
+        events: EventSink | None = None,
+        metrics_clock: Callable[[], float] = time.perf_counter,
     ) -> None:
         if not callable(getattr(source, "get_frame", None)):
             raise ValueError("source must provide get_frame()")
@@ -152,12 +157,29 @@ class RuntimeObserver:
         self.poll_interval = _positive_duration(poll_interval, "poll_interval")
         self._clock = clock
         self._sleeper = sleeper
+        self.events = events
+        self._metrics_clock = metrics_clock
+        self._analysis_context = None
+        self._analysis_count = 0
+        self._analysis_elapsed = 0.0
+        self._analysis_max = 0.0
+        self._analysis_errors = 0
+        self._analysis_first_sequence = None
+        self._analysis_last_sequence = None
 
     def observe(self) -> RuntimeSnapshot:
         """Observe exactly one latest frame without sending device input."""
 
         frame = self.source.get_frame()
-        batch = self.perception.analyze(frame)
+        started = self._metrics_now()
+        failed = False
+        try:
+            batch = self.perception.analyze(frame)
+        except BaseException:
+            failed = True
+            raise
+        finally:
+            self._record_analysis(frame.sequence, max(0.0, self._metrics_now() - started), failed)
         state = self.resolver.resolve(batch)
         return RuntimeSnapshot(
             frame=frame,
@@ -166,6 +188,40 @@ class RuntimeObserver:
             facts=_facts_from(batch),
             geometry=FrameGeometry.from_frame(frame.image),
         )
+
+    def _metrics_now(self) -> float:
+        try:
+            return self._metrics_clock()
+        except Exception:
+            return 0.0
+
+    def _record_analysis(self, sequence, elapsed, failed):
+        context = event_context()
+        if context != self._analysis_context:
+            self.flush_analysis_metrics()
+            self._analysis_context = context
+        if self._analysis_count == 0:
+            self._analysis_first_sequence = sequence
+        self._analysis_last_sequence = sequence
+        self._analysis_count += 1
+        self._analysis_elapsed += elapsed
+        self._analysis_max = max(self._analysis_max, elapsed)
+        self._analysis_errors += int(failed)
+        if self._analysis_count >= 64:
+            self.flush_analysis_metrics()
+
+    def flush_analysis_metrics(self):
+        """Flush a bounded aggregate, retaining the context where work occurred."""
+        if self._analysis_count:
+            record_best_effort(
+                self.events, "perception.analyze_summary",
+                **(self._analysis_context or {}),
+                analyze_count=self._analysis_count, analyze_elapsed=self._analysis_elapsed,
+                analyze_max_elapsed=self._analysis_max, analyze_error_count=self._analysis_errors,
+                first_sequence=self._analysis_first_sequence, last_sequence=self._analysis_last_sequence,
+            )
+        self._analysis_count = self._analysis_errors = 0
+        self._analysis_elapsed = self._analysis_max = 0.0
 
     def wait_until(
         self,
@@ -198,34 +254,69 @@ class RuntimeObserver:
         stable_since: float | None = None
         last_evaluated_sequence: int | None = None
 
-        while True:
-            if cancel_requested is not None and cancel_requested():
-                raise RuntimeWaitCancelled("runtime wait cancelled")
-            snapshot = self.observe()
-            if snapshot.sequence > after and (
-                last_evaluated_sequence is None
-                or snapshot.sequence > last_evaluated_sequence
-            ):
-                last_fresh = snapshot
-                last_evaluated_sequence = snapshot.sequence
-                if abort_if is not None and abort_if(snapshot):
-                    raise RuntimeWaitAborted(snapshot)
-                if condition(snapshot):
-                    if stable_since is None:
-                        stable_since = snapshot.timestamp
-                    if snapshot.timestamp - stable_since >= stability:
-                        return snapshot
-                else:
-                    stable_since = None
+        polls = fresh_count = 0
+        started = self._metrics_now()
+        outcome = "failed"
+        failure = None
+        with operation_scope("runtime_wait"):
+            try:
+                while True:
+                    if cancel_requested is not None and cancel_requested():
+                        raise RuntimeWaitCancelled("runtime wait cancelled")
+                    polls += 1
+                    snapshot = self.observe()
+                    if snapshot.sequence > after and (
+                        last_evaluated_sequence is None
+                        or snapshot.sequence > last_evaluated_sequence
+                    ):
+                        fresh_count += 1
+                        last_fresh = snapshot
+                        last_evaluated_sequence = snapshot.sequence
+                        if abort_if is not None and abort_if(snapshot):
+                            raise RuntimeWaitAborted(snapshot)
+                        if condition(snapshot):
+                            if stable_since is None:
+                                stable_since = snapshot.timestamp
+                            if snapshot.timestamp - stable_since >= stability:
+                                outcome = "completed"
+                                return snapshot
+                        else:
+                            stable_since = None
 
-            remaining = deadline - self._clock()
-            if remaining <= 0:
-                raise RuntimeWaitTimeout(
-                    after_sequence=after,
-                    timeout=duration,
-                    last_snapshot=last_fresh,
+                    remaining = deadline - self._clock()
+                    if remaining <= 0:
+                        raise RuntimeWaitTimeout(
+                            after_sequence=after,
+                            timeout=duration,
+                            last_snapshot=last_fresh,
+                        )
+                    self._sleeper(min(self.poll_interval, remaining))
+            except BaseException as error:
+                outcome = (
+                    "timeout" if isinstance(error, RuntimeWaitTimeout) else
+                    "cancelled" if isinstance(error, RuntimeWaitCancelled) else
+                    "aborted" if isinstance(error, RuntimeWaitAborted) else "failed"
                 )
-            self._sleeper(min(self.poll_interval, remaining))
+                failure = FailureCause.from_error(
+                    error, kind=outcome,
+                    sequence=last_fresh.sequence if last_fresh else None,
+                )
+                # Exception metadata is additive; successful callers still get a snapshot.
+                if isinstance(error, (RuntimeWaitTimeout, RuntimeWaitAborted, RuntimeWaitCancelled)):
+                    error.failure = failure
+                    error.poll_count = polls
+                    error.elapsed = max(0.0, self._metrics_now() - started)
+                raise
+            finally:
+                self.flush_analysis_metrics()
+                record_best_effort(
+                    self.events, "runtime_wait.completed", outcome=outcome,
+                    elapsed=max(0.0, self._metrics_now() - started),
+                    poll_count=polls, fresh_count=fresh_count,
+                    after_sequence=after, final_sequence=last_fresh.sequence if last_fresh else None,
+                    timeout=duration, stable_for=stability,
+                    failure=failure.payload() if failure else None,
+                )
 
 
 def _facts_from(batch: ObservationBatch) -> RuntimeFacts:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from numbers import Integral, Real
 from typing import Callable, Protocol, runtime_checkable
@@ -41,6 +41,7 @@ from bot.create_character_sentinel import (
 )
 from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventSink
+from bot.failure_cause import FailureCause
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
@@ -77,6 +78,11 @@ class RotationResult:
     swipe_count: int = 0
     error: str | None = None
     transitions: tuple["RotationTransitionTrace", ...] = ()
+    failure: FailureCause | None = field(default=None, kw_only=True)
+
+    def __post_init__(self):
+        if self.error is not None and self.failure is None:
+            object.__setattr__(self, "failure", FailureCause.from_error(self.error, kind="rotation_failure"))
 
     @property
     def succeeded(self) -> bool:
@@ -195,7 +201,7 @@ class StandardRotation:
         if not callable(getattr(sentinel_detector, "measure", None)):
             raise ValueError("sentinel_detector must provide measure(frame)")
         if verified_transition is None:
-            verified_transition = VerifiedTransition(observer, actions)
+            verified_transition = VerifiedTransition(observer, actions, events)
         if not callable(getattr(verified_transition, "execute", None)):
             raise ValueError("verified_transition must provide execute()")
         self.observer: _Observer = observer

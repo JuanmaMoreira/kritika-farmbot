@@ -158,7 +158,7 @@ class BlackMarketFlow:
             max_attempts=transition_max_attempts,
         )
         if verified_transition is None:
-            verified_transition = VerifiedTransition(observer, actions)
+            verified_transition = VerifiedTransition(observer, actions, events)
         if not callable(getattr(verified_transition, "execute", None)):
             raise ValueError("verified_transition must provide execute()")
         self.verified_transition = verified_transition

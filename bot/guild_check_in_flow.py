@@ -170,7 +170,6 @@ class GuildCheckInFlow:
 
     def _append_event(self, events: list[FlowEvent], kind: str) -> None:
         events.append(FlowEvent(kind))
-        self._record(kind)
 
     def _cancel(
         self,

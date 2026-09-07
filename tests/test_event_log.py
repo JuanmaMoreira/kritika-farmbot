@@ -18,9 +18,13 @@ def test_json_line_event_log_persists_timestamp_event_and_structured_fields(tmp_
     )
 
     payload = json.loads(path.read_text(encoding="utf-8"))
-    assert payload == {
+    expected = {
         "timestamp": "2026-08-26T12:30:00+00:00",
         "event": "black_market.low_gold",
         "character_index": 3,
         "character_name": None,
     }
+    assert expected.items() <= payload.items()
+    assert payload["schema_version"] == 1
+    assert payload["run_id"] == event_log.run_id
+    assert payload["component"] == "black_market"
