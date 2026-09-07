@@ -384,6 +384,58 @@ def test_character_context_factory_runs_once_per_processed_character():
     assert all(item.character_context.name is None for item in result.character_results)
 
 
+@pytest.mark.parametrize("fails", [False, True])
+def test_identity_after_first_ensure_is_nonfatal_and_preserves_gameplay_and_events(fails):
+    def execute(factory_enabled):
+        trace, requested = [], []
+        flows = [Flow(name, [FlowResult(FlowStatus.COMPLETED, (FlowEvent("low_gold"),))] * 2, trace)
+                 for name in ("black_market", "other")]
+        rotation = Rotation(2, trace)
+
+        def factory(index):
+            assert trace[-1] == "context.check"
+            requested.append(index)
+            if fails:
+                raise RuntimeError("recognizer failed")
+            return CharacterContext("Kaiserin" if index == 1 else "Blade Dancer", .99)
+
+        runner, events = _runner(2, flows, rotation, trace=trace,
+                                 context_factory=factory if factory_enabled else None)
+        result = runner.run()
+        return result, trace, requested, events.records
+
+    baseline, baseline_trace, _, baseline_events = execute(False)
+    result, trace, requested, events = execute(True)
+    assert requested == [1, 2]
+    assert trace == baseline_trace
+    assert [event for event, _ in events] == [event for event, _ in baseline_events]
+    assert result.status == baseline.status == SessionStatus.COMPLETED
+    assert result.advances_completed == baseline.advances_completed == 2
+    labels = [c.character_context.name for c in result.character_results]
+    assert labels == ([None, None] if fails else ["Kaiserin", "Blade Dancer"])
+    starts = [fields for event, fields in events if event == "session.character.started"]
+    assert all(fields["character_name"] is None for fields in starts)
+    for event, fields in events:
+        if event in {"flow.started", "black_market.low_gold", "session.character.completed"}:
+            assert fields["character_name"] == labels[fields["character_index"] - 1]
+
+
+def test_failed_first_precondition_still_gets_optional_context_once_without_running_flow():
+    requested = []
+    trace = []
+    flow = Flow("one", [FlowResult(FlowStatus.COMPLETED)], trace)
+    rotation = Rotation(1, trace)
+    def factory(index):
+        requested.append(index)
+        return CharacterContext()
+    runner, _ = _runner(1, [flow], rotation, default_context=None, context_factory=factory)
+    result = runner.run()
+    assert result.status is SessionStatus.FAILED
+    assert requested == [1]
+    assert trace == []
+    assert rotation.calls == 0
+
+
 def test_plan_rejects_non_per_character_flow_and_count_mismatch():
     trace = []
     flow = Flow("bad", [FlowResult(FlowStatus.COMPLETED)], trace)

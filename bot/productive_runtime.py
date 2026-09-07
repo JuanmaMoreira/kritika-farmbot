@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import threading
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, TextIO
@@ -33,6 +33,8 @@ from bot.catalog import (
     build_default_resolver,
 )
 from bot.config import RuntimeConfig
+from bot.character_identity import LobbyNameRecognizer
+from bot.ocr import RapidOcrEngine
 from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtime_event_stream
 from bot.event_context import event_scope, operation_scope
 from bot.flow_contracts import publish_flow_events
@@ -47,7 +49,7 @@ from bot.preconditions import MinimalPreconditionEnsurer
 from bot.quick_menu import quick_menu_accessible, select_quick_menu_guild_action
 from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
-from bot.runtime_observer import RuntimeObserver, RuntimeWaitCancelled, RuntimeWaitTimeout
+from bot.runtime_observer import RuntimeObserver, RuntimeSnapshot, RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.semantic_actions import (
     ClosePets,
     OpenGuild,
@@ -55,7 +57,7 @@ from bot.semantic_actions import (
     OpenQuickMenu,
     SelectQuickMenuLobby,
 )
-from bot.session import SessionPlan, SessionResult, SessionRunner
+from bot.session import CharacterContext, SessionPlan, SessionResult, SessionRunner
 from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughAnimation
@@ -135,6 +137,8 @@ class ProductiveRuntime:
     events: RuntimeEventStream
     cancel_token: CancellationToken
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY
+    _identity_snapshot: RuntimeSnapshot | None = field(default=None, init=False, repr=False)
+    _identity_active: bool = field(default=False, init=False, repr=False)
 
     @property
     def cancel_requested(self):
@@ -305,17 +309,42 @@ class ProductiveRuntime:
             rotation_strategy=rotation,
             character_count=character_count,
         )
-        return SessionRunner(
-            plan,
-            preconditions=self.build_preconditions(),
-            events=self.events,
-            cancel_requested=self.cancel_requested,
-        ).run()
+        recognizer: LobbyNameRecognizer | None = None
+
+        def character_context_factory(index: int) -> CharacterContext:
+            nonlocal recognizer
+            snapshot, self._identity_snapshot = self._identity_snapshot, None
+            if snapshot is None:
+                return CharacterContext()
+            if recognizer is None:
+                # Construction is inside SessionRunner's non-fatal seam too.
+                recognizer = LobbyNameRecognizer(RapidOcrEngine())
+            identity = recognizer.recognize(snapshot)
+            if identity is None:
+                return CharacterContext()
+            return CharacterContext(identity.class_name, identity.confidence)
+
+        self._identity_snapshot = None
+        self._identity_active = True
+        try:
+            return SessionRunner(
+                plan,
+                preconditions=self.build_preconditions(),
+                events=self.events,
+                cancel_requested=self.cancel_requested,
+                character_context_factory=character_context_factory,
+            ).run()
+        finally:
+            self._identity_snapshot = None
+            self._identity_active = False
 
     def _current_clean_context(self) -> str | None:
+        self._identity_snapshot = None
         try:
             initial = self.observer.observe()
             if _is_clean_known_context(initial):
+                if self._identity_active:
+                    self._identity_snapshot = initial
                 return initial.state.base_context
             settled = self.observer.wait_until(
                 _is_clean_known_context,
@@ -324,6 +353,8 @@ class ProductiveRuntime:
                 stable_for=_CLEAN_CONTEXT_STABLE_FOR,
                 cancel_requested=self.cancel_requested,
             )
+            if self._identity_active:
+                self._identity_snapshot = settled
             return settled.state.base_context
         except RuntimeWaitTimeout as error:
             recovered = self._recover_clean_context(error.last_snapshot)

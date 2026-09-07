@@ -109,6 +109,83 @@ def _runtime(observer, events):
     )
 
 
+@pytest.mark.parametrize("mode", ["recognized", "variants", "unknown", "exception", "initialization_exception"])
+def test_session_identity_reuses_first_precondition_without_extra_observations(monkeypatch, mode):
+    import numpy as np
+    from bot.flow_contracts import FlowResult, FlowStatus
+    from bot.ocr import OcrResult
+    from bot.session import SessionRunner
+    from bot.session_report import build_session_report
+    from test_session import Flow, Rotation
+
+    def execute(enabled):
+        trace = []
+        sequence = 0
+        def observe():
+            nonlocal sequence
+            sequence += 1
+            trace.append("observe")
+            result = _snapshot(sequence, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+            result.frame = SimpleNamespace(image=np.zeros((400, 800, 3), np.uint8))
+            return result
+        runtime = _runtime(SimpleNamespace(observe=observe), Events())
+        flows = tuple(Flow(name, [FlowResult(FlowStatus.COMPLETED)] * 2, trace)
+                      for name in ("first", "second"))
+        rotation = Rotation(2, trace)
+        monkeypatch.setattr(runtime, "build_flows", lambda definitions: flows)
+        monkeypatch.setattr(runtime, "build_rotation", lambda count: rotation)
+        engine = Mock()
+        if mode == "exception":
+            engine.recognize.side_effect = RuntimeError("OCR failure")
+        elif mode == "variants":
+            engine.recognize.side_effect = [OcrResult("DRAKEN-BK", .99), OcrResult("DRAKENDB", .99)]
+        else:
+            engine.recognize.side_effect = [
+                OcrResult("Drakenn25" if mode == "recognized" else "unlisted", .99),
+                OcrResult("DRAKEN四BD" if mode == "recognized" else "unlisted", .99),
+            ]
+        def make_engine():
+            if mode == "initialization_exception":
+                raise RuntimeError("backend unavailable")
+            return engine
+        monkeypatch.setattr(productive, "RapidOcrEngine", make_engine)
+        def runner(*args, **kwargs):
+            if not enabled:
+                kwargs["character_context_factory"] = None
+            return SessionRunner(*args, **kwargs)
+        monkeypatch.setattr(productive, "SessionRunner", runner)
+        result = runtime.run_session((), character_count=2)
+        assert runtime._identity_snapshot is None
+        assert runtime._identity_active is False
+        assert engine.recognize.call_count == (2 if enabled and mode != "initialization_exception" else 0)
+        return result, trace, runtime.events.items
+
+    baseline, baseline_trace, baseline_events = execute(False)
+    result, trace, events = execute(True)
+    assert trace == baseline_trace
+    assert trace.count("observe") == 12
+    assert trace.count("rotation.advance") == 2
+    assert [e for e, _ in events] == [e for e, _ in baseline_events]
+    assert result.status == baseline.status
+    report = build_session_report(result)
+    assert [c.label for c in report.characters] == (
+        ["Kaiserin", "Blade Dancer"] if mode == "recognized" else
+        ["Berserker", "Demon Blade"] if mode == "variants" else ["Character 1", "Character 2"])
+
+
+def test_identity_snapshot_cannot_leak_after_unknown_probe(monkeypatch):
+    lobby = _snapshot(1, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    unknown = _snapshot(2, status=ResolutionStatus.UNKNOWN)
+    observer = Observer(lobby, RuntimeWaitTimeout(timeout=1, after_sequence=2, last_snapshot=unknown))
+    runtime = _runtime(observer, Events())
+    runtime._identity_active = True
+    assert runtime._current_clean_context() == SCREEN_LOBBY
+    assert runtime._identity_snapshot is lobby
+    observer.initial = unknown
+    assert runtime._current_clean_context() is None
+    assert runtime._identity_snapshot is None
+
+
 def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monkeypatch):
     source = Source()
     config = object()

@@ -307,8 +307,8 @@ def test_report_uses_supplied_character_label_without_identity_policy():
     from bot.session_report import CharacterReport, ReportStatus
     report = failed_report("file:///expired/failure.json")
     report = replace(report, characters=(CharacterReport(
-        1, "Future supplied class label", ReportStatus.TECHNICAL_FAILURE, (), False,
+        1, "Kaiserin", ReportStatus.TECHNICAL_FAILURE, (), False,
     ),))
     app = build_gui_shell(lambda: 0)
     app._show_report(report)
-    assert "Future supplied class label" in app.report_text.text
+    assert "Kaiserin" in app.report_text.text

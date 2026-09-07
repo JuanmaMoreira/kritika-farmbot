@@ -6,6 +6,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 
 ### Added
 
+- Character Identity mínima: nombre personal del HUD Lobby mediante OCR y lookup Unicode exacto a clase, con fallback cerrado separado para cuatro variantes completas de tres nombres; contexto no fatal y etiqueta en SessionReport/GUI. Sin capturas o inputs adicionales ni cambios de Rotation; baja confianza conserva `Character N` con threshold 0,95 intacto.
 - SessionReport v1: modelo inmutable y renderer humano derivados de resultados/business events, separación entre incompletitud de negocio, fallo técnico y cancelación, referencias diagnósticas y compatibilidad aditiva con CLI/controller GUI; sin nueva persistencia ni UI.
 - Failure Evidence v1: bundles diagnósticos locales de fallos terminales con tres snapshots/PNGs bounded, referencia compartida en FailureCause/JSONL/resultados, retención y writer best-effort; sin alterar inputs ni policy de gameplay.
 - Se estableció la Fase 1A del núcleo 0.2: baseline automatizado con pytest, configuración de runtime explícita y geometría visual derivada exclusivamente del frame real.

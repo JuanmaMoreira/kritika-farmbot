@@ -24,14 +24,14 @@ El runner agrega la metadata al devolver el resultado, usando un reloj de medici
 | Objeto | Contenido |
 | --- | --- |
 | `SessionReport` | `status`, `execution_status` original, duración, procesados/esperados, flows completados, advances completados, `counts`, personajes, causa terminal, `data_gaps`, run/session IDs para correlación diagnóstica. |
-| `CharacterReport` | Índice, etiqueta `Character N`, categoría, flows, advance completado, causa y componente terminal cuando se conoce. |
+| `CharacterReport` | Índice, etiqueta de clase desde CharacterContext o `Character N`, categoría, flows, advance completado, causa y componente terminal cuando se conoce. |
 | `FlowReport` | ID opcional, etiqueta, categoría, contrato completado, motivos, causa técnica opcional y no-op. |
 | `ReportReason` | Identificador del evento de negocio existente y su interpretación humana; para flags legacy sin evento, nombre del flag y explicación genérica. No es una taxonomía de failures. |
 | `ReportCounts` | Conteos exclusivos de personajes complete, business incomplete, technical failure, cancelled y unassessed. |
 
 `ReportStatus` tiene exactamente `COMPLETE`, `BUSINESS_INCOMPLETE`, `TECHNICAL_FAILURE`, `CANCELLED`. `status=None` es falta de información para evaluar un resultado legacy, no otra clase de failure ni una Daily incompleta. `data_gaps` expone metadata ausente y resultados no evaluables. Los objetos y sus colecciones son inmutables; no se guardan snapshots ni los mappings de metadata de eventos.
 
-Se ordenan personajes por índice de sesión y flows por orden de ejecución del plan. No se ordenan por timestamp ni alfabéticamente. Se conserva una ocurrencia por ejecución, incluso si se repite su ID. Sin nombres del plan, se usan `Flow N`; no se adivinan nombres desde mensajes. Identity no se implementa: incluso si un resultado legacy contiene nombre, v1 usa `Character N`.
+Se ordenan personajes por índice de sesión y flows por orden de ejecución del plan. No se ordenan por timestamp ni alfabéticamente. Se conserva una ocurrencia por ejecución, incluso si se repite su ID. Sin nombres del plan, se usan `Flow N`; no se adivinan nombres desde mensajes. Desde Character Identity mínima, la etiqueta usa `character_context.name` cuando existe (también para callers legacy) y conserva `Character N` como fallback. Builder/renderer no reconocen nombres ni duplican lookup o thresholds; contrato del productor en [`CHARACTER_IDENTITY_V1.md`](CHARACTER_IDENTITY_V1.md).
 
 ## Clasificación de negocio
 
@@ -96,4 +96,4 @@ git diff --check
 
 Validación final: **144 tests dirigidos passed** y **1572/1572 tests hardware-free passed en 265,46 s** sobre el código final, incluyendo 49 casos nuevos. `git diff --check`, whitespace de archivos nuevos y enlaces Markdown locales de la documentación modificada válidos. Sin hardware ni cambios perceptivos; no corresponde recalibración. Los cuatro scripts raíz locales ajenos permanecen preservados. Sin commit ni push.
 
-Después de revisión, GUI funcional mínima podrá consumir `report.characters`, categorías y motivos, y abrir evidencia bajo acción explícita comprobando que todavía existe. El drill-down técnico puede usar `FailureCause` y el JSONL; no necesita reconstruir business policy. Identity podrá sustituir la etiqueta en una fase posterior. Character Identity, Eligibility, Arena, nuevas causas semánticas y replay de sesiones interrumpidas antes de producir resultado no se implementan aquí.
+GUI funcional mínima ya consume el report y permite localizar evidencia bajo acción explícita. Character Identity mínima sustituye ahora la etiqueta cuando el contexto tiene clase, sin alterar la proyección de negocio. El drill-down técnico puede usar `FailureCause` y el JSONL. Eligibility, Arena, nuevas causas semánticas y replay de sesiones interrumpidas antes de producir resultado permanecen fuera de alcance.

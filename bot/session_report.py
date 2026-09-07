@@ -232,7 +232,9 @@ def build_session_report(
         if status is None or any(f.status is None for f in flows):
             gaps.append(f"Character {character.index}: incomplete result or unclassified business outcome")
         characters.append(CharacterReport(
-            character.index, f"Character {character.index}", status, tuple(flows),
+            character.index,
+            character.character_context.name or f"Character {character.index}",
+            status, tuple(flows),
             character.completed, failure,
             (result.failure_flow or "rotation") if terminal_here else (
                 failed_flow.flow_id if failed_flow is not None else "rotation" if rotation_failed else None

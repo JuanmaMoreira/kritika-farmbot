@@ -180,7 +180,7 @@ def test_session_report_is_built_after_cleanup_without_changing_gui_status(tmp_p
 
     cleaned = []
     raw = SessionResult(SessionStatus.COMPLETED, 1, 1, (
-        SessionCharacterResult(1, CharacterContext(), (FlowResult(
+        SessionCharacterResult(1, CharacterContext("Kaiserin", .99), (FlowResult(
             FlowStatus.COMPLETED, (FlowEvent("send_stamina.daily_pending"),),
         ),), completed=True),
     ), duration=12.0, expected_character_count=1, flow_names=("send_stamina",))
@@ -200,3 +200,4 @@ def test_session_report_is_built_after_cleanup_without_changing_gui_status(tmp_p
     assert result.flows_completed == 1
     assert result.report.status is ReportStatus.BUSINESS_INCOMPLETE
     assert result.report.duration == 12.0
+    assert result.report.characters[0].label == "Kaiserin"

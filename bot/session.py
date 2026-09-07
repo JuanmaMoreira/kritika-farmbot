@@ -35,7 +35,7 @@ class SessionStatus(str, Enum):
 
 @dataclass(frozen=True)
 class CharacterContext:
-    """Stable character metadata; identity remains optional until OCR exists."""
+    """Optional recognized class label and its OCR confidence, never session index."""
 
     name: str | None = None
     name_confidence: float | None = None
@@ -213,7 +213,7 @@ class SessionRunner:
                 return self._cancel(character_results, advances_completed)
 
             with event_scope(character_index=index):
-                context = self._character_context(index)
+                context = CharacterContext()
                 self._record(
                     "session.character.started",
                     character_index=index,
@@ -230,6 +230,10 @@ class SessionRunner:
                             return self._cancel(character_results, advances_completed)
 
                         ensured = self._ensure(flow.contract.precondition)
+                        if flow_position == 0:
+                            # Reuse the first precondition's observation. Identity
+                            # adds no capture/navigation and never authorizes input.
+                            context = self._character_context(index)
                         if not ensured.succeeded:
                             character_results.append(
                                 SessionCharacterResult(index, context, tuple(flow_results))

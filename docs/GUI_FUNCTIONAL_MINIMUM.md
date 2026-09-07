@@ -1,6 +1,6 @@
 # GUI funcional mínima
 
-Implementada sobre `main@7865c55559856f539a6eaa5ccdb13659c1d38d2b`, sin commit ni push hasta revisión. Sin rediseño estético, cambios perceptivos ni input físico durante la implementación.
+Consolidada en `454d111` sobre `main@7865c55559856f539a6eaa5ccdb13659c1d38d2b`. Las referencias a ausencia de commit/revisión al cierre son históricas. Sin rediseño estético, cambios perceptivos ni input físico durante la implementación. La integración posterior de [`Character Identity mínima`](CHARACTER_IDENTITY_V1.md) muestra clase o `Character N` desde el report existente, sin OCR ni lookup en Tk; el progreso conserva índice/total.
 
 ## Mapa GUI actual
 
@@ -53,4 +53,4 @@ git diff --check
 
 Validación final: **195 tests dirigidos verdes** y **1597/1597 tests hardware-free verdes en 262,76 s**, incluidos 25 casos nuevos. `git diff --check`, whitespace de archivos nuevos y referencias Markdown locales válidos. Sin hardware ni recalibración: no cambian flows, inputs productivos existentes, percepción, assets, waits o guards. Los cuatro scripts raíz locales ajenos permanecen preservados. Sin commit ni push.
 
-Follow-ups únicamente tras revisión: Character Identity mínima y Eligibility mínima; luego reevaluar milestone. Arena, pause/resume, dashboards/analytics y rediseño estético no se iniciaron. Los errores exteriores sin SessionResult siguen sin report, conforme al contrato v1. El smoke productivo físico queda para el usuario desde la GUI tras revisión y eventual commit; no se ejecutó en esta tarea.
+Character Identity mínima está implementada y pendiente de revisión en su fase propia; después sigue Eligibility mínima y reevaluar milestone. Arena, pause/resume, dashboards/analytics y rediseño estético no se iniciaron. Los errores exteriores sin SessionResult siguen sin report, conforme al contrato v1. El smoke productivo físico queda para el usuario desde la GUI tras revisión y eventual commit; no se ejecutó en esta tarea.

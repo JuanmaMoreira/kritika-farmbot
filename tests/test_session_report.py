@@ -187,13 +187,13 @@ def test_rotation_failure_preserves_completed_flows_and_business_reasons():
     assert render_session_report(report).count(cause.evidence_ref) == 1
 
 
-def test_fallback_labels_and_stable_execution_order_ignore_identity_and_timestamps():
-    char = replace(character(2, flow(), flow()), character_context=CharacterContext("Ignored identity", .99))
+def test_class_and_fallback_labels_preserve_execution_order():
+    char = replace(character(2, flow(), flow()), character_context=CharacterContext("Kaiserin", .99))
     raw = session(char, character(1, flow(), flow()), names=("world_boss", "black_market"))
     report = build_session_report(raw)
-    assert [c.label for c in report.characters] == ["Character 1", "Character 2"]
+    assert [c.label for c in report.characters] == ["Character 1", "Kaiserin"]
     assert [f.flow_id for f in report.characters[0].flows] == ["world_boss", "black_market"]
-    assert "Ignored identity" not in render_session_report(report)
+    assert "Kaiserin" in render_session_report(report)
     assert raw.character_results[0] is char
 
 

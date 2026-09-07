@@ -28,11 +28,11 @@ Summon Pet Daily quedó cerrado como flow productivo `PER_CHARACTER` Manage → 
 
 ## Próximo trabajo
 
-El checkpoint OpenCode/Muse está consolidado en `fc66d60`, Structured Observability v1 en `95c6bd6`, Failure Evidence v1 en `16f2d41` y SessionReport v1 en `7865c55`, baseline validada con 1572 tests. GUI funcional mínima está implementada: report visible al terminar sesión, conjunto de flows seleccionados sin Rotation y acceso explícito fail-safe a evidencia. Esta fase permanece sin commit/push hasta revisión del usuario. Ver `docs/GUI_FUNCTIONAL_MINIMUM.md`.
+El checkpoint OpenCode/Muse está consolidado en `fc66d60`, Structured Observability v1 en `95c6bd6`, Failure Evidence v1 en `16f2d41`, SessionReport v1 en `7865c55` y GUI funcional mínima en `454d111`, baseline validada con 1597 tests. Character Identity mínima está implementada sobre ese baseline, sin commit/push hasta revisión: lookup exacto Lobby HUD → clase y fallback cerrado de cuatro variantes completas de tres nombres, contexto opcional y presentación mediante SessionReport/GUI; sin inputs ni cambios de Rotation. Validación del corpus: 83/84 correctas, un fallback de Demon Blade por baja confianza y cero clases incorrectas; threshold 0,95 intacto. Ver `docs/CHARACTER_IDENTITY_V1.md`.
 
 Orden acordado después de revisar esta fase:
 
-1. Character Identity mínima y no fatal, usando la adquisición preservada.
+1. Revisar Character Identity mínima, sus variantes cerradas y el único raw de Demon Blade bajo threshold; preservar los 84 raws hasta cerrar la revisión.
 2. Eligibility mínima con consumer real.
 3. Reevaluar milestone; Arena permanece fuera de alcance.
 
@@ -41,7 +41,7 @@ Orden acordado después de revisar esta fase:
 - Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su recovery bounded antes de automatizarlo.
 - Ampliar retornos de Equipment Inventory Full a otros farming flows sólo con evidencia live específica; por ahora únicamente `Combine → Back → World Boss` está verificado.
 - Ampliar retornos de Socket a otros farming flows sólo con evidencia live específica; por ahora únicamente `Socket → Back → World Boss` está verificado.
-- Implementar `CharacterContextProvider`/nombre sólo cuando identidad tenga un consumidor concreto.
+- Mejorar el raw de Demon Blade bajo threshold sólo con evidencia o diseño posterior explícito; no convertir identidad mínima en búsqueda, perfiles o policy de Rotation.
 - Incorporar `ConflictResolver`, recovery transversal, aislamiento de fallos y policy de continuación unattended cuando la evidencia lo requiera.
 - Evaluar costo/rank/participation, Auto Repeat y scheduler cuando exista un caso funcional definido.
 - Agregar estrategias Rotation identity-aware o MAIN/SUBS sólo si dejan de bastar MRU + `StandardRotation`.

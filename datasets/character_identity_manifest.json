@@ -1,0 +1,646 @@
+{
+  "version": 1,
+  "curation": {
+    "ground_truth": "Authoritative user handoff 2026-09-07; exact personal_name -> class_name",
+    "roi": [
+      0.08,
+      0.02,
+      0.19,
+      0.062
+    ],
+    "frame_size": [
+      2712,
+      1224
+    ],
+    "split": "First sequence per character for calibration; other two for validation. Same acquisition, not independent sessions.",
+    "chat": "ROI disjoint from observed chat [0.44, 0.12, 0.85, 0.21]; see socket_inventory_relief_semantic_manifest.json",
+    "raw_retention": "All 84 originals retained pending user review; never purged by this tool",
+    "runtime_assets": "None; crops are test fixtures, never runtime templates"
+  },
+  "entries": [
+    {
+      "path": "artifacts/identity_name/20260907T000756_674036Z_draken3bb_seq1.png",
+      "personal_name": "DRAKEN三BB",
+      "class_name": "Burst Breaker",
+      "split": "calibration",
+      "sha256": "d081467cd992a302be86fd5803451b101213e72c33d36b5f723992f7fa6b3a83"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000756_674036Z_draken3bb_seq40.png",
+      "personal_name": "DRAKEN三BB",
+      "class_name": "Burst Breaker",
+      "split": "validation",
+      "sha256": "8b44d5c5c96d35360fe186086be4a78cddc627b8c78f84045b88dd49f818e48e",
+      "crop": "tests/fixtures/identity_name/draken3bb_1.png",
+      "crop_sha256": "8760e65bf7c8aa694fc409fa19d31fc58ef3bb7c9fe51c04af2cc288115945ed"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000756_674036Z_draken3bb_seq76.png",
+      "personal_name": "DRAKEN三BB",
+      "class_name": "Burst Breaker",
+      "split": "validation",
+      "sha256": "8bdfe9a43c714849b0f3bf9b02d9fb3466d1cb61797ab892607a3113c3c5a026",
+      "crop": "tests/fixtures/identity_name/draken3bb_2.png",
+      "crop_sha256": "b44e0fa0194dc8bcb4682772d52a27367a6094f74cd30a1e44028dbdd5deccfc"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000438_500738Z_draken1bk_seq1.png",
+      "personal_name": "DRAKEN一BK",
+      "class_name": "Berserker",
+      "split": "calibration",
+      "sha256": "0a15c00c7b8bdc52ced595c8d30f6ff236f719ba9cab22b26f54c927a81ae163"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000438_500738Z_draken1bk_seq42.png",
+      "personal_name": "DRAKEN一BK",
+      "class_name": "Berserker",
+      "split": "validation",
+      "sha256": "a2e4a4a7c5c3d5e9da3e50ee7d926587549b66f36ad958af0c1e164e20a08f22",
+      "crop": "tests/fixtures/identity_name/draken1bk_1.png",
+      "crop_sha256": "d077788da569446aa62f11f98fc5177790f1f4c8066fab244bf152eaced68fc2"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000438_500738Z_draken1bk_seq77.png",
+      "personal_name": "DRAKEN一BK",
+      "class_name": "Berserker",
+      "split": "validation",
+      "sha256": "d3cd01ada5eeff679c67c52d0ef6e87a7b0902cb893f6173b9d65b25274cc1f9",
+      "crop": "tests/fixtures/identity_name/draken1bk_2.png",
+      "crop_sha256": "7ad0c763725c08f2776363cad6c493da5ddd5307de1e4920ad1c9aad736ec86e"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000649_367351Z_draken2db_seq1.png",
+      "personal_name": "DRAKEN二DB",
+      "class_name": "Demon Blade",
+      "split": "calibration",
+      "sha256": "e0c2ee1c5540d599ab4d7d1185c756d3a6f16d0caa340c489e64f5335bd64472"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000649_367351Z_draken2db_seq41.png",
+      "personal_name": "DRAKEN二DB",
+      "class_name": "Demon Blade",
+      "split": "validation",
+      "sha256": "562c0f4ca5ee3ed56ad2b7e3731877dd6ef6f511ff4c9dd4abe307027fdc0de7",
+      "crop": "tests/fixtures/identity_name/draken2db_1.png",
+      "crop_sha256": "842c44999eff4153fb303cb912b16cc56b29c628acff313349f5800e1869139f"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000649_367351Z_draken2db_seq78.png",
+      "personal_name": "DRAKEN二DB",
+      "class_name": "Demon Blade",
+      "split": "validation",
+      "sha256": "c9abcd5206425ae35ecd755ca49a011cc7dd3319607b4f245ebe3caf92b9e33e",
+      "crop": "tests/fixtures/identity_name/draken2db_2.png",
+      "crop_sha256": "e34cc126943aaa7863cf9d72bac7db0780b27f138edea1a0320979c59d4b2f6d"
+    },
+    {
+      "path": "artifacts/identity_name/20260906T235852_067444Z_drakenn25_seq1.png",
+      "personal_name": "Drakenn25",
+      "class_name": "Kaiserin",
+      "split": "calibration",
+      "sha256": "ffb19fbe2f1f3925937832b7de256233cd486b82f769bb6bd0a89193f2af6838"
+    },
+    {
+      "path": "artifacts/identity_name/20260906T235852_067444Z_drakenn25_seq39.png",
+      "personal_name": "Drakenn25",
+      "class_name": "Kaiserin",
+      "split": "validation",
+      "sha256": "dd066df785a44cd944c1432f4b5be3cfe18de0576849cff3caf096e8bbd2a40b",
+      "crop": "tests/fixtures/identity_name/drakenn25_1.png",
+      "crop_sha256": "c224b00f4b4edb9b6f64f21eb0e7cc133a5ed85ab84151293d1433805a5b8f42"
+    },
+    {
+      "path": "artifacts/identity_name/20260906T235852_067444Z_drakenn25_seq75.png",
+      "personal_name": "Drakenn25",
+      "class_name": "Kaiserin",
+      "split": "validation",
+      "sha256": "b565db767636716502db71732f3737e55fa3ce738eb105d03794263ebf17d2ba",
+      "crop": "tests/fixtures/identity_name/drakenn25_2.png",
+      "crop_sha256": "059f1a67c3369b98ba6193958e11ecfcaeb6ebdf4c1952fa9122afe943b880ee"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002725_678568Z_drakenn13_seq1.png",
+      "personal_name": "Drakenn13",
+      "class_name": "Noblia",
+      "split": "calibration",
+      "sha256": "8788c065345351442c95563f362415627adb1fa7e5ec01b2bbcd70c86276ba56"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002725_678568Z_drakenn13_seq40.png",
+      "personal_name": "Drakenn13",
+      "class_name": "Noblia",
+      "split": "validation",
+      "sha256": "0ec2a112025de0459aa4a4a5e6e00ed48517e3ec65fd9a99e3983ea0426a35e7"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002725_678568Z_drakenn13_seq74.png",
+      "personal_name": "Drakenn13",
+      "class_name": "Noblia",
+      "split": "validation",
+      "sha256": "445b4cc2a7ea6ffc2a305bdffac50dd72134210299ccc4c1f0efc2b7c3c3514a"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002817_250935Z_drakenn10_seq1.png",
+      "personal_name": "Drakenn10",
+      "class_name": "Ice Warlock",
+      "split": "calibration",
+      "sha256": "0ba90f6cf2f742b6a7ef9f5adf4976c06d366de3828cbf155a0c35ebf61fa58c"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002817_250935Z_drakenn10_seq41.png",
+      "personal_name": "Drakenn10",
+      "class_name": "Ice Warlock",
+      "split": "validation",
+      "sha256": "1b38f55fc3e593120718ab885b2a7d4c1de65c22694bed6cc9a596a6f7f456d2"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002817_250935Z_drakenn10_seq77.png",
+      "personal_name": "Drakenn10",
+      "class_name": "Ice Warlock",
+      "split": "validation",
+      "sha256": "747370d6bdfd2fc5be5104b3827de516b6ee1239ed3cf3a64ffa66deb9af9dae"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002957_140093Z_drakenn09_seq1.png",
+      "personal_name": "Drakenn09",
+      "class_name": "Crimson Assassin",
+      "split": "calibration",
+      "sha256": "ab44532b01041d14aa4bb37a5c45485a7c1f025928f0914e5e06ed80f6e57be6"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002957_140093Z_drakenn09_seq39.png",
+      "personal_name": "Drakenn09",
+      "class_name": "Crimson Assassin",
+      "split": "validation",
+      "sha256": "cc984ff8e67c5766f87a6288b0bd3771b0dc5fd890ec887a5e970804370f9ff2"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T002957_140093Z_drakenn09_seq76.png",
+      "personal_name": "Drakenn09",
+      "class_name": "Crimson Assassin",
+      "split": "validation",
+      "sha256": "e22f5fd73b09547d70ffb023a3b0f928c51e2e2906de71e2abe488f5a0e5846c"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001616_465005Z_draken4r_seq1.png",
+      "personal_name": "DRAKEN四R",
+      "class_name": "Rang",
+      "split": "calibration",
+      "sha256": "328e7e62664ad34b2927b096380ae8dbb6d1546ed2794a6beb74e140319057b9"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001616_465005Z_draken4r_seq41.png",
+      "personal_name": "DRAKEN四R",
+      "class_name": "Rang",
+      "split": "validation",
+      "sha256": "355c3e7cde70e06c1154f8bd6cb7ed1a4b2dc7da5548933cc572868f0c0be479",
+      "crop": "tests/fixtures/identity_name/draken4r_1.png",
+      "crop_sha256": "7aa55b897021b5c8133c4eaf327f8afa1df8c0f0089b1836f67eaac09f788c99"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001616_465005Z_draken4r_seq78.png",
+      "personal_name": "DRAKEN四R",
+      "class_name": "Rang",
+      "split": "validation",
+      "sha256": "4ccbb75a45cff0f9ec682d601bced33f15a173899ebf6f143d071853ef6549ce",
+      "crop": "tests/fixtures/identity_name/draken4r_2.png",
+      "crop_sha256": "22824101f3f8a61ec835809423f1ea2fb4bed651bcb2cf786a8efad832ce6590"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003046_121624Z_drakenn26_seq1.png",
+      "personal_name": "Drakenn26",
+      "class_name": "Telumpel",
+      "split": "calibration",
+      "sha256": "b8801c46a9d30eea6d2c897214a525e5978884b7ef824aa7443b23674a0248f1"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003046_121624Z_drakenn26_seq40.png",
+      "personal_name": "Drakenn26",
+      "class_name": "Telumpel",
+      "split": "validation",
+      "sha256": "e03a1d1b00765a28b45945e8e96a471bb5787770067171c5a2fbc3f444f92541"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003046_121624Z_drakenn26_seq77.png",
+      "personal_name": "Drakenn26",
+      "class_name": "Telumpel",
+      "split": "validation",
+      "sha256": "5eee12345c150a755f686c0d083432dcbb95e4880980a6c979ea3796a67d3396"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003202_405369Z_drakenn20_seq1.png",
+      "personal_name": "Drakenn20",
+      "class_name": "Halo Mage",
+      "split": "calibration",
+      "sha256": "c365af5f1d45a280bd6c267f3151d064b80f0554c6c87d67297e5efbab1978c1"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003202_405369Z_drakenn20_seq39.png",
+      "personal_name": "Drakenn20",
+      "class_name": "Halo Mage",
+      "split": "validation",
+      "sha256": "828ac7d259367f1d455e7e346151dc2b5e9e9715057b9c35c9bec4cf9be7171f"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003202_405369Z_drakenn20_seq76.png",
+      "personal_name": "Drakenn20",
+      "class_name": "Halo Mage",
+      "split": "validation",
+      "sha256": "4035ab3c98a3f7fb6bcf29e708a55c66c774ece83303a1b18c5ebee415cc3bd0"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003247_614873Z_drakenn19_seq1.png",
+      "personal_name": "Drakenn19",
+      "class_name": "Strike Archer",
+      "split": "calibration",
+      "sha256": "5270504c79496f11cf1d96021ecfb868c6919b1d2acc525dde56545e359d1700"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003247_614873Z_drakenn19_seq41.png",
+      "personal_name": "Drakenn19",
+      "class_name": "Strike Archer",
+      "split": "validation",
+      "sha256": "3ef92116af5014776648834cd4de9619eb59de607b16300ece20559bb0b33b72"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003247_614873Z_drakenn19_seq77.png",
+      "personal_name": "Drakenn19",
+      "class_name": "Strike Archer",
+      "split": "validation",
+      "sha256": "575a3b13b68cbbb8bef94e425526855151fa3ca76ab6beb1042369193fff8065"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003337_342846Z_drakenn23_seq1.png",
+      "personal_name": "Drakenn23",
+      "class_name": "Galaxy Lord",
+      "split": "calibration",
+      "sha256": "8c4898538c384a92039d4fbdcee6c88629c308754cd1520b7e6904c061afaf1e"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003337_342846Z_drakenn23_seq40.png",
+      "personal_name": "Drakenn23",
+      "class_name": "Galaxy Lord",
+      "split": "validation",
+      "sha256": "78d67dc9a2e1e280df6b63b488b74ec3730fdcdf7db5244a06f0a3971476e033"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003337_342846Z_drakenn23_seq76.png",
+      "personal_name": "Drakenn23",
+      "class_name": "Galaxy Lord",
+      "split": "validation",
+      "sha256": "27892614122ac0fcdae51fec91f69353dffe91263cafe8282c69ee840ebfe853"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003425_791658Z_drakenn08_seq1.png",
+      "personal_name": "Drakenn08",
+      "class_name": "Wandering Master",
+      "split": "calibration",
+      "sha256": "11dccc07841c9fb6f26c73f349a1906d6754c812742b8e9c1e80a9af93792069"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003425_791658Z_drakenn08_seq40.png",
+      "personal_name": "Drakenn08",
+      "class_name": "Wandering Master",
+      "split": "validation",
+      "sha256": "3c8b7288b705d75987c677309d02b8a167b8f959fcdb798175aa7472f52254be"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003425_791658Z_drakenn08_seq76.png",
+      "personal_name": "Drakenn08",
+      "class_name": "Wandering Master",
+      "split": "validation",
+      "sha256": "8448b03f8e3c559cc9098abeba5025def4d1f41fb77fedd318eff5c2b5378563"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003708_707575Z_drakenn14_seq1.png",
+      "personal_name": "Drakenn14",
+      "class_name": "Steam Walker",
+      "split": "calibration",
+      "sha256": "1bd6593593229b03e2a51738e19b53b9f2fd10ba322c404d585c93a4ed7192b8"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003708_707575Z_drakenn14_seq40.png",
+      "personal_name": "Drakenn14",
+      "class_name": "Steam Walker",
+      "split": "validation",
+      "sha256": "462a71099c02e9befa8d0a59300cf1931e4ac2a520e0e98c069dad7c7a0a4499"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003708_707575Z_drakenn14_seq76.png",
+      "personal_name": "Drakenn14",
+      "class_name": "Steam Walker",
+      "split": "validation",
+      "sha256": "bfa374737821280a7922d199ca0df47dd60f60d100de12ed77430336230f6eb7"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003840_062685Z_drakenn15_seq1.png",
+      "personal_name": "Drakennn15",
+      "class_name": "Mystic Wolf Guardian",
+      "split": "calibration",
+      "sha256": "ba484d4ef02d37219efbfcf93ab7a4d9481b1fceb7f640954c8bb10e23204d47"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003840_062685Z_drakenn15_seq39.png",
+      "personal_name": "Drakennn15",
+      "class_name": "Mystic Wolf Guardian",
+      "split": "validation",
+      "sha256": "843ba016ec132246eb0d6ff23103a932628b0b7e2bef9788c1161c1b1b97911a",
+      "crop": "tests/fixtures/identity_name/drakenn15_1.png",
+      "crop_sha256": "24c06af7499605f7ecef3d7ad403ba6f77ec33efc318448f0dfd069c9fc87302"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T003840_062685Z_drakenn15_seq76.png",
+      "personal_name": "Drakennn15",
+      "class_name": "Mystic Wolf Guardian",
+      "split": "validation",
+      "sha256": "5b7e95911a73fdf3909c34e62b3d52ea7892788e9db1248308d2c15546797e65",
+      "crop": "tests/fixtures/identity_name/drakenn15_2.png",
+      "crop_sha256": "3402af20fa7c1d1288457e61222879ccd37e13555c1893709cf917e96081b4ab"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004035_033860Z_drakenn16_seq1.png",
+      "personal_name": "Drakenn16",
+      "class_name": "Blood Demon",
+      "split": "calibration",
+      "sha256": "0a941ab9d163e9480b0d879ea133a7dba931ade5ee550cb8f47e3814fff8de3e"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004035_033860Z_drakenn16_seq42.png",
+      "personal_name": "Drakenn16",
+      "class_name": "Blood Demon",
+      "split": "validation",
+      "sha256": "fa88d935b6ec685e22bbc79791320d45a91b2254b212f8dd49c8e22140c1c8ed"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004035_033860Z_drakenn16_seq79.png",
+      "personal_name": "Drakenn16",
+      "class_name": "Blood Demon",
+      "split": "validation",
+      "sha256": "1a55ae7c594e4dd3165547fd3121ebcc07bc85522dbc517c362d0bd62285eea0"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004141_374529Z_drakenn06_seq1.png",
+      "personal_name": "Drakenn06",
+      "class_name": "Eclair",
+      "split": "calibration",
+      "sha256": "94bcab7ab017231e3f0bb98a845a08f1e563e3decd8d57f990f9f89bd39b3630"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004141_374529Z_drakenn06_seq39.png",
+      "personal_name": "Drakenn06",
+      "class_name": "Eclair",
+      "split": "validation",
+      "sha256": "d34ce45fed4d6addf53926a1e8af61d7da64092734af74fdf91239ac5807c678"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004141_374529Z_drakenn06_seq76.png",
+      "personal_name": "Drakenn06",
+      "class_name": "Eclair",
+      "split": "validation",
+      "sha256": "f80530cfc8bf1abbedda0bfec0f47afcad65e0fa55baaa88f59c79058cdd7b60"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004247_116831Z_drakenn21_seq1.png",
+      "personal_name": "Drakenn21",
+      "class_name": "Dark Valkyrie",
+      "split": "calibration",
+      "sha256": "740c0ceac099d12844d5acce5b7505566d37ccafe29dddaf710b5fcf48dc615f"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004247_116831Z_drakenn21_seq39.png",
+      "personal_name": "Drakenn21",
+      "class_name": "Dark Valkyrie",
+      "split": "validation",
+      "sha256": "edc261aab02a6fbd3d89cc0faf0ac1e45a6fc4882836120a3fb85fd8368a895c"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004247_116831Z_drakenn21_seq75.png",
+      "personal_name": "Drakenn21",
+      "class_name": "Dark Valkyrie",
+      "split": "validation",
+      "sha256": "75254e120f80581375572c031806fd35d13141cf44e12fdc93080b4c091f3e04"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000253_805454Z_drakennn17_seq1.png",
+      "personal_name": "Drakennn17",
+      "class_name": "Elemental Fairy",
+      "split": "calibration",
+      "sha256": "4bbe3772d985587cb71bbf4c03e421fbc5368844e2c8ee6e4ab957dfc695f177"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000253_805454Z_drakennn17_seq41.png",
+      "personal_name": "Drakennn17",
+      "class_name": "Elemental Fairy",
+      "split": "validation",
+      "sha256": "53a020c188a2918a9e167581b5c518b8a71e705012545c756a0af2ddc98ed761",
+      "crop": "tests/fixtures/identity_name/drakennn17_1.png",
+      "crop_sha256": "4fa57b66b104cbce20328e9a761e5c7c4d14bc17ca5d7f916133ad7460c4fcb0"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T000253_805454Z_drakennn17_seq76.png",
+      "personal_name": "Drakennn17",
+      "class_name": "Elemental Fairy",
+      "split": "validation",
+      "sha256": "c69955278788343a21eca3da090bfa43e746a48439228535575ffd9e6123d389",
+      "crop": "tests/fixtures/identity_name/drakennn17_2.png",
+      "crop_sha256": "ba3ee4885bccf5cc4834e2efc5c23b5aff4275d4a75b4ae90e4044b6fc8df157"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004343_523549Z_drakenn24_seq1.png",
+      "personal_name": "Drakenn24",
+      "class_name": "Hastati",
+      "split": "calibration",
+      "sha256": "e83da594b7884e27c8466217f9c8081ed69da323b4067b6b719b99deb4058d6d"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004343_523549Z_drakenn24_seq41.png",
+      "personal_name": "Drakenn24",
+      "class_name": "Hastati",
+      "split": "validation",
+      "sha256": "b949736488efe1870aae57d05a6df875d301f132fb133849814046335a60d154"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004343_523549Z_drakenn24_seq77.png",
+      "personal_name": "Drakenn24",
+      "class_name": "Hastati",
+      "split": "validation",
+      "sha256": "8e6466e4bbc2a7cd11930ca8f24bdc9df919ca3cd7ec3d37ef3fa488979d0175"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001335_157839Z_draken6fs_seq1.png",
+      "personal_name": "DRAKEN六FS",
+      "class_name": "Flame Striker",
+      "split": "calibration",
+      "sha256": "aceb0d109f00e30af4ebcd2e190be93ae0690beef8e7857869ef291c00c97af2"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001335_157839Z_draken6fs_seq42.png",
+      "personal_name": "DRAKEN六FS",
+      "class_name": "Flame Striker",
+      "split": "validation",
+      "sha256": "5f4c8aaaefb315dbbe394e7dac61892356235bac75f265e3b46b01451b371c1d"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001335_157839Z_draken6fs_seq77.png",
+      "personal_name": "DRAKEN六FS",
+      "class_name": "Flame Striker",
+      "split": "validation",
+      "sha256": "75275accaf42e6b4426ddfdddde9f2145904b945cdaafeee5fec64ada344817e"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004450_834062Z_drakenn27_seq1.png",
+      "personal_name": "Drakenn27",
+      "class_name": "Eilla",
+      "split": "calibration",
+      "sha256": "56e1a093be19e8975a5359e75f217f05ac4bd804748c1cb7b7363a03d25ebf64"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004450_834062Z_drakenn27_seq41.png",
+      "personal_name": "Drakenn27",
+      "class_name": "Eilla",
+      "split": "validation",
+      "sha256": "f7c20988cc30ff87cba2dbebe82ff729bbccf3b62137a76a3f08fc94787051ad"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004450_834062Z_drakenn27_seq77.png",
+      "personal_name": "Drakenn27",
+      "class_name": "Eilla",
+      "split": "validation",
+      "sha256": "d20ce6bcc740012db0bc13d07eb72de4642cbc422095e314e9c551a23b0f0a04"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004612_651187Z_drakenn11_seq1.png",
+      "personal_name": "Drakenn11",
+      "class_name": "Lina",
+      "split": "calibration",
+      "sha256": "810badc50ab9d67cecb3f9c7a53cdbbc58a1dc16cec7c495ece81be59801b975"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004612_651187Z_drakenn11_seq41.png",
+      "personal_name": "Drakenn11",
+      "class_name": "Lina",
+      "split": "validation",
+      "sha256": "722df72340aa93627073214d9f0c5f2e7e79ab3680c44d22934d5e34d48cb3fd"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004612_651187Z_drakenn11_seq78.png",
+      "personal_name": "Drakenn11",
+      "class_name": "Lina",
+      "split": "validation",
+      "sha256": "a2b68b6251237fa4318d2c0fb2246014434636a7845697a13fe0e5d63d41b2a0"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004805_949380Z_drakenn12_seq1.png",
+      "personal_name": "Drakenn12",
+      "class_name": "Cat Acrobat",
+      "split": "calibration",
+      "sha256": "2849f7b27994960adb6abb2e786fc0a00647c2c40ee903ad8974f4d7cfa3bbd1"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004805_949380Z_drakenn12_seq41.png",
+      "personal_name": "Drakenn12",
+      "class_name": "Cat Acrobat",
+      "split": "validation",
+      "sha256": "73e5742367fc6d2a275a1e5337c62145f20802d51fca7bfca18aec7f5f42427a"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004805_949380Z_drakenn12_seq78.png",
+      "personal_name": "Drakenn12",
+      "class_name": "Cat Acrobat",
+      "split": "validation",
+      "sha256": "8ef8c0c3d890e8102509fa85a7cf9e3463dc697c23d6b45ae6cf39549ccbe807"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004900_483765Z_drakenn18_seq1.png",
+      "personal_name": "Drakenn18",
+      "class_name": "Shadow Mage",
+      "split": "calibration",
+      "sha256": "f13e0439f9bd48b7710f33f766a19eb294415195bb2f5b32b8ec765683353062"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004900_483765Z_drakenn18_seq41.png",
+      "personal_name": "Drakenn18",
+      "class_name": "Shadow Mage",
+      "split": "validation",
+      "sha256": "5c012634defc20c0ac5b7c62253e287b71462ca01eea1223c99d07caa401ae4f"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004900_483765Z_drakenn18_seq76.png",
+      "personal_name": "Drakenn18",
+      "class_name": "Shadow Mage",
+      "split": "validation",
+      "sha256": "cbc77df3b764ac564bea8eed079fe085dce90600b658f6be5f94e3d6cd843777"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001202_499683Z_draken5m_seq1.png",
+      "personal_name": "DRAKEN五M",
+      "class_name": "Monk",
+      "split": "calibration",
+      "sha256": "7b0d322b64fef396118291f8df4f8b376ec57eca38fe36edf1f9aeed5bd0eefc"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001202_499683Z_draken5m_seq41.png",
+      "personal_name": "DRAKEN五M",
+      "class_name": "Monk",
+      "split": "validation",
+      "sha256": "d1c51e119c10b8ce8199bf5e64c0bea73c31cea9b97a8e4d5d1abfb182910fc4"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001202_499683Z_draken5m_seq77.png",
+      "personal_name": "DRAKEN五M",
+      "class_name": "Monk",
+      "split": "validation",
+      "sha256": "f0dc55cf4c2cf17da39cf1c93e81c4869cb8f88b5c7898936f82000ed4af66e1"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001711_465638Z_draken4bd_seq1.png",
+      "personal_name": "DRAKEN四BD",
+      "class_name": "Blade Dancer",
+      "split": "calibration",
+      "sha256": "391034d0e4ad0498ffcd2c62ea0dcbddf90c21668c63c4f81ec1ed0d2fa04fb2"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001711_465638Z_draken4bd_seq40.png",
+      "personal_name": "DRAKEN四BD",
+      "class_name": "Blade Dancer",
+      "split": "validation",
+      "sha256": "250a8d45a8be18f28c96666f18dc4bbc42a86dcb65b5ac87ebfbeb8e0307ccf2",
+      "crop": "tests/fixtures/identity_name/draken4bd_1.png",
+      "crop_sha256": "9673d17600f57813ba72052840f9d80cecb5e97f6f30d9d0d9378d578769bea7"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T001711_465638Z_draken4bd_seq76.png",
+      "personal_name": "DRAKEN四BD",
+      "class_name": "Blade Dancer",
+      "split": "validation",
+      "sha256": "49301e4527918f43a2c3394df76d0903cba5270f878ed8cd98cb7099a09349e4",
+      "crop": "tests/fixtures/identity_name/draken4bd_2.png",
+      "crop_sha256": "0ca939a3d9b28adfcfc3191368b066c3dbfd5d44625ac81d9a6826acf94edf59"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004955_662120Z_drakenn22_seq1.png",
+      "personal_name": "Drakenn22",
+      "class_name": "Dimension Manipulator",
+      "split": "calibration",
+      "sha256": "50d077a78100b8c36629984375a89bd947bf1458ffaeb8de55948b1d663c5e8f"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004955_662120Z_drakenn22_seq40.png",
+      "personal_name": "Drakenn22",
+      "class_name": "Dimension Manipulator",
+      "split": "validation",
+      "sha256": "547e3a1d37dacd7a2103013d290157c8b3963aa97b91fad3080834d82fbaec52",
+      "crop": "tests/fixtures/identity_name/drakenn22_1.png",
+      "crop_sha256": "4fd75204f3e629d084e9188bdfa50b84f7af11b3cfd5ebb38cac2549ba7fecb2"
+    },
+    {
+      "path": "artifacts/identity_name/20260907T004955_662120Z_drakenn22_seq77.png",
+      "personal_name": "Drakenn22",
+      "class_name": "Dimension Manipulator",
+      "split": "validation",
+      "sha256": "a13c441143904c7c2380dd6aadc7c93371f2629f05e21b123391bd7416697b60",
+      "crop": "tests/fixtures/identity_name/drakenn22_2.png",
+      "crop_sha256": "7ce1ae1cf4459579152a3fd7b1e0c7abcd6cbe1501b190b9f60bd26d7700a33a"
+    }
+  ]
+}
