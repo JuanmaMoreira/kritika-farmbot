@@ -14,6 +14,7 @@ from bot.productive_runtime import (
     open_productive_runtime,
 )
 from bot.session import SessionStatus
+from bot.session_report import build_session_report, render_session_report
 from tools.runtime_cli import (
     EXIT_CANCELLED,
     EXIT_COMPLETED,
@@ -22,7 +23,6 @@ from tools.runtime_cli import (
     cancellation_signals,
     print_error,
     print_flows,
-    session_summary,
 )
 
 
@@ -82,7 +82,14 @@ def main(argv=None) -> int:
     except Exception as error:
         print_error(f"Runtime error: {type(error).__name__}: {error}; log={log_path}")
         return EXIT_USAGE_OR_RUNTIME
-    print(session_summary(result, log_path))
+    report = build_session_report(
+        result,
+        expected_character_count=args.characters,
+        flow_names=tuple(item.id for item in definitions),
+        flow_labels={item.id: item.display_name for item in definitions},
+    )
+    print(render_session_report(report))
+    print(f"Log: {log_path}")
     if result.status is SessionStatus.COMPLETED:
         return EXIT_COMPLETED
     if result.status is SessionStatus.CANCELLED:

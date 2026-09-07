@@ -5,7 +5,7 @@ from __future__ import annotations
 import queue
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
 from typing import Callable
@@ -16,6 +16,7 @@ from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowRegistry
 from bot.gui_model import GuiExecutionRequest, GuiRunMode
 from bot.productive_runtime import CancellationToken, default_log_path, open_productive_runtime
 from bot.session import SessionStatus
+from bot.session_report import SessionReport, build_session_report
 
 
 class GuiRunStatus(str, Enum):
@@ -42,6 +43,7 @@ class GuiExecutionResult:
     advances_completed: int = 0
     business_event_count: int = 0
     error: str | None = None
+    report: SessionReport | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -174,6 +176,13 @@ class GuiRuntimeController:
                         business_event_count=len(raw.events),
                         error=raw.failure_cause,
                     )
+            if request.mode is GuiRunMode.SESSION:
+                result = replace(result, report=build_session_report(
+                    raw,
+                    expected_character_count=request.character_count,
+                    flow_names=tuple(item.id for item in definitions),
+                    flow_labels={item.id: item.display_name for item in definitions},
+                ))
         except Exception as error:
             result = GuiExecutionResult(
                 GuiRunStatus.FAILED,

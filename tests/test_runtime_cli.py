@@ -82,3 +82,26 @@ def test_sigint_requests_safe_cancellation_token():
         handler = signal.getsignal(signal.SIGINT)
         handler(signal.SIGINT, None)
     assert token.is_requested()
+
+
+def test_session_cli_renders_business_incomplete_with_success_exit(monkeypatch, tmp_path, capsys):
+    from bot.flow_contracts import FlowEvent
+    from bot.session import CharacterContext, SessionCharacterResult
+    from tools.runtime_cli import session_summary
+
+    raw = SessionResult(SessionStatus.COMPLETED, 1, 1, (
+        SessionCharacterResult(1, CharacterContext(), (FlowResult(
+            FlowStatus.COMPLETED, (FlowEvent("send_stamina.daily_pending"),),
+        ),), completed=True),
+    ), duration=1, expected_character_count=1, flow_names=("send_stamina",))
+    monkeypatch.setattr(run_session, "open_productive_runtime",
+                        factory_for(FakeRuntime(session_result=raw), []))
+    assert run_session.main(["send_stamina", "--characters", "1", "--log-dir", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "1 business / Daily incomplete" in output
+    assert "Character 1" in output
+    assert "0 technical failure" in output
+    assert "Log:" in output
+    assert session_summary(raw, tmp_path / "legacy.jsonl").startswith(
+        "result=COMPLETED characters=1 advances=1"
+    )

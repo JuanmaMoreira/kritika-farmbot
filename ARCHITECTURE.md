@@ -191,6 +191,8 @@ La normalización a Guild tiene dos transiciones explícitas: desde Lobby usa el
 
 Si un requisito ya se cumple, no navega. `MinimalPreconditionEnsurer` sólo normaliza cuando existe una operación explícita/verificada; no contiene un grafo general. El advance final cierra el ciclo y no reprocesa el personaje inicial. Fallos técnicos, postcondiciones contradictorias o Rotation fallida abortan conservadoramente. Cancelación se propaga como `CANCELLED`, no como fallo.
 
+SessionReport v1 se construye fuera del runtime mediante `build_session_report(SessionResult)`, seguido opcionalmente de `render_session_report`. SessionRunner conserva aditivamente en su resultado el total esperado, orden de IDs, duración monotónica de la sesión y posición del flow terminal (para repeticiones). El report proyecta resultados/business events existentes y flags de dominio, conserva FailureCause/evidence_ref y separa completion técnica de incompletitud de negocio. No agrega eventos, persistencia, IO, captura, input ni policy. Resultados legacy incompletos exponen datos faltantes sin fabricar éxito o fallo. Contratos, conteos y límites en [`docs/SESSION_REPORT_V1.md`](docs/SESSION_REPORT_V1.md).
+
 ## Semantic Actions, ActionExecutor y ADB
 
 Los intents tipados modelan acciones del dominio; `Swipe` es una primitive física sin policy. `ActionExecutor` valida coordenadas normalizadas, proyecta pixels desde la geometría del frame y delega taps/swipes a `AdbClient`. No observa postcondiciones, espera, hace retry ni decide gameplay.
@@ -202,6 +204,8 @@ Los intents tipados modelan acciones del dominio; `Swipe` es una primitive físi
 CLI (`tools.run_flow`, `tools.run_session`) y GUI (`tools.gui`) seleccionan definitions del mismo `FlowRegistry` y llaman `ProductiveRuntime`. No duplican flows ni policy.
 
 La GUI contiene modelos de selección/progreso, un timer monotónico de presentación para `Run Session` y un `GuiRuntimeController` con un único worker no-daemon. El worker ejecuta runtime y encola eventos/resultados; Tk sólo drena/renderiza y actualiza el timer en el main thread. `Run Flow Once`, `Run Session`, orden, character count, debug y stop son control de ejecución, no business logic.
+
+`GuiExecutionResult.report` expone SessionReport opcional después del cleanup de una sesión con resultado; campos/status legacy permanecen. Run Flow Once y errores exteriores sin SessionResult conservan `report=None`. CLI de sesión usa el renderer humano y conserva exit codes; `runtime_cli.session_summary` sigue disponible con su salida legacy. No se implementa UI nueva en esta fase.
 
 `RuntimeEventStream → RuntimeEvent → JsonLineEventConsumer → JSONL` es la única fuente machine persistente. Structured Observability v1 añade schema_version, event_sequence y contexto run/session/character/flow/operation mediante scopes ContextVar; no se pasan IDs por las firmas de gameplay. Los nombres de lifecycle que consume GUI permanecen. Los nuevos paths por defecto usan `.jsonl`; paths `.log` explícitos siguen siendo JSONL y `JsonLineEventLog` legacy delega al mismo pipeline. Fallos de consumers y escrituras se aíslan; debug cambia visibilidad, no policy.
 

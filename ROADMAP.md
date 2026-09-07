@@ -28,15 +28,14 @@ Summon Pet Daily quedó cerrado como flow productivo `PER_CHARACTER` Manage → 
 
 ## Próximo trabajo
 
-El checkpoint OpenCode/Muse está consolidado en `fc66d60` y Structured Observability v1 en `95c6bd6`, baseline estable validada con 1485 tests. Failure Evidence v1 está implementada sobre ese mismo stream: ring bounded, bundles locales terminales y `evidence_ref` propagada a resultados/JSONL, con retención y escritura best-effort. Esta última fase permanece sin commit/push hasta revisión del usuario. Ver `docs/FAILURE_EVIDENCE_V1.md`.
+El checkpoint OpenCode/Muse está consolidado en `fc66d60`, Structured Observability v1 en `95c6bd6` y Failure Evidence v1 en `16f2d41`, baseline estable validada con 1523 tests. SessionReport v1 está implementado como proyección de resultados/business events, con renderer humano, FailureCause/evidence_ref y extensión aditiva del resultado GUI. Esta última fase permanece sin commit/push hasta revisión del usuario. Ver `docs/SESSION_REPORT_V1.md`.
 
 Orden acordado después de revisar esta fase:
 
-1. SessionReport derivado de resultados/eventos y consumidor de evidence_ref.
-2. GUI funcional mínima.
-3. Character Identity mínima y no fatal, usando la adquisición preservada.
-4. Eligibility mínima con consumer real.
-5. Reevaluar milestone; Arena permanece fuera de alcance.
+1. GUI funcional mínima consumidora de SessionReport; resolver disponibilidad de evidencia al abrirla.
+2. Character Identity mínima y no fatal, usando la adquisición preservada.
+3. Eligibility mínima con consumer real.
+4. Reevaluar milestone; Arena permanece fuera de alcance.
 
 ### Known future
 

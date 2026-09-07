@@ -129,6 +129,9 @@ def test_one_character_one_flow_one_advance_and_default_context():
     assert result.character_results[0].character_context == CharacterContext()
     assert result.character_results[0].character_context.name is None
     assert result.character_results[0].completed
+    assert result.expected_character_count == 1
+    assert result.flow_names == ("one",)
+    assert result.duration >= 0
     assert trace == [
         "context.check",
         "one.run",
@@ -653,3 +656,45 @@ def test_session_daily_quests_only_uses_lobby_precondition_not_pets():
     assert "precondition.open_pets" not in transitions_executed
     # The key assertion: no pets_manage navigation for daily_quests
     assert all("pets" not in t for t in transitions_executed)
+
+
+@pytest.mark.parametrize("flow_status", [FlowStatus.COMPLETED, FlowStatus.FAILED, FlowStatus.CANCELLED])
+def test_report_projection_preserves_runner_actions_policy_and_single_publication(flow_status, monkeypatch):
+    from bot.session_report import build_session_report, render_session_report
+
+    clock = iter((20.0, 25.0))
+    monkeypatch.setattr("bot.session.perf_counter", lambda: next(clock))
+    trace = []
+    flow = Flow("send_stamina", [FlowResult(
+        flow_status, (FlowEvent("send_stamina.daily_pending"),),
+        error="failure" if flow_status is FlowStatus.FAILED else None,
+    )], trace)
+    rotation = Rotation(1, trace)
+    runner, events = _runner(1, [flow], rotation)
+    result = runner.run()
+    before_trace, before_events = list(trace), list(events.records)
+    for _ in range(2):
+        render_session_report(build_session_report(result))
+    assert trace == before_trace
+    assert events.records == before_events
+    assert rotation.calls == int(flow_status is FlowStatus.COMPLETED)
+    assert len([name for name, _ in events.records if name == "send_stamina.daily_pending"]) == 1
+    assert result.duration == 5.0
+    assert result.flow_names == ("send_stamina",)
+    assert result.expected_character_count == 1
+
+
+def test_report_identifies_second_occurrence_of_repeated_flow():
+    from bot.session_report import ReportStatus, build_session_report
+
+    trace = []
+    first = Flow("mailbox", [FlowResult(FlowStatus.COMPLETED)], trace)
+    second = Flow("mailbox", [FlowResult(FlowStatus.FAILED, error="failed")], trace)
+    runner, _ = _runner(1, [first, second], Rotation(1, trace))
+    raw = runner.run()
+    report = build_session_report(raw)
+    assert raw.failure_flow_position == 1
+    assert [f.status for f in report.characters[0].flows] == [
+        ReportStatus.COMPLETE, ReportStatus.TECHNICAL_FAILURE,
+    ]
+    assert report.flows_completed == 1

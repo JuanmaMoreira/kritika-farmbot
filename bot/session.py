@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from numbers import Integral, Real
+from time import perf_counter
 from typing import Callable
 
 from bot.component_contracts import ComponentContract, ComponentRequirement
@@ -125,6 +126,10 @@ class SessionResult:
     failure: FailureCause | None = field(default=None, kw_only=True)
     run_id: str | None = field(default=None, kw_only=True)
     session_id: str | None = field(default=None, kw_only=True)
+    expected_character_count: int | None = field(default=None, kw_only=True)
+    flow_names: tuple[str, ...] = field(default=(), kw_only=True)
+    duration: float | None = field(default=None, kw_only=True, compare=False)
+    failure_flow_position: int | None = field(default=None, kw_only=True)
 
     def __post_init__(self):
         context = event_context()
@@ -184,12 +189,19 @@ class SessionRunner:
         self.character_context_factory = character_context_factory
 
     def run(self) -> SessionResult:
+        started = perf_counter()
         with event_scope(
             run_id=event_context()["run_id"] or getattr(self.events, "run_id", None) or new_correlation_id(),
             session_id=new_correlation_id(), character_index=None, flow=None,
             operation_id=None, parent_operation_id=None, step=None,
         ):
-            return self._run()
+            result = self._run()
+            return replace(
+                result,
+                expected_character_count=self.plan.character_count,
+                flow_names=tuple(flow.name for flow in self.plan.flows),
+                duration=max(0.0, perf_counter() - started),
+            )
 
     def _run(self) -> SessionResult:
         character_results: list[SessionCharacterResult] = []
@@ -209,7 +221,7 @@ class SessionRunner:
                     character_name=context.name,
                 )
                 flow_results: list[FlowResult] = []
-                for flow in self.plan.flows:
+                for flow_position, flow in enumerate(self.plan.flows):
                     with event_scope(flow=flow.name), operation_scope(flow.name):
                         if self._cancelled():
                             character_results.append(
@@ -227,6 +239,7 @@ class SessionRunner:
                                 advances_completed,
                                 index=index,
                                 flow=flow.name,
+                                flow_position=flow_position,
                                 cause=(
                                     "flow_precondition_failed: "
                                     f"{ensured.error or 'unknown'}"
@@ -274,6 +287,7 @@ class SessionRunner:
                                 advances_completed,
                                 index=index,
                                 flow=flow.name,
+                                flow_position=flow_position,
                                 cause=result.error or "flow_failed",
                                 failure=result.failure,
                             )
@@ -297,6 +311,7 @@ class SessionRunner:
                                 advances_completed,
                                 index=index,
                                 flow=flow.name,
+                                flow_position=flow_position,
                                 cause="flow_completed_outside_successful_postconditions",
                                 failure=failure,
                             )
@@ -532,6 +547,7 @@ class SessionRunner:
         index: int,
         cause: str,
         flow: str | None = None,
+        flow_position: int | None = None,
         failure: FailureCause | None = None,
     ) -> SessionResult:
         result = SessionResult(
@@ -541,6 +557,7 @@ class SessionRunner:
             character_results=tuple(character_results),
             failure_character_index=index,
             failure_flow=flow,
+            failure_flow_position=flow_position,
             failure_cause=cause,
             failure=failure,
         )

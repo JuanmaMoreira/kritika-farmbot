@@ -73,6 +73,7 @@ def test_flow_once_uses_productive_runtime_and_queues_event_then_completed_resul
     assert result.status is GuiRunStatus.COMPLETED
     assert result.flows_completed == 1
     assert result.business_event_count == 1
+    assert result.report is None
     assert result.log_path == tmp_path / "flow_black_market.log"
     assert calls[0]["console"] is None
     assert calls[0]["debug"] is True
@@ -96,6 +97,8 @@ def test_session_preserves_flow_order_and_character_count(tmp_path):
     assert [item.id for item in definitions] == ["world_boss", "black_market"]
     assert count == 2
     assert messages[-1].result.advances_completed == 2
+    assert messages[-1].result.report.expected_character_count == 2
+    assert messages[-1].result.report.status is None  # Aggregate-only legacy fake.
 
 
 def test_concurrent_execution_is_rejected_and_stop_requests_shared_token(tmp_path):
@@ -169,3 +172,31 @@ def test_controller_has_no_tk_dependency_and_worker_only_enqueues():
     assert "tkinter" not in source
     assert ".configure(" not in source
     assert ".insert(" not in source
+
+
+def test_session_report_is_built_after_cleanup_without_changing_gui_status(tmp_path):
+    from bot.session import CharacterContext, SessionCharacterResult
+    from bot.session_report import ReportStatus
+
+    cleaned = []
+    raw = SessionResult(SessionStatus.COMPLETED, 1, 1, (
+        SessionCharacterResult(1, CharacterContext(), (FlowResult(
+            FlowStatus.COMPLETED, (FlowEvent("send_stamina.daily_pending"),),
+        ),), completed=True),
+    ), duration=12.0, expected_character_count=1, flow_names=("send_stamina",))
+
+    @contextmanager
+    def factory(**kwargs):
+        try:
+            yield FakeRuntime(session_result=raw)
+        finally:
+            cleaned.append(True)
+
+    controller = GuiRuntimeController(runtime_factory=factory, log_path_factory=fixed_log_path)
+    controller.start(GuiExecutionRequest.session(("send_stamina",), 1, log_dir=tmp_path))
+    result = wait_and_drain(controller)[-1].result
+    assert cleaned == [True]
+    assert result.status is GuiRunStatus.COMPLETED
+    assert result.flows_completed == 1
+    assert result.report.status is ReportStatus.BUSINESS_INCOMPLETE
+    assert result.report.duration == 12.0

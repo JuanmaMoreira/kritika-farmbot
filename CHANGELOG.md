@@ -6,6 +6,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 
 ### Added
 
+- SessionReport v1: modelo inmutable y renderer humano derivados de resultados/business events, separación entre incompletitud de negocio, fallo técnico y cancelación, referencias diagnósticas y compatibilidad aditiva con CLI/controller GUI; sin nueva persistencia ni UI.
 - Failure Evidence v1: bundles diagnósticos locales de fallos terminales con tres snapshots/PNGs bounded, referencia compartida en FailureCause/JSONL/resultados, retención y writer best-effort; sin alterar inputs ni policy de gameplay.
 - Se estableció la Fase 1A del núcleo 0.2: baseline automatizado con pytest, configuración de runtime explícita y geometría visual derivada exclusivamente del frame real.
 - Se añadió en Fase 1B un adaptador ADB explícito, testeable sin hardware y desacoplado de geometría, percepción y lógica de negocio.

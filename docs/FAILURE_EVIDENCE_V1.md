@@ -1,6 +1,6 @@
 # Failure Evidence v1
 
-Implementada sobre `main@95c6bd68b8c3162b2d424a1cf90a4e03d9a00861`, sin commit ni push de esta fase. JSONL sigue siendo la fuente machine canónica: un bundle es un attachment diagnóstico local, no otro log ni un sistema de reporting.
+Consolidada en `16f2d41` sobre `main@95c6bd68b8c3162b2d424a1cf90a4e03d9a00861`. Las menciones posteriores a revisión/ausencia de commit describen el cierre histórico de esta fase. JSONL sigue siendo la fuente machine canónica: un bundle es un attachment diagnóstico local, no otro log ni un sistema de reporting. Su consumidor humano actual se documenta en [`SESSION_REPORT_V1.md`](SESSION_REPORT_V1.md).
 
 ## Ownership y lifecycle
 
