@@ -135,6 +135,8 @@ class GuiRuntimeController:
     def _worker(self, request, definitions, token) -> None:
         started = self.clock()
         kind = "flow_" + definitions[0].id if request.mode is GuiRunMode.FLOW_ONCE else "session"
+        if request.mode is GuiRunMode.SELECTED_FLOWS:
+            kind = "selected_flows"
         log_path = self.log_path_factory(kind, directory=request.log_dir)
         try:
             with self.runtime_factory(
@@ -155,6 +157,17 @@ class GuiRuntimeController:
                         characters_processed=int(raw.status is FlowStatus.COMPLETED),
                         flows_completed=int(raw.status is FlowStatus.COMPLETED),
                         business_event_count=len(raw.events),
+                        error=raw.error,
+                    )
+                elif request.mode is GuiRunMode.SELECTED_FLOWS:
+                    raw = runtime.run_flows_once(definitions)
+                    result = GuiExecutionResult(
+                        _flow_status(raw.status),
+                        max(0.0, self.clock() - started),
+                        log_path,
+                        characters_processed=int(raw.status is FlowStatus.COMPLETED),
+                        flows_completed=raw.flows_completed,
+                        business_event_count=raw.business_event_count,
                         error=raw.error,
                     )
                 else:

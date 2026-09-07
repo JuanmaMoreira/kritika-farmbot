@@ -104,6 +104,24 @@ class CancellationToken:
         return self._requested.is_set()
 
 
+@dataclass(frozen=True)
+class FlowsOnceResult:
+    """One ordered attempt on the current character, with no advance."""
+
+    status: FlowStatus
+    flow_results: tuple[FlowResult, ...]
+    error: str | None = None
+    failure: FailureCause | None = None
+
+    @property
+    def flows_completed(self) -> int:
+        return sum(result.status is FlowStatus.COMPLETED for result in self.flow_results)
+
+    @property
+    def business_event_count(self) -> int:
+        return sum(len(result.events) for result in self.flow_results)
+
+
 @dataclass
 class ProductiveRuntime:
     config: RuntimeConfig
@@ -250,6 +268,29 @@ class ProductiveRuntime:
         )
         publish_flow_events(self.events, flow.name, result.events, character_index=1, character_name=None)
         return replace(result, failure=failure)
+
+    def run_flows_once(self, definitions: tuple[FlowDefinition, ...]) -> FlowsOnceResult:
+        """Compose the standalone contract without session or Rotation policy."""
+        if not definitions:
+            raise ValueError("at least one flow is required")
+        results = []
+        for definition in definitions:
+            if self.cancel_requested():
+                return FlowsOnceResult(FlowStatus.CANCELLED, tuple(results))
+            try:
+                result = self.run_flow(definition)
+            except RuntimeWaitCancelled:
+                result = FlowResult(FlowStatus.CANCELLED)
+            except Exception as error:
+                # run_flow already published the terminal cause and evidence.
+                result = FlowResult(
+                    FlowStatus.FAILED, error=f"{type(error).__name__}: {error}",
+                    failure=getattr(error, "failure", None),
+                )
+            results.append(result)
+            if result.status is not FlowStatus.COMPLETED:
+                return FlowsOnceResult(result.status, tuple(results), result.error, result.failure)
+        return FlowsOnceResult(FlowStatus.COMPLETED, tuple(results))
 
     def run_session(
         self,

@@ -74,6 +74,7 @@ class FlowSelectionModel:
 
 class GuiRunMode(str, Enum):
     FLOW_ONCE = "flow_once"
+    SELECTED_FLOWS = "selected_flows"
     SESSION = "session"
 
 
@@ -134,6 +135,17 @@ class GuiExecutionRequest:
         if len(values) != 1:
             raise ValueError("Run Flow Once requires exactly one active flow")
         return cls(GuiRunMode.FLOW_ONCE, values, 1, debug, Path(dotenv_path), Path(log_dir))
+
+    @classmethod
+    def selected_flows(
+        cls, flow_ids, *, debug: bool = False,
+        dotenv_path: Path = PROJECT_ROOT / ".env",
+        log_dir: Path = PROJECT_ROOT / "logs",
+    ) -> "GuiExecutionRequest":
+        values = tuple(flow_ids)
+        if not values:
+            raise ValueError("Run Selected Flows requires at least one active flow")
+        return cls(GuiRunMode.SELECTED_FLOWS, values, 1, debug, Path(dotenv_path), Path(log_dir))
 
     @classmethod
     def session(

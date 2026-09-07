@@ -1,6 +1,6 @@
 # SessionReport v1
 
-Implementado sobre `main@16f2d418fd5bd081a87a8177a93a1ca9cd7962c3`, pendiente de revisión del usuario, sin commit ni push. Proyección humana transitoria de una sesión terminada. No agrega log, persistencia machine, eventos, dependencias ni policy de gameplay.
+Consolidado en `7865c55` sobre `main@16f2d418fd5bd081a87a8177a93a1ca9cd7962c3`. Las menciones posteriores a revisión/ausencia de commit describen el cierre histórico de esta fase. Proyección humana transitoria de una sesión terminada. No agrega log, persistencia machine, eventos, dependencias ni policy de gameplay. El consumo GUI actual y la localización explícita de evidencia están documentados en [`GUI_FUNCTIONAL_MINIMUM.md`](GUI_FUNCTIONAL_MINIMUM.md).
 
 ## Diseño y fuentes
 

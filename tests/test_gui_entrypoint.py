@@ -26,6 +26,28 @@ class Root:
         self.after_calls.append((delay, callback))
 
 
+class Widget:
+    def __init__(self):
+        self.text = ""
+        self.options = {}
+        self.selected = None
+
+    def configure(self, **kwargs):
+        self.options.update(kwargs)
+
+    def delete(self, *args):
+        self.text = ""
+
+    def insert(self, where, text):
+        self.text += text
+
+    def yview_moveto(self, fraction):
+        self.scroll = fraction
+
+    def select(self, frame):
+        self.selected = frame
+
+
 class Controller:
     def __init__(self):
         self.requests = []
@@ -54,6 +76,14 @@ def build_gui_shell(clock):
     app.result_var = Var()
     app.log_var = Var()
     app.session_elapsed_var = Var(app.session_timer.text)
+    app.report_text = Widget()
+    app.evidence_select = Widget()
+    app.evidence_button = Widget()
+    app.evidence_var = Var()
+    app.evidence_status_var = Var()
+    app.output_tabs = Widget()
+    app.report_frame = object()
+    app.console_frame = object()
     app._set_running_controls = lambda running: None
     return app
 
@@ -70,10 +100,10 @@ def test_gui_entrypoint_has_no_flow_list_or_productive_business_dependencies():
     assert '"World Boss"' not in source
 
 
-def test_gui_uses_one_scrolled_text_batched_queue_drain_and_tk_after():
+def test_gui_uses_report_and_console_batched_queue_drain_and_tk_after():
     source = Path("tools/gui.py").read_text(encoding="utf-8")
 
-    assert source.count("ScrolledText(") == 1
+    assert source.count("ScrolledText(") == 2
     assert "controller.drain(limit=250)" in source
     assert '"\\n".join(lines)' in source
     assert "root.after(" in source

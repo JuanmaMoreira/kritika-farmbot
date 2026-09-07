@@ -25,6 +25,8 @@ from bot.gui_model import (
     event_visible,
 )
 from bot.productive_runtime import PROJECT_ROOT
+from bot.gui_evidence import locate_evidence, report_evidence_refs
+from bot.session_report import render_session_report
 
 
 POLL_INTERVAL_MS = 50
@@ -67,6 +69,8 @@ class KritikaFarmBotGui:
         self.result_var = tk.StringVar(value="Ready")
         self.log_var = tk.StringVar(value="Log: -")
         self.session_elapsed_var = tk.StringVar(value=self.session_timer.text)
+        self.evidence_var = tk.StringVar(value="")
+        self.evidence_status_var = tk.StringVar(value="")
 
         self._build_layout()
         self._refresh_flow_list()
@@ -115,7 +119,7 @@ class KritikaFarmBotGui:
         self.characters.grid(row=0, column=1, sticky="w", padx=(8, 0))
         self.debug_check = ttk.Checkbutton(run, text="Debug Mode", variable=self.debug_var)
         self.debug_check.grid(row=1, column=0, columnspan=2, sticky="w", pady=7)
-        self.run_flow_button = ttk.Button(run, text="Run Flow Once", command=self._run_flow_once)
+        self.run_flow_button = ttk.Button(run, text="Run Selected Flows", command=self._run_selected_flows)
         self.run_flow_button.grid(row=2, column=0, columnspan=2, sticky="ew")
         self.run_session_button = ttk.Button(run, text="Run Session", command=self._run_session)
         self.run_session_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=5)
@@ -139,8 +143,30 @@ class KritikaFarmBotGui:
             row=3, column=0, columnspan=5, sticky="w", pady=(3, 0)
         )
 
-        console_frame = ttk.LabelFrame(outer, text="Debug Console", padding=8)
-        console_frame.grid(row=3, column=0, sticky="nsew")
+        self.output_tabs = ttk.Notebook(outer)
+        self.output_tabs.grid(row=3, column=0, sticky="nsew")
+        self.report_frame = ttk.Frame(self.output_tabs, padding=8)
+        self.output_tabs.add(self.report_frame, text="Session Report")
+        self.report_frame.columnconfigure(0, weight=1)
+        self.report_frame.rowconfigure(0, weight=1)
+        self.report_text = ScrolledText(self.report_frame, wrap="word", height=18, state="disabled")
+        self.report_text.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        self.evidence_select = ttk.Combobox(
+            self.report_frame, textvariable=self.evidence_var, state="readonly",
+        )
+        self.evidence_select.grid(row=1, column=0, sticky="ew", pady=(7, 0))
+        self.evidence_button = ttk.Button(
+            self.report_frame, text="Locate evidence", command=self._locate_evidence, state="disabled",
+        )
+        self.evidence_button.grid(row=1, column=1, padx=(8, 0), pady=(7, 0))
+        ttk.Label(self.report_frame, textvariable=self.evidence_status_var).grid(
+            row=2, column=0, columnspan=2, sticky="w",
+        )
+
+        console_frame = ttk.Frame(self.output_tabs, padding=8)
+        self.output_tabs.add(console_frame, text="Debug Console")
+        self.console_frame = console_frame
+        self.output_tabs.select(console_frame)
         console_frame.columnconfigure(0, weight=1)
         console_frame.rowconfigure(0, weight=1)
         self.console = ScrolledText(
@@ -213,9 +239,9 @@ class KritikaFarmBotGui:
             self.selection.move_down(flow_id)
         self._refresh_flow_list(flow_id)
 
-    def _run_flow_once(self) -> None:
+    def _run_selected_flows(self) -> None:
         try:
-            request = GuiExecutionRequest.flow_once(
+            request = GuiExecutionRequest.selected_flows(
                 self.selection.active_ids,
                 debug=self.debug_var.get(),
                 dotenv_path=self.dotenv_path,
@@ -250,6 +276,8 @@ class KritikaFarmBotGui:
         self.log_var.set("Log: preparing...")
         self._sync_progress()
         self.controller.start(request)
+        self._show_report(None)
+        self.output_tabs.select(self.console_frame)
         self._set_running_controls(True)
 
     def _stop_safely(self) -> None:
@@ -295,7 +323,25 @@ class KritikaFarmBotGui:
             summary += f"  cause={result.error} (see Debug Log)"
         self.result_var.set(summary)
         self.log_var.set(f"Log: {result.log_path}")
+        self._show_report(result.report)
         self._set_running_controls(False)
+
+    def _show_report(self, report) -> None:
+        self.report_text.configure(state="normal")
+        self.report_text.delete("1.0", "end")
+        self.report_text.insert("end", render_session_report(report) if report is not None else "No session report available.")
+        self.report_text.configure(state="disabled")
+        self.report_text.yview_moveto(0)
+        refs = report_evidence_refs(report)
+        self.evidence_select.configure(values=refs)
+        self.evidence_var.set(refs[0] if refs else "")
+        self.evidence_button.configure(state="normal" if refs else "disabled")
+        self.evidence_status_var.set("")
+        if report is not None:
+            self.output_tabs.select(self.report_frame)
+
+    def _locate_evidence(self) -> None:
+        self.evidence_status_var.set(locate_evidence(self.evidence_var.get()))
 
     def _refresh_session_timer(self) -> None:
         if self.session_timer.running:

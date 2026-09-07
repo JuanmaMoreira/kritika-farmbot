@@ -28,11 +28,13 @@ Abrir desde la raíz del repositorio:
 
 En Windows también se puede abrir con doble clic sobre `Kritika FarmBot.cmd` en la raíz del proyecto. Es un launcher provisional mínimo: inicia el mismo `tools.gui` mediante el entorno local configurado y no contiene lógica del bot.
 
-La lista de flows procede directamente de `FlowRegistry`. Seleccionar una fila y usar `Enable / Disable`, `↑ Up` y `↓ Down`; una sesión conserva exactamente el orden visible de los flows activos. `Run Flow Once` exige un único flow activo y no rota. `Run Session` usa todos los flows activos, `SessionPlan`, `SessionRunner` y el número positivo de Characters; el default es 28.
+La lista de flows procede directamente de `FlowRegistry`. Seleccionar una fila y usar `Enable / Disable`, `↑ Up` y `↓ Down`; ambas operaciones conservan exactamente el orden visible de los flows activos (marcados `[x]`, no sólo la fila resaltada). `Run Selected Flows` ejecuta ese conjunto una vez sobre el personaje actual, con las pre/postcondiciones standalone y sin Rotation; se detiene ante fallo o cancelación. `Run Session` usa todos los flows activos, `SessionPlan`, `SessionRunner` y el número positivo de Characters; el default es 28.
 
 `Run Session` muestra un contador monotónico `HH:MM:SS`, reseteado por cada sesión y congelado en su duración final. `Stop Safely` solicita el mismo token de cancelación que la CLI y no mata threads; el contador sigue hasta el resultado `CANCELLED`. Durante una ejecución, los controles de configuración quedan bloqueados. Si se intenta cerrar la ventana, la GUI ofrece solicitar la parada segura y espera el boundary antes de salir.
 
 La Debug Console muestra eventos en vivo con timestamp, nivel, componente y campos estructurados; Debug Mode agrega facts OCR, transiciones, retries y telemetría de waits. `Clear`, `Copy selected` y `Copy all` sólo modifican la vista. El log persistente completo siempre queda bajo `logs/` y su path aparece en Status / Progress.
+
+Al terminar una sesión con report, la pestaña `Session Report` muestra automáticamente el renderer humano existente; Status / Progress, timer y log path permanecen. `Locate evidence` localiza la carpeta de la referencia seleccionada sólo si el archivo local todavía existe; la retención o un error al abrir se muestran como evidencia no disponible, sin cambiar el resultado de sesión. Sin report se conserva el resumen legacy. Mapa y contratos: [GUI funcional mínima](docs/GUI_FUNCTIONAL_MINIMUM.md).
 
 ## Ejecución manual por CLI
 
