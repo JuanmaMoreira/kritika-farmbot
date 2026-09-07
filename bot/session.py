@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from numbers import Integral, Real
 from typing import Callable
@@ -12,6 +12,7 @@ from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventSink
 from bot.event_context import event_context, event_scope, new_correlation_id, operation_scope
 from bot.failure_cause import FailureCause
+from bot.failure_evidence import publish_failure
 from bot.flow_contracts import publish_flow_events
 from bot.flow_contracts import (
     FlowEvent,
@@ -254,14 +255,17 @@ class SessionRunner:
                             )
                             return self._cancel(character_results, advances_completed)
                         if result.status is FlowStatus.FAILED:
-                            self._record(
+                            failure = publish_failure(
+                                self.events,
                                 "flow.failed",
+                                result.failure,
                                 component=flow.name,
                                 flow=flow.name,
                                 character_index=index,
                                 error=result.error,
-                                failure=result.failure.payload() if result.failure else None,
                             )
+                            result = replace(result, failure=failure)
+                            flow_results[-1] = result
                             character_results.append(
                                 SessionCharacterResult(index, context, tuple(flow_results))
                             )
@@ -276,13 +280,14 @@ class SessionRunner:
                         if not self._current_satisfies_any(
                             flow.contract.successful_postconditions
                         ):
-                            self._record(
+                            failure = publish_failure(
+                                self.events,
                                 "flow.failed", component=flow.name, flow=flow.name,
                                 error="flow_completed_outside_successful_postconditions",
                                 failure=FailureCause.from_error(
                                     "flow_completed_outside_successful_postconditions",
                                     kind="postcondition_rejected",
-                                ).payload(),
+                                ),
                             )
                             character_results.append(
                                 SessionCharacterResult(index, context, tuple(flow_results))
@@ -293,6 +298,7 @@ class SessionRunner:
                                 index=index,
                                 flow=flow.name,
                                 cause="flow_completed_outside_successful_postconditions",
+                                failure=failure,
                             )
                         self._record(
                             "flow.completed",
@@ -331,13 +337,15 @@ class SessionRunner:
                     )
                     rotation_result = self._advance()
                     if not rotation_result.succeeded:
-                        self._record(
+                        failure = publish_failure(
+                            self.events,
                             "rotation.failed",
+                            rotation_result.failure,
                             component="rotation",
                             character_index=index,
                             error=rotation_result.error,
-                            failure=rotation_result.failure.payload() if rotation_result.failure else None,
                         )
+                        rotation_result = replace(rotation_result, failure=failure)
                         character_results.append(
                             SessionCharacterResult(
                                 index,
@@ -536,15 +544,16 @@ class SessionRunner:
             failure_cause=cause,
             failure=failure,
         )
-        self._record(
+        enriched_failure = publish_failure(
+            self.events,
             "session.failed",
+            result.failure,
             character_index=index,
             flow=flow,
             cause=cause,
-            failure=result.failure.payload() if result.failure else None,
             advances_completed=advances_completed,
         )
-        return result
+        return replace(result, failure=enriched_failure)
 
     def _record(self, event: str, **fields: object) -> None:
         try:

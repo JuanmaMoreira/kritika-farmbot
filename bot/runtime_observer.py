@@ -144,6 +144,7 @@ class RuntimeObserver:
         sleeper: Callable[[float], None] = time.sleep,
         events: EventSink | None = None,
         metrics_clock: Callable[[], float] = time.perf_counter,
+        snapshot_consumer: Callable[[RuntimeSnapshot], None] | None = None,
     ) -> None:
         if not callable(getattr(source, "get_frame", None)):
             raise ValueError("source must provide get_frame()")
@@ -159,6 +160,7 @@ class RuntimeObserver:
         self._sleeper = sleeper
         self.events = events
         self._metrics_clock = metrics_clock
+        self._snapshot_consumer = snapshot_consumer
         self._analysis_context = None
         self._analysis_count = 0
         self._analysis_elapsed = 0.0
@@ -181,13 +183,19 @@ class RuntimeObserver:
         finally:
             self._record_analysis(frame.sequence, max(0.0, self._metrics_now() - started), failed)
         state = self.resolver.resolve(batch)
-        return RuntimeSnapshot(
+        snapshot = RuntimeSnapshot(
             frame=frame,
             observations=batch,
             state=state,
             facts=_facts_from(batch),
             geometry=FrameGeometry.from_frame(frame.image),
         )
+        try:
+            if self._snapshot_consumer is not None:
+                self._snapshot_consumer(snapshot)
+        except Exception:
+            pass
+        return snapshot
 
     def _metrics_now(self) -> float:
         try:

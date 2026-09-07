@@ -8,6 +8,8 @@ Base verificada: `45f6edee20db8fc05831ca8c27ca22049936d42a`, branch `maintenance
 
 Se preservaron el lote ajeno, `wip/session-report-codex`, la adquisición portal y la adquisición de identidad. No hubo checkout, reset, restore, clean, stash, merge, rebase, commit, push ni input físico. Los cuatro scripts auxiliares raíz permanecen intactos y fuera de la propuesta de commit.
 
+Estado posterior: el checkpoint revisado quedó consolidado en `fc66d60` y Structured Observability v1 en `95c6bd6`. Las propuestas de commit y referencias a trabajo pendiente que siguen son el registro histórico de esta revisión; la fase actual está en `docs/FAILURE_EVIDENCE_V1.md` y `ROADMAP.md`.
+
 ## Clasificación del lote
 
 | Bloque | Contenido revisado | Resultado |

@@ -17,7 +17,11 @@ from bot.event_context import event_context, new_correlation_id
 
 
 class EventSink(Protocol):
-    def record(self, event: str, **fields: object) -> None: ...
+    def record(self, event: str, **fields: object) -> RuntimeEvent | None: ...
+
+
+class FailureEvidenceEnricher(Protocol):
+    def enrich(self, item: RuntimeEvent) -> RuntimeEvent: ...
 
 
 class EventLevel(IntEnum):
@@ -105,6 +109,7 @@ class RuntimeEventStream:
         *,
         now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         run_id: str | None = None,
+        failure_evidence: FailureEvidenceEnricher | None = None,
     ) -> None:
         if not callable(now):
             raise ValueError("now must be callable")
@@ -113,6 +118,7 @@ class RuntimeEventStream:
         self._event_sequence = 0
         self._consumers = list(consumers)
         self._lock = threading.Lock()
+        self.failure_evidence = failure_evidence
 
     def subscribe(self, consumer: RuntimeEventConsumer) -> Callable[[], None]:
         if not callable(consumer):
@@ -147,6 +153,11 @@ class RuntimeEventStream:
             self._now(), level, component, event,
             {**context, **fields, "event_sequence": sequence}, message,
         )
+        try:
+            if self.failure_evidence is not None:
+                item = self.failure_evidence.enrich(item)
+        except Exception:
+            pass
         for consumer in consumers:
             try:
                 consumer(item)
@@ -155,14 +166,14 @@ class RuntimeEventStream:
                 continue
         return item
 
-    def record(self, event: str, **fields: object) -> None:
+    def record(self, event: str, **fields: object) -> RuntimeEvent | None:
         try:
-            self._record(event, **fields)
+            return self._record(event, **fields)
         except Exception:
             # A clock, encoder or malformed diagnostic cannot change runtime policy.
             pass
 
-    def _record(self, event: str, **fields: object) -> None:
+    def _record(self, event: str, **fields: object) -> RuntimeEvent:
         fields.setdefault("event_role", (
             "lifecycle" if event in {
                 "runtime.started", "runtime.completed", "runtime.failed", "runtime.closed",
@@ -180,7 +191,7 @@ class RuntimeEventStream:
             level = _coerce_level(level_value)
         if component_value is not None:
             component = str(component_value)
-        self.emit(level, component, event, message=message if isinstance(message, str) else None, **fields)
+        return self.emit(level, component, event, message=message if isinstance(message, str) else None, **fields)
 
 
 class JsonLineEventLog(RuntimeEventStream):

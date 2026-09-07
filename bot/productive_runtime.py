@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import threading
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, TextIO
@@ -37,6 +37,7 @@ from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtim
 from bot.event_context import event_scope, operation_scope
 from bot.flow_contracts import publish_flow_events
 from bot.failure_cause import FailureCause
+from bot.failure_evidence import FailureEvidence, publish_failure
 from bot.equipment_combine_relief import EquipmentCombineRelief
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry
@@ -192,11 +193,16 @@ class ProductiveRuntime:
             try:
                 return self._run_flow(definition)
             except BaseException as error:
-                self.events.record(
+                failure = publish_failure(
+                    self.events,
                     "flow.failed", component=definition.id,
                     error=f"{type(error).__name__}: {error}",
-                    failure=FailureCause.from_error(error, kind="exception").payload(),
+                    failure=FailureCause.from_error(error, kind="exception"),
                 )
+                try:
+                    error.failure = failure
+                except Exception:
+                    pass
                 raise
 
     def _run_flow(self, definition: FlowDefinition) -> FlowResult:
@@ -233,16 +239,17 @@ class ProductiveRuntime:
             FlowStatus.CANCELLED: "flow.cancelled",
             FlowStatus.FAILED: "flow.failed",
         }[result.status]
-        self.events.record(
+        failure = publish_failure(
+            self.events,
             event,
+            result.failure,
             component=flow.name,
             flow=flow.name,
             error=result.error,
-            failure=result.failure.payload() if result.failure else None,
             business_event_count=len(result.events),
         )
         publish_flow_events(self.events, flow.name, result.events, character_index=1, character_name=None)
-        return result
+        return replace(result, failure=failure)
 
     def run_session(
         self,
@@ -546,6 +553,7 @@ def open_productive_runtime(
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY,
     event_consumers: tuple[RuntimeEventConsumer, ...] = (),
     console: TextIO | None = sys.stdout,
+    evidence_root: str | Path = PROJECT_ROOT / "artifacts" / "failure_evidence",
 ) -> Iterator[ProductiveRuntime]:
     """Acquire every productive runtime dependency and guarantee source cleanup."""
 
@@ -556,6 +564,8 @@ def open_productive_runtime(
         console=console,
         consumers=event_consumers,
     )
+    evidence = FailureEvidence(Path(evidence_root))
+    events.failure_evidence = evidence
     events.record("runtime.started", log_path=str(log_path), debug=debug)
     try:
         config = RuntimeConfig.from_env(dotenv_path=dotenv_path)
@@ -575,6 +585,7 @@ def open_productive_runtime(
                 build_default_perception(PROJECT_ROOT),
                 build_default_resolver(),
                 events=events,
+                snapshot_consumer=evidence.observe,
             )
             facts = build_runtime_fact_reader(observer, events=events)
             auto_battle = AutoBattleEnsurer(AutoBattleDetector(observer), actions)
@@ -631,13 +642,18 @@ def open_productive_runtime(
                 observer.flush_analysis_metrics()
         events.record("runtime.completed")
     except BaseException as error:
+        failure = getattr(error, "failure", None)
+        if not isinstance(failure, FailureCause):
+            failure = FailureCause.from_error(error, kind="exception")
         events.record(
             "runtime.failed",
             error=f"{type(error).__name__}: {error}",
-            failure=FailureCause.from_error(error, kind="exception").payload(),
+            failure=failure.payload(),
         )
         raise
     finally:
+        evidence.close()
+        events.failure_evidence = None
         events.record("runtime.closed")
 
 

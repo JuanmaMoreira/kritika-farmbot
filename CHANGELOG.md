@@ -6,6 +6,7 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 
 ### Added
 
+- Failure Evidence v1: bundles diagnósticos locales de fallos terminales con tres snapshots/PNGs bounded, referencia compartida en FailureCause/JSONL/resultados, retención y writer best-effort; sin alterar inputs ni policy de gameplay.
 - Se estableció la Fase 1A del núcleo 0.2: baseline automatizado con pytest, configuración de runtime explícita y geometría visual derivada exclusivamente del frame real.
 - Se añadió en Fase 1B un adaptador ADB explícito, testeable sin hardware y desacoplado de geometría, percepción y lógica de negocio.
 - Se extrajo en Fase 1C una fuente de frames scrcpy con lifecycle explícito, snapshots BGR versionados y cleanup testeable ante fallos parciales.

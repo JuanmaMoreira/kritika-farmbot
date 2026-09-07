@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import Mock
 from types import SimpleNamespace
@@ -32,6 +33,12 @@ from bot.semantic_actions import (
     SelectQuickMenuLobby,
 )
 from bot.state import ResolutionStatus
+
+
+@pytest.fixture(autouse=True)
+def isolated_failure_evidence(tmp_path, monkeypatch):
+    evidence_type = productive.FailureEvidence
+    monkeypatch.setattr(productive, "FailureEvidence", lambda root: evidence_type(tmp_path / "evidence"))
 
 
 def _snapshot(sequence, *, status, base=None, overlays=()):
@@ -158,6 +165,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
 
     assert source.exited
     observer.flush_analysis_metrics.assert_called_once_with()
+    assert events.failure_evidence is None
 
 
 def test_legacy_equipment_inventory_relief_name_has_no_compatibility_alias():
@@ -181,6 +189,11 @@ def test_runtime_configuration_failure_is_persisted_to_session_log(monkeypatch, 
     assert '"event": "runtime.started"' in content
     assert '"event": "runtime.failed"' in content
     assert '"event": "runtime.closed"' in content
+    failure = next(json.loads(line)["failure"] for line in content.splitlines()
+                   if json.loads(line)["event"] == "runtime.failed")
+    assert failure["evidence_ref"]
+    assert failure["message"] == "missing config"
+    assert len(list((tmp_path / "evidence").glob("failure_*/failure.json"))) == 1
 
 
 def test_clean_context_probe_tolerates_transient_unresolved_frames_for_five_seconds():

@@ -2,6 +2,8 @@
 
 Implementación local/offline sobre `RuntimeEventStream → RuntimeEvent → JsonLineEventConsumer → JSONL`. No agrega otro stream ni persistencia humana. Console y GUI son proyecciones del mismo evento.
 
+Estado posterior: esta fase quedó consolidada en `95c6bd6`, después del checkpoint `fc66d60`, con 1485 tests verdes. Las menciones siguientes a árbol sin commit describen la adquisición histórica. Failure Evidence v1 utiliza ahora el seam reservado; su contrato vigente está en [`FAILURE_EVIDENCE_V1.md`](FAILURE_EVIDENCE_V1.md).
+
 ## Baseline y alcance
 
 El 2026-09-07 se verificaron los 45 hashes de código/tests de `artifacts/checkpoint_review/validation.json`, sin discrepancias, y la presencia de los 59 archivos del checkpoint propuesto en `OPENCODE_MUSE_REVIEW.md`. La baseline es ese árbol revisado sin commit sobre `45f6ede`, no sólo HEAD. Se preservaron el lote anterior, assets, adquisición, scripts locales y findings cerrados. Esta fase tampoco hace commit/push.
@@ -50,7 +52,7 @@ FlowResult, SessionResult, RotationResult, VerifiedTransitionResult y Controlled
 
 Timeout/abort/cancel de RuntimeObserver conservan sus clases, mensajes y snapshots; al surgir de wait_until reciben `failure`, `elapsed` y `poll_count`. El éxito sigue devolviendo RuntimeSnapshot. Excepciones de callbacks/captura/percepción se vuelven a propagar como antes. VerifiedTransition emite terminal antes de propagar una excepción, sin convertirla en éxito, recovery ni retry.
 
-`evidence_ref` queda `null` en todas las rutas productivas. Es sólo el seam reservado para una futura referencia local: no define formato de evidencia ni inicia Failure Evidence.
+Al cierre de Structured Observability, `evidence_ref` quedaba `null` en todas las rutas productivas. Failure Evidence v1 lo completa ahora sólo después de persistir un bundle técnico terminal; las operaciones internas y cancelaciones siguen sin evidencia. El schema de FailureCause permanece igual.
 
 ## Timings y volumen
 
@@ -81,7 +83,7 @@ UNKNOWN/AMBIGUOUS, frescura, stable_for, budgets, orden de llamadas, guards y ca
 
 ## Follow-ups reservados
 
-Failure Evidence podrá vincular una causa/evento a evidencia local mediante evidence_ref; todavía debe diseñar adquisición, límites, persistencia y cleanup. No se crearon screenshots ni ring buffers. SessionReport deberá derivarse de estos eventos/resultados; no se diseñaron agregadores de reporte. GUI funcional, Character Identity, Eligibility y Arena permanecen fuera de esta fase.
+Failure Evidence v1 ya consume el seam evidence_ref; adquisición, límites, persistencia y cleanup están definidos en `FAILURE_EVIDENCE_V1.md`. Structured Observability por sí sola no adquiere imágenes. SessionReport deberá derivarse de estos eventos/resultados; no se diseñaron agregadores de reporte. GUI funcional, Character Identity, Eligibility y Arena permanecen fuera de esta fase.
 
 ## Archivos de esta fase
 
