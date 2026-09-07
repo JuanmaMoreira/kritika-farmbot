@@ -15,6 +15,7 @@ from bot.catalog import (
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_EQUIPMENT_INVENTORY_FULL,
+    POPUP_METEOR_INVENTORY_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
@@ -41,6 +42,7 @@ from bot.flow_contracts import (
     FlowScope,
     FlowStatus,
 )
+from bot.ocr_extractors import BATTLE_TIMER_MAX_SECONDS
 from bot.runtime_facts import FactReadStatus
 from bot.runtime_observer import (
     RuntimeObserver,
@@ -59,6 +61,7 @@ from bot.semantic_actions import (
     OpenBattleModeSelect,
     OpenWorldBossSelector,
     RejectSocketInventoryFull,
+    RejectMeteorInventoryFull,
     SelectAvailableWorldBoss,
     StartWorldBossBattle,
 )
@@ -75,6 +78,7 @@ WORLD_BOSS_INSUFFICIENT_SAPPHIRES = "world_boss.insufficient_sapphires"
 WORLD_BOSS_PREVIOUS_REWARDS = "world_boss.previous_rewards"
 WORLD_BOSS_INVENTORY_FULL = "world_boss.inventory_full"
 WORLD_BOSS_BAG_FULL = "world_boss.bag_full"
+WORLD_BOSS_METEOR_FULL = "world_boss.meteor_full"
 
 
 class WorldBossParticipationPolicy(str, Enum):
@@ -115,6 +119,7 @@ class WorldBossFlowResult(FlowResult):
     previous_rewards: bool = False
     inventory_full: bool = False
     bag_full: bool = False
+    meteor_full: bool = False
     auto_battle_initial: AutoBattleState | None = None
     auto_battle_taps: int = 0
     initial_timer: int | None = None
@@ -132,7 +137,7 @@ class _FactReader(Protocol):
 
 
 class _AutoBattleEnsurer(Protocol):
-    def ensure_on(self, *, after_sequence: int, cancel_requested=None): ...
+    def ensure_on_quick(self, *, after_sequence: int, cancel_requested=None): ...
 
 
 class _SocketRelief(Protocol):
@@ -190,8 +195,8 @@ class WorldBossFlow:
             getattr(facts, "read_timer_remaining", None)
         ):
             raise ValueError("facts must provide typed runtime fact reads")
-        if not callable(getattr(auto_battle, "ensure_on", None)):
-            raise ValueError("auto_battle must provide ensure_on()")
+        if not callable(getattr(auto_battle, "ensure_on_quick", None)):
+            raise ValueError("auto_battle must provide ensure_on_quick()")
         if not callable(getattr(socket_relief, "run", None)):
             raise ValueError("socket_relief must provide run()")
         if not callable(getattr(equipment_combine_relief, "run", None)):
@@ -244,6 +249,8 @@ class WorldBossFlow:
             return self._run()
         except (KeyboardInterrupt, SystemExit):
             raise
+        except RuntimeWaitCancelled:
+            return WorldBossFlowResult(status=FlowStatus.CANCELLED)
         except Exception as error:
             return self._failed(f"{type(error).__name__}: {error}")
 
@@ -373,6 +380,7 @@ class WorldBossFlow:
                     _is_clean_base(item, SCREEN_WORLD_BOSS_BATTLE)
                     or _is_world_boss_inventory_full(item)
                     or _is_world_boss_bag_full(item)
+                    or _is_world_boss_meteor_full(item)
                 ),
                 precondition=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
                 retryable_from=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
@@ -531,9 +539,39 @@ class WorldBossFlow:
                     )
                 continue
 
+            if _is_world_boss_meteor_full(battle):
+                # Provisional conservative policy: no positive relief exists
+                # for Meteorites (sale/combine/expand out of scope). Reject
+                # once with No, verify a clean World Boss, and complete this
+                # character without retrying Start. Manual cleanup follows.
+                event = FlowEvent(WORLD_BOSS_METEOR_FULL)
+                flow_events.append(event)
+                self._record_best_effort(event.kind, branch="negative_no_relief")
+                returned = self._transition(
+                    transitions,
+                    "world_boss.reject_meteor_full",
+                    RejectMeteorInventoryFull(),
+                    battle,
+                    expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
+                    precondition=_is_world_boss_meteor_full,
+                    retryable_from=_is_world_boss_meteor_full,
+                )
+                if returned is None:
+                    return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
+                self._record_best_effort("world_boss.completed", postcondition=SCREEN_WORLD_BOSS)
+                return WorldBossFlowResult(
+                    status=FlowStatus.COMPLETED,
+                    events=tuple(flow_events),
+                    sapphires=sapphires,
+                    previous_rewards=previous_rewards,
+                    meteor_full=True,
+                    transition_outcomes=_transition_outcomes(transitions),
+                    transition_attempts=_transition_attempts(transitions),
+                )
+
             break
 
-        ensured = self.auto_battle.ensure_on(
+        ensured = self.auto_battle.ensure_on_quick(
             after_sequence=battle.sequence,
             cancel_requested=self.cancel_requested,
         )
@@ -552,13 +590,10 @@ class WorldBossFlow:
                 ensured.tap_count, transitions,
             )
         raid = None
-        if ensured.status in {
-            EnsureAutoBattleStatus.INTERRUPTED,
-            EnsureAutoBattleStatus.TIMEOUT,
-        }:
-            # A fast raid may finish during or exactly at the deadline of the
-            # temporal Auto Battle window. Reacquire the overlay passively and
-            # skip timer acquisition only when that stronger signal is present.
+        if ensured.status is EnsureAutoBattleStatus.INTERRUPTED:
+            # Raid Complete interrupted the temporal window, so that overlay
+            # is the stronger signal. Reacquire it passively and skip timer
+            # acquisition only when that terminal is actually verified.
             auto_after = (
                 ensured.observations[-1].sequence
                 if ensured.observations
@@ -577,30 +612,43 @@ class WorldBossFlow:
                     ensured.tap_count, transitions,
                 )
             except RuntimeWaitTimeout:
-                if ensured.status is EnsureAutoBattleStatus.INTERRUPTED:
-                    return self._failed(
-                        "raid_complete_after_auto_interruption_timeout",
-                        sapphires=sapphires,
-                        flow_events=flow_events,
-                        previous_rewards=previous_rewards,
-                        auto_battle_initial=initial_auto,
-                        auto_battle_taps=ensured.tap_count,
-                        transitions=transitions,
-                    )
-                self._record_best_effort(
-                    "world_boss.auto_battle_timeout_raid_probe",
-                    outcome="timeout",
+                return self._failed(
+                    "raid_complete_after_auto_interruption_timeout",
+                    sapphires=sapphires,
+                    flow_events=flow_events,
+                    previous_rewards=previous_rewards,
+                    auto_battle_initial=initial_auto,
+                    auto_battle_taps=ensured.tap_count,
+                    transitions=transitions,
                 )
-            else:
-                if ensured.status is EnsureAutoBattleStatus.TIMEOUT:
-                    self._record_best_effort(
-                        "world_boss.auto_battle_timeout_raid_probe",
-                        outcome="raid_complete",
-                    )
-        if (
-            ensured.status is not EnsureAutoBattleStatus.SUCCESS
-            and raid is None
-        ):
+            self._record_best_effort(
+                "world_boss.auto_battle_interrupted_raid_probe",
+                outcome="raid_complete",
+            )
+        elif ensured.status in {
+            EnsureAutoBattleStatus.TIMEOUT,
+            EnsureAutoBattleStatus.FAILURE,
+        }:
+            # Auto Battle is auxiliary-only: it improves the reward but never
+            # gates completion. An inconclusive observation (temporal timeout
+            # with too few RESOLVED frames, UNKNOWN without tap permission, or
+            # a post-tap verification failure) must not fail the flow and must
+            # not send blind input. Continue to the timer; the combat
+            # authority remains the battle context plus Raid Complete. The
+            # speculative Raid Complete probe is skipped here because no
+            # interrupt evidence was observed; the controlled-wait polling
+            # below still detects a fast raid, just without blocking up to
+            # fact_timeout before the timer read.
+            self._record_best_effort(
+                "world_boss.auto_battle_inconclusive",
+                status=ensured.status.value,
+                taps=ensured.tap_count,
+                detail=ensured.detail,
+            )
+        elif ensured.status is not EnsureAutoBattleStatus.SUCCESS:
+            # CONTEXT_MISMATCH carries a fresh RESOLVED frame outside the
+            # battle (or a guard/baseline that left it): the combat authority
+            # is gone, so this stays a conservative failure.
             return self._failed(
                 f"auto_battle_failed: {ensured.status.value}: "
                 f"{ensured.detail or 'no detail'}",
@@ -631,7 +679,9 @@ class WorldBossFlow:
                     sapphires, flow_events, previous_rewards, initial_auto,
                     ensured.tap_count, transitions,
                 )
-            if timer_read.status is not FactReadStatus.CONFIRMED:
+            if timer_read.status is FactReadStatus.CONTEXT_MISMATCH:
+                # A fresh frame outside the battle context: the combat
+                # authority is gone, so this stays a conservative failure.
                 return self._failed(
                     f"timer_fact_failed: {timer_read.status.value}: "
                     f"{timer_read.detail or 'no detail'}",
@@ -642,10 +692,24 @@ class WorldBossFlow:
                     auto_battle_taps=ensured.tap_count,
                     transitions=transitions,
                 )
-            timer_fact = timer_read.fact
-            assert timer_fact is not None
-            timer = timer_fact.value
-            self._record_best_effort("world_boss.timer_read", seconds=timer)
+            if timer_read.status is not FactReadStatus.CONFIRMED:
+                # The timer only sizes an efficient passive wait; it is not a
+                # business postcondition. UNREADABLE (e.g. chat covering the
+                # timer ROI), UNCERTAIN, TIMEOUT or OCR FAILURE fall back to
+                # the validated battle maximum instead of aborting. The total
+                # wait stays bounded: fallback + margin + completion poll.
+                timer = BATTLE_TIMER_MAX_SECONDS
+                self._record_best_effort(
+                    "world_boss.timer_fallback",
+                    seconds=timer,
+                    reason=timer_read.status.value,
+                    detail=timer_read.detail,
+                )
+            else:
+                timer_fact = timer_read.fact
+                assert timer_fact is not None
+                timer = timer_fact.value
+                self._record_best_effort("world_boss.timer_read", seconds=timer)
 
             wait_result, raid = self._wait_for_raid_complete(timer)
             wait_elapsed = wait_result.elapsed
@@ -1041,6 +1105,14 @@ def _is_world_boss_bag_full(snapshot: RuntimeSnapshot) -> bool:
     )
 
 
+def _is_world_boss_meteor_full(snapshot: RuntimeSnapshot) -> bool:
+    return (
+        snapshot.state.status is ResolutionStatus.RESOLVED
+        and snapshot.state.base_context == SCREEN_WORLD_BOSS
+        and set(snapshot.state.overlays) == {POPUP_METEOR_INVENTORY_FULL}
+    )
+
+
 def _is_stable_combine_entry(snapshot: RuntimeSnapshot) -> bool:
     return (
         snapshot.state.status is ResolutionStatus.RESOLVED
@@ -1069,6 +1141,7 @@ __all__ = (
     "WORLD_BOSS_PREVIOUS_REWARDS",
     "WORLD_BOSS_INVENTORY_FULL",
     "WORLD_BOSS_BAG_FULL",
+    "WORLD_BOSS_METEOR_FULL",
     "WorldBossFlow",
     "WorldBossFlowResult",
     "WorldBossParticipationPolicy",

@@ -14,6 +14,7 @@ from bot.catalog import (
     OVERLAY_WORLD_BOSS_RAID_COMPLETE,
     OVERLAY_WORLD_BOSS_SELECT_BOSS,
     POPUP_EQUIPMENT_INVENTORY_FULL,
+    POPUP_METEOR_INVENTORY_FULL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
     POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
@@ -31,6 +32,7 @@ from bot.equipment_combine_relief import (
 )
 from bot.flow_contracts import FlowStatus
 from bot.observations import Observation, ObservationBatch, ObservationSource
+from bot.ocr_extractors import BATTLE_TIMER_MAX_SECONDS
 from bot.runtime_facts import (
     FactEvidence,
     FactQuality,
@@ -38,7 +40,7 @@ from bot.runtime_facts import (
     FactReadStatus,
     RuntimeFact,
 )
-from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot, RuntimeWaitTimeout
+from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot, RuntimeWaitCancelled
 from bot.semantic_actions import (
     AcceptSocketInventoryFull,
     DismissWorldBossBagFull,
@@ -46,6 +48,7 @@ from bot.semantic_actions import (
     ExitSocket,
     OpenEquipmentCombine,
     RejectSocketInventoryFull,
+    RejectMeteorInventoryFull,
 )
 from bot.socket_inventory_relief import (
     SocketReliefOutcome,
@@ -62,6 +65,7 @@ from bot.world_boss_flow import (
     WORLD_BOSS_PREVIOUS_REWARDS,
     WORLD_BOSS_INVENTORY_FULL,
     WORLD_BOSS_BAG_FULL,
+    WORLD_BOSS_METEOR_FULL,
     WorldBossFlow,
     WorldBossWaitPolicy,
 )
@@ -229,6 +233,17 @@ def auto_result(state=AutoBattleState.ON, taps=0, sequence=8,
     )
 
 
+def test_cancellation_raised_by_verified_transition_stays_cancelled():
+    flow, _, _, _, _, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
+        waits=[snapshot(2, base=SCREEN_LOBBY)],
+    )
+    driver.execute = Mock(side_effect=RuntimeWaitCancelled("cancelled during cleanup"))
+    result = flow.run()
+    assert result.status is FlowStatus.CANCELLED
+    assert driver.execute.call_count == 1
+
+
 def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
                transitions=(), auto=None, trace=None, cancel=lambda: False,
                fake_time=None, wait_policy=None, socket_relief=None,
@@ -241,8 +256,8 @@ def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
     socket_relief = socket_relief or SocketRelief()
     equipment_combine_relief = equipment_combine_relief or EquipmentCombineRelief()
     auto = auto or Mock()
-    if not hasattr(auto, "ensure_on"):
-        auto.ensure_on = Mock(return_value=auto_result())
+    if not hasattr(auto, "ensure_on_quick"):
+        auto.ensure_on_quick = Mock(return_value=auto_result())
     fake_time = fake_time or FakeTime()
     policy = wait_policy or WorldBossWaitPolicy()
     kwargs = dict(
@@ -310,7 +325,7 @@ def test_insufficient_sapphires_completes_in_lobby_without_any_navigation_input(
     assert trace[0][0] == "sapphires"
     assert observer.trace == trace
     assert len(driver.calls) == 0
-    auto.ensure_on.assert_not_called()
+    auto.ensure_on_quick.assert_not_called()
     assert events.records[-1][0] == WORLD_BOSS_INSUFFICIENT_SAPPHIRES
     assert trace[0][1]["timeout"] == 15.0
 
@@ -338,7 +353,7 @@ def test_sapphires_fact_failure_fails_without_navigation(status):
 def test_complete_flow_handles_optional_previous_rewards_and_finishes_world_boss(previous):
     waits, observes, transitions = happy_inputs(previous=previous)
     auto = Mock()
-    auto.ensure_on.return_value = auto_result(
+    auto.ensure_on_quick.return_value = auto_result(
         AutoBattleState.OFF, taps=1, sequence=8 if not previous else 9
     )
     flow, _, facts, _, events, driver = build_flow(
@@ -373,7 +388,7 @@ def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle(
         overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
     )
     auto = Mock()
-    auto.ensure_on.return_value = auto_result(AutoBattleState.ON, sequence=8)
+    auto.ensure_on_quick.return_value = auto_result(AutoBattleState.ON, sequence=8)
     fake = FakeTime()
     flow, observer, _, _, _, _ = build_flow(
         sapphire_read=fact_result("resource.sapphires", 20, 1, SCREEN_LOBBY),
@@ -393,7 +408,7 @@ def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle(
     assert result.wait_elapsed == pytest.approx(67)
     assert result.wait_checks == 3
     assert [item[0] for item in observer.trace].count("observe") == 3
-    auto.ensure_on.assert_called_once()
+    auto.ensure_on_quick.assert_called_once()
     flow.actions.execute.assert_not_called()
 
 
@@ -405,11 +420,11 @@ def test_raid_complete_during_auto_battle_skips_timer_and_continues():
         overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
     )
     auto = Mock()
-    auto.ensure_on.return_value = auto_result(
+    auto.ensure_on_quick.return_value = auto_result(
         sequence=8,
         status=EnsureAutoBattleStatus.INTERRUPTED,
     )
-    auto.ensure_on.return_value.detail = (
+    auto.ensure_on_quick.return_value.detail = (
         "observation interrupted by overlay.world_boss_raid_complete"
     )
     flow, observer, facts, _, _, driver = build_flow(
@@ -431,21 +446,34 @@ def test_raid_complete_during_auto_battle_skips_timer_and_continues():
     assert driver.calls[-1][0] == "world_boss.continue_after_raid"
 
 
-def test_raid_complete_at_auto_battle_timeout_is_reacquired_and_continues():
+def test_auto_battle_timeout_without_raid_evidence_continues_through_timer():
+    # Live regression: the old 12 s window timed out with 7/10 frames while
+    # the battle stayed healthy. A plain TIMEOUT carries no Raid Complete
+    # evidence, so the flow must not block on the speculative raid probe
+    # nor fail: it continues to the timer and the controlled wait.
     waits, _, transitions = happy_inputs()
     raid = snapshot(
-        9,
+        10,
         base=SCREEN_WORLD_BOSS_BATTLE,
         overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
     )
     auto = Mock()
-    auto.ensure_on.return_value = auto_result(
+    auto.ensure_on_quick.return_value = SimpleNamespace(
         status=EnsureAutoBattleStatus.TIMEOUT,
+        observations=(),
+        tap_count=0,
+        detail=(
+            "temporal observation deadline expired; frames_collected=2/10; "
+            "frame_span=0.412; elapsed=3.021; timeout=3.000"
+        ),
     )
-    auto.ensure_on.return_value.detail = "frames_collected=9/10"
     flow, observer, facts, _, events, driver = build_flow(
         sapphire_read=fact_result("resource.sapphires", 20, 1, SCREEN_LOBBY),
-        waits=[*waits, raid],
+        timer_read=fact_result(
+            "battle.timer_remaining", 20, 9, SCREEN_WORLD_BOSS_BATTLE
+        ),
+        waits=waits,
+        observes=[raid],
         transitions=transitions,
         auto=auto,
     )
@@ -454,14 +482,25 @@ def test_raid_complete_at_auto_battle_timeout_is_reacquired_and_continues():
 
     assert result.status is FlowStatus.COMPLETED
     assert result.raid_complete_detected
-    assert result.initial_timer is None
-    assert all(item[0] != "timer" for item in facts.trace)
-    assert observer.observes == []
-    assert driver.calls[-1][0] == "world_boss.continue_after_raid"
+    assert result.auto_battle_initial is None
+    assert result.auto_battle_taps == 0
+    assert result.initial_timer == 20
+    # No speculative raid probe consumed an extra wait: lobby + entry only.
+    assert observer.waits == []
+    assert [item[0] for item in facts.trace].count("timer") == 1
     assert (
-        "world_boss.auto_battle_timeout_raid_probe",
-        {"outcome": "raid_complete"},
+        "world_boss.auto_battle_inconclusive",
+        {
+            "status": "timeout",
+            "taps": 0,
+            "detail": auto.ensure_on_quick.return_value.detail,
+        },
     ) in events.records
+    assert not any(
+        name == "world_boss.auto_battle_timeout_raid_probe"
+        for name, _ in events.records
+    )
+    assert driver.calls[-1][0] == "world_boss.continue_after_raid"
 
 
 def test_previous_rewards_may_arrive_after_transient_world_boss_main():
@@ -487,7 +526,7 @@ def test_previous_rewards_may_arrive_after_transient_world_boss_main():
         returned,
     ]
     auto = Mock()
-    auto.ensure_on.return_value = auto_result(sequence=9)
+    auto.ensure_on_quick.return_value = auto_result(sequence=9)
     flow, _, _, _, events, driver = build_flow(
         sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
         timer_read=fact_result(
@@ -574,7 +613,7 @@ def test_inventory_full_uses_one_positive_relief_then_no_and_completes_nonfatall
     assert cancel_requested is flow.cancel_requested
     assert all(item[0] != "timer" for item in facts.trace)
     assert observer.observes == []
-    auto.ensure_on.assert_not_called()
+    auto.ensure_on_quick.assert_not_called()
     assert any(name == WORLD_BOSS_INVENTORY_FULL for name, _ in events.records)
 
 
@@ -603,7 +642,7 @@ def test_successful_socket_relief_returns_and_world_boss_continues_normally():
             final_snapshot=after_relief,
         ),
     ))
-    auto = Mock(ensure_on=Mock(return_value=auto_result(sequence=10)))
+    auto = Mock(ensure_on_quick=Mock(return_value=auto_result(sequence=10)))
     flow, _, _, _, _, driver = build_flow(
         sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
         timer_read=fact_result(
@@ -815,7 +854,7 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
     assert isinstance(driver.calls[-1][1], DismissWorldBossBagFull)
     assert all(item[0] != "timer" for item in facts.trace)
     assert observer.observes == []
-    auto.ensure_on.assert_not_called()
+    auto.ensure_on_quick.assert_not_called()
     assert any(name == WORLD_BOSS_BAG_FULL for name, _ in events.records)
     assert any(
         name == "world_boss.equipment_combine_relief.started"
@@ -1004,7 +1043,7 @@ def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():
     outcomes = [VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT] * len(snapshots)
     outcomes[-1] = VerifiedTransitionOutcome.RETRY_GUARD_REJECTED
     driver = Transitions(snapshots, outcomes)
-    auto = Mock(ensure_on=Mock(return_value=auto_result()))
+    auto = Mock(ensure_on_quick=Mock(return_value=auto_result()))
     fake = FakeTime()
     policy = WorldBossWaitPolicy()
     flow = WorldBossFlow(
@@ -1036,23 +1075,140 @@ def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():
 
 
 @pytest.mark.parametrize("status", [
-    EnsureAutoBattleStatus.FAILURE,
-    EnsureAutoBattleStatus.CONTEXT_MISMATCH,
     EnsureAutoBattleStatus.TIMEOUT,
+    EnsureAutoBattleStatus.FAILURE,
 ])
-def test_auto_battle_failure_stops_before_timer_and_long_wait(status):
+def test_auto_battle_inconclusive_continues_to_timer_and_long_wait(status):
+    # Auto Battle alone must never fail the flow: UNKNOWN-derived FAILURE
+    # (no tap permission) and temporal TIMEOUT continue while the battle is
+    # still valid. Only the INTERRUPTED raid race keeps its passive probe.
+    waits, _, transitions = happy_inputs()
+    raid = snapshot(
+        10,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    unknown_fact = fact_result(
+        "setting.auto_battle", AutoBattleState.UNKNOWN, 8,
+        SCREEN_WORLD_BOSS_BATTLE,
+    ).fact
+    auto = Mock()
+    auto.ensure_on_quick.return_value = SimpleNamespace(
+        status=status,
+        observations=(unknown_fact,),
+        tap_count=0,
+        detail=(
+            "Auto Battle remained UNKNOWN; no input sent"
+            if status is EnsureAutoBattleStatus.FAILURE
+            else "temporal observation deadline expired; frames_collected=7/10"
+        ),
+    )
+    flow, observer, facts, _, events, _ = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY),
+        timer_read=fact_result(
+            "battle.timer_remaining", 20, 9, SCREEN_WORLD_BOSS_BATTLE
+        ),
+        waits=waits,
+        observes=[raid],
+        transitions=transitions,
+        auto=auto,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.raid_complete_detected
+    assert result.auto_battle_initial is AutoBattleState.UNKNOWN
+    assert [item[0] for item in facts.trace].count("timer") == 1
+    assert observer.observes == []
+    assert any(
+        name == "world_boss.auto_battle_inconclusive"
+        for name, _ in events.records
+    )
+
+
+def test_auto_battle_failure_after_tap_continues_without_more_input():
+    # A post-tap verification failure is still auxiliary-only: the taps
+    # already sent stay bounded inside the ensurer and the flow continues.
+    waits, _, transitions = happy_inputs()
+    raid = snapshot(
+        10,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    off_fact = fact_result(
+        "setting.auto_battle", AutoBattleState.OFF, 8,
+        SCREEN_WORLD_BOSS_BATTLE,
+    ).fact
+    auto = Mock()
+    auto.ensure_on_quick.return_value = SimpleNamespace(
+        status=EnsureAutoBattleStatus.FAILURE,
+        observations=(off_fact,),
+        tap_count=1,
+        detail="Auto Battle remained OFF after bounded taps",
+    )
+    flow, _, _, _, _, _ = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY),
+        timer_read=fact_result(
+            "battle.timer_remaining", 20, 9, SCREEN_WORLD_BOSS_BATTLE
+        ),
+        waits=waits,
+        observes=[raid],
+        transitions=transitions,
+        auto=auto,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.auto_battle_initial is AutoBattleState.OFF
+    assert result.auto_battle_taps == 1
+    assert result.raid_complete_detected
+    flow.actions.execute.assert_not_called()
+
+
+def test_flow_uses_single_pass_quick_check_once_per_battle():
+    waits, _, transitions = happy_inputs()
+    raid = snapshot(
+        10,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    auto = Mock()
+    auto.ensure_on_quick.return_value = auto_result(AutoBattleState.ON, sequence=8)
+    flow, _, _, _, _, _ = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 20, 1, SCREEN_LOBBY),
+        timer_read=fact_result(
+            "battle.timer_remaining", 20, 9, SCREEN_WORLD_BOSS_BATTLE
+        ),
+        waits=waits,
+        observes=[raid],
+        transitions=transitions,
+        auto=auto,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    auto.ensure_on_quick.assert_called_once()
+    assert auto.ensure_on_quick.call_args.kwargs["after_sequence"] == 7
+
+
+def test_auto_battle_context_mismatch_still_fails_before_timer():
+    # A fresh RESOLVED frame outside the battle means the combat authority
+    # is gone: this stays a conservative failure without touching the timer.
     waits, _, transitions = happy_inputs()
     transitions = transitions[:-1]
-    if status is EnsureAutoBattleStatus.TIMEOUT:
-        waits.append(
-            RuntimeWaitTimeout(
-                after_sequence=7,
-                timeout=15.0,
-                last_snapshot=None,
-            )
-        )
     auto = Mock()
-    auto.ensure_on.return_value = auto_result(status=status)
+    auto.ensure_on_quick.return_value = SimpleNamespace(
+        status=EnsureAutoBattleStatus.CONTEXT_MISMATCH,
+        observations=(),
+        tap_count=0,
+        detail=(
+            "fresh resolved frame is screen.lobby, expected "
+            "screen.world_boss_battle"
+        ),
+    )
     flow, observer, facts, _, _, _ = build_flow(
         sapphire_read=fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY),
         waits=waits,
@@ -1064,18 +1220,69 @@ def test_auto_battle_failure_stops_before_timer_and_long_wait(status):
 
     assert result.status is FlowStatus.FAILED
     assert result.error.startswith("auto_battle_failed")
+    assert "context_mismatch" in result.error
     assert all(item[0] != "timer" for item in facts.trace)
     assert observer.observes == []
 
 
-def test_timer_failure_stops_before_controlled_wait():
+@pytest.mark.parametrize("status", [
+    FactReadStatus.UNREADABLE,
+    FactReadStatus.UNCERTAIN,
+    FactReadStatus.TIMEOUT,
+    FactReadStatus.FAILURE,
+])
+def test_timer_inconclusive_uses_bounded_fallback_and_completes(status):
+    # The timer only sizes an efficient wait, so an inconclusive read (chat
+    # covering the ROI, no consensus, deadline, OCR error) falls back to the
+    # validated battle maximum instead of aborting. The combined wait stays
+    # bounded: fallback + margin + completion poll.
+    waits, _, transitions = happy_inputs()
+    raid = snapshot(
+        10,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    flow, _, _, _, events, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY),
+        timer_read=FactReadResult(status, detail="scripted inconclusive timer"),
+        waits=waits,
+        observes=[raid],
+        transitions=transitions,
+        auto=Mock(ensure_on_quick=Mock(return_value=auto_result())),
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.initial_timer == BATTLE_TIMER_MAX_SECONDS
+    assert result.raid_complete_detected
+    # Fallback 90 + default margin 5, then the first raid poll observes the
+    # overlay immediately (no extra sleep before the first check).
+    assert result.wait_elapsed == pytest.approx(
+        BATTLE_TIMER_MAX_SECONDS + WorldBossWaitPolicy().post_timer_margin
+    )
+    assert result.wait_checks == 1
+    assert (
+        "world_boss.timer_fallback",
+        {
+            "seconds": BATTLE_TIMER_MAX_SECONDS,
+            "reason": status.value,
+            "detail": "scripted inconclusive timer",
+        },
+    ) in events.records
+    assert driver.calls[-1][0] == "world_boss.continue_after_raid"
+
+
+def test_timer_context_mismatch_still_fails_before_controlled_wait():
     waits, _, transitions = happy_inputs()
     flow, observer, _, _, _, _ = build_flow(
         sapphire_read=fact_result("resource.sapphires", 5, 1, SCREEN_LOBBY),
-        timer_read=FactReadResult(FactReadStatus.UNREADABLE),
+        timer_read=FactReadResult(
+            FactReadStatus.CONTEXT_MISMATCH, detail="left battle"
+        ),
         waits=waits,
         transitions=transitions[:-1],
-        auto=Mock(ensure_on=Mock(return_value=auto_result())),
+        auto=Mock(ensure_on_quick=Mock(return_value=auto_result())),
     )
 
     result = flow.run()
@@ -1189,7 +1396,7 @@ def raid_wait_flow(*, raid_at=None, unknown_until=None, always_unknown=False,
         fake, raid_at, unknown_until, always_unknown, raid_base
     )
     actions = Mock()
-    auto = Mock(ensure_on=Mock())
+    auto = Mock(ensure_on_quick=Mock())
     flow = WorldBossFlow(
         observer, actions, Mock(read_sapphires=Mock(), read_timer_remaining=Mock()),
         auto, Events(), socket_relief=SocketRelief(),
@@ -1218,7 +1425,7 @@ def test_timer_sixty_waits_sixty_five_without_perception_then_polls_once():
     assert observer.observe_times == [65]
     assert raid is not None
     actions.execute.assert_not_called()
-    auto.ensure_on.assert_not_called()
+    auto.ensure_on_quick.assert_not_called()
 
 
 def test_final_polling_runs_each_second_and_accepts_late_raid_complete():
@@ -1264,7 +1471,7 @@ def test_persistent_unknown_times_out_without_input_or_recovery():
     assert observer.observe_times[-1] == 90
     assert raid is not None and raid.state.status is ResolutionStatus.UNKNOWN
     actions.execute.assert_not_called()
-    auto.ensure_on.assert_not_called()
+    auto.ensure_on_quick.assert_not_called()
 
     finished = [
         fields
@@ -1358,3 +1565,136 @@ def test_world_boss_contract_and_boundaries_are_explicit():
     assert "AdbClient" not in source
     assert "time.sleep" not in source
     assert "AutoRepeat" not in source
+
+
+def test_meteor_full_after_start_rejects_once_and_completes_for_character():
+    lobby = snapshot(2, base=SCREEN_LOBBY)
+    main = snapshot(6, base=SCREEN_WORLD_BOSS)
+    meteor = snapshot(
+        7,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_METEOR_INVENTORY_FULL,),
+    )
+    returned = snapshot(8, base=SCREEN_WORLD_BOSS)
+    socket_relief = SocketRelief()
+    equipment_relief = EquipmentCombineRelief()
+    auto = Mock()
+    flow, observer, facts, _, events, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
+        waits=[lobby, main],
+        transitions=[
+            snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
+            snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+            snapshot(5, base=SCREEN_WORLD_BOSS),
+            meteor,
+            returned,
+        ],
+        auto=auto,
+        socket_relief=socket_relief,
+        equipment_combine_relief=equipment_relief,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.meteor_full
+    assert not result.inventory_full
+    assert not result.bag_full
+    assert result.event_count(WORLD_BOSS_METEOR_FULL) == 1
+    names = [call[0] for call in driver.calls]
+    assert names.count("world_boss.start") == 1
+    assert names.count("world_boss.reject_meteor_full") == 1
+    assert isinstance(driver.calls[-1][1], RejectMeteorInventoryFull)
+    reject = driver.calls[-1]
+    assert reject[3]["precondition"](meteor)
+    assert reject[3]["retryable_from"](meteor)
+    assert reject[3]["expected"](returned)
+    assert not reject[3]["precondition"](
+        snapshot(70, base=SCREEN_WORLD_BOSS)
+    )
+    assert not reject[3]["precondition"](
+        snapshot(71, base=SCREEN_WORLD_BOSS, overlays=(POPUP_SOCKET_INVENTORY_FULL,))
+    )
+    assert not reject[3]["precondition"](snapshot(72))
+    assert len(socket_relief.calls) == 0
+    assert len(equipment_relief.calls) == 0
+    assert all(item[0] != "timer" for item in facts.trace)
+    assert observer.observes == []
+    auto.ensure_on_quick.assert_not_called()
+    assert any(name == WORLD_BOSS_METEOR_FULL for name, _ in events.records)
+    assert any(name == "world_boss.completed" for name, _ in events.records)
+
+
+def test_meteor_full_reject_failure_is_structured_and_does_not_claim_completion():
+    lobby = snapshot(2, base=SCREEN_LOBBY)
+    main = snapshot(6, base=SCREEN_WORLD_BOSS)
+    meteor = snapshot(
+        7,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_METEOR_INVENTORY_FULL,),
+    )
+    transitions = [
+        snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
+        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(5, base=SCREEN_WORLD_BOSS),
+        meteor,
+        meteor,
+    ]
+    outcomes = [
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
+    ]
+    driver = Transitions(transitions, outcomes)
+    events = Events()
+    flow = WorldBossFlow(
+        Observer(waits=[lobby, main]),
+        Mock(),
+        Facts(fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY)),
+        Mock(),
+        events,
+        socket_relief=SocketRelief(),
+        equipment_combine_relief=EquipmentCombineRelief(),
+        verified_transition=driver,
+        stable_for=0,
+    )
+
+    result = flow.run()
+
+    assert result.status is FlowStatus.FAILED
+    assert "world_boss.reject_meteor_full_failed" in result.error
+    assert not result.meteor_full
+    assert not any(name == "world_boss.completed" for name, _ in events.records)
+
+
+def test_meteor_guard_rejects_unsafe_or_contradictory_perception():
+    from bot.world_boss_flow import _is_world_boss_meteor_full
+    from bot.state import ResolutionStatus
+
+    assert _is_world_boss_meteor_full(
+        snapshot(1, base=SCREEN_WORLD_BOSS, overlays=(POPUP_METEOR_INVENTORY_FULL,))
+    )
+    # UNKNOWN never authorizes input (no base, no overlays by construction).
+    assert not _is_world_boss_meteor_full(snapshot(2))
+    assert not _is_world_boss_meteor_full(
+        snapshot(3, overlays=(POPUP_METEOR_INVENTORY_FULL,), status=ResolutionStatus.AMBIGUOUS)
+    )
+    # Contradictory base or overlay set never authorizes input.
+    assert not _is_world_boss_meteor_full(
+        snapshot(5, base=SCREEN_LOBBY, overlays=(POPUP_METEOR_INVENTORY_FULL,))
+    )
+    assert not _is_world_boss_meteor_full(
+        snapshot(6, base=SCREEN_WORLD_BOSS)
+    )
+    assert not _is_world_boss_meteor_full(
+        snapshot(7, base=SCREEN_WORLD_BOSS, overlays=(POPUP_SOCKET_INVENTORY_FULL,))
+    )
+    assert not _is_world_boss_meteor_full(
+        snapshot(
+            8,
+            base=SCREEN_WORLD_BOSS,
+            overlays=(POPUP_METEOR_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL),
+        )
+    )

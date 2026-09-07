@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 from dataclasses import dataclass
 from numbers import Real
 from typing import Callable, Protocol
@@ -101,6 +102,8 @@ class DailyQuestsFlow:
         navigation_stable_for: float = 0.25,
         claim_stable_for: float = 0.5,
         cancel_requested: Callable[[], bool] = lambda: False,
+        clock: Callable[[], float] = time.monotonic,
+        sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -112,6 +115,8 @@ class DailyQuestsFlow:
             raise ValueError("events must provide record()")
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
+        if not callable(clock) or not callable(sleeper):
+            raise ValueError("clock and sleeper must be callable")
         self.observer: _Observer = observer
         self.actions = actions
         self.events = events
@@ -126,6 +131,137 @@ class DailyQuestsFlow:
         self.claim_stable_for = _non_negative_duration(
             claim_stable_for, "claim_stable_for"
         )
+        self._clock = clock
+        self._sleeper = sleeper
+
+    @staticmethod
+    def _is_clean_lobby(snapshot: RuntimeSnapshot) -> bool:
+        state = snapshot.state
+        return (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context == SCREEN_LOBBY
+            and not state.overlays
+        )
+
+    @staticmethod
+    def _is_daily_quests(snapshot: RuntimeSnapshot) -> bool:
+        state = snapshot.state
+        return (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context == SCREEN_QUESTS
+            and MODE_DAILY_QUESTS in state.overlays
+            and set(state.overlays)
+            <= {
+                MODE_DAILY_QUESTS,
+                STATUS_DAILY_QUESTS_CLAIMABLE,
+                STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+            }
+        )
+
+    @staticmethod
+    def _is_quests(snapshot: RuntimeSnapshot) -> bool:
+        state = snapshot.state
+        return (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context == SCREEN_QUESTS
+            and set(state.overlays)
+            <= {
+                MODE_DAILY_QUESTS,
+                STATUS_DAILY_QUESTS_CLAIMABLE,
+                STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+            }
+        )
+
+    @staticmethod
+    def _is_daily_quests_settled(snapshot: RuntimeSnapshot) -> bool:
+        return (
+            DailyQuestsFlow._is_daily_quests(snapshot)
+            and STATUS_DAILY_QUESTS_CLAIMABLE not in snapshot.state.overlays
+        )
+
+    @staticmethod
+    def _is_daily_quests_fully_settled(snapshot: RuntimeSnapshot) -> bool:
+        return (
+            DailyQuestsFlow._is_daily_quests_settled(snapshot)
+            and STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE
+            not in snapshot.state.overlays
+        )
+
+    @staticmethod
+    def _is_passive_unknown(snapshot: RuntimeSnapshot) -> bool:
+        return (
+            snapshot.state.status is ResolutionStatus.UNKNOWN
+            and not snapshot.state.overlays
+        )
+
+    @staticmethod
+    def _has_incompatible_daily_navigation(snapshot: RuntimeSnapshot) -> bool:
+        state = snapshot.state
+        return (
+            state.status is ResolutionStatus.AMBIGUOUS
+            or bool(
+                set(state.overlays)
+                - {
+                    MODE_DAILY_QUESTS,
+                    STATUS_DAILY_QUESTS_CLAIMABLE,
+                    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+                }
+            )
+            or (
+                state.status is ResolutionStatus.RESOLVED
+                and state.base_context not in {SCREEN_LOBBY, SCREEN_QUESTS}
+            )
+        )
+
+    @staticmethod
+    def _has_incompatible_daily_state(snapshot: RuntimeSnapshot) -> bool:
+        state = snapshot.state
+        return (
+            state.status is ResolutionStatus.AMBIGUOUS
+            or (
+                state.status is ResolutionStatus.RESOLVED
+                and not (
+                    state.base_context == SCREEN_QUESTS
+                    and MODE_DAILY_QUESTS in state.overlays
+                )
+            )
+            or bool(
+                set(state.overlays)
+                - {
+                    MODE_DAILY_QUESTS,
+                    STATUS_DAILY_QUESTS_CLAIMABLE,
+                    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+                }
+            )
+        )
+
+    @staticmethod
+    def _has_incompatible_close_state(snapshot: RuntimeSnapshot) -> bool:
+        state = snapshot.state
+        return (
+            state.status is ResolutionStatus.AMBIGUOUS
+            or bool(
+                set(state.overlays)
+                - {
+                    MODE_DAILY_QUESTS,
+                    STATUS_DAILY_QUESTS_CLAIMABLE,
+                    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
+                }
+            )
+            or (
+                state.status is ResolutionStatus.RESOLVED
+                and state.base_context not in {SCREEN_QUESTS, SCREEN_LOBBY}
+            )
+        )
+
+    @staticmethod
+    def _known_incompatible(snapshot, expected, retryable_from) -> bool:
+        if expected(snapshot) or retryable_from(snapshot):
+            return False
+        return snapshot.state.status in {
+            ResolutionStatus.RESOLVED,
+            ResolutionStatus.AMBIGUOUS,
+        }
 
     def run(self) -> DailyQuestsFlowResult:
         events: list[FlowEvent] = []
@@ -136,20 +272,13 @@ class DailyQuestsFlow:
             quests = self._act_and_wait(
                 OpenQuests(),
                 lobby,
-                expected=_is_quests,
-                abort_if=_has_incompatible_daily_navigation,
+                expected=self._is_quests,
+                abort_if=self._has_incompatible_daily_navigation,
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
             )
-            if not _is_daily_quests(quests):
-                daily = self._act_and_wait(
-                    SelectDailyQuests(),
-                    quests,
-                    expected=_is_daily_quests,
-                    abort_if=_has_incompatible_daily_navigation,
-                    timeout=self.navigation_timeout,
-                    stable_for=self.navigation_stable_for,
-                )
+            if not self._is_daily_quests(quests):
+                daily = self._wait_for_daily_tab(quests)
             else:
                 daily = quests
 
@@ -161,8 +290,8 @@ class DailyQuestsFlow:
                 daily = self._act_and_wait(
                     ClaimAllDailyQuests(),
                     daily,
-                    expected=_is_daily_quests_settled,
-                    abort_if=_has_incompatible_daily_state,
+                    expected=self._is_daily_quests_settled,
+                    abort_if=self._has_incompatible_daily_state,
                     timeout=self.claim_timeout,
                     stable_for=self.claim_stable_for,
                 )
@@ -182,8 +311,8 @@ class DailyQuestsFlow:
                 daily = self._act_and_wait(
                     ClaimDailyQuestsProgressReward(),
                     daily,
-                    expected=_is_daily_quests_fully_settled,
-                    abort_if=_has_incompatible_daily_state,
+                    expected=self._is_daily_quests_fully_settled,
+                    abort_if=self._has_incompatible_daily_state,
                     timeout=self.claim_timeout,
                     stable_for=self.claim_stable_for,
                 )
@@ -199,12 +328,12 @@ class DailyQuestsFlow:
             lobby = self._act_and_wait(
                 CloseDailyQuests(),
                 daily,
-                expected=_is_clean_lobby,
-                abort_if=_has_incompatible_close_state,
+                expected=self._is_clean_lobby,
+                abort_if=self._has_incompatible_close_state,
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
             )
-            assert _is_clean_lobby(lobby)
+            assert self._is_clean_lobby(lobby)
             return DailyQuestsFlowResult(
                 FlowStatus.COMPLETED,
                 tuple(events),
@@ -225,15 +354,17 @@ class DailyQuestsFlow:
 
     def _initial_lobby(self) -> RuntimeSnapshot:
         initial = self.observer.observe()
-        if _is_clean_lobby(initial):
+        if self._is_clean_lobby(initial):
             return initial
-        if not _is_passive_unknown(initial):
+        if not self._is_passive_unknown(initial):
             raise RuntimeError("precondition_lobby_failed")
         return self.observer.wait_until(
-            _is_clean_lobby,
+            self._is_clean_lobby,
             after_sequence=initial.sequence,
             timeout=self.navigation_timeout,
-            abort_if=_has_incompatible_lobby_state,
+            abort_if=lambda snapshot: self._known_incompatible(
+                snapshot, self._is_clean_lobby, self._is_passive_unknown
+            ),
             cancel_requested=self.cancel_requested,
             stable_for=self.navigation_stable_for,
         )
@@ -260,19 +391,88 @@ class DailyQuestsFlow:
             stable_for=stable_for,
         )
 
+    def _wait_for_daily_tab(self, initial_quests: RuntimeSnapshot) -> RuntimeSnapshot:
+        """Wait for Daily Quests tab to become active with bounded retries.
+
+        - If Daily is already active, return immediately.
+        - From clean Quests state, tap SelectDailyQuests and wait ~1s.
+        - If Daily becomes active, succeed.
+        - If still in clean Quests without Daily, retry tap (bounded by timeout).
+        - UNKNOWN/AMBIGUOUS: wait passively.
+        - Contradictory RESOLVED context: abort.
+        - Total timeout bounded by navigation_timeout.
+        """
+        if self._cancelled():
+            raise RuntimeWaitCancelled("daily quests flow cancelled")
+
+        deadline = self._clock() + self.navigation_timeout
+        current = initial_quests
+        last_evaluated = current.sequence - 1
+
+        while True:
+            if self._cancelled():
+                raise RuntimeWaitCancelled("daily quests flow cancelled")
+
+            # Check timeout
+            if self._clock() >= deadline:
+                self._record("daily_quests.tab_timeout")
+                raise RuntimeWaitTimeout(
+                    after_sequence=current.sequence,
+                    timeout=self.navigation_timeout,
+                    last_snapshot=current,
+                )
+
+            # observe() may deliver the latest frame again when capture stalls.
+            # Each sequence may authorize at most one tap or success verdict.
+            if current.sequence <= last_evaluated:
+                self._sleeper(min(1.0, max(0.0, deadline - self._clock())))
+                current = self.observer.observe()
+                continue
+            last_evaluated = current.sequence
+
+            if self._is_daily_quests(current):
+                self._record("daily_quests.tab_activated")
+                return current
+
+            # Contradictory resolved state -> abort
+            if (
+                current.state.status is ResolutionStatus.RESOLVED
+                and not self._is_quests(current)
+            ):
+                self._record("daily_quests.incompatible_state")
+                raise RuntimeWaitAborted(current)
+
+            # Only tap from clean Quests state (RESOLVED, base=screen.quests, no Daily)
+            if self._is_quests(current) and not self._is_daily_quests(current):
+                self._record("daily_quests.select_tab")
+                self.actions.execute(SelectDailyQuests(), current.geometry)
+            else:
+                # UNKNOWN/AMBIGUOUS or other overlay -> wait passively, don't tap
+                pass
+
+            # Wait ~1s for frame to update
+            self._sleeper(min(1.0, max(0.0, deadline - self._clock())))
+
+            # Get fresh frame
+            current = self.observer.observe()
+
     def _append_event(self, events: list[FlowEvent], kind: str) -> None:
         events.append(FlowEvent(kind))
         self._record(kind)
 
     def _cancel(self, events: list[FlowEvent]) -> DailyQuestsFlowResult:
         self._record("daily_quests.cancelled")
-        return DailyQuestsFlowResult(FlowStatus.CANCELLED, tuple(events))
+        return DailyQuestsFlowResult(
+            FlowStatus.CANCELLED, tuple(events)
+        )
 
     def _failed(
         self, events: list[FlowEvent], error: str
     ) -> DailyQuestsFlowResult:
         self._record("daily_quests.failed", error=error)
-        return DailyQuestsFlowResult(FlowStatus.FAILED, tuple(events), error)
+        return DailyQuestsFlowResult(
+            FlowStatus.FAILED, tuple(events), error=error
+        )
 
     def _record(self, event: str, **fields: object) -> None:
         try:
@@ -285,115 +485,6 @@ class DailyQuestsFlow:
             return self.cancel_requested() is True
         except Exception:
             return False
-
-
-def _is_clean_lobby(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.RESOLVED
-        and state.base_context == SCREEN_LOBBY
-        and not state.overlays
-    )
-
-
-def _is_daily_quests(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.RESOLVED
-        and state.base_context == SCREEN_QUESTS
-        and MODE_DAILY_QUESTS in state.overlays
-        and set(state.overlays)
-        <= _DAILY_QUESTS_OVERLAYS
-    )
-
-
-def _is_quests(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.RESOLVED
-        and state.base_context == SCREEN_QUESTS
-        and set(state.overlays)
-        <= _DAILY_QUESTS_OVERLAYS
-    )
-
-
-def _is_daily_quests_settled(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        _is_daily_quests(snapshot)
-        and STATUS_DAILY_QUESTS_CLAIMABLE not in snapshot.state.overlays
-    )
-
-
-def _is_daily_quests_fully_settled(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        _is_daily_quests_settled(snapshot)
-        and STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE
-        not in snapshot.state.overlays
-    )
-
-
-def _is_passive_unknown(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        snapshot.state.status is ResolutionStatus.UNKNOWN
-        and not snapshot.state.overlays
-    )
-
-
-def _has_incompatible_lobby_state(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.AMBIGUOUS
-        or bool(state.overlays)
-        or (
-            state.status is ResolutionStatus.RESOLVED
-            and state.base_context != SCREEN_LOBBY
-        )
-    )
-
-
-def _has_incompatible_daily_navigation(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.AMBIGUOUS
-        or bool(
-            set(state.overlays)
-            - _DAILY_QUESTS_OVERLAYS
-        )
-        or (
-            state.status is ResolutionStatus.RESOLVED
-            and state.base_context not in {SCREEN_LOBBY, SCREEN_QUESTS}
-        )
-    )
-
-
-def _has_incompatible_daily_state(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.AMBIGUOUS
-        or (
-            state.status is ResolutionStatus.RESOLVED
-            and not _is_daily_quests(snapshot)
-        )
-        or bool(
-            set(state.overlays)
-            - _DAILY_QUESTS_OVERLAYS
-        )
-    )
-
-
-def _has_incompatible_close_state(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.AMBIGUOUS
-        or bool(
-            set(state.overlays)
-            - _DAILY_QUESTS_OVERLAYS
-        )
-        or (
-            state.status is ResolutionStatus.RESOLVED
-            and state.base_context not in {SCREEN_QUESTS, SCREEN_LOBBY}
-        )
-    )
 
 
 def _positive_duration(value: object, name: str) -> float:
@@ -412,14 +503,3 @@ def _non_negative_duration(value: object, name: str) -> float:
     if not math.isfinite(result) or result < 0:
         raise ValueError(f"{name} must be a non-negative finite number")
     return result
-
-
-__all__ = (
-    "DAILY_QUESTS_CLAIM_ALL_COMPLETED",
-    "DAILY_QUESTS_CLAIM_ALL_EXECUTED",
-    "DAILY_QUESTS_NOOP",
-    "DAILY_QUESTS_PROGRESS_REWARD_COMPLETED",
-    "DAILY_QUESTS_PROGRESS_REWARD_EXECUTED",
-    "DailyQuestsFlow",
-    "DailyQuestsFlowResult",
-)

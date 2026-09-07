@@ -44,6 +44,7 @@ from bot.perception.specs import (
     GUILD_ATTENDANCE_DAILY_SPEC,
     WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC,
     SOCKET_INVENTORY_FULL_PROMPT_SPEC,
+    METEOR_INVENTORY_FULL_PROMPT_SPEC,
     WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC,
     WORLD_BOSS_SAPPHIRES_USED_SPEC,
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,
@@ -227,6 +228,15 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
     assert SOCKET_INVENTORY_FULL_PROMPT_SPEC.calibration.positive_anchor == (
         pytest.approx(0.9941959977149963)
     )
+    assert METEOR_INVENTORY_FULL_PROMPT_SPEC.region == (
+        0.31, 0.38, 0.69, 0.54
+    )
+    assert METEOR_INVENTORY_FULL_PROMPT_SPEC.calibration.negative_anchor == (
+        pytest.approx(0.762491)
+    )
+    assert METEOR_INVENTORY_FULL_PROMPT_SPEC.calibration.positive_anchor == (
+        pytest.approx(0.992478)
+    )
     assert EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC.region == (0.28, 0.32, 0.72, 0.62)
     assert EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC.calibration.negative_anchor == (
         pytest.approx(0.3778718113899231)
@@ -324,6 +334,11 @@ def test_promoted_specs_use_curated_assets_regions_and_valid_calibrations():
             SOCKET_INVENTORY_FULL_PROMPT_SPEC,
             (867, 123),
             "06dfb3251fc38c459200c006ee2a02fe55ee2576547c8abee7db3731330b4cc1",
+        ),
+        (
+            METEOR_INVENTORY_FULL_PROMPT_SPEC,
+            (759, 159),
+            "63657ff581d02bd1fa966acd75bd0b5a2bcc992b7edf62e06e2633f2c4b1530d",
         ),
         (
             EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC,

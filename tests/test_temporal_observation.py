@@ -1,13 +1,19 @@
 from unittest.mock import Mock
 
 import numpy as np
+import pytest
 
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.observations import ObservationBatch
 from bot.runtime_observer import RuntimeFacts, RuntimeObserver, RuntimeSnapshot, RuntimeWaitTimeout
 from bot.state import ResolutionStatus, ResolvedState
-from bot.temporal_observation import TemporalObserver, TemporalWindowStatus
+from bot.temporal_observation import (
+    FrameHarvest,
+    TemporalObserver,
+    TemporalWindowStatus,
+    harvest_frame_window,
+)
 
 
 def snapshot(sequence, context="screen.world_boss_battle", overlays=(), status=None):
@@ -231,3 +237,186 @@ def test_elapsed_deadline_diagnostic_reports_partial_collection():
     assert "frames_collected=3/10" in result.detail
     assert "last_sequence=23" in result.detail
     assert "elapsed=2.100" in result.detail
+
+
+def raw_frame(sequence, timestamp):
+    image = np.zeros((10, 20, 3), dtype=np.uint8)
+    return FrameSnapshot(image, timestamp, sequence)
+
+
+class ScriptedSource:
+    """Frame source that replays scripted frames, then stalls on the last."""
+
+    def __init__(self, frames, error=None):
+        self._frames = list(frames)
+        self._error = error
+        self._last = None
+        self.calls = 0
+
+    def get_frame(self):
+        self.calls += 1
+        if self._error is not None:
+            raise self._error
+        if self._frames:
+            self._last = self._frames.pop(0)
+        if self._last is None:
+            raise AssertionError("source has no frame to replay")
+        return self._last
+
+
+class FakeClock:
+    def __init__(self):
+        self.current = 0.0
+
+    def __call__(self):
+        return self.current
+
+    def sleep(self, duration):
+        self.current += duration
+
+
+def test_harvest_collects_spaced_fresh_frames():
+    source = ScriptedSource(
+        [raw_frame(sequence, timestamp) for sequence, timestamp in
+         ((11, 1.0), (12, 1.2), (13, 1.4))]
+    )
+
+    result = harvest_frame_window(
+        source,
+        after_sequence=10,
+        frame_count=3,
+        sample_interval=0.1,
+        timeout=2.0,
+    )
+
+    assert isinstance(result, FrameHarvest)
+    assert result.status is TemporalWindowStatus.COMPLETE
+    assert [item.sequence for item in result.frames] == [11, 12, 13]
+    assert result.detail is None
+
+
+def test_harvest_ignores_duplicate_and_stale_sequences():
+    # A stalled decoder replays the same (or an older) sequence: those
+    # deliveries must never count toward frame_count nor move the spacing
+    # baseline, or fabricated ~0 diffs would bias motion classifiers to OFF.
+    source = ScriptedSource([
+        raw_frame(11, 1.00),
+        raw_frame(11, 1.50),  # duplicate: skipped, cursor stays 11
+        raw_frame(10, 2.00),  # stale: skipped
+        raw_frame(12, 1.04),  # fresh but too close to 11: skipped
+        raw_frame(13, 1.30),  # gap from 11 is fine: accepted
+    ])
+
+    result = harvest_frame_window(
+        source,
+        after_sequence=10,
+        frame_count=2,
+        sample_interval=0.1,
+        timeout=2.0,
+    )
+
+    assert result.status is TemporalWindowStatus.COMPLETE
+    assert [item.sequence for item in result.frames] == [11, 13]
+
+
+def test_harvest_timeout_reports_partial_collection():
+    fake = FakeClock()
+    source = ScriptedSource([raw_frame(11, 0.0), raw_frame(12, 0.2)])
+
+    result = harvest_frame_window(
+        source,
+        after_sequence=10,
+        frame_count=5,
+        sample_interval=0.1,
+        timeout=0.5,
+        clock=fake,
+        sleeper=fake.sleep,
+    )
+
+    assert result.status is TemporalWindowStatus.TIMEOUT
+    assert [item.sequence for item in result.frames] == [11, 12]
+    assert "frame harvest deadline expired" in result.detail
+    assert "frames_collected=2/5" in result.detail
+    assert source.calls < 1000
+
+
+def test_harvest_cancel_is_bounded():
+    source = ScriptedSource([raw_frame(11, 0.0)])
+
+    result = harvest_frame_window(
+        source,
+        after_sequence=10,
+        frame_count=5,
+        sample_interval=0.1,
+        timeout=30.0,
+        cancel_requested=lambda: True,
+    )
+
+    assert result.status is TemporalWindowStatus.CANCELLED
+    assert [item.sequence for item in result.frames] == []
+
+
+def test_harvest_source_failure_reports_failure():
+    source = ScriptedSource([], error=RuntimeError("capture failed"))
+
+    result = harvest_frame_window(
+        source,
+        after_sequence=10,
+        frame_count=3,
+        sample_interval=0.1,
+        timeout=2.0,
+    )
+
+    assert result.status is TemporalWindowStatus.FAILURE
+    assert result.frames == ()
+    assert "capture failed" in result.detail
+
+
+def test_harvest_rejects_non_snapshot_delivery():
+    source = ScriptedSource([object()])
+
+    result = harvest_frame_window(
+        source,
+        after_sequence=10,
+        frame_count=3,
+        sample_interval=0.1,
+        timeout=2.0,
+    )
+
+    assert result.status is TemporalWindowStatus.FAILURE
+    assert result.frames == ()
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"frame_count": 1},
+        {"sample_interval": -0.1},
+        {"timeout": 0.0},
+        {"poll_interval": 0.0},
+        {"after_sequence": -1},
+    ),
+)
+def test_harvest_rejects_invalid_bounds(kwargs):
+    source = ScriptedSource([raw_frame(11, 0.0)])
+    params = dict(
+        after_sequence=10,
+        frame_count=3,
+        sample_interval=0.1,
+        timeout=2.0,
+    )
+    params.update(kwargs)
+
+    with pytest.raises(ValueError):
+        harvest_frame_window(source, **params)
+
+
+def test_harvest_rejects_source_without_get_frame():
+    with pytest.raises(ValueError):
+        harvest_frame_window(
+            object(),
+            after_sequence=10,
+            frame_count=3,
+            sample_interval=0.1,
+            timeout=2.0,
+        )

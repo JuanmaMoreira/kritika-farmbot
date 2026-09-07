@@ -78,6 +78,7 @@ from bot.semantic_actions import (
     RejectPetEpicRunesFull,
     RejectPetInventoryFull,
     RejectSocketInventoryFull,
+    RejectMeteorInventoryFull,
     SelectSocketEnhanceGold,
     SelectSocketOpalSlot,
     SelectCombineFuse,
@@ -92,6 +93,7 @@ from bot.semantic_actions import (
     SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
+    SelectCharacterCard,
     SelectAvailableWorldBoss,
     SelectBlackMarketSlot,
     Swipe,
@@ -248,6 +250,23 @@ def test_pet_candidate_target_comes_only_from_the_safe_observation_center():
     adb.tap.assert_called_once_with(int(0.581 * 2712), int(0.385 * 1224))
 
 
+def test_character_card_target_comes_only_from_the_sentinel_derived_center():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    action = SelectCharacterCard((0.555, 0.7484))
+
+    receipt = executor.execute(action, FrameGeometry(width=2712, height=1224))
+
+    assert receipt.normalized_target == action.center
+    adb.tap.assert_called_once_with(int(0.555 * 2712), int(0.7484 * 1224))
+
+
+@pytest.mark.parametrize("center", ((2.0, 0.5), ("x", 0.5), (0.5,)))
+def test_character_card_center_must_be_a_relative_point(center):
+    with pytest.raises(ValueError):
+        SelectCharacterCard(center)
+
+
 @pytest.mark.parametrize(
     ("action", "target"),
     (
@@ -276,6 +295,7 @@ def test_executor_translates_world_boss_route_actions(action, target):
     (
         (AcceptSocketInventoryFull(), DEFAULT_SOCKET_ACTION_TARGETS.accept_inventory_full),
         (RejectSocketInventoryFull(), DEFAULT_SOCKET_ACTION_TARGETS.reject_inventory_full),
+        (RejectMeteorInventoryFull(), DEFAULT_SOCKET_ACTION_TARGETS.reject_inventory_full),
         (ExitSocket(), DEFAULT_SOCKET_ACTION_TARGETS.exit_socket),
         (OpenSocketEnhanceAll(), DEFAULT_SOCKET_ACTION_TARGETS.open_enhance_all),
         (SelectSocketEnhanceGold(), DEFAULT_SOCKET_ACTION_TARGETS.enhance_gold),
@@ -383,6 +403,10 @@ def test_executor_supports_each_row_major_black_market_slot(slot_index):
         (
             SelectLastVisibleCharacter(),
             DEFAULT_ROTATION_ACTION_TARGETS.last_visible_character,
+        ),
+        (
+            SelectCharacterCard((0.555, 0.7484)),
+            (0.555, 0.7484),
         ),
         (
             ConfirmCharacterSelection(),

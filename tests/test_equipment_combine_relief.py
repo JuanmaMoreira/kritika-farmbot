@@ -29,6 +29,7 @@ from bot.semantic_actions import ExitCombine, SelectCombineFuse, SelectCombineTr
 from bot.state import ResolutionStatus, ResolvedState
 from bot.tap_through_animation import TapThroughOutcome, TapThroughResult
 from bot.verified_transition import VerifiedTransitionOutcome, VerifiedTransitionResult
+from bot.runtime_observer import RuntimeWaitTimeout
 
 
 def snapshot(sequence, *, base=SCREEN_COMBINE, overlays=(), tappable=False):
@@ -59,14 +60,25 @@ def panel(sequence, name, popup=None):
 
 
 class Observer:
-    def __init__(self, initial):
+    def __init__(self, initial, wait_until_results=None, wait_until_exception=None):
         self.initial = initial
+        self.wait_until_results = wait_until_results or []
+        self.wait_until_index = 0
+        self.wait_until_exception = wait_until_exception
 
     def observe(self):
         return self.initial
 
     def wait_until(self, condition, **kwargs):
-        raise AssertionError("scripted tap driver should own animation waits")
+        if self.wait_until_exception is not None:
+            raise self.wait_until_exception
+        if self.wait_until_index < len(self.wait_until_results):
+            result = self.wait_until_results[self.wait_until_index]
+            self.wait_until_index += 1
+            assert result.sequence > kwargs["after_sequence"]
+            assert condition(result)
+            return result
+        raise AssertionError("unexpected wait_until call")
 
 
 class Actions:
@@ -115,8 +127,8 @@ class TapThrough:
         return result
 
 
-def build(initial, transitions, taps=()):
-    observer = Observer(initial)
+def build(initial, transitions, taps=(), wait_until_results=None, wait_until_exception=None):
+    observer = Observer(initial, wait_until_results, wait_until_exception)
     driver = Transitions(transitions)
     tapper = TapThrough(taps)
     operation = EquipmentCombineRelief(
@@ -208,10 +220,11 @@ def test_ethereal_effect_returns_to_transmute_and_clears_guard():
             panel(5, PANEL_COMBINE_ETHEREAL_RANDOM_PART, POPUP_ETHEREAL_MASS_COMBINE),
             animation,
             mode(8, MODE_COMBINE_TRANSMUTE),
-            mode(9, MODE_COMBINE_FUSE),
-            snapshot(10, base=SCREEN_WORLD_BOSS),
+            mode(10, MODE_COMBINE_FUSE),
+            snapshot(11, base=SCREEN_WORLD_BOSS),
         ],
         [completed(3, panel(7, PANEL_COMBINE_ETHEREAL_RANDOM_PART))],
+        wait_until_results=[mode(9, MODE_COMBINE_TRANSMUTE)],
     )
 
     result = operation.run(plan())
@@ -223,6 +236,7 @@ def test_ethereal_effect_returns_to_transmute_and_clears_guard():
 
 def test_ethereal_direct_completion_still_requires_cleared_guard():
     direct_completion = panel(6, PANEL_COMBINE_ETHEREAL_RANDOM_PART)
+    transmute_cleared = mode(7, MODE_COMBINE_TRANSMUTE)
     operation, driver, tapper = build(
         mode(1, MODE_COMBINE_FUSE),
         [
@@ -231,10 +245,11 @@ def test_ethereal_direct_completion_still_requires_cleared_guard():
             panel(4, PANEL_COMBINE_ETHEREAL_RANDOM_PART),
             panel(5, PANEL_COMBINE_ETHEREAL_RANDOM_PART, POPUP_ETHEREAL_MASS_COMBINE),
             direct_completion,
-            mode(7, MODE_COMBINE_TRANSMUTE),
-            mode(8, MODE_COMBINE_FUSE),
-            snapshot(9, base=SCREEN_WORLD_BOSS),
+            transmute_cleared,
+            mode(9, MODE_COMBINE_FUSE),
+            snapshot(10, base=SCREEN_WORLD_BOSS),
         ],
+        wait_until_results=[mode(8, MODE_COMBINE_TRANSMUTE)],
     )
 
     result = operation.run(plan())
@@ -260,6 +275,7 @@ def test_ethereal_direct_popup_close_is_not_effect_when_guard_remains():
             panel(6, PANEL_COMBINE_ETHEREAL_RANDOM_PART),
             mode(7, MODE_COMBINE_TRANSMUTE, STATUS_COMBINE_ETHEREAL_AVAILABLE),
         ],
+        wait_until_exception=RuntimeWaitTimeout(after_sequence=7, timeout=15.0, last_snapshot=mode(7, MODE_COMBINE_TRANSMUTE, STATUS_COMBINE_ETHEREAL_AVAILABLE)),
     )
 
     result = operation.run(plan())

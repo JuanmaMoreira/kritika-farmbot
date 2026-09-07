@@ -39,6 +39,7 @@ from bot.semantic_actions import (
     ConfirmEtherealMassCombine,
     ConfirmPetCombineAll,
     ConfirmPetMassEvolve,
+    DismissPortalNotification,
     DismissWorldBossBagFull,
     DeleteReadCharacterMail,
     ExitSocket,
@@ -73,6 +74,7 @@ from bot.semantic_actions import (
     RejectPetEpicRunesFull,
     RejectPetInventoryFull,
     RejectSocketInventoryFull,
+    RejectMeteorInventoryFull,
     SelectSocketEnhanceGold,
     SelectSocketOpalSlot,
     SelectCombineFuse,
@@ -87,6 +89,7 @@ from bot.semantic_actions import (
     SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
+    SelectCharacterCard,
     SelectAvailableWorldBoss,
     SelectBlackMarketSlot,
     SemanticAction,
@@ -452,6 +455,28 @@ DEFAULT_EQUIPMENT_ACTION_TARGETS = EquipmentActionTargets()
 
 
 @dataclass(frozen=True)
+class PortalActionTargets:
+    """Normalized target for the transversal portal notification dismiss.
+
+    Live-measured red-core centroid of the dismiss X (2712x1224): (931, 171)
+    -> (0.3434, 0.1397), pixel-stable across 10 positive frames (Heaven on
+    Battle Mode Select + Guild, Hell on Battle Mode Select, Pets). The core
+    bbox is x 904-960 / y 144-198; the previous visual estimate (0.322,
+    0.129) sat on the button's gold rim and live taps fell through to Quick
+    Menu. The value stays injectable so tests can override it without
+    touching transversal recovery logic.
+    """
+
+    dismiss_portal_notification: RelativePoint = (0.3434, 0.1397)
+
+    def __post_init__(self) -> None:
+        relative_point_to_pixel(self.dismiss_portal_notification, 1, 1)
+
+
+DEFAULT_PORTAL_ACTION_TARGETS = PortalActionTargets()
+
+
+@dataclass(frozen=True)
 class ActionExecution:
     """Diagnostic receipt for one physical action already sent to ADB."""
 
@@ -491,6 +516,7 @@ class ActionExecutor:
         battle_targets: BattleActionTargets = DEFAULT_BATTLE_ACTION_TARGETS,
         socket_targets: SocketActionTargets = DEFAULT_SOCKET_ACTION_TARGETS,
         equipment_targets: EquipmentActionTargets = DEFAULT_EQUIPMENT_ACTION_TARGETS,
+        portal_targets: PortalActionTargets = DEFAULT_PORTAL_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
             raise ValueError("adb must provide tap(x, y)")
@@ -514,6 +540,8 @@ class ActionExecutor:
             raise ValueError("socket_targets must be SocketActionTargets")
         if not isinstance(equipment_targets, EquipmentActionTargets):
             raise ValueError("equipment_targets must be EquipmentActionTargets")
+        if not isinstance(portal_targets, PortalActionTargets):
+            raise ValueError("portal_targets must be PortalActionTargets")
         self.adb = adb
         self.targets = targets
         self.daily_quests_targets = daily_quests_targets
@@ -525,6 +553,7 @@ class ActionExecutor:
         self.battle_targets = battle_targets
         self.socket_targets = socket_targets
         self.equipment_targets = equipment_targets
+        self.portal_targets = portal_targets
 
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
@@ -647,6 +676,8 @@ class ActionExecutor:
             return self.guild_targets.attendance
         if isinstance(action, SelectLastVisibleCharacter):
             return self.rotation_targets.last_visible_character
+        if isinstance(action, SelectCharacterCard):
+            return action.center
         if isinstance(action, ConfirmCharacterSelection):
             return self.rotation_targets.confirm_character_selection
         if isinstance(action, ToggleAutoBattle):
@@ -666,6 +697,10 @@ class ActionExecutor:
         if isinstance(action, AcceptSocketInventoryFull):
             return self.socket_targets.accept_inventory_full
         if isinstance(action, RejectSocketInventoryFull):
+            return self.socket_targets.reject_inventory_full
+        if isinstance(action, RejectMeteorInventoryFull):
+            # Identical Yes/No geometry on the same World Boss Start caller;
+            # reuse the verified No primitive without a second calibration.
             return self.socket_targets.reject_inventory_full
         if isinstance(action, ExitSocket):
             return self.socket_targets.exit_socket
@@ -715,6 +750,8 @@ class ActionExecutor:
             return self.equipment_targets.exit_combine
         if isinstance(action, DismissWorldBossBagFull):
             return self.battle_targets.dismiss_world_boss_bag_full
+        if isinstance(action, DismissPortalNotification):
+            return self.portal_targets.dismiss_portal_notification
         raise ValueError("unsupported semantic action")
 
     def _execute_swipe(
@@ -754,6 +791,7 @@ __all__ = (
     "DEFAULT_GUILD_ACTION_TARGETS",
     "DEFAULT_MAILBOX_ACTION_TARGETS",
     "DEFAULT_PET_ACTION_TARGETS",
+    "DEFAULT_PORTAL_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
     "FrameGeometry",
@@ -764,6 +802,7 @@ __all__ = (
     "RotationActionTargets",
     "MailboxActionTargets",
     "PetActionTargets",
+    "PortalActionTargets",
     "SocketActionTargets",
     "SwipeExecution",
 )

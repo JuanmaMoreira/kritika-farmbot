@@ -1,10 +1,11 @@
-"""Productive Lobby-to-Lobby Pet Summon Daily flow."""
+"""Productive Manage-to-Summon Pet Summon Daily flow."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from numbers import Real
 import math
+import time
 from typing import Callable, Protocol
 
 from bot.catalog import (
@@ -154,7 +155,7 @@ class SummonPetDailyFlow:
             outcome_stable_for, "outcome_stable_for"
         )
 
-    def run(self) -> SummonPetDailyFlowResult:
+    def run(self) -> "SummonPetDailyFlowResult":
         events: list[FlowEvent] = []
         relief_attempted = False
         retry_attempted = False
@@ -164,150 +165,150 @@ class SummonPetDailyFlow:
                 raise RuntimeWaitCancelled("summon pet daily flow cancelled")
             pets = self._initial_manage()
             if STATUS_PET_SUMMON_DAILY_ACTIVE not in pets.state.overlays:
-                self._append_event(events, SUMMON_PET_DAILY_NOOP)
+                self._append_event(events, "summon_pet_daily.noop")
                 return SummonPetDailyFlowResult(
-                    FlowStatus.COMPLETED,
-                    tuple(events),
+                    status=FlowStatus.COMPLETED,
+                    events=tuple(events),
                     no_op=True,
                     daily_completed=True,
                 )
 
-            summon = pets
-            if not _is_summon_ready(summon):
-                summon = self._act_and_wait(
-                    SelectPetSummon(),
-                    pets,
-                    expected=_is_summon_daily_active,
-                    retryable_from=_is_clean_manage,
-                    timeout=self.navigation_timeout,
-                    stable_for=self.navigation_stable_for,
-                )
+            # Navigate to Summon tab
+            summon = self._act_and_wait(
+                SelectPetSummon(),
+                self._is_summon_ready,
+                pets,
+                retryable_from=self._is_clean_manage,
+                timeout=self.navigation_timeout,
+                stable_for=self.navigation_stable_for,
+            )
 
             while True:
                 outcome = self._summon_once(summon)
-                if _is_summon_result(outcome):
-                    summons_completed += 1
-                    summon = self._act_and_wait(
+                if self._is_summon_result(outcome):
+                    self._act_and_wait(
                         ClosePetSummonResult(),
+                        self._is_summon_ready,
                         outcome,
-                        expected=_is_summon_daily_completed,
-                        retryable_from=_is_summon_result,
+                        retryable_from=self._is_summon_result,
                         timeout=self.navigation_timeout,
                         stable_for=self.outcome_stable_for,
                     )
-                    self._append_event(events, SUMMON_PET_DAILY_COMPLETED)
+                    self._append_event(events, "summon_pet_daily.completed")
                     return SummonPetDailyFlowResult(
-                        FlowStatus.COMPLETED,
-                        tuple(events),
+                        status=FlowStatus.COMPLETED,
+                        events=tuple(events),
                         daily_completed=True,
                         relief_attempted=relief_attempted,
                         retry_attempted=retry_attempted,
-                        summons_completed=summons_completed,
+                        summons_completed=1,
                     )
 
-                if _is_insufficient_gold(outcome):
-                    summon = self._act_and_wait(
+                if self._is_insufficient_gold(outcome):
+                    self._act_and_wait(
                         RejectInsufficientGold(),
+                        self._is_summon_ready,
                         outcome,
-                        expected=_is_summon_daily_active,
-                        retryable_from=_is_insufficient_gold,
+                        retryable_from=self._is_insufficient_gold,
                         timeout=self.navigation_timeout,
                         stable_for=self.navigation_stable_for,
                     )
-                    self._append_event(
-                        events, SUMMON_PET_DAILY_INSUFFICIENT_GOLD
-                    )
+                    self._append_event(events, "summon_pet_daily.insufficient_gold")
                     return SummonPetDailyFlowResult(
-                        FlowStatus.COMPLETED,
-                        tuple(events),
+                        status=FlowStatus.COMPLETED,
+                        events=tuple(events),
                         daily_pending=True,
                         relief_attempted=relief_attempted,
                         retry_attempted=retry_attempted,
-                        summons_completed=summons_completed,
+                        summons_completed=0,
                     )
 
-                assert _is_pet_full(outcome)
+                assert self._is_pet_full(outcome)
                 if relief_attempted:
-                    summon = self._act_and_wait(
+                    self._act_and_wait(
                         RejectPetInventoryFull(),
+                        self._is_summon_ready,
                         outcome,
-                        expected=_is_summon_daily_active,
-                        retryable_from=_is_pet_full,
+                        retryable_from=self._is_pet_full,
                         timeout=self.navigation_timeout,
                         stable_for=self.navigation_stable_for,
                     )
                     self._append_event(
-                        events, SUMMON_PET_DAILY_MANUAL_RESOLUTION
+                        events, "summon_pet_daily.manual_resolution"
                     )
                     return SummonPetDailyFlowResult(
-                        FlowStatus.COMPLETED,
-                        tuple(events),
+                        status=FlowStatus.COMPLETED,
+                        events=tuple(events),
                         daily_pending=True,
                         relief_attempted=True,
                         retry_attempted=True,
-                        summons_completed=summons_completed,
+                        summons_completed=0,
                     )
 
+                # First Pet Full -> relief
                 combine = self._act_and_wait(
                     AcceptPetInventoryFull(),
+                    self._is_clean_combine,
                     outcome,
-                    expected=_is_clean_combine,
-                    retryable_from=_is_pet_full,
+                    retryable_from=self._is_pet_full,
                     timeout=self.navigation_timeout,
                     stable_for=self.navigation_stable_for,
                 )
                 relief_attempted = True
                 relief = self.pet_summon_space_relief.run(self.cancel_requested)
-                if relief.outcome is PetSummonSpaceReliefOutcome.CANCELLED:
+                if relief.outcome == PetSummonSpaceReliefOutcome.CANCELLED:
                     raise RuntimeWaitCancelled("pet summon space relief cancelled")
-                if relief.outcome is PetSummonSpaceReliefOutcome.FAILED:
+                if relief.outcome == PetSummonSpaceReliefOutcome.FAILED:
                     return self._failed(
                         events,
                         relief.error or "pet_summon_space_relief_failed",
                         relief_attempted=True,
                         retry_attempted=False,
-                        summons_completed=summons_completed,
+                        summons_completed=0,
                     )
-                if relief.outcome is PetSummonSpaceReliefOutcome.NO_RELIEF_AVAILABLE:
+                if relief.outcome == PetSummonSpaceReliefOutcome.NO_RELIEF_AVAILABLE:
                     self._append_event(
-                        events, SUMMON_PET_DAILY_SPACE_RELIEF_UNAVAILABLE
+                        events, "summon_pet_daily.space_relief_unavailable"
                     )
                     self._append_event(
-                        events, SUMMON_PET_DAILY_MANUAL_RESOLUTION
+                        events, "summon_pet_daily.manual_resolution"
                     )
                     summon = self._act_and_wait(
                         SelectPetSummon(),
+                        self._is_summon_ready,
                         relief.final_snapshot,
-                        expected=_is_summon_daily_active,
-                        retryable_from=_is_clean_combine,
+                        retryable_from=self._is_clean_combine,
                         timeout=self.navigation_timeout,
                         stable_for=self.navigation_stable_for,
                     )
                     return SummonPetDailyFlowResult(
-                        FlowStatus.COMPLETED,
-                        tuple(events),
+                        status=FlowStatus.COMPLETED,
+                        events=tuple(events),
                         daily_pending=True,
                         relief_attempted=True,
-                        summons_completed=summons_completed,
+                        summons_completed=0,
                     )
 
-                if not _is_clean_combine(relief.final_snapshot):
+                if not self._is_clean_combine(relief.final_snapshot):
                     return self._failed(
                         events,
                         "pet_summon_space_relief_returned_incompatible_state",
                         relief_attempted=True,
-                        retry_attempted=False,
-                        summons_completed=summons_completed,
+                        retry_attempted=retry_attempted,
+                        summons_completed=0,
                     )
+
+                # Post-relief re-entry: retry once with same logic
                 summon = self._act_and_wait(
                     SelectPetSummon(),
+                    self._is_summon_ready,
                     relief.final_snapshot,
-                    expected=_is_summon_daily_active,
-                    retryable_from=_is_clean_combine,
+                    retryable_from=self._is_clean_combine,
                     timeout=self.navigation_timeout,
                     stable_for=self.navigation_stable_for,
                 )
                 retry_attempted = True
+
         except RuntimeWaitCancelled:
             return self._cancel(
                 events,
@@ -335,45 +336,60 @@ class SummonPetDailyFlow:
             )
 
     def _summon_once(self, summon: RuntimeSnapshot) -> RuntimeSnapshot:
-        if not _is_summon_daily_active(summon):
+        """Execute one summon attempt: Epic if available, else Premium. Tap 1(Open) directly."""
+        if self._cancelled():
+            raise RuntimeWaitCancelled("summon pet daily flow cancelled")
+        if not self._is_summon_ready(summon):
             raise RuntimeError("summon_pet_daily_guard_missing")
+
         epic_available = STATUS_PET_EPIC_AVAILABLE in summon.state.overlays
-        action = OpenEpicPetSummon() if epic_available else OpenPremiumPetSummon()
-        selector_predicate = _is_epic_selector if epic_available else _is_premium_selector
-        selector = self._act_and_wait(
-            action,
-            summon,
-            expected=selector_predicate,
-            retryable_from=_is_summon_daily_active,
-            timeout=self.navigation_timeout,
-            stable_for=self.navigation_stable_for,
-        )
-        open_one = OpenSingleEpicPet() if epic_available else OpenSinglePremiumPet()
-        return self._act_and_wait(
-            open_one,
-            selector,
-            expected=lambda snapshot: (
-                _is_summon_result(snapshot)
-                or _is_insufficient_gold(snapshot)
-                or _is_pet_full(snapshot)
-            ),
-            retryable_from=selector_predicate,
+
+        # Tap Epic or Premium card, then wait 0.25s, then tap 1(Open) directly - NO selector wait
+        if epic_available:
+            # Tap Epic card
+            self.actions.execute(OpenEpicPetSummon(), summon.geometry)
+            # Minimum delay before tapping 1(Open)
+            time.sleep(0.25)
+            # Tap 1(Open) directly
+            self.actions.execute(OpenSingleEpicPet(), summon.geometry)
+        else:
+            # Premium: could be ticket or gold selector, accept either
+            self.actions.execute(OpenPremiumPetSummon(), summon.geometry)
+            # Minimum delay before tapping 1(Open)
+            time.sleep(0.25)
+            # Tap 1(Open) directly
+            self.actions.execute(OpenSinglePremiumPet(), summon.geometry)
+
+        # Wait for result (summon result, insufficient gold, or pet full)
+        return self.observer.wait_until(
+            lambda snapshot: self._is_summon_result(snapshot)
+                or self._is_insufficient_gold(snapshot)
+                or self._is_pet_full(snapshot),
+            after_sequence=summon.sequence,
             timeout=self.outcome_timeout,
+            abort_if=lambda snapshot: self._known_incompatible(
+                snapshot,
+                lambda s: self._is_summon_result(s)
+                    or self._is_insufficient_gold(s)
+                    or self._is_pet_full(s),
+                lambda s: self._is_summon_ready(s) or self._is_selector(s, epic_available),
+            ),
+            cancel_requested=self.cancel_requested,
             stable_for=self.outcome_stable_for,
         )
 
     def _initial_manage(self) -> RuntimeSnapshot:
         initial = self.observer.observe()
-        if _is_clean_manage(initial):
+        if self._is_clean_manage(initial):
             return initial
-        if not _is_passive_unknown(initial):
+        if not self._is_passive_unknown(initial):
             raise RuntimeError("precondition_pet_manage_failed")
         return self.observer.wait_until(
-            _is_clean_manage,
+            self._is_clean_manage,
             after_sequence=initial.sequence,
             timeout=self.navigation_timeout,
-            abort_if=lambda snapshot: _known_incompatible(
-                snapshot, _is_clean_manage, _is_passive_unknown
+            abort_if=lambda snapshot: self._known_incompatible(
+                snapshot, self._is_clean_manage, self._is_passive_unknown
             ),
             cancel_requested=self.cancel_requested,
             stable_for=self.navigation_stable_for,
@@ -382,41 +398,42 @@ class SummonPetDailyFlow:
     def _act_and_wait(
         self,
         action,
-        before,
-        *,
-        expected,
-        retryable_from,
-        timeout,
-        stable_for,
-    ):
+        expected: Callable[[RuntimeSnapshot], bool],
+        before: RuntimeSnapshot,
+        retryable_from: Callable[[RuntimeSnapshot], bool],
+        timeout: float,
+        stable_for: float,
+    ) -> RuntimeSnapshot:
         if self._cancelled():
             raise RuntimeWaitCancelled("summon pet daily flow cancelled")
+
+        if not retryable_from(before):
+            raise RuntimeError("summon_pet_navigation_guard_missing")
         self.actions.execute(action, before.geometry)
         return self.observer.wait_until(
             expected,
             after_sequence=before.sequence,
             timeout=timeout,
-            abort_if=lambda snapshot: _known_incompatible(
+            abort_if=lambda snapshot: self._known_incompatible(
                 snapshot, expected, retryable_from
-            ),
+            ) and not self._is_summon_shell(snapshot),
             cancel_requested=self.cancel_requested,
             stable_for=stable_for,
         )
 
     def _append_event(self, events: list[FlowEvent], kind: str) -> None:
         events.append(FlowEvent(kind))
-        self._record(kind)
 
     def _cancel(self, events, **kwargs):
         self._record("summon_pet_daily.cancelled")
         return SummonPetDailyFlowResult(
-            FlowStatus.CANCELLED, tuple(events), **kwargs
+            status=FlowStatus.CANCELLED, events=tuple(events), **kwargs
         )
 
     def _failed(self, events, error: str, **kwargs):
         self._record("summon_pet_daily.failed", error=error)
         return SummonPetDailyFlowResult(
-            FlowStatus.FAILED, tuple(events), error, **kwargs
+            status=FlowStatus.FAILED, events=tuple(events), error=error, **kwargs
         )
 
     def _record(self, event: str, **fields: object) -> None:
@@ -431,113 +448,105 @@ class SummonPetDailyFlow:
         except Exception:
             return False
 
+    # State predicates
+    def _is_summon_shell(self, snapshot):
+        """Allow partial navigation evidence to settle, without allowing input."""
+        return (
+            snapshot.state.status is ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PET_SUMMON
+            and set(snapshot.state.overlays) <= _SUMMON_STATUSES
+        )
 
-def _is_clean_manage(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PETS_MANAGE
-        and set(snapshot.state.overlays) <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
-    )
+    def _is_clean_manage(self, snapshot):
+        return (
+            snapshot.state.status == ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PETS_MANAGE
+            and set(snapshot.state.overlays) <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
+        )
 
+    def _is_passive_unknown(self, snapshot):
+        return snapshot.state.status == ResolutionStatus.UNKNOWN and not snapshot.state.overlays
 
-def _is_passive_unknown(snapshot: RuntimeSnapshot) -> bool:
-    return snapshot.state.status is ResolutionStatus.UNKNOWN and not snapshot.state.overlays
+    def _is_clean_combine(self, snapshot):
+        return (
+            snapshot.state.status == ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PET_COMBINE
+            and not snapshot.state.overlays
+        )
 
-
-def _is_clean_combine(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PET_COMBINE
-        and not snapshot.state.overlays
-    )
-
-
-def _is_summon_ready(snapshot: RuntimeSnapshot) -> bool:
-    overlays = set(snapshot.state.overlays)
-    epic = overlays & {STATUS_PET_EPIC_AVAILABLE, STATUS_PET_EPIC_UNAVAILABLE}
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PET_SUMMON
-        and len(epic) == 1
-        and overlays <= _SUMMON_STATUSES
-    )
-
-
-def _is_summon_daily_active(snapshot: RuntimeSnapshot) -> bool:
-    return _is_summon_ready(snapshot) and STATUS_PET_SUMMON_DAILY_ACTIVE in snapshot.state.overlays
-
-
-def _is_summon_daily_completed(snapshot: RuntimeSnapshot) -> bool:
-    return _is_summon_ready(snapshot) and STATUS_PET_SUMMON_DAILY_ACTIVE not in snapshot.state.overlays
-
-
-def _is_epic_selector(snapshot: RuntimeSnapshot) -> bool:
-    overlays = set(snapshot.state.overlays)
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PET_SUMMON
-        and OVERLAY_PET_EPIC_SELECTOR in overlays
-        and overlays <= (_SUMMON_STATUSES | {OVERLAY_PET_EPIC_SELECTOR})
-    )
-
-
-def _is_premium_selector(snapshot: RuntimeSnapshot) -> bool:
-    overlays = set(snapshot.state.overlays)
-    selectors = overlays & {
-        OVERLAY_PET_PREMIUM_TICKET_SELECTOR,
-        OVERLAY_PET_PREMIUM_GOLD_SELECTOR,
-    }
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PET_SUMMON
-        and len(selectors) == 1
-        and overlays
-        <= (
-            _SUMMON_STATUSES
-            | {
-                OVERLAY_PET_PREMIUM_TICKET_SELECTOR,
-                OVERLAY_PET_PREMIUM_GOLD_SELECTOR,
+    def _is_summon_ready(self, snapshot):
+        """Clean Pet Summon with Epic status resolved (AVAILABLE or UNAVAILABLE)."""
+        overlays = set(snapshot.state.overlays)
+        epic = overlays & {STATUS_PET_EPIC_AVAILABLE, STATUS_PET_EPIC_UNAVAILABLE}
+        return (
+            snapshot.state.status == ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PET_SUMMON
+            and len(epic) == 1
+            and overlays <= {
+                STATUS_PET_EPIC_AVAILABLE,
+                STATUS_PET_EPIC_UNAVAILABLE,
+                STATUS_PET_PREMIUM_GOLD,
+                STATUS_PET_PREMIUM_TICKET_AVAILABLE,
+                STATUS_PET_SUMMON_DAILY_ACTIVE,
             }
         )
-    )
 
+    def _is_summon_result(self, snapshot):
+        return (
+            snapshot.state.status == ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PET_SUMMON_RESULT
+            and not snapshot.state.overlays
+        )
 
-def _is_summon_result(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PET_SUMMON_RESULT
-        and not snapshot.state.overlays
-    )
+    def _is_selector(self, snapshot, epic):
+        selectors = (
+            {OVERLAY_PET_EPIC_SELECTOR} if epic else
+            {OVERLAY_PET_PREMIUM_GOLD_SELECTOR, OVERLAY_PET_PREMIUM_TICKET_SELECTOR}
+        )
+        overlays = set(snapshot.state.overlays)
+        return (
+            snapshot.state.status is ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PET_SUMMON
+            and len(overlays & selectors) == 1
+            and overlays <= _SUMMON_STATUSES | selectors
+        )
 
+    def _is_insufficient_gold(self, snapshot):
+        overlays = set(snapshot.state.overlays)
+        return (
+            snapshot.state.status == ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PET_SUMMON
+            and POPUP_INSUFFICIENT_GOLD in overlays
+            and overlays <= {
+                STATUS_PET_EPIC_AVAILABLE,
+                STATUS_PET_EPIC_UNAVAILABLE,
+                STATUS_PET_PREMIUM_GOLD,
+                STATUS_PET_PREMIUM_TICKET_AVAILABLE,
+                STATUS_PET_SUMMON_DAILY_ACTIVE,
+                POPUP_INSUFFICIENT_GOLD,
+            }
+        )
 
-def _is_insufficient_gold(snapshot: RuntimeSnapshot) -> bool:
-    overlays = set(snapshot.state.overlays)
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PET_SUMMON
-        and POPUP_INSUFFICIENT_GOLD in overlays
-        and overlays <= (_SUMMON_STATUSES | {POPUP_INSUFFICIENT_GOLD})
-    )
+    def _is_pet_full(self, snapshot):
+        overlays = set(snapshot.state.overlays)
+        return (
+            snapshot.state.status == ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_PET_SUMMON
+            and POPUP_PET_INVENTORY_FULL in overlays
+            and overlays <= {
+                STATUS_PET_EPIC_AVAILABLE,
+                STATUS_PET_EPIC_UNAVAILABLE,
+                STATUS_PET_PREMIUM_GOLD,
+                STATUS_PET_PREMIUM_TICKET_AVAILABLE,
+                STATUS_PET_SUMMON_DAILY_ACTIVE,
+                POPUP_PET_INVENTORY_FULL,
+            }
+        )
 
-
-def _is_pet_full(snapshot: RuntimeSnapshot) -> bool:
-    overlays = set(snapshot.state.overlays)
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_PET_SUMMON
-        and POPUP_PET_INVENTORY_FULL in overlays
-        and overlays <= (_SUMMON_STATUSES | {POPUP_PET_INVENTORY_FULL})
-    )
-
-
-def _known_incompatible(snapshot, expected, retryable_from) -> bool:
-    if expected(snapshot) or retryable_from(snapshot):
-        return False
-    return snapshot.state.status in {
-        ResolutionStatus.RESOLVED,
-        ResolutionStatus.AMBIGUOUS,
-    }
-
+    def _known_incompatible(self, snapshot, expected_fn, retryable_fn):
+        if expected_fn(snapshot) or retryable_fn(snapshot):
+            return False
+        return snapshot.state.status in {ResolutionStatus.RESOLVED, ResolutionStatus.AMBIGUOUS}
 
 def _positive_duration(value: object, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, Real):
@@ -558,11 +567,6 @@ def _non_negative_duration(value: object, name: str) -> float:
 
 
 __all__ = (
-    "SUMMON_PET_DAILY_COMPLETED",
-    "SUMMON_PET_DAILY_INSUFFICIENT_GOLD",
-    "SUMMON_PET_DAILY_MANUAL_RESOLUTION",
-    "SUMMON_PET_DAILY_NOOP",
-    "SUMMON_PET_DAILY_SPACE_RELIEF_UNAVAILABLE",
     "SummonPetDailyFlow",
     "SummonPetDailyFlowResult",
 )

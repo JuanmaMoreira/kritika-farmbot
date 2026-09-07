@@ -20,6 +20,7 @@ from bot.runtime_observer import (
     RuntimeFacts,
     RuntimeSnapshot,
     RuntimeWaitAborted,
+    RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
 from bot.semantic_actions import (
@@ -68,6 +69,16 @@ class Actions:
 
     def execute(self, action, geometry):
         self.actions.append(action)
+
+
+def test_transition_cancellation_does_not_become_a_technical_failure():
+    observer = ScriptedObserver(
+        [_snapshot(1, base=SCREEN_LOBBY)], [RuntimeWaitCancelled("cancelled")]
+    )
+    actions = Actions()
+    result = BlackMarketFlow(observer, actions, Events()).run()
+    assert result.status is FlowStatus.CANCELLED
+    assert actions.actions == [OpenBlackMarket()]
 
 
 class Events:

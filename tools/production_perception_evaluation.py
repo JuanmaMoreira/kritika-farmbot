@@ -73,6 +73,7 @@ from bot.catalog import (
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
     LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
     LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
+    LANDMARK_METEOR_INVENTORY_FULL_PROMPT,
     LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
     LANDMARK_SOCKET_SELL_BULK_BUTTON,
     LANDMARK_SOCKET_TAB,
@@ -94,6 +95,7 @@ from bot.catalog import (
     POPUP_PURCHASE_CONFIRMATION,
     POPUP_SOCKET_ENHANCE_ALL,
     POPUP_SOCKET_INVENTORY_FULL,
+    POPUP_METEOR_INVENTORY_FULL,
     POPUP_SOCKET_NO_MATERIAL,
     POPUP_SOCKET_SELL,
     POPUP_WORLD_BOSS_PREVIOUS_REWARDS,
@@ -140,6 +142,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/black_market_interruptions_manifest.json",
     "datasets/world_boss_semantic_manifest.json",
     "datasets/socket_inventory_full_evidence_manifest.json",
+    "datasets/meteor_inventory_full_evidence_manifest.json",
     "datasets/world_boss_bag_full_evidence_manifest.json",
     "datasets/equipment_inventory_full_semantic_manifest.json",
     "datasets/socket_inventory_relief_semantic_manifest.json",
@@ -839,6 +842,8 @@ def _is_positive(name: str, entry: ManifestEntry) -> bool:
         return entry.base_context == SCREEN_SOCKET
     if name == LANDMARK_SOCKET_INVENTORY_FULL_PROMPT:
         return POPUP_SOCKET_INVENTORY_FULL in entry.overlays
+    if name == LANDMARK_METEOR_INVENTORY_FULL_PROMPT:
+        return POPUP_METEOR_INVENTORY_FULL in entry.overlays
     if name == LANDMARK_SOCKET_ENHANCE_ALL_TITLE:
         return POPUP_SOCKET_ENHANCE_ALL in entry.overlays
     if name == LANDMARK_SOCKET_NO_MATERIAL_PROMPT:

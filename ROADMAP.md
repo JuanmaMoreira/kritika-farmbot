@@ -28,6 +28,18 @@ Summon Pet Daily quedó cerrado como flow productivo `PER_CHARACTER` Manage → 
 
 ## Próximo trabajo
 
+El review arquitectónico/correctness del lote OpenCode/Muse cierra la estabilización antes de abrir nuevas capacidades. El checkpoint local requiere autorización de commit; ver `docs/OPENCODE_MUSE_REVIEW.md`.
+
+Orden acordado después del checkpoint:
+
+1. Structured Observability v1 sobre el event stream existente.
+2. Failure Evidence v1, local y bounded.
+3. SessionReport derivado de resultados/eventos.
+4. GUI funcional mínima.
+5. Character Identity mínima y no fatal, usando la adquisición preservada.
+6. Eligibility mínima con consumer real.
+7. Reevaluar milestone; Arena permanece fuera de alcance.
+
 ### Known future
 
 - Adquirir semántica del error de conexión post-batalla de World Boss y diseñar su recovery bounded antes de automatizarlo.

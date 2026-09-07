@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-09-06",
+    "source": "live_scrcpy",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat",
+    "semantic_scope": "transversal Heaven/Hell portal notification; appears at a fixed position below Quick Menu on Battle Mode Select, Guild (and reportedly World Boss, Pets); absent on Lobby and Character Select; tap on the body navigates to Lobby without closing it; tap on the top-right X dismisses it for that portal",
+    "semantic_state": {
+      "base_context": "screen.battle_mode_select | screen.guild",
+      "overlays": []
+    },
+    "behavior": "X dismisses the notification for that portal without closing the portal; disappearance is verified on a fresh frame before re-evaluating the original condition",
+    "live_smoke": "single tap at (0.3434, 0.1397) dismissed a Hell notification in Pets with zero other input; the +2s post-tap frame still scored CONFIRMED (fade/delay), absent ~1min later",
+    "deferred": "relevant-negative loop beyond the 603-frame curated corpus",
+    "distinguisher": "Heaven vs Hell change text/color and carry transparency plus a lateral dynamic animation; the detector anchors on the dismiss X glyph plus adjacent panel chrome, excluding the animation strip and the variable text",
+    "landmark": {
+      "name": "portal.dismiss_x",
+      "asset": "assets/ui/portal/portal-dismiss-x-wide-current.png",
+      "variant_assets": ["assets/ui/portal/portal-dismiss-x-wide-hell.png", "assets/ui/portal/portal-dismiss-x-wide-guild.png"],
+      "region": [0.27, 0.085, 0.36, 0.175],
+      "dismiss_target": [0.3434, 0.1397],
+      "positive_raw_range": [0.915427, 0.999967],
+      "hell_positive_raw_range": [0.975877, 0.999961],
+      "heaven_on_hell_template_range": [0.641826, 0.692094],
+      "hell_on_heaven_template_range": [0.687318, 0.692332],
+      "strongest_reviewed_negative": 0.563787,
+      "strongest_negative_source": "artifacts/portal_notification_acquisition/negative_battle_select_1_seq1.png (clean Battle Mode Select, same ROI)",
+      "corpus_negative_max": 0.437399,
+      "corpus_negative_source": "screencaps/semantic/socket_inventory_relief/socket/back-to-world-boss.png",
+      "hell_template_corpus_negative_max": 0.489072,
+      "guild_variant_raw_range": [0.987043, 0.999974],
+      "guild_template_corpus_negative_max": 0.418481,
+      "live_smoke_guild_variant": "confirmed -> 1 tap at (0.3434, 0.1397) -> absent within settle, zero extra taps, clean screen.guild",
+      "rejected_signal": "red HSV fraction in the X neighborhood does not separate (positives 0.10-0.14 vs negatives 0.17-0.18); single narrow X-glyph template reaches a 0.759 near-miss on a battle pause gold divider"
+    },
+    "operating_point": {
+      "confirm_threshold": 0.8,
+      "absent_threshold": 0.65,
+      "policy": "scores inside the gap resolve to INCONCLUSIVE and never authorize a tap"
+    }
+  },
+  "entries": [
+    {"path": "artifacts/portal_notification_acquisition/positive_battle_select_1_seq1.png", "base_context": "screen.battle_mode_select", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_battle_select_2_seq29.png", "base_context": "screen.battle_mode_select", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_battle_select_3_seq54.png", "base_context": "screen.battle_mode_select", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_guild_1_seq1.png", "base_context": "screen.guild", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_guild_2_seq28.png", "base_context": "screen.guild", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_guild_3_seq52.png", "base_context": "screen.guild", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_hell_battle_select_1_seq1.png", "base_context": "screen.battle_mode_select", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_hell_battle_select_2_seq28.png", "base_context": "screen.battle_mode_select", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/positive_hell_battle_select_3_seq58.png", "base_context": "screen.battle_mode_select", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/guild_variant_seq1.png", "base_context": "screen.guild", "overlays": [], "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/guild_variant_seq30.png", "base_context": "screen.guild", "overlays": [], "review_status": "confirmed"}
+  ],
+  "postcondition_entries": [
+    {"path": "artifacts/portal_notification_acquisition/negative_guild_1_seq1.png", "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/negative_guild_2_seq29.png", "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/negative_guild_3_seq53.png", "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/negative_battle_select_1_seq1.png", "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/negative_battle_select_2_seq28.png", "review_status": "confirmed"},
+    {"path": "artifacts/portal_notification_acquisition/negative_battle_select_3_seq52.png", "review_status": "confirmed"}
+  ]
+}

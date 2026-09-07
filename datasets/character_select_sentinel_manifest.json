@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "purpose": "Create Character (+) sentinel calibration corpus for StandardRotation",
+  "template_asset": "assets/ui/character-select-create-plus-template.png",
+  "template_source": {
+    "frame": "screencaps/semantic/character_select/sentinel/plus-col2-bottom.png",
+    "box_relative": [
+      0.6515,
+      0.728,
+      0.6665,
+      0.757
+    ]
+  },
+  "positives": [
+    {
+      "path": "screencaps/semantic/character_select/sentinel/plus-col2-bottom.png",
+      "plus_column": 2,
+      "note": "HIL ground truth Fase 1 cond01, no selection"
+    },
+    {
+      "path": "screencaps/semantic/character_select/sentinel/plus-col2-shifted.png",
+      "plus_column": 2,
+      "note": "HIL ground truth Fase 1 cond02, shifted Y"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025358_418296Z.png",
+      "plus_column": 2,
+      "note": "pre-existing corpus, plus discovered by probe"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025400_922432Z.png",
+      "plus_column": 2,
+      "note": "pre-existing corpus, predecessor selected (yellow border)"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164355_981563.png",
+      "plus_column": 1,
+      "note": "pre-existing corpus, April season, other account"
+    }
+  ],
+  "negatives": [
+    {
+      "path": "screencaps/semantic/character_select/sentinel/midgrid-no-plus.png",
+      "note": "HIL Fase 1 cond03, current lighting"
+    },
+    {
+      "path": "screencaps/batch/done/20260402_164344_278612.png",
+      "note": "top grid, no plus"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025343_820522Z.png"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025347_542015Z.png"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025350_756818Z.png"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025353_012101Z.png"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025354_923610Z.png"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025356_797086Z.png"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025403_830038Z.png"
+    },
+    {
+      "path": "screencaps/semantic/character_select/20260823T025408_339094Z.png"
+    }
+  ],
+  "known_gap": "no live col3 positive exists yet; col3 covered by sweep symmetry + synthetic geometry tests"
+}

@@ -28,6 +28,7 @@ POPUP_INSUFFICIENT_GOLD = "popup.insufficient_gold"
 POPUP_INVENTORY_FULL = "popup.inventory_full"
 POPUP_WORLD_BOSS_PREVIOUS_REWARDS = "popup.world_boss_previous_rewards"
 POPUP_SOCKET_INVENTORY_FULL = "popup.socket_inventory_full"
+POPUP_METEOR_INVENTORY_FULL = "popup.meteor_inventory_full"
 POPUP_SOCKET_ENHANCE_ALL = "popup.socket_enhance_all"
 POPUP_SOCKET_NO_MATERIAL = "popup.socket_no_material"
 POPUP_SOCKET_SELL = "popup.socket_sell"
@@ -107,6 +108,7 @@ LANDMARK_WORLD_BOSS_PREVIOUS_REWARDS_NOTICE = (
 )
 LANDMARK_SOCKET_TAB = "landmark.socket_tab"
 LANDMARK_SOCKET_INVENTORY_FULL_PROMPT = "landmark.socket_inventory_full_prompt"
+LANDMARK_METEOR_INVENTORY_FULL_PROMPT = "landmark.meteor_inventory_full_prompt"
 LANDMARK_SOCKET_ENHANCE_ALL_TITLE = "landmark.socket_enhance_all_title"
 LANDMARK_SOCKET_NO_MATERIAL_PROMPT = "landmark.socket_no_material_prompt"
 LANDMARK_SOCKET_SELL_BULK_BUTTON = "landmark.socket_sell_bulk_button"
@@ -283,6 +285,7 @@ SEMANTIC_OBSERVATION_NAMES = (
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
     LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
     LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
+    LANDMARK_METEOR_INVENTORY_FULL_PROMPT,
     LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
     LANDMARK_SOCKET_SELL_BULK_BUTTON,
     LANDMARK_SOCKET_TAB,
@@ -682,6 +685,11 @@ OVERLAY_RULES = (
     ContextRule(
         name=POPUP_SOCKET_INVENTORY_FULL,
         requires=(LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,),
+        min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
+    ),
+    ContextRule(
+        name=POPUP_METEOR_INVENTORY_FULL,
+        requires=(LANDMARK_METEOR_INVENTORY_FULL_PROMPT,),
         min_confidence=SEMANTIC_CONFIDENCE_THRESHOLD,
     ),
     ContextRule(

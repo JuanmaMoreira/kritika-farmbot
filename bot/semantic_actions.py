@@ -306,6 +306,16 @@ class SelectLastVisibleCharacter:
 
 
 @dataclass(frozen=True)
+class SelectCharacterCard:
+    """Select the card center derived from a located grid sentinel."""
+
+    center: RelativePoint
+
+    def __post_init__(self) -> None:
+        relative_point_to_pixel(self.center, 1, 1)
+
+
+@dataclass(frozen=True)
 class ConfirmCharacterSelection:
     """Request the Select button after choosing a character card."""
 
@@ -353,6 +363,11 @@ class AcceptSocketInventoryFull:
 @dataclass(frozen=True)
 class RejectSocketInventoryFull:
     """Request No on the global Socket inventory-full guard."""
+
+
+@dataclass(frozen=True)
+class RejectMeteorInventoryFull:
+    """Request No on the global Meteorite inventory-full guard."""
 
 
 @dataclass(frozen=True)
@@ -485,6 +500,11 @@ class ExitCombine:
 
 
 @dataclass(frozen=True)
+class DismissPortalNotification:
+    """Request the X dismiss of a transversal portal notification overlay."""
+
+
+@dataclass(frozen=True)
 class DismissWorldBossBagFull:
     """Request Close on the World Boss Start bag-full guard."""
 
@@ -538,6 +558,7 @@ SemanticAction = (
     | CheckInGuildAttendance
     | Swipe
     | SelectLastVisibleCharacter
+    | SelectCharacterCard
     | ConfirmCharacterSelection
     | ToggleAutoBattle
     | OpenBattleModeSelect
@@ -548,6 +569,7 @@ SemanticAction = (
     | ContinueAfterWorldBossRaid
     | AcceptSocketInventoryFull
     | RejectSocketInventoryFull
+    | RejectMeteorInventoryFull
     | OpenSocketEnhanceAll
     | SelectSocketEnhanceGold
     | AcknowledgeSocketNoMaterial
@@ -572,6 +594,7 @@ SemanticAction = (
     | TapCombineAnimation
     | ExitCombine
     | DismissWorldBossBagFull
+    | DismissPortalNotification
 )
 
 
@@ -605,6 +628,7 @@ __all__ = (
     "CancelPetMassEvolveSelection",
     "DismissWorldBossBagFull",
     "DeleteReadCharacterMail",
+    "DismissPortalNotification",
     "OpenBlackMarket",
     "OpenGuild",
     "OpenFriends",
@@ -628,6 +652,7 @@ __all__ = (
     "OpenWorldBossSelector",
     "RejectInsufficientGold",
     "RejectSocketInventoryFull",
+    "RejectMeteorInventoryFull",
     "RejectPetEpicRunesFull",
     "RejectPetInventoryFull",
     "SelectSocketEnhanceGold",
@@ -635,6 +660,7 @@ __all__ = (
     "SellSocketInBulk",
     "Swipe",
     "SelectLastVisibleCharacter",
+    "SelectCharacterCard",
     "SelectCharacterMail",
     "SelectDailyQuests",
     "SelectPetCombine",

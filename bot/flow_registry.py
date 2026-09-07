@@ -92,23 +92,30 @@ class FlowRegistry:
         return tuple(self.get(flow_id) for flow_id in values)
 
 
-def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
+def _verified_transition_for(dependencies: FlowDependencies):
+    """Shared verified transition, portal-aware when the runtime provides it."""
+
+    builder = getattr(dependencies, "build_verified_transition", None)
+    if callable(builder):
+        return builder()
     from bot.verified_transition import VerifiedTransition
 
+    return VerifiedTransition(
+        dependencies.observer, dependencies.actions, dependencies.events
+    )
+
+
+def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
     return BlackMarketFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
-        verified_transition=VerifiedTransition(
-            dependencies.observer, dependencies.actions, dependencies.events
-        ),
+        verified_transition=_verified_transition_for(dependencies),
         cancel_requested=dependencies.cancel_requested,
     )
 
 
 def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
-    from bot.verified_transition import VerifiedTransition
-
     return WorldBossFlow(
         dependencies.observer,
         dependencies.actions,
@@ -118,9 +125,7 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
         socket_relief=dependencies.socket_relief,
         equipment_combine_relief=dependencies.equipment_combine_relief,
         cancel_requested=dependencies.cancel_requested,
-        verified_transition=VerifiedTransition(
-            dependencies.observer, dependencies.actions, dependencies.events
-        ),
+        verified_transition=_verified_transition_for(dependencies),
     )
 
 

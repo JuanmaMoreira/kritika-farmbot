@@ -46,12 +46,22 @@ class WaitCall:
 
 
 class ScriptedObserver:
-    def __init__(self, initial, scripts):
+    def __init__(self, initial, scripts, observe_sequence=None):
         self.initial = initial
         self.scripts = list(scripts)
+        self.observe_sequence = list(observe_sequence) if observe_sequence else []
+        self.observe_index = 0
         self.calls = []
+        self._initial_returned = False
 
     def observe(self):
+        if not self._initial_returned:
+            self._initial_returned = True
+            return self.initial
+        if self.observe_index < len(self.observe_sequence):
+            result = self.observe_sequence[self.observe_index]
+            self.observe_index += 1
+            return result
         return self.initial
 
     def wait_until(
@@ -126,16 +136,44 @@ def snapshot(sequence, timestamp, *, base, overlays=(), status=None):
     )
 
 
-def run_flow(initial, scripts, **kwargs):
-    observer = ScriptedObserver(initial, scripts)
+def run_flow(initial, scripts, *, observe_sequence=None, **kwargs):
+    observer = ScriptedObserver(initial, scripts, observe_sequence=observe_sequence)
     actions = Actions()
     events = Events()
+    kwargs.pop("observe_sequence", None)
     result = DailyQuestsFlow(observer, actions, events, **kwargs).run()
     return result, actions.items, events.items, observer
 
 
 def stable_pair(first, second):
     return [first, second]
+
+
+def test_daily_retry_rejects_repeated_and_regressing_frame_sequences():
+    current = snapshot(10, 10.0, base=SCREEN_QUESTS)
+    observer = ScriptedObserver(current, [], observe_sequence=[current] * 10)
+    actions = Actions()
+    now = [0.0]
+    flow = DailyQuestsFlow(
+        observer, actions, Events(), navigation_timeout=3,
+        clock=lambda: now[0], sleeper=lambda seconds: now.__setitem__(0, now[0] + seconds),
+    )
+    with pytest.raises(RuntimeWaitTimeout):
+        flow._wait_for_daily_tab(current)
+    assert actions.items == [SelectDailyQuests()]
+
+
+def test_stale_daily_snapshot_cannot_authorize_claims_or_completion():
+    current = snapshot(10, 10.0, base=SCREEN_QUESTS)
+    stale_daily = snapshot(9, 9.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    observer = ScriptedObserver(stale_daily, [])
+    now = [0.0]
+    flow = DailyQuestsFlow(
+        observer, Actions(), Events(), navigation_timeout=2,
+        clock=lambda: now[0], sleeper=lambda seconds: now.__setitem__(0, now[0] + seconds),
+    )
+    with pytest.raises(RuntimeWaitTimeout):
+        flow._wait_for_daily_tab(current)
 
 
 def test_noop_without_claims_never_touches_claim_all_or_karats():
@@ -169,15 +207,59 @@ def test_remembered_non_daily_tab_is_switched_to_daily_and_verified():
         lobby,
         [
             stable_pair(quests_a, quests_b),
-            stable_pair(daily_a, daily_b),
             stable_pair(returned_a, returned_b),
         ],
+        observe_sequence=[daily_a],
     )
 
     assert result.status is FlowStatus.COMPLETED
     assert result.no_op
     assert actions == [OpenQuests(), SelectDailyQuests(), CloseDailyQuests()]
-    assert [call.after_sequence for call in observer.calls] == [1, 3, 5]
+    assert [call.after_sequence for call in observer.calls] == [1, 4]
+
+
+def test_daily_tab_selection_retries_once_when_still_non_daily_after_first_tap():
+    """
+    Regression: bounded retry when first tap doesn't activate Daily tab.
+
+    non-Daily -> first SelectDailyQuests -> still non-Daily after ~1s ->
+    second SelectDailyQuests -> Daily active -> proceed.
+
+    Verifies SelectDailyQuests executes twice (generic retry contract).
+    """
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    quests_a = snapshot(2, 2.0, base=SCREEN_QUESTS)
+    quests_b = snapshot(3, 2.3, base=SCREEN_QUESTS)
+    # After first tap: still non-Daily (retry condition)
+    quests_c = snapshot(4, 3.3, base=SCREEN_QUESTS)
+    quests_d = snapshot(5, 3.6, base=SCREEN_QUESTS)
+    # After second tap: Daily becomes active
+    daily_a = snapshot(6, 4.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_b = snapshot(7, 4.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    returned_a = snapshot(8, 5.0, base=SCREEN_LOBBY)
+    returned_b = snapshot(9, 5.3, base=SCREEN_LOBBY)
+
+    result, actions, _, observer = run_flow(
+        lobby,
+        [
+            stable_pair(quests_a, quests_b),
+            stable_pair(returned_a, returned_b),
+        ],
+        observe_sequence=[quests_c, daily_a],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.no_op
+    # Two SelectDailyQuests taps (generic retry contract)
+    assert actions == [
+        OpenQuests(),
+        SelectDailyQuests(),
+        SelectDailyQuests(),
+        CloseDailyQuests(),
+    ]
+    assert actions.count(SelectDailyQuests()) == 2
+    # wait_until calls: OpenQuests (after 1), CloseDailyQuests (after 6)
+    assert [call.after_sequence for call in observer.calls] == [1, 6]
 
 
 def test_daily_tab_selection_is_single_attempt_and_fails_without_claim_or_close():
@@ -196,7 +278,73 @@ def test_daily_tab_selection_is_single_attempt_and_fails_without_claim_or_close(
     assert actions == [OpenQuests(), SelectDailyQuests()]
 
 
-def test_claim_all_runs_once_and_requires_stable_status_disappearance():
+def test_unknown_state_does_not_authorize_daily_tab_tap():
+    """
+    UNKNOWN/AMBIGUOUS state -> wait passively, no SelectDailyQuests tap on UNKNOWN frame.
+    Taps only on clean Quests frames (before and after UNKNOWN).
+    """
+    from bot.state import ResolutionStatus
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    quests_a = snapshot(2, 2.0, base=SCREEN_QUESTS)
+    quests_b = snapshot(3, 2.3, base=SCREEN_QUESTS)
+    # UNKNOWN state (no base context)
+    unknown = snapshot(4, 3.3, base=None, status=ResolutionStatus.UNKNOWN)
+    # Then clean Quests again (recovery)
+    quests_c = snapshot(5, 4.0, base=SCREEN_QUESTS)
+    quests_d = snapshot(6, 4.3, base=SCREEN_QUESTS)
+    # Then Daily becomes active
+    daily_a = snapshot(7, 5.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_b = snapshot(8, 5.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    returned_a = snapshot(9, 6.0, base=SCREEN_LOBBY)
+    returned_b = snapshot(10, 6.3, base=SCREEN_LOBBY)
+
+    result, actions, _, _ = run_flow(
+        lobby,
+        [
+            stable_pair(quests_a, quests_b),
+            stable_pair(returned_a, returned_b),
+        ],
+        observe_sequence=[unknown, quests_c, daily_a],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.no_op
+    # Two taps: one on initial clean Quests (quests_b), one after UNKNOWN recovery (quests_c)
+    # No tap on UNKNOWN frame itself
+    assert actions == [
+        OpenQuests(),
+        SelectDailyQuests(),  # on initial quests_b
+        SelectDailyQuests(),  # on recovered quests_c
+        CloseDailyQuests(),
+    ]
+    assert actions.count(SelectDailyQuests()) == 2
+
+
+def test_incompatible_resolved_context_aborts_daily_tab_selection():
+    """
+    Contradictory RESOLVED context (e.g. manage screen) -> aborts with RuntimeWaitAborted.
+    """
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    quests_a = snapshot(2, 2.0, base=SCREEN_QUESTS)
+    quests_b = snapshot(3, 2.3, base=SCREEN_QUESTS)
+    # Incompatible: manage screen (base=screen.manage) while expecting Quests
+    incompatible = snapshot(4, 3.3, base="screen.manage")
+
+    result, actions, _, _ = run_flow(
+        lobby,
+        [
+            stable_pair(quests_a, quests_b),
+        ],
+        observe_sequence=[incompatible],
+    )
+
+    assert result.status is FlowStatus.FAILED
+    assert "state_wait_failed" in result.error
+    # OpenQuests executed, then tap on clean Quests, then abort on incompatible
+    assert actions == [OpenQuests(), SelectDailyQuests()]
+
+
+def test_claim_disappearance_must_remain_stable_before_close():
     lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
     claimable = (MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE)
     daily_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable)

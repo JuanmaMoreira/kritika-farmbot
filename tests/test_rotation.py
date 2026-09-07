@@ -1,6 +1,6 @@
 from pathlib import Path
-from concurrent.futures import Future
 
+import cv2
 import numpy as np
 import pytest
 
@@ -14,21 +14,16 @@ from bot.catalog import (
     SCREEN_LOBBY,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
 )
-from bot.character_select_scroll import CharacterSelectScrollProfile
+from bot.character_select_layout import COLUMN_CENTERS, predecessor_center
 from bot.component_contracts import QUICK_MENU_ACCESS_REQUIREMENT
-from bot.observed_scroll import (
-    ObservedScroll,
-    ObservedScrollOutcome,
-    ObservedScrollResult,
-    ScrollAttemptKind,
-    ScrollAttemptMeasurement,
-)
+from bot.create_character_sentinel import CreateCharacterSentinelReading
 from bot.observations import ObservationBatch
 from bot.quick_menu import (
     DEFAULT_QUICK_MENU_POLICY,
     QuickMenuPolicy,
     open_character_select_action,
 )
+from bot.character_selection import DEFAULT_CHARACTER_SELECTION_DETECTOR
 from bot.rotation import (
     RotationOutcome,
     RotationStrategy,
@@ -45,10 +40,18 @@ from bot.semantic_actions import (
     OpenCharacterSelect,
     OpenQuickMenu,
     QuickMenuLayout,
-    SelectLastVisibleCharacter,
+    SelectCharacterCard,
     Swipe,
 )
 from bot.state import ResolutionStatus, ResolvedState
+
+ROOT = Path(__file__).resolve().parents[1]
+COND01 = (
+    "screencaps/semantic/character_select/sentinel/plus-col2-bottom.png"
+)
+
+SENTINEL_COL2 = (COLUMN_CENTERS[1], 0.75)
+SENTINEL_COL1 = (COLUMN_CENTERS[0], 0.75)
 
 
 class ScriptedObserver:
@@ -104,39 +107,26 @@ class Events:
         self.events.append(event)
 
 
-class InlineExecutor:
-    def __enter__(self):
-        return self
+class ScriptedSentinel:
+    """Yield scripted sentinel readings, repeating the last one."""
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        return False
+    def __init__(self, readings):
+        self.readings = list(readings)
+        self.calls = 0
 
-    def submit(self, function, *args):
-        future = Future()
-        try:
-            future.set_result(function(*args))
-        except BaseException as error:
-            future.set_exception(error)
-        return future
+    def measure(self, frame):
+        self.calls += 1
+        if len(self.readings) > 1:
+            return self.readings.pop(0)
+        return self.readings[0]
 
 
-class TrackingExecutor(InlineExecutor):
-    def __init__(self):
-        self.exited = False
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.exited = True
-        return False
+def _found(location=SENTINEL_COL2, score=0.95):
+    return CreateCharacterSentinelReading(True, score, location)
 
 
-class DelegatingScroll:
-    def __init__(self, result):
-        self.result = result
-        self.calls = []
-
-    def scroll_to_edge(self, before, **kwargs):
-        self.calls.append((before, kwargs))
-        return self.result
+def _absent(score=0.10):
+    return CreateCharacterSentinelReading(False, score, None)
 
 
 def _frame(fill=0, *, grid_fill=None):
@@ -146,14 +136,23 @@ def _frame(fill=0, *, grid_fill=None):
     return image
 
 
-def _selected_frame(image):
+def _selected_frame_at(image, center):
+    """Paint a full yellow ring exactly on the tile box of ``center``."""
+    from bot.character_select_layout import tile_box
+    from bot.geometry import relative_region_to_pixels
+
     selected = image.copy()
     height, width = selected.shape[:2]
-    x1, x2 = round(width * 0.48), round(width * 0.63)
-    y1, y2 = round(height * 0.64), round(height * 0.84)
+    x1, y1, x2, y2 = relative_region_to_pixels(
+        tile_box(center), width, height
+    )
     crop = selected[y1:y2, x1:x2]
-    border_x = round(crop.shape[1] * 0.16)
-    border_y = round(crop.shape[0] * 0.18)
+    border_x = round(
+        crop.shape[1] * DEFAULT_CHARACTER_SELECTION_DETECTOR.border_x_fraction
+    )
+    border_y = round(
+        crop.shape[0] * DEFAULT_CHARACTER_SELECTION_DETECTOR.border_y_fraction
+    )
     crop[:, :border_x] = (0, 255, 255)
     crop[:, -border_x:] = (0, 255, 255)
     crop[:border_y, :] = (0, 255, 255)
@@ -201,33 +200,22 @@ def _rotation(observes, waits, **kwargs):
     observer = ScriptedObserver(observes, waits)
     actions = Actions()
     events = Events()
-    swipe_executor_factory = kwargs.pop(
-        "swipe_executor_factory", InlineExecutor
-    )
-    profile_kwargs = {}
-    for old_name, profile_name in (
-        ("max_swipes", "max_attempts"),
-        ("end_confirmation_swipes", "required_confirmations"),
-        ("movement_threshold", "movement_threshold"),
-        ("scroll_settle_for", "settle_for"),
-    ):
-        if old_name in kwargs:
-            profile_kwargs[profile_name] = kwargs.pop(old_name)
-    scroll_profile = CharacterSelectScrollProfile(**profile_kwargs)
-    observed_scroll = ObservedScroll(
-        observer,
-        actions,
-        swipe_executor_factory=swipe_executor_factory,
-    )
+    sentinel = kwargs.pop("sentinel", None)
+    if sentinel is None and "sentinel_detector" not in kwargs:
+        sentinel = ScriptedSentinel([_absent()])
+    if sentinel is not None:
+        kwargs["sentinel_detector"] = sentinel
     rotation = StandardRotation(
         observer,
         actions,
         events,
-        scroll_profile=scroll_profile,
-        observed_scroll=observed_scroll,
         **kwargs,
     )
     return rotation, actions, events, observer
+
+
+def _expected_tap(location):
+    return SelectCharacterCard(predecessor_center(location))
 
 
 def test_standard_rotation_contract_and_character_count_configuration():
@@ -235,61 +223,25 @@ def test_standard_rotation_contract_and_character_count_configuration():
 
     assert isinstance(rotation, RotationStrategy)
     assert rotation.character_count == 28
+    assert rotation.max_swipes == 6
     assert rotation.contract.precondition == QUICK_MENU_ACCESS_REQUIREMENT
 
 
-def test_rotation_delegates_scroll_algorithm_to_observed_scroll():
-    initial = _snapshot(1, base=SCREEN_LOBBY)
-    character_select = _snapshot(3, base=SCREEN_CHARACTER_SELECT)
-    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT)
-    measurement = ScrollAttemptMeasurement(
-        pre_sequence=3,
-        settled_sequence=4,
-        fresh_sample_count=2,
-        transient_peak_sequence=4,
-        max_transient_difference=0.14,
-        settled_difference=0.02,
-    )
-    delegated = DelegatingScroll(
-        ObservedScrollResult(
-            outcome=ObservedScrollOutcome.EDGE_REACHED,
-            final_snapshot=edge,
-            attempts=(measurement,),
-            attempt_kinds=(ScrollAttemptKind.EDGE_CANDIDATE,),
-            effective_gesture_count=1,
-            confirmation_count=1,
-        )
-    )
-    observer = ScriptedObserver(
-        [initial],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            character_select,
-            _snapshot(
-                5,
-                base=SCREEN_CHARACTER_SELECT,
-                image=_selected_frame(edge.frame.image),
-            ),
-            _snapshot(6, base=SCREEN_LOBBY),
-        ],
-    )
-    actions = Actions()
-    rotation = StandardRotation(
-        observer,
-        actions,
-        Events(),
-        observed_scroll=delegated,
-    )
+@pytest.mark.parametrize("max_swipes", (0, -1, 1.5, True))
+def test_max_swipes_must_be_a_positive_integer(max_swipes):
+    with pytest.raises(ValueError, match="max_swipes"):
+        _rotation([], [], max_swipes=max_swipes)
 
-    result = rotation.advance()
 
-    assert result.succeeded
-    assert len(delegated.calls) == 1
-    before, arguments = delegated.calls[0]
-    assert before is character_select
-    assert arguments["config"] == rotation.scroll_profile.config()
-    assert arguments["detector"] == rotation.scroll_profile.detector()
-    assert SelectLastVisibleCharacter() in actions.actions
+@pytest.mark.parametrize("coarse_swipes", (-1, 1.5, True))
+def test_coarse_swipes_must_be_a_non_negative_integer(coarse_swipes):
+    with pytest.raises(ValueError, match="coarse_swipes"):
+        _rotation([], [], coarse_swipes=coarse_swipes)
+
+
+def test_sentinel_detector_must_provide_measure():
+    with pytest.raises(ValueError, match="sentinel_detector"):
+        _rotation([], [], sentinel_detector=object())
 
 
 def test_rotation_opens_shifted_quick_menu_from_completed_guild():
@@ -298,45 +250,21 @@ def test_rotation_opens_shifted_quick_menu_from_completed_guild():
         base=SCREEN_GUILD,
         overlays={STATUS_GUILD_ATTENDANCE_COMPLETED},
     )
-    character_select = _snapshot(3, base=SCREEN_CHARACTER_SELECT)
-    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT)
-    measurement = ScrollAttemptMeasurement(
-        pre_sequence=3,
-        settled_sequence=4,
-        fresh_sample_count=2,
-        transient_peak_sequence=4,
-        max_transient_difference=0.14,
-        settled_difference=0.02,
-    )
-    delegated = DelegatingScroll(
-        ObservedScrollResult(
-            outcome=ObservedScrollOutcome.EDGE_REACHED,
-            final_snapshot=edge,
-            attempts=(measurement,),
-            attempt_kinds=(ScrollAttemptKind.EDGE_CANDIDATE,),
-            effective_gesture_count=1,
-            confirmation_count=1,
-        )
-    )
-    observer = ScriptedObserver(
+    rotation, actions, _, _ = _rotation(
         [initial],
         [
             _snapshot(2, base=SCREEN_GUILD, overlays={MENU_QUICK}),
-            character_select,
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT),
             _snapshot(
-                5,
+                4,
                 base=SCREEN_CHARACTER_SELECT,
-                image=_selected_frame(edge.frame.image),
+                image=_selected_frame_at(
+                    _frame(grid_fill=80), predecessor_center(SENTINEL_COL2)
+                ),
             ),
-            _snapshot(6, base=SCREEN_LOBBY),
+            _snapshot(5, base=SCREEN_LOBBY),
         ],
-    )
-    actions = Actions()
-    rotation = StandardRotation(
-        observer,
-        actions,
-        Events(),
-        observed_scroll=delegated,
+        sentinel=ScriptedSentinel([_found()]),
     )
 
     result = rotation.advance()
@@ -348,98 +276,42 @@ def test_rotation_opens_shifted_quick_menu_from_completed_guild():
     ]
 
 
-@pytest.mark.parametrize("character_count", (0, -1, 1.5, True))
-def test_character_count_must_be_a_positive_integer(character_count):
-    with pytest.raises(ValueError, match="character_count"):
-        _rotation([], [], character_count=character_count)
-
-
-@pytest.mark.parametrize("end_confirmation_swipes", (0, -1, 1.5, True))
-def test_end_confirmation_swipes_must_be_a_positive_integer(
-    end_confirmation_swipes,
-):
-    with pytest.raises(ValueError, match="required_confirmations"):
-        _rotation(
-            [], [], end_confirmation_swipes=end_confirmation_swipes
-        )
-
-
-def test_end_confirmation_swipes_must_fit_inside_swipe_limit():
-    with pytest.raises(ValueError, match="must not exceed max_attempts"):
-        _rotation([], [], max_swipes=1, end_confirmation_swipes=2)
-
-
-@pytest.mark.parametrize("movement_threshold", (-0.1, 1.1, True))
-def test_movement_threshold_must_be_normalized(movement_threshold):
-    with pytest.raises(ValueError, match="movement_threshold"):
-        _rotation([], [], movement_threshold=movement_threshold)
-
-
-@pytest.mark.parametrize(
-    ("initial_context", "quick_menu_policy"),
-    (
-        (SCREEN_LOBBY, DEFAULT_QUICK_MENU_POLICY),
-        (
-            SCREEN_BATTLE_MODE_SELECT,
-            QuickMenuPolicy(
-                frozenset({SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT})
-            ),
-        ),
-    ),
-)
-def test_advance_accepts_declared_quick_menu_capable_context_and_changes_once(
-    initial_context,
-    quick_menu_policy,
-):
-    first_grid = _frame(grid_fill=40)
-    scrolled_grid = _frame(grid_fill=230)
+def test_sentinel_visible_at_entry_selects_predecessor_without_swiping():
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
     rotation, actions, events, observer = _rotation(
-        [_snapshot(1, base=initial_context)],
+        [_snapshot(1, base=SCREEN_LOBBY)],
         [
             _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=first_grid),
-            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid),
-            [
-                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=first_grid),
-                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=scrolled_grid.copy()),
-            ],
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
             _snapshot(
-                7,
+                4,
                 base=SCREEN_CHARACTER_SELECT,
-                image=_selected_frame(scrolled_grid),
+                image=_selected_frame_at(grid, target),
             ),
-            _snapshot(8, base=SCREEN_LOBBY),
+            _snapshot(5, base=SCREEN_LOBBY),
         ],
-        quick_menu_policy=quick_menu_policy,
+        sentinel=ScriptedSentinel([_found()]),
     )
 
     result = rotation.advance()
 
     assert result.outcome is RotationOutcome.SUCCESS
     assert result.succeeded
-    assert result.swipe_count == 2
-    assert result.effective_swipe_count == 2
-    assert result.bottom_confirmation_count == 1
-    assert result.end_difference == 0.0
-    assert result.scroll_attempt_kinds == (
-        ScrollAttemptKind.PROGRESS,
-        ScrollAttemptKind.EDGE_CANDIDATE,
-    )
+    assert result.swipe_count == 0
     assert actions.actions == [
         OpenQuickMenu(),
         open_character_select_action(
-            initial_context, policy=quick_menu_policy
+            SCREEN_LOBBY, policy=DEFAULT_QUICK_MENU_POLICY
         ),
-        CharacterSelectScrollProfile().progress_swipe,
-        CharacterSelectScrollProfile().confirmation_swipe,
-        SelectLastVisibleCharacter(),
+        _expected_tap(SENTINEL_COL2),
         ConfirmCharacterSelection(),
     ]
     assert events.events == []
     assert [trace.name for trace in result.transitions] == [
         "rotation.open_quick_menu",
         "rotation.open_character_select",
-        "rotation.select_last_visible_character",
+        "rotation.select_predecessor_character",
         "rotation.confirm_character_selection",
     ]
     assert all(
@@ -448,14 +320,594 @@ def test_advance_accepts_declared_quick_menu_capable_context_and_changes_once(
         and trace.grace_wait_count == 0
         for trace in result.transitions
     )
+    assert result.transitions[2].effect_state == "selected"
+    assert observer.wait_calls == [(1, 0.0), (2, 1.0), (3, 0.25), (4, 0.0)]
+
+
+def test_sentinel_appearing_after_one_swipe_selects():
+    from bot.character_select_scroll import CharacterSelectScrollProfile
+
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(
+                5,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(6, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 1
+    swipes = [action for action in actions.actions if isinstance(action, Swipe)]
+    assert swipes == [CharacterSelectScrollProfile().progress_swipe]
+    assert _expected_tap(SENTINEL_COL2) in actions.actions
+    assert ConfirmCharacterSelection() in actions.actions
+
+
+def test_sentinel_appearing_on_second_coarse_swipe_uses_no_fine():
+    from bot.character_select_scroll import CharacterSelectScrollProfile
+
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(
+                6,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _absent(), _found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 2
+    profile = CharacterSelectScrollProfile()
+    assert [a for a in actions.actions if isinstance(a, Swipe)] == [
+        profile.progress_swipe,
+        profile.progress_swipe,
+    ]
+
+
+def test_fine_swipe_reveals_partial_sentinel_after_two_coarse():
+    from bot.character_select_scroll import CharacterSelectScrollProfile
+
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(
+                7,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(8, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _absent(), _absent(), _found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 3
+    profile = CharacterSelectScrollProfile()
+    assert [a for a in actions.actions if isinstance(a, Swipe)] == [
+        profile.progress_swipe,
+        profile.progress_swipe,
+        profile.fine_swipe,
+    ]
+    assert _expected_tap(SENTINEL_COL2) in actions.actions
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(
+                6,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _absent(), _found()]),
+        max_swipes=6,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 2
+    assert _expected_tap(SENTINEL_COL2) in actions.actions
+
+
+def test_identical_frames_across_swipes_are_not_bottom_evidence():
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(
+                6,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _absent(), _found()]),
+        max_swipes=6,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 2
+    assert _expected_tap(SENTINEL_COL2) in actions.actions
+
+
+def test_sentinel_never_found_aborts_after_max_swipes():
+    grid = _frame(grid_fill=80)
+    rotation, actions, events, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+        ],
+        sentinel=ScriptedSentinel([_absent()]),
+        max_swipes=2,
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error == "sentinel_not_found_after_max_swipes"
+    assert result.swipe_count == 2
+    assert sum(isinstance(action, Swipe) for action in actions.actions) == 2
+    assert not any(
+        isinstance(action, SelectCharacterCard) for action in actions.actions
+    )
+    assert ConfirmCharacterSelection() not in actions.actions
+    assert events.events == ["rotation.standard.unexpected_state"]
+
+
+def test_default_budget_allows_six_swipes():
+    from bot.character_select_scroll import CharacterSelectScrollProfile
+
+    grid = _frame(grid_fill=80)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(8, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(9, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+        ],
+        sentinel=ScriptedSentinel([_absent()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error == "sentinel_not_found_after_max_swipes"
+    assert result.swipe_count == 6
+    profile = CharacterSelectScrollProfile()
+    assert [a for a in actions.actions if isinstance(a, Swipe)] == [
+        profile.progress_swipe,
+        profile.progress_swipe,
+        profile.fine_swipe,
+        profile.fine_swipe,
+        profile.fine_swipe,
+        profile.fine_swipe,
+    ]
+    assert not any(
+        isinstance(action, SelectCharacterCard) for action in actions.actions
+    )
+
+
+def test_unknown_frame_during_settle_is_tolerated_without_input():
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, observer = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            [
+                _snapshot(4, status=ResolutionStatus.UNKNOWN),
+                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            ],
+            _snapshot(
+                6,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 1
     assert observer.wait_calls == [
         (1, 0.0),
         (2, 1.0),
         (3, 1.0),
-        (4, 1.0),
-        (6, 0.25),
-        (7, 0.0),
+        (5, 0.25),
+        (6, 0.0),
     ]
+
+
+def test_ambiguous_frame_during_settle_is_tolerated_without_input():
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            [
+                _snapshot(4, status=ResolutionStatus.AMBIGUOUS),
+                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            ],
+            _snapshot(
+                6,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(7, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 1
+    assert not any(
+        isinstance(action, SelectCharacterCard)
+        for action in actions.actions[:3]
+    )
+
+
+def test_settle_aborts_on_contradictory_after_transient_unknown():
+    grid = _frame(grid_fill=80)
+    rotation, actions, events, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            [
+                _snapshot(4, status=ResolutionStatus.UNKNOWN),
+                _snapshot(5, base=SCREEN_LOBBY),
+            ],
+        ],
+        sentinel=ScriptedSentinel([_absent()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert "unexpected_state" in result.error
+    assert result.swipe_count == 1
+    assert not any(
+        isinstance(action, SelectCharacterCard) for action in actions.actions
+    )
+    assert events.events == ["rotation.standard.unexpected_state"]
+
+
+def test_contradictory_context_after_swipe_aborts_without_selection():
+    grid = _frame(grid_fill=80)
+    rotation, actions, events, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert "unexpected_state" in result.error
+    assert result.swipe_count == 1
+    assert not any(
+        isinstance(action, SelectCharacterCard) for action in actions.actions
+    )
+    assert events.events == ["rotation.standard.unexpected_state"]
+
+
+def test_settle_timeout_after_swipe_aborts():
+    timeout = RuntimeWaitTimeout(
+        after_sequence=3,
+        timeout=6.0,
+        last_snapshot=_snapshot(4, base=SCREEN_CHARACTER_SELECT),
+    )
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT),
+            timeout,
+        ],
+        sentinel=ScriptedSentinel([_absent()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error.startswith("character_select_settle_failed")
+    assert result.swipe_count == 1
+    assert not any(
+        isinstance(action, SelectCharacterCard) for action in actions.actions
+    )
+
+
+def test_invalid_sentinel_location_aborts_without_tap():
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT),
+        ],
+        sentinel=ScriptedSentinel([_found(location=(0.30, 0.75))]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert result.error.startswith("invalid_sentinel_location")
+    assert result.swipe_count == 0
+    assert not any(
+        isinstance(action, SelectCharacterCard) for action in actions.actions
+    )
+    assert ConfirmCharacterSelection() not in actions.actions
+
+
+def test_col1_sentinel_selects_col3_of_previous_row():
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL1)
+    assert target[0] == pytest.approx(COLUMN_CENTERS[2])
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(
+                4,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(5, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_found(location=SENTINEL_COL1)]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 0
+    assert _expected_tap(SENTINEL_COL1) in actions.actions
+
+
+def test_col3_sentinel_selects_col2_of_same_row():
+    location = (COLUMN_CENTERS[2], 0.60)
+    target = predecessor_center(location)
+    assert target == (COLUMN_CENTERS[1], 0.60)
+    grid = _frame(grid_fill=80)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(
+                4,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid, target),
+            ),
+            _snapshot(5, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_found(location=location)]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert SelectCharacterCard(target) in actions.actions
+
+
+def test_preselected_target_still_authorizes_tap_and_succeeds():
+    # Live evidence (game pre-selects the last-played character): the tap is
+    # authorized by clean Character Select plus the confirmed sentinel, never
+    # gated on the pre-tap selection state. Verification stays post-tap.
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    selected = _selected_frame_at(grid, target)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=selected),
+            _snapshot(
+                4,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(grid.copy(), target),
+            ),
+            _snapshot(5, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.SUCCESS
+    taps = [
+        action
+        for action in actions.actions
+        if isinstance(action, SelectCharacterCard)
+    ]
+    assert taps == [_expected_tap(SENTINEL_COL2)]
+    assert ConfirmCharacterSelection() in actions.actions
+
+
+def test_card_tap_without_effect_retries_only_from_fresh_unselected_state():
+    edge_image = _frame(grid_fill=80)
+    rotation, actions, _events, _observer = _rotation(
+        [
+            _snapshot(1, base=SCREEN_LOBBY),
+            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            _snapshot(10, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+        ],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    4, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=0.75,
+                last_snapshot=_snapshot(
+                    5, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=7,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    8, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=8,
+                timeout=0.75,
+                last_snapshot=_snapshot(
+                    9, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+        ],
+        sentinel=ScriptedSentinel([_found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert "attempts_exhausted" in result.error
+    taps = [
+        action
+        for action in actions.actions
+        if isinstance(action, SelectCharacterCard)
+    ]
+    assert taps == [_expected_tap(SENTINEL_COL2)] * 2
+    assert ConfirmCharacterSelection() not in actions.actions
+
+
+def test_card_selection_appearing_during_grace_does_not_send_second_tap():
+    edge_image = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    4, base=SCREEN_CHARACTER_SELECT, image=edge_image
+                ),
+            ),
+            _snapshot(
+                5,
+                base=SCREEN_CHARACTER_SELECT,
+                image=_selected_frame_at(edge_image, target),
+            ),
+            _snapshot(6, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    taps = [
+        action
+        for action in actions.actions
+        if isinstance(action, SelectCharacterCard)
+    ]
+    assert len(taps) == 1
+    assert result.transitions[2].outcome == "success_after_grace"
+    assert result.transitions[2].grace_wait_count == 1
+
+
+def test_card_selection_leaving_character_select_aborts_without_retry():
+    edge_image = _frame(grid_fill=80)
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_found()]),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert "unexpected_state" in result.error
+    taps = [
+        action
+        for action in actions.actions
+        if isinstance(action, SelectCharacterCard)
+    ]
+    assert len(taps) == 1
+    assert ConfirmCharacterSelection() not in actions.actions
 
 
 def test_unknown_startup_frame_waits_for_fresh_capable_context_before_input():
@@ -503,174 +955,6 @@ def test_resolved_context_without_quick_menu_capability_aborts_without_input():
     assert events.events == ["rotation.standard.unexpected_state"]
 
 
-def test_ineffective_swipe_aborts_without_selecting_or_spending_third_attempt():
-    initial_grid = _frame(grid_fill=40)
-    moved_grid = _frame(grid_fill=220)
-    rotation, actions, events, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=initial_grid),
-            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=initial_grid.copy()),
-            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=moved_grid),
-            [
-                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=initial_grid),
-                _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=moved_grid.copy()),
-            ],
-            _snapshot(8, base=SCREEN_CHARACTER_SELECT, image=moved_grid.copy()),
-            _snapshot(9, base=SCREEN_LOBBY),
-        ],
-    )
-
-    result = rotation.advance()
-
-    assert result.outcome is RotationOutcome.ABORTED
-    assert result.error.endswith("ineffective_gesture")
-    assert result.swipe_count == 1
-    assert result.effective_swipe_count == 0
-    assert result.scroll_attempt_kinds[0] is ScrollAttemptKind.INEFFECTIVE
-    assert sum(isinstance(action, Swipe) for action in actions.actions) == 1
-    assert SelectLastVisibleCharacter() not in actions.actions
-    assert ConfirmCharacterSelection() not in actions.actions
-    assert events.events == ["rotation.standard.unexpected_state"]
-
-
-def test_zero_effective_swipes_never_confirms_bottom_or_selects():
-    grid = _frame(grid_fill=80)
-    rotation, actions, _, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
-            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
-            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
-        ],
-        max_swipes=2,
-    )
-
-    result = rotation.advance()
-
-    assert result.outcome is RotationOutcome.ABORTED
-    assert result.error.endswith("ineffective_gesture")
-    assert result.effective_swipe_count == 0
-    assert result.bottom_confirmation_count == 0
-    assert result.scroll_attempt_kinds == (ScrollAttemptKind.INEFFECTIVE,)
-    assert SelectLastVisibleCharacter() not in actions.actions
-
-
-def test_configured_double_confirmation_does_not_accept_one_bounce():
-    first_grid = _frame(grid_fill=40)
-    bottom_grid = _frame(grid_fill=220)
-    rotation, actions, _, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=first_grid),
-            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=bottom_grid),
-            [
-                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=first_grid),
-                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=bottom_grid.copy()),
-            ],
-        ],
-        max_swipes=2,
-        end_confirmation_swipes=2,
-    )
-
-    result = rotation.advance()
-
-    assert result.outcome is RotationOutcome.ABORTED
-    assert result.bottom_confirmation_count == 1
-    assert result.scroll_attempt_kinds[-1] is ScrollAttemptKind.EDGE_CANDIDATE
-    assert SelectLastVisibleCharacter() not in actions.actions
-
-
-def test_configured_double_confirmation_selects_after_two_effective_bounces():
-    grid = _frame(grid_fill=80)
-    transient = _frame(grid_fill=220)
-    rotation, actions, _, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
-            [
-                _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=transient),
-                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
-            ],
-            [
-                _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=transient),
-                _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
-            ],
-            _snapshot(
-                8,
-                base=SCREEN_CHARACTER_SELECT,
-                image=_selected_frame(grid),
-            ),
-            _snapshot(9, base=SCREEN_LOBBY),
-        ],
-        end_confirmation_swipes=2,
-    )
-
-    result = rotation.advance()
-
-    assert result.succeeded
-    assert result.swipe_count == 2
-    assert result.effective_swipe_count == 2
-    assert result.bottom_confirmation_count == 2
-    assert result.scroll_attempt_kinds == (
-        ScrollAttemptKind.EDGE_CANDIDATE,
-        ScrollAttemptKind.EDGE_CANDIDATE,
-    )
-    assert SelectLastVisibleCharacter() in actions.actions
-
-
-def test_scroll_timeout_exits_swipe_executor_and_never_selects():
-    tracker = TrackingExecutor()
-    timeout = RuntimeWaitTimeout(
-        after_sequence=3,
-        timeout=6.0,
-        last_snapshot=_snapshot(4, base=SCREEN_CHARACTER_SELECT),
-    )
-    rotation, actions, _, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT),
-            timeout,
-        ],
-        swipe_executor_factory=lambda: tracker,
-    )
-
-    result = rotation.advance()
-
-    assert result.outcome is RotationOutcome.ABORTED
-    assert result.error.startswith("character_select_scroll_failed")
-    assert tracker.exited
-    assert SelectLastVisibleCharacter() not in actions.actions
-
-
-def test_scroll_limit_aborts_before_character_selection():
-    rotation, actions, events, _ = _rotation(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=10)),
-            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=100)),
-            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=220)),
-        ],
-        max_swipes=2,
-    )
-
-    result = rotation.advance()
-
-    assert result.outcome is RotationOutcome.ABORTED
-    assert result.error == "scroll_limit_reached"
-    assert result.swipe_count == 2
-    assert isinstance(actions.actions[-1], Swipe)
-    assert SelectLastVisibleCharacter() not in actions.actions
-    assert ConfirmCharacterSelection() not in actions.actions
-    assert events.events == ["rotation.standard.unexpected_state"]
-
-
 def test_quick_menu_safe_retry_is_bounded_to_configured_attempts():
     rotation, actions, events, _ = _rotation(
         [
@@ -714,6 +998,7 @@ def test_quick_menu_safe_retry_is_bounded_to_configured_attempts():
 
 def test_confirm_character_selection_retries_from_fresh_character_select():
     grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
     rotation, actions, events, _ = _rotation(
         [
             _snapshot(1, base=SCREEN_LOBBY),
@@ -722,31 +1007,28 @@ def test_confirm_character_selection_retries_from_fresh_character_select():
         [
             _snapshot(2, overlays={MENU_QUICK}),
             _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
-            [
-                _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=200)),
-                _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
-            ],
             _snapshot(
-                6,
+                4,
                 base=SCREEN_CHARACTER_SELECT,
-                image=_selected_frame(grid),
+                image=_selected_frame_at(grid, target),
             ),
             RuntimeWaitTimeout(
-                after_sequence=6,
+                after_sequence=4,
                 timeout=6.0,
                 last_snapshot=_snapshot(
-                    7, base=SCREEN_CHARACTER_SELECT, image=grid
+                    5, base=SCREEN_CHARACTER_SELECT, image=grid
                 ),
             ),
             RuntimeWaitTimeout(
-                after_sequence=7,
+                after_sequence=5,
                 timeout=2.0,
                 last_snapshot=_snapshot(
-                    8, base=SCREEN_CHARACTER_SELECT, image=grid
+                    6, base=SCREEN_CHARACTER_SELECT, image=grid
                 ),
             ),
             _snapshot(10, base=SCREEN_LOBBY),
         ],
+        sentinel=ScriptedSentinel([_found()]),
     )
 
     result = rotation.advance()
@@ -762,197 +1044,119 @@ def test_confirm_character_selection_retries_from_fresh_character_select():
     assert events.events == []
 
 
-def _edge_result(snapshot):
-    measurement = ScrollAttemptMeasurement(
-        pre_sequence=snapshot.sequence - 1,
-        settled_sequence=snapshot.sequence,
-        fresh_sample_count=2,
-        transient_peak_sequence=snapshot.sequence,
-        max_transient_difference=0.14,
-        settled_difference=0.02,
-    )
-    return ObservedScrollResult(
-        outcome=ObservedScrollOutcome.EDGE_REACHED,
-        final_snapshot=snapshot,
-        attempts=(measurement,),
-        attempt_kinds=(ScrollAttemptKind.EDGE_CANDIDATE,),
-        effective_gesture_count=1,
-        confirmation_count=1,
-    )
+def test_live_preselected_predecessor_succeeds_with_real_detectors():
+    # sem_5400: live frame whose predecessor (col1 bottom row) carries the
+    # yellow selection border. The old unselected-precondition aborted here
+    # with precondition_rejected before any tap; the tap must be authorized
+    # and post-tap verification must confirm the already-selected target.
+    from bot.create_character_sentinel import DEFAULT_SENTINEL_DETECTOR
 
-
-def _rotation_with_delegated_edge(observes, waits, edge):
-    observer = ScriptedObserver(observes, waits)
+    image = cv2.imread(
+        str(
+            ROOT
+            / "screencaps/semantic/character_select/20260823T025400_922432Z.png"
+        )
+    )
+    assert image is not None
+    observer = ScriptedObserver(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=image),
+            _snapshot(
+                4, base=SCREEN_CHARACTER_SELECT, image=image.copy()
+            ),
+            _snapshot(5, base=SCREEN_LOBBY),
+        ],
+    )
     actions = Actions()
     rotation = StandardRotation(
         observer,
         actions,
         Events(),
-        observed_scroll=DelegatingScroll(_edge_result(edge)),
-    )
-    return rotation, actions, observer
-
-
-def test_card_selection_appearing_during_grace_does_not_send_second_tap():
-    edge_image = _frame(grid_fill=80)
-    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
-    rotation, actions, _ = _rotation_with_delegated_edge(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
-            RuntimeWaitTimeout(
-                after_sequence=4,
-                timeout=1.0,
-                last_snapshot=_snapshot(
-                    5, base=SCREEN_CHARACTER_SELECT, image=edge_image
-                ),
-            ),
-            _snapshot(
-                6,
-                base=SCREEN_CHARACTER_SELECT,
-                image=_selected_frame(edge_image),
-            ),
-            _snapshot(7, base=SCREEN_LOBBY),
-        ],
-        edge,
+        sentinel_detector=DEFAULT_SENTINEL_DETECTOR,
     )
 
     result = rotation.advance()
 
-    assert result.succeeded
-    assert actions.actions.count(SelectLastVisibleCharacter()) == 1
-    assert result.transitions[2].outcome == "success_after_grace"
-    assert result.transitions[2].grace_wait_count == 1
-
-
-def test_card_tap_without_effect_retries_only_from_fresh_unselected_state():
-    edge_image = _frame(grid_fill=80)
-    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
-    rotation, actions, _ = _rotation_with_delegated_edge(
-        [
-            _snapshot(1, base=SCREEN_LOBBY),
-            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=edge_image),
-        ],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
-            RuntimeWaitTimeout(
-                after_sequence=4,
-                timeout=1.0,
-                last_snapshot=_snapshot(
-                    5, base=SCREEN_CHARACTER_SELECT, image=edge_image
-                ),
-            ),
-            RuntimeWaitTimeout(
-                after_sequence=5,
-                timeout=0.75,
-                last_snapshot=_snapshot(
-                    6, base=SCREEN_CHARACTER_SELECT, image=edge_image
-                ),
-            ),
-            _snapshot(
-                8,
-                base=SCREEN_CHARACTER_SELECT,
-                image=_selected_frame(edge_image),
-            ),
-            _snapshot(9, base=SCREEN_LOBBY),
-        ],
-        edge,
-    )
-
-    result = rotation.advance()
-
-    assert result.succeeded
-    assert actions.actions.count(SelectLastVisibleCharacter()) == 2
-    assert result.transitions[2].outcome == "success_after_retry"
-    assert result.transitions[2].attempt_count == 2
+    assert result.outcome is RotationOutcome.SUCCESS
+    assert result.swipe_count == 0
+    taps = [
+        action
+        for action in actions.actions
+        if isinstance(action, SelectCharacterCard)
+    ]
+    assert len(taps) == 1
+    assert taps[0].center[0] == pytest.approx(COLUMN_CENTERS[0])
     assert result.transitions[2].effect_state == "selected"
+    assert result.transitions[2].effect_score >= 0.05
 
 
-def test_card_selection_attempts_exhaust_without_executing_select():
-    edge_image = _frame(grid_fill=80)
-    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
-    rotation, actions, _ = _rotation_with_delegated_edge(
+def test_live_frame_detector_drives_predecessor_tap():
+    from bot.create_character_sentinel import DEFAULT_SENTINEL_DETECTOR
+
+    image = cv2.imread(str(ROOT / COND01))
+    assert image is not None
+    observer = ScriptedObserver(
         [
             _snapshot(1, base=SCREEN_LOBBY),
-            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=edge_image),
-            _snapshot(10, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=image),
+            _snapshot(9, base=SCREEN_CHARACTER_SELECT, image=image),
         ],
         [
             _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=image),
             RuntimeWaitTimeout(
-                after_sequence=4,
+                after_sequence=3,
                 timeout=1.0,
-                last_snapshot=_snapshot(5, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+                last_snapshot=_snapshot(
+                    4, base=SCREEN_CHARACTER_SELECT, image=image
+                ),
             ),
             RuntimeWaitTimeout(
-                after_sequence=5,
+                after_sequence=4,
                 timeout=0.75,
-                last_snapshot=_snapshot(6, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+                last_snapshot=_snapshot(
+                    5, base=SCREEN_CHARACTER_SELECT, image=image
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=6,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    7, base=SCREEN_CHARACTER_SELECT, image=image
+                ),
             ),
             RuntimeWaitTimeout(
                 after_sequence=7,
-                timeout=1.0,
-                last_snapshot=_snapshot(8, base=SCREEN_CHARACTER_SELECT, image=edge_image),
-            ),
-            RuntimeWaitTimeout(
-                after_sequence=8,
                 timeout=0.75,
-                last_snapshot=_snapshot(9, base=SCREEN_CHARACTER_SELECT, image=edge_image),
+                last_snapshot=_snapshot(
+                    8, base=SCREEN_CHARACTER_SELECT, image=image
+                ),
             ),
         ],
-        edge,
+    )
+    actions = Actions()
+    rotation = StandardRotation(
+        observer,
+        actions,
+        Events(),
+        sentinel_detector=DEFAULT_SENTINEL_DETECTOR,
     )
 
     result = rotation.advance()
 
     assert result.outcome is RotationOutcome.ABORTED
-    assert "attempts_exhausted" in result.error
-    assert actions.actions.count(SelectLastVisibleCharacter()) == 2
-    assert ConfirmCharacterSelection() not in actions.actions
-
-
-def test_card_selection_leaving_character_select_aborts_without_retry_or_select():
-    edge_image = _frame(grid_fill=80)
-    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
-    rotation, actions, _ = _rotation_with_delegated_edge(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=edge_image),
-            _snapshot(5, base=SCREEN_LOBBY),
-        ],
-        edge,
-    )
-
-    result = rotation.advance()
-
-    assert result.outcome is RotationOutcome.ABORTED
-    assert "unexpected_state" in result.error
-    assert actions.actions.count(SelectLastVisibleCharacter()) == 1
-    assert ConfirmCharacterSelection() not in actions.actions
-
-
-def test_preexisting_selected_frame_is_not_attributed_to_a_new_tap():
-    edge_image = _selected_frame(_frame(grid_fill=80))
-    edge = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=edge_image)
-    rotation, actions, _ = _rotation_with_delegated_edge(
-        [_snapshot(1, base=SCREEN_LOBBY)],
-        [
-            _snapshot(2, overlays={MENU_QUICK}),
-            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=_frame(grid_fill=80)),
-        ],
-        edge,
-    )
-
-    result = rotation.advance()
-
-    assert result.outcome is RotationOutcome.ABORTED
-    assert "precondition_rejected" in result.error
-    assert SelectLastVisibleCharacter() not in actions.actions
-    assert ConfirmCharacterSelection() not in actions.actions
+    assert result.error.startswith("predecessor_selection_failed")
+    assert result.swipe_count == 0
+    taps = [
+        action
+        for action in actions.actions
+        if isinstance(action, SelectCharacterCard)
+    ]
+    assert len(taps) == 2
+    assert taps[0].center == predecessor_center((0.6675884955752213, 0.7483660130718954))
+    assert taps[0].center[0] == pytest.approx(COLUMN_CENTERS[0])
 
 
 def test_rotation_module_never_imports_or_calls_adb_directly():
@@ -962,3 +1166,12 @@ def test_rotation_module_never_imports_or_calls_adb_directly():
     assert "import bot.adb" not in source
     assert ".tap(" not in source
     assert "self.adb" not in source
+
+
+def test_rotation_no_longer_consumes_observed_scroll():
+    source = Path("bot/rotation.py").read_text(encoding="utf-8")
+
+    assert "ObservedScroll" not in source
+    assert "observed_scroll" not in source
+    assert "SelectLastVisibleCharacter" not in source
+    assert "scroll_limit_reached" not in source

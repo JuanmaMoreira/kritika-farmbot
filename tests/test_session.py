@@ -590,3 +590,59 @@ def test_session_aborts_when_required_lobby_normalization_fails():
     assert result.failure_cause.startswith("flow_precondition_failed")
     assert "lobby_only.run" not in trace
     assert rotation.calls == 0
+
+
+def test_session_daily_quests_only_uses_lobby_precondition_not_pets():
+    """
+    Regression: isolated daily_quests session should use screen.lobby precondition,
+    never emit precondition.open_pets transition.
+    """
+    from bot.daily_quests_flow import DailyQuestsFlow
+
+    trace = []
+    # Track which transitions are executed
+    transitions_executed = []
+
+    daily = Flow(
+        "daily_quests",
+        [FlowResult(FlowStatus.COMPLETED)],
+        trace,
+        contract=DailyQuestsFlow.contract,
+    )
+    rotation = Rotation(1, trace)
+
+    navigate_to_pets_called = []
+    def mock_navigate_to_pets():
+        navigate_to_pets_called.append(True)
+        transitions_executed.append("precondition.open_pets")
+        return True
+
+    navigate_to_lobby_called = []
+    def mock_navigate_to_lobby():
+        navigate_to_lobby_called.append(True)
+        transitions_executed.append("precondition.open_lobby")
+        return True
+
+    runner, events = _runner(
+        1,
+        [daily],
+        rotation,
+        trace=trace,
+        navigate_to_lobby=mock_navigate_to_lobby,
+        navigate_to_pets_manage=mock_navigate_to_pets,
+        context_values=[SCREEN_LOBBY],  # Start in Lobby
+    )
+
+    result = runner.run()
+
+    assert result.status is SessionStatus.COMPLETED
+    assert result.characters_processed == 1
+    assert result.advances_completed == 1
+    # Flow should run
+    assert "daily_quests.run" in trace
+    # Should NOT call navigate_to_pets_manage (no precondition.open_pets)
+    assert len(navigate_to_pets_called) == 0
+    # Should not execute precondition.open_pets transition
+    assert "precondition.open_pets" not in transitions_executed
+    # The key assertion: no pets_manage navigation for daily_quests
+    assert all("pets" not in t for t in transitions_executed)

@@ -57,6 +57,7 @@ from bot.catalog import (
     LANDMARK_SOCKET_ENHANCE_ALL_TITLE,
     LANDMARK_SOCKET_EQUIPMENT_HOME_ACTIVE,
     LANDMARK_SOCKET_INVENTORY_FULL_PROMPT,
+    LANDMARK_METEOR_INVENTORY_FULL_PROMPT,
     LANDMARK_SOCKET_NO_MATERIAL_PROMPT,
     LANDMARK_SOCKET_SELL_BULK_BUTTON,
     LANDMARK_SOCKET_TAB,
@@ -517,6 +518,23 @@ SOCKET_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
     calibration=LinearGapCalibration(
         negative_anchor=0.5793697237968445,
         positive_anchor=0.9941959977149963,
+    ),
+)
+
+# Human-confirmed Meteorite-cap guard reached from World Boss Start. The first
+# line reads "Meteorite Bag is full." which separates it from the Socket guard
+# ("The bag is full.") despite the shared second line. Global overlay; the
+# caller remains independently resolved as screen.world_boss. No positive
+# relief exists by policy: the only productive branch is No.
+METEOR_INVENTORY_FULL_PROMPT_SPEC = LocalCvSpec(
+    name=LANDMARK_METEOR_INVENTORY_FULL_PROMPT,
+    asset_path=Path(
+        "assets/ui/landmarks/meteor-inventory-full-prompt-current.png"
+    ),
+    region=(0.31, 0.38, 0.69, 0.54),
+    calibration=LinearGapCalibration(
+        negative_anchor=0.762491,
+        positive_anchor=0.992478,
     ),
 )
 
@@ -1101,6 +1119,7 @@ DEFAULT_LOCAL_CV_SPECS = (
     SOCKET_ENHANCE_ALL_TITLE_SPEC,
     SOCKET_EQUIPMENT_HOME_ACTIVE_SPEC,
     SOCKET_INVENTORY_FULL_PROMPT_SPEC,
+    METEOR_INVENTORY_FULL_PROMPT_SPEC,
     SOCKET_NO_MATERIAL_PROMPT_SPEC,
     SOCKET_SELL_BULK_BUTTON_SPEC,
     WORLD_BOSS_SELECT_BOSS_HEADER_SPEC,

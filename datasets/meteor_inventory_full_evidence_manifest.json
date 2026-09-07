@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-09-06",
+    "source": "live_scrcpy",
+    "frame_size": [2712, 1224],
+    "human_ground_truth": "confirmed_in_chat",
+    "semantic_scope": "global meteorite-capacity popup; only the World Boss caller and its negative No branch were confirmed in this acquisition",
+    "semantic_state": {
+      "base_context": "screen.world_boss",
+      "overlays": ["popup.meteor_inventory_full"]
+    },
+    "behavior": "No returns to clean screen.world_boss and completes this character without retrying Start",
+    "deferred": "meteorite inventory resolution and resuming WorldBossFlow for the same character",
+    "distinguisher": "first line reads 'Meteorite Bag is full.' vs socket 'The bag is full.'; second line identical ('Would you like to organize your bag?'); equipment bag-full uses a 4-line prompt with X close instead of Yes/No",
+    "landmark": {
+      "name": "landmark.meteor_inventory_full_prompt",
+      "asset": "assets/ui/landmarks/meteor-inventory-full-prompt-current.png",
+      "region": [0.31, 0.38, 0.69, 0.54],
+      "positive_raw_range": [0.992478, 0.999972],
+      "strongest_reviewed_negative": 0.762491,
+      "strongest_negative_source": "screencaps/semantic/world_boss/inventory_full/20260828T114407_020995Z_01.png (socket prompt, shared second line)"
+    },
+    "action": {
+      "intent": "RejectMeteorInventoryFull",
+      "normalized_target": [0.569, 0.6307],
+      "target_note": "reuses the verified socket No primitive geometry; identical Yes/No layout on the same World Boss Start caller",
+      "expected": "screen.world_boss"
+    }
+  },
+  "entries": [
+    {"path": "screencaps/semantic/world_boss/meteor_full/20260906T000119_016095Z_01.png", "base_context": "screen.world_boss", "overlays": ["popup.meteor_inventory_full"], "review_status": "confirmed"},
+    {"path": "screencaps/semantic/world_boss/meteor_full/20260906T000119_491865Z_02.png", "base_context": "screen.world_boss", "overlays": ["popup.meteor_inventory_full"], "review_status": "confirmed"}
+  ],
+  "postcondition_entries": [
+    {"path": "screencaps/semantic/world_boss/meteor_full_after/20260906T000701_955529Z_01.png", "review_status": "confirmed"},
+    {"path": "screencaps/semantic/world_boss/meteor_full_after/20260906T000702_429086Z_02.png", "review_status": "confirmed"},
+    {"path": "screencaps/semantic/world_boss/meteor_full_after/20260906T000702_899862Z_03.png", "review_status": "confirmed"}
+  ]
+}

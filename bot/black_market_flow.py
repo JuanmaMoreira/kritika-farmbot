@@ -28,6 +28,7 @@ from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
     RuntimeWaitAborted,
+    RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
 from bot.semantic_actions import (
@@ -175,6 +176,8 @@ class BlackMarketFlow:
             return self._run(limit)
         except (KeyboardInterrupt, SystemExit):
             raise
+        except RuntimeWaitCancelled:
+            return BlackMarketFlowResult(status=FlowStatus.CANCELLED)
         except Exception as error:
             self._record_best_effort("black_market.unexpected_state")
             return BlackMarketFlowResult(

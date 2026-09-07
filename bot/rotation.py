@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from numbers import Integral, Real
 from typing import Callable, Protocol, runtime_checkable
@@ -22,6 +22,10 @@ from bot.component_contracts import (
     ComponentRequirement,
     QUICK_MENU_ACCESS_REQUIREMENT,
 )
+from bot.character_select_layout import (
+    predecessor_center,
+    tile_box,
+)
 from bot.character_select_scroll import (
     CharacterSelectScrollProfile,
     DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE,
@@ -31,14 +35,12 @@ from bot.character_selection import (
     CharacterSelectionState,
     DEFAULT_CHARACTER_SELECTION_DETECTOR,
 )
+from bot.create_character_sentinel import (
+    DEFAULT_SENTINEL_DETECTOR,
+    CreateCharacterSentinelDetector,
+)
 from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventSink
-from bot.observed_scroll import (
-    ObservedScroll,
-    ObservedScrollOutcome,
-    ScrollAttemptKind,
-    ScrollAttemptMeasurement,
-)
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
@@ -54,7 +56,7 @@ from bot.quick_menu import (
 from bot.semantic_actions import (
     ConfirmCharacterSelection,
     OpenQuickMenu,
-    SelectLastVisibleCharacter,
+    SelectCharacterCard,
 )
 from bot.state import ResolutionStatus
 from bot.verified_transition import (
@@ -73,12 +75,7 @@ class RotationOutcome(str, Enum):
 class RotationResult:
     outcome: RotationOutcome
     swipe_count: int = 0
-    effective_swipe_count: int = 0
-    bottom_confirmation_count: int = 0
-    end_difference: float | None = None
     error: str | None = None
-    scroll_attempts: tuple[ScrollAttemptMeasurement, ...] = ()
-    scroll_attempt_kinds: tuple[ScrollAttemptKind, ...] = ()
     transitions: tuple["RotationTransitionTrace", ...] = ()
 
     @property
@@ -121,7 +118,7 @@ class _Observer(Protocol):
 
 
 class StandardRotation:
-    """Advance once using Quick Menu and the MRU Character Select list."""
+    """Advance once by locating the Create Character (+) sentinel tile."""
 
     contract = ComponentContract(
         precondition=QUICK_MENU_ACCESS_REQUIREMENT,
@@ -145,10 +142,14 @@ class StandardRotation:
         selection_max_attempts: int = 2,
         transition_grace_timeout: float = 2.0,
         transition_max_attempts: int = 2,
+        max_swipes: int = 6,
+        coarse_swipes: int = 2,
         scroll_profile: CharacterSelectScrollProfile = (
             DEFAULT_CHARACTER_SELECT_SCROLL_PROFILE
         ),
-        observed_scroll: ObservedScroll | None = None,
+        sentinel_detector: CreateCharacterSentinelDetector = (
+            DEFAULT_SENTINEL_DETECTOR
+        ),
         verified_transition: VerifiedTransition | None = None,
         quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
         selection_detector: CharacterSelectionDetector = (
@@ -164,6 +165,10 @@ class StandardRotation:
         if not callable(getattr(events, "record", None)):
             raise ValueError("events must provide record(event)")
         self.character_count = _positive_integer(character_count, "character_count")
+        self.max_swipes = _positive_integer(max_swipes, "max_swipes")
+        self.coarse_swipes = _non_negative_integer(
+            coarse_swipes, "coarse_swipes"
+        )
         self.timeout = _positive_duration(timeout, "timeout")
         self.precondition_settle_for = _non_negative_duration(
             precondition_settle_for, "precondition_settle_for"
@@ -187,10 +192,8 @@ class StandardRotation:
             raise ValueError("quick_menu_policy must be QuickMenuPolicy")
         if not isinstance(scroll_profile, CharacterSelectScrollProfile):
             raise ValueError("scroll_profile must be CharacterSelectScrollProfile")
-        if observed_scroll is None:
-            observed_scroll = ObservedScroll(observer, actions)
-        if not callable(getattr(observed_scroll, "scroll_to_edge", None)):
-            raise ValueError("observed_scroll must provide scroll_to_edge()")
+        if not callable(getattr(sentinel_detector, "measure", None)):
+            raise ValueError("sentinel_detector must provide measure(frame)")
         if verified_transition is None:
             verified_transition = VerifiedTransition(observer, actions)
         if not callable(getattr(verified_transition, "execute", None)):
@@ -199,7 +202,7 @@ class StandardRotation:
         self.actions = actions
         self.events = events
         self.scroll_profile = scroll_profile
-        self.observed_scroll = observed_scroll
+        self.sentinel_detector = sentinel_detector
         self.verified_transition = verified_transition
         self.quick_menu_policy = quick_menu_policy
         self.selection_detector = selection_detector
@@ -291,53 +294,113 @@ class StandardRotation:
             )
         character_select = character_select_result.final_snapshot
 
-        scroll_result = self.observed_scroll.scroll_to_edge(
-            character_select,
-            detector=self.scroll_profile.detector(),
-            config=self.scroll_profile.config(),
-            is_compatible=lambda snapshot: _is_clean_base(
-                snapshot, SCREEN_CHARACTER_SELECT
-            ),
-            abort_if=_has_incompatible_clean_screen,
-        )
-        scroll_attempts = scroll_result.attempts
-        scroll_attempt_kinds = scroll_result.attempt_kinds
-        swipe_count = len(scroll_attempts)
-        effective_swipe_count = scroll_result.effective_gesture_count
-        bottom_confirmation_count = scroll_result.confirmation_count
-        end_difference = (
-            scroll_attempts[-1].settled_difference if scroll_attempts else None
-        )
-        if not scroll_result.edge_reached:
-            reason = (
-                "scroll_limit_reached"
-                if scroll_result.outcome is ObservedScrollOutcome.LIMIT_REACHED
-                else f"character_select_scroll_failed: {scroll_result.error}"
+        swipe_count = 0
+        while True:
+            if _is_clean_base(character_select, SCREEN_CHARACTER_SELECT):
+                reading = self.sentinel_detector.measure(character_select.frame)
+                if reading.confirmed and reading.location is not None:
+                    break
+                if swipe_count >= self.max_swipes:
+                    return self._abort(
+                        "sentinel_not_found_after_max_swipes",
+                        swipe_count=swipe_count,
+                        transitions=tuple(transitions),
+                    )
+                # Sentinel absent on a clean screen: coarse strong swipes
+                # first, then short controlled ones to finish positioning a
+                # partial card. An ineffective swipe proves nothing about the
+                # list end; only the swipe budget bounds this search.
+                if swipe_count < self.coarse_swipes:
+                    gesture = self.scroll_profile.progress_swipe
+                else:
+                    gesture = self.scroll_profile.fine_swipe
+                self.actions.execute(gesture, character_select.geometry)
+                swipe_count += 1
+                try:
+                    character_select = self.observer.wait_until(
+                        lambda snapshot: _is_clean_base(
+                            snapshot, SCREEN_CHARACTER_SELECT
+                        ),
+                        after_sequence=character_select.sequence,
+                        timeout=self.timeout,
+                        abort_if=_is_contradictory_character_select,
+                        stable_for=self.scroll_profile.settle_for,
+                    )
+                except RuntimeWaitAborted as error:
+                    return self._abort(
+                        f"character_select_unexpected_state: {error}",
+                        swipe_count=swipe_count,
+                        transitions=tuple(transitions),
+                    )
+                except RuntimeWaitTimeout as error:
+                    return self._abort(
+                        f"character_select_settle_failed: {error}",
+                        swipe_count=swipe_count,
+                        transitions=tuple(transitions),
+                    )
+                continue
+            if _is_contradictory_character_select(character_select):
+                return self._abort(
+                    "character_select_unexpected_state",
+                    swipe_count=swipe_count,
+                    transitions=tuple(transitions),
+                )
+            # UNKNOWN/AMBIGUOUS authorizes no input: bounded reobservation.
+            try:
+                character_select = self.observer.wait_until(
+                    lambda snapshot: _is_clean_base(
+                        snapshot, SCREEN_CHARACTER_SELECT
+                    ),
+                    after_sequence=character_select.sequence,
+                    timeout=self.timeout,
+                    abort_if=_is_contradictory_character_select,
+                )
+            except RuntimeWaitAborted as error:
+                return self._abort(
+                    f"character_select_unexpected_state: {error}",
+                    swipe_count=swipe_count,
+                    transitions=tuple(transitions),
+                )
+            except RuntimeWaitTimeout as error:
+                return self._abort(
+                    f"character_select_unresolved: {error}",
+                    swipe_count=swipe_count,
+                    transitions=tuple(transitions),
+                )
+
+        try:
+            target = predecessor_center(reading.location)
+            target_detector = replace_selection_region(
+                self.selection_detector, tile_box(target)
             )
+        except ValueError as error:
             return self._abort(
-                reason,
+                f"invalid_sentinel_location: {error}",
                 swipe_count=swipe_count,
-                effective_swipe_count=effective_swipe_count,
-                bottom_confirmation_count=bottom_confirmation_count,
-                end_difference=end_difference,
-                scroll_attempts=scroll_attempts,
-                scroll_attempt_kinds=scroll_attempt_kinds,
                 transitions=tuple(transitions),
             )
-        character_select = scroll_result.final_snapshot
 
         selection_result = self.verified_transition.execute(
-            "rotation.select_last_visible_character",
-            SelectLastVisibleCharacter(),
+            "rotation.select_predecessor_character",
+            SelectCharacterCard(target),
             character_select,
-            expected=self._is_target_card_selected,
-            precondition=self._is_target_card_unselected,
-            retryable_from=self._is_target_card_unselected,
+            expected=lambda snapshot: _is_selected(snapshot, target_detector),
+            # The tap is authorized by clean Character Select plus the already
+            # confirmed sentinel and valid geometry behind `target`. The
+            # pre-tap selection state is never a gate: an already-selected or
+            # uncertain card is safe to tap, and only the post-tap SELECTED
+            # reading declares success.
+            precondition=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_CHARACTER_SELECT
+            ),
+            retryable_from=lambda snapshot: _is_clean_base(
+                snapshot, SCREEN_CHARACTER_SELECT
+            ),
             abort_if=_has_unexpected_character_selection_state,
             stable_for=self.selection_settle_for,
             policy=self.selection_policy,
         )
-        selection_reading = self.selection_detector.measure(
+        selection_reading = target_detector.measure(
             selection_result.final_snapshot.frame
         )
         transitions.append(
@@ -349,15 +412,10 @@ class StandardRotation:
         )
         if not selection_result.succeeded:
             return self._abort(
-                "character_selection_failed: "
+                "predecessor_selection_failed: "
                 f"{selection_result.outcome.value}: "
                 f"{selection_result.error}",
                 swipe_count=swipe_count,
-                effective_swipe_count=effective_swipe_count,
-                bottom_confirmation_count=bottom_confirmation_count,
-                end_difference=end_difference,
-                scroll_attempts=tuple(scroll_attempts),
-                scroll_attempt_kinds=tuple(scroll_attempt_kinds),
                 transitions=tuple(transitions),
             )
         selected = selection_result.final_snapshot
@@ -383,37 +441,13 @@ class StandardRotation:
                 f"{confirmation_result.outcome.value}: "
                 f"{confirmation_result.error}",
                 swipe_count=swipe_count,
-                effective_swipe_count=effective_swipe_count,
-                bottom_confirmation_count=bottom_confirmation_count,
-                end_difference=end_difference,
-                scroll_attempts=tuple(scroll_attempts),
-                scroll_attempt_kinds=tuple(scroll_attempt_kinds),
                 transitions=tuple(transitions),
             )
 
         return RotationResult(
             outcome=RotationOutcome.SUCCESS,
             swipe_count=swipe_count,
-            effective_swipe_count=effective_swipe_count,
-            bottom_confirmation_count=bottom_confirmation_count,
-            end_difference=end_difference,
-            scroll_attempts=tuple(scroll_attempts),
-            scroll_attempt_kinds=tuple(scroll_attempt_kinds),
             transitions=tuple(transitions),
-        )
-
-    def _is_target_card_selected(self, snapshot: RuntimeSnapshot) -> bool:
-        return (
-            _is_clean_base(snapshot, SCREEN_CHARACTER_SELECT)
-            and self.selection_detector.measure(snapshot.frame).state
-            is CharacterSelectionState.SELECTED
-        )
-
-    def _is_target_card_unselected(self, snapshot: RuntimeSnapshot) -> bool:
-        return (
-            _is_clean_base(snapshot, SCREEN_CHARACTER_SELECT)
-            and self.selection_detector.measure(snapshot.frame).state
-            is CharacterSelectionState.UNSELECTED
         )
 
     def _abort(
@@ -421,11 +455,6 @@ class StandardRotation:
         reason: str,
         *,
         swipe_count: int = 0,
-        effective_swipe_count: int = 0,
-        bottom_confirmation_count: int = 0,
-        end_difference: float | None = None,
-        scroll_attempts: tuple[ScrollAttemptMeasurement, ...] = (),
-        scroll_attempt_kinds: tuple[ScrollAttemptKind, ...] = (),
         transitions: tuple[RotationTransitionTrace, ...] = (),
     ) -> RotationResult:
         try:
@@ -435,12 +464,7 @@ class StandardRotation:
         return RotationResult(
             outcome=RotationOutcome.ABORTED,
             swipe_count=swipe_count,
-            effective_swipe_count=effective_swipe_count,
-            bottom_confirmation_count=bottom_confirmation_count,
-            end_difference=end_difference,
             error=reason,
-            scroll_attempts=scroll_attempts,
-            scroll_attempt_kinds=scroll_attempt_kinds,
             transitions=transitions,
         )
 
@@ -468,6 +492,33 @@ def _is_clean_base(snapshot: RuntimeSnapshot, base: str) -> bool:
         and state.base_context == base
         and not state.overlays
     )
+
+
+def _is_contradictory_character_select(snapshot: RuntimeSnapshot) -> bool:
+    """RESOLVED snapshots that rule out continuing the sentinel search."""
+
+    state = snapshot.state
+    return state.status is ResolutionStatus.RESOLVED and (
+        state.base_context != SCREEN_CHARACTER_SELECT or bool(state.overlays)
+    )
+
+
+def _is_selected(
+    snapshot: RuntimeSnapshot, detector: CharacterSelectionDetector
+) -> bool:
+    return (
+        _is_clean_base(snapshot, SCREEN_CHARACTER_SELECT)
+        and detector.measure(snapshot.frame).state
+        is CharacterSelectionState.SELECTED
+    )
+
+
+def replace_selection_region(
+    detector: CharacterSelectionDetector, region
+) -> CharacterSelectionDetector:
+    """Reuse the calibrated yellow-border classifier on a target tile box."""
+
+    return replace(detector, region=region)
 
 
 def _is_clean_quick_menu_capable(
@@ -593,6 +644,12 @@ def _positive_integer(value: object, name: str) -> int:
     return int(value)
 
 
+def _non_negative_integer(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, Integral) or value < 0:
+        raise ValueError(f"{name} must be a non-negative integer")
+    return int(value)
+
+
 def _positive_duration(value: object, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, Real):
         raise ValueError(f"{name} must be a positive finite number")
@@ -617,4 +674,5 @@ __all__ = (
     "RotationStrategy",
     "RotationTransitionTrace",
     "StandardRotation",
+    "replace_selection_region",
 )

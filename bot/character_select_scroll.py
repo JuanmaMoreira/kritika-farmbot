@@ -17,11 +17,22 @@ class CharacterSelectScrollProfile:
     thumbnail_width: int = 96
     thumbnail_height: int = 72
     settled_threshold: float = 0.0500
-    movement_threshold: float = 0.0500
+    movement_threshold: float = 0.0300
     progress_swipe: Swipe = Swipe(
         start=(0.8000, 0.8000),
         end=(0.8000, 0.0250),
         duration_ms=190,
+    )
+    # Short controlled swipe for the fine phase of the sentinel search: after
+    # the coarse gestures approach the list end, a full-strength swipe stops
+    # producing useful positioning (live: 6 strong swipes, + card left half
+    # visible). x=0.68 stays on the grid columns; 0.24 height at 250 ms aims
+    # for roughly one row of travel to finish revealing a partial card.
+    # Conservative values, pending live validation; never bottom evidence.
+    fine_swipe: Swipe = Swipe(
+        start=(0.6800, 0.6200),
+        end=(0.6800, 0.3800),
+        duration_ms=250,
     )
     confirmation_swipe: Swipe = Swipe(
         start=(0.6800, 0.7600),
@@ -29,7 +40,7 @@ class CharacterSelectScrollProfile:
         duration_ms=200,
     )
     required_confirmations: int = 1
-    max_attempts: int = 3
+    max_attempts: int = 5
     timeout: float = 6.0
     settle_for: float = 1.0
 
@@ -54,6 +65,7 @@ class CharacterSelectScrollProfile:
             max_attempts=self.max_attempts,
             timeout=self.timeout,
             settle_for=self.settle_for,
+            abort_on_ineffective=False,
         )
 
 

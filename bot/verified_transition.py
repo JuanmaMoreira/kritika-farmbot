@@ -14,6 +14,7 @@ from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
     RuntimeWaitAborted,
+    RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
 from bot.semantic_actions import SemanticAction
@@ -23,6 +24,7 @@ class VerifiedTransitionOutcome(str, Enum):
     SUCCESS_FIRST_ATTEMPT = "success_first_attempt"
     SUCCESS_AFTER_GRACE = "success_after_grace"
     SUCCESS_AFTER_RETRY = "success_after_retry"
+    SUCCESS_AFTER_OBSTRUCTION_RECOVERY = "success_after_obstruction_recovery"
     PRECONDITION_REJECTED = "precondition_rejected"
     RETRY_GUARD_REJECTED = "retry_guard_rejected"
     ATTEMPTS_EXHAUSTED = "attempts_exhausted"
@@ -98,6 +100,7 @@ class VerifiedTransitionResult:
             VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
             VerifiedTransitionOutcome.SUCCESS_AFTER_GRACE,
             VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY,
+            VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY,
         }
 
 
@@ -115,6 +118,23 @@ class _Observer(Protocol):
     ) -> RuntimeSnapshot: ...
 
 
+class ObstructionRecovery(Protocol):
+    """Generic on-demand cleanup tried before a definitive retry/failure.
+
+    The protocol is intentionally free of any overlay-specific vocabulary:
+    it receives the fresh snapshot that missed the caller's condition and
+    returns a fresher snapshot when it performed >= 1 cleanup tap, or None
+    when it performed no tap. The caller re-evaluates its original condition
+    and never repeats its productive action just because cleanup ran.
+    """
+
+    def attempt(
+        self,
+        snapshot: RuntimeSnapshot,
+        expected: Callable[[RuntimeSnapshot], bool],
+    ) -> RuntimeSnapshot | None: ...
+
+
 class VerifiedTransition:
     """Execute an action and verify its postcondition with guarded retries."""
 
@@ -123,6 +143,7 @@ class VerifiedTransition:
         observer: RuntimeObserver,
         actions: ActionExecutor,
         events: EventSink | None = None,
+        obstruction_recovery: ObstructionRecovery | None = None,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -130,9 +151,14 @@ class VerifiedTransition:
             raise ValueError("observer must provide observe() and wait_until()")
         if not callable(getattr(actions, "execute", None)):
             raise ValueError("actions must provide execute(intent, geometry)")
+        if obstruction_recovery is not None and not callable(
+            getattr(obstruction_recovery, "attempt", None)
+        ):
+            raise ValueError("obstruction_recovery must provide attempt() or None")
         self.observer: _Observer = observer
         self.actions = actions
         self.events = events
+        self.obstruction_recovery = obstruction_recovery
 
     def execute(
         self,
@@ -163,6 +189,32 @@ class VerifiedTransition:
             if predicate is not None and not callable(predicate):
                 raise ValueError(f"{predicate_name} must be callable or None")
         stability = _non_negative_duration(stable_for, "stable_for")
+
+        def finish_late_success(outcome, attempt, grace_count, snapshot):
+            # A single late observation (including cleanup/retry-guard output)
+            # does not prove the caller's requested temporal stability.
+            if stability > 0:
+                settled = self._wait(
+                    expected,
+                    after_sequence=snapshot.sequence,
+                    timeout=policy.normal_timeout,
+                    abort_if=abort_if,
+                    stable_for=stability,
+                )
+                if isinstance(settled, RuntimeWaitAborted):
+                    return self._result(
+                        name, VerifiedTransitionOutcome.UNEXPECTED_STATE,
+                        attempt, grace_count, settled.snapshot, str(settled),
+                    )
+                if isinstance(settled, RuntimeWaitTimeout):
+                    return self._result(
+                        name, VerifiedTransitionOutcome.TIMEOUT,
+                        attempt, grace_count, settled.last_snapshot or snapshot,
+                        "late_expected_state_not_stable",
+                    )
+                snapshot = settled
+            return self._result(name, outcome, attempt, grace_count, snapshot)
+
         self._record(
             "transition.started",
             transition=name,
@@ -172,16 +224,26 @@ class VerifiedTransition:
             max_attempts=policy.max_attempts,
         )
         if precondition is not None and not precondition(before):
-            return self._result(
-                name,
-                VerifiedTransitionOutcome.PRECONDITION_REJECTED,
-                0,
-                0,
-                before,
-                "precondition_rejected",
-            )
+            recovered = self._try_recover(before, precondition, name)
+            if recovered is not None and precondition(recovered):
+                self._record(
+                    "transition.obstruction_recovered",
+                    transition=name,
+                    phase="precondition",
+                )
+                current = recovered
+            else:
+                return self._result(
+                    name,
+                    VerifiedTransitionOutcome.PRECONDITION_REJECTED,
+                    0,
+                    0,
+                    recovered if recovered is not None else before,
+                    "precondition_rejected",
+                )
 
-        current = before
+        else:
+            current = before
         grace_wait_count = 0
         for attempt in range(1, policy.max_attempts + 1):
             try:
@@ -285,7 +347,8 @@ class VerifiedTransition:
                     grace.last_snapshot or grace_anchor,
                     f"{type(error).__name__}: {error}",
                 )
-            if observed.sequence <= current.sequence:
+            latest_wait = grace.last_snapshot or grace_anchor
+            if observed.sequence <= latest_wait.sequence:
                 return self._result(
                     name,
                     VerifiedTransitionOutcome.TIMEOUT,
@@ -300,13 +363,7 @@ class VerifiedTransition:
                     if attempt == 1
                     else VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
                 )
-                return self._result(
-                    name,
-                    outcome,
-                    attempt,
-                    grace_wait_count,
-                    observed,
-                )
+                return finish_late_success(outcome, attempt, grace_wait_count, observed)
             if abort_if is not None and abort_if(observed):
                 return self._result(
                     name,
@@ -316,6 +373,51 @@ class VerifiedTransition:
                     observed,
                     "unexpected_state_after_grace",
                 )
+            recovered = self._try_recover(observed, expected, name)
+            if recovered is not None:
+                if expected(recovered):
+                    self._record(
+                        "transition.obstruction_recovered",
+                        transition=name,
+                        phase="postcondition",
+                    )
+                    return finish_late_success(
+                        VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY,
+                        attempt,
+                        grace_wait_count,
+                        recovered,
+                    )
+                observed = recovered
+                if abort_if is not None and abort_if(observed):
+                    return self._result(
+                        name,
+                        VerifiedTransitionOutcome.UNEXPECTED_STATE,
+                        attempt,
+                        grace_wait_count,
+                        observed,
+                        "unexpected_state_after_recovery",
+                    )
+                if retryable_from is not None and attempt < policy.max_attempts:
+                    # Cleanup changed the UI. A productive retry needs new
+                    # evidence after recovery, not its last pre-failure frame.
+                    fresh = self.observer.observe()
+                    if fresh.sequence <= observed.sequence:
+                        return self._result(
+                            name, VerifiedTransitionOutcome.TIMEOUT, attempt,
+                            grace_wait_count, fresh, "retry_state_not_fresh",
+                        )
+                    observed = fresh
+                    if abort_if is not None and abort_if(observed):
+                        return self._result(
+                            name, VerifiedTransitionOutcome.UNEXPECTED_STATE,
+                            attempt, grace_wait_count, observed,
+                            "unexpected_state_after_recovery",
+                        )
+                    if expected(observed):
+                        return finish_late_success(
+                            VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY,
+                            attempt, grace_wait_count, observed,
+                        )
             if retryable_from is None:
                 return self._result(
                     name,
@@ -352,13 +454,7 @@ class VerifiedTransition:
                             if attempt == 1
                             else VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
                         )
-                        return self._result(
-                            name,
-                            outcome,
-                            attempt,
-                            grace_wait_count,
-                            observed,
-                        )
+                        return finish_late_success(outcome, attempt, grace_wait_count, observed)
                 elif isinstance(guarded, RuntimeWaitAborted):
                     return self._result(
                         name,
@@ -414,6 +510,43 @@ class VerifiedTransition:
             )
         except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
             return error
+
+    def _try_recover(
+        self,
+        snapshot: RuntimeSnapshot,
+        condition: Callable[[RuntimeSnapshot], bool],
+        name: str,
+    ) -> RuntimeSnapshot | None:
+        recovery = self.obstruction_recovery
+        if recovery is None:
+            return None
+        try:
+            recovered = recovery.attempt(snapshot, condition)
+        except RuntimeWaitCancelled:
+            raise
+        except Exception as error:
+            self._record(
+                "transition.obstruction_recovery_failed",
+                transition=name,
+                error=f"{type(error).__name__}: {error}",
+            )
+            raise
+        if recovered is not None and not isinstance(
+            recovered, RuntimeSnapshot
+        ):
+            self._record(
+                "transition.obstruction_recovery_failed",
+                transition=name,
+                error="recovery_must_return_snapshot_or_none",
+            )
+            raise TypeError("recovery_must_return_snapshot_or_none")
+        if recovered is not None and recovered.sequence <= snapshot.sequence:
+            raise RuntimeWaitTimeout(
+                after_sequence=snapshot.sequence,
+                timeout=0.0,
+                last_snapshot=recovered,
+            )
+        return recovered
 
     def _result(
         self,
@@ -482,6 +615,7 @@ def _non_negative_duration(value: object, name: str) -> float:
 
 
 __all__ = (
+    "ObstructionRecovery",
     "VerifiedTransition",
     "VerifiedTransitionOutcome",
     "VerifiedTransitionPolicy",

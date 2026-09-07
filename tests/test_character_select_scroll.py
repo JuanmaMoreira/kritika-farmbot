@@ -7,7 +7,7 @@ def test_default_profile_contains_validated_character_select_configuration():
     profile = CharacterSelectScrollProfile()
 
     assert profile.region == (0.49, 0.19, 0.85, 0.805)
-    assert profile.movement_threshold == 0.05
+    assert profile.movement_threshold == 0.03
     assert profile.settled_threshold == 0.05
     assert profile.progress_swipe.start == (0.8, 0.8)
     assert profile.progress_swipe.end == (0.8, 0.025)
@@ -16,7 +16,7 @@ def test_default_profile_contains_validated_character_select_configuration():
     assert profile.confirmation_swipe.end == (0.68, 0.24)
     assert profile.confirmation_swipe.duration_ms == 200
     assert profile.required_confirmations == 1
-    assert profile.max_attempts == 3
+    assert profile.max_attempts == 5
     assert profile.settle_for == 1.0
 
 

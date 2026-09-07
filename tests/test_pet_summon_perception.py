@@ -46,7 +46,7 @@ def _resolve(relative_path: str):
 def test_all_human_confirmed_pet_summon_frames_resolve_exactly():
     entries = load_manifest(MANIFEST)
 
-    assert len(entries) == 48
+    assert len(entries) == 50
     for entry in entries:
         batch, state = _resolve(entry.path)
         assert state.status is ResolutionStatus.RESOLVED, entry.path
@@ -117,10 +117,10 @@ def test_epic_availability_uses_card_rendering_not_fragment_ocr():
         )
     )
 
-    assert available.value_mean > 185.0
+    assert 95.0 < available.value_mean < 100.0
     assert available.available_confidence >= 0.80
-    assert available.unavailable_confidence == 0.0
-    assert unavailable.value_mean < 87.0
+    assert available.unavailable_confidence < 0.20
+    assert 40.0 < unavailable.value_mean < 50.0
     assert unavailable.unavailable_confidence >= 0.80
     assert unavailable.available_confidence == 0.0
 

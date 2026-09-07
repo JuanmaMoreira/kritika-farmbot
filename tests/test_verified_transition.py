@@ -318,6 +318,57 @@ def test_stale_state_after_grace_is_never_used_to_retry():
     assert len(actions.calls) == 1
 
 
+@pytest.mark.parametrize("recovery", (False, True))
+def test_late_expected_snapshot_cannot_bypass_requested_stability(recovery):
+    from types import SimpleNamespace
+
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE)),
+         _timeout(5 if recovery else 4, _snapshot(6, BEFORE))],
+        observes=[_snapshot(4, BEFORE if recovery else EXPECTED)],
+    )
+    actions = Actions()
+    hook = SimpleNamespace(attempt=lambda snapshot, expected: _snapshot(5, EXPECTED)) if recovery else None
+    result = VerifiedTransition(observer, actions, obstruction_recovery=hook).execute(
+        "test.late_stability", OpenQuickMenu(), _snapshot(1, BEFORE),
+        expected=lambda item: item.state.base_context == EXPECTED,
+        stable_for=0.5, policy=VerifiedTransitionPolicy(max_attempts=1),
+    )
+    assert not result.succeeded
+    assert len(actions.calls) == 1
+    assert observer.wait_calls[-1][2] == 0.5
+
+
+def test_post_grace_snapshot_must_be_newer_than_last_wait_observation():
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(5, BEFORE)), _timeout(5, _snapshot(8, OTHER))],
+        observes=[_snapshot(6, BEFORE)],
+    )
+    result, actions = _run(observer)
+    assert result.outcome is VerifiedTransitionOutcome.TIMEOUT
+    assert len(actions.calls) == 1
+
+
+def test_recovery_exception_cannot_authorize_productive_retry():
+    from unittest.mock import Mock
+
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
+        observes=[_snapshot(4, BEFORE)],
+    )
+    actions = Actions()
+    recovery = Mock()
+    recovery.attempt.side_effect = OSError("no frame after cleanup input")
+    with pytest.raises(OSError):
+        VerifiedTransition(observer, actions, obstruction_recovery=recovery).execute(
+            "test.recovery_failure", OpenQuickMenu(), _snapshot(1, BEFORE),
+            expected=lambda item: item.state.base_context == EXPECTED,
+            retryable_from=lambda item: item.state.base_context == BEFORE,
+            policy=VerifiedTransitionPolicy(max_attempts=2),
+        )
+    assert len(actions.calls) == 1
+
+
 def test_unexpected_state_aborts_without_grace_or_retry():
     ambiguous = _snapshot(2, OTHER)
     ambiguous = RuntimeSnapshot(

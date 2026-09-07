@@ -22,7 +22,7 @@ from bot.catalog import (
 )
 from bot.event_log import EventSink
 from bot.observations import validate_semantic_name
-from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
+from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.semantic_actions import (
     AcknowledgeEtherealNoMaterial,
     ConfirmCombineAll,
@@ -103,6 +103,7 @@ class EquipmentCombineRelief:
         tap_through: TapThroughAnimation | None = None,
         transition_timeout: float = 6.0,
         stable_for: float = 0.25,
+        fact_timeout: float = 15.0,
         animation_policy: TapThroughPolicy = TapThroughPolicy(),
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
@@ -113,14 +114,15 @@ class EquipmentCombineRelief:
             raise ValueError("actions must provide execute()")
         if not callable(getattr(events, "record", None)):
             raise ValueError("events must provide record()")
-        if transition_timeout <= 0 or stable_for < 0:
-            raise ValueError("timeout must be positive and stability non-negative")
+        if transition_timeout <= 0 or stable_for < 0 or fact_timeout <= 0:
+            raise ValueError("timeouts must be positive and stability non-negative")
         if not isinstance(animation_policy, TapThroughPolicy):
             raise ValueError("animation_policy must be TapThroughPolicy")
         self.observer = observer
         self.actions = actions
         self.events = events
         self.stable_for = float(stable_for)
+        self.fact_timeout = float(fact_timeout)
         self.animation_policy = animation_policy
         self.transition = verified_transition or VerifiedTransition(
             observer, actions, events
@@ -305,6 +307,7 @@ class EquipmentCombineRelief:
             precondition=lambda item: _is_transmute_menu(item) and STATUS_COMBINE_ETHEREAL_AVAILABLE in item.state.overlays,
         )
         if awakened is None:
+            self._record("equipment_combine_relief.ethereal_failed", step="open_awakened")
             return EquipmentCombineStrategyOutcome.FAILED, current, 0
         random_part = self._transition(
             "equipment_combine_relief.ethereal.open_random_part",
@@ -314,6 +317,7 @@ class EquipmentCombineRelief:
             precondition=_is_awakened_panel,
         )
         if random_part is None:
+            self._record("equipment_combine_relief.ethereal_failed", step="open_random_part")
             return EquipmentCombineStrategyOutcome.FAILED, awakened, 0
         outcome = self._transition(
             "equipment_combine_relief.ethereal.open_mass_combine",
@@ -324,6 +328,7 @@ class EquipmentCombineRelief:
             policy=self.single_action_policy,
         )
         if outcome is None:
+            self._record("equipment_combine_relief.ethereal_failed", step="open_mass_combine")
             return EquipmentCombineStrategyOutcome.FAILED, random_part, 0
         if _is_ethereal_no_material(outcome):
             acknowledged = self._transition(
@@ -343,6 +348,7 @@ class EquipmentCombineRelief:
                 )
                 acknowledged = restored or acknowledged
             self._record("equipment_combine_relief.ethereal_defensive_no_material")
+            self._record("equipment_combine_relief.ethereal_failed", step="no_material")
             return EquipmentCombineStrategyOutcome.FAILED, acknowledged or outcome, 0
         animation_or_completion = self._transition(
             "equipment_combine_relief.ethereal.confirm_mass_combine",
@@ -354,6 +360,7 @@ class EquipmentCombineRelief:
             policy=self.single_action_policy,
         )
         if animation_or_completion is None:
+            self._record("equipment_combine_relief.ethereal_failed", step="confirm_mass_combine")
             return EquipmentCombineStrategyOutcome.FAILED, outcome, 0
         if _is_random_part_panel(animation_or_completion):
             completion = animation_or_completion
@@ -374,6 +381,7 @@ class EquipmentCombineRelief:
             if tapped.outcome is TapThroughOutcome.CANCELLED:
                 return EquipmentCombineStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
             if not tapped.succeeded:
+                self._record("equipment_combine_relief.ethereal_failed", step="tap_through", reason=tapped.outcome.value)
                 return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
             completion = tapped.final_snapshot
             tap_count = tapped.tap_count
@@ -381,11 +389,25 @@ class EquipmentCombineRelief:
             "equipment_combine_relief.ethereal.return_transmute",
             SelectCombineTransmute(),
             completion,
-            expected=lambda item: _is_transmute_menu(item) and STATUS_COMBINE_ETHEREAL_AVAILABLE not in item.state.overlays,
+            expected=_is_transmute_menu,
             precondition=_is_random_part_panel,
         )
         if restored is None:
+            self._record("equipment_combine_relief.ethereal_failed", step="return_transmute")
             return EquipmentCombineStrategyOutcome.FAILED, completion, tap_count
+        try:
+            restored = self.observer.wait_until(
+                lambda item: _is_transmute_menu(item) and STATUS_COMBINE_ETHEREAL_AVAILABLE not in item.state.overlays,
+                after_sequence=restored.sequence,
+                timeout=self.fact_timeout,
+                stable_for=self.stable_for,
+                cancel_requested=cancel_requested,
+            )
+        except RuntimeWaitCancelled:
+            return EquipmentCombineStrategyOutcome.CANCELLED, restored, tap_count
+        except RuntimeWaitTimeout:
+            self._record("equipment_combine_relief.ethereal_failed", step="guard_clear_timeout")
+            return EquipmentCombineStrategyOutcome.FAILED, restored, tap_count
         self._record("equipment_combine_relief.ethereal_effect", taps=tap_count)
         return EquipmentCombineStrategyOutcome.EFFECT, restored, tap_count
 

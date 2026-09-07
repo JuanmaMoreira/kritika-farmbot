@@ -29,19 +29,21 @@ from .specs import (
 )
 
 
-PET_EPIC_AVAILABILITY_REGION: RelativeRegion = (0.55, 0.46, 0.61, 0.68)
+# Stable upper portion of Epic card (excludes variable N(Open) counter).
+# Available V=96.9..97.3; Unavailable V=42.6..45.1.  Gap=52 units.
+PET_EPIC_AVAILABILITY_REGION: RelativeRegion = (0.508, 0.4175, 0.652, 0.575)
 PET_EPIC_AVAILABILITY_CONFIDENCE_THRESHOLD = SEMANTIC_CONFIDENCE_THRESHOLD
 
 # Human-confirmed clean Summon frames separate the same Epic egg rendering by
-# luminance: available V=185.11..186.48; unavailable V=86.80..86.89.  Reading
-# no quantity avoids coupling business semantics to OCR of the 0..9 numerator.
+# luminance of the stable upper card border/glow (excludes variable N(Open) counter).
+# Available V=96.9..97.3; Unavailable V=42.6..45.1.  Gap=52 units.
 PET_EPIC_AVAILABLE_CALIBRATION = LinearGapCalibration(
-    negative_anchor=86.89,
-    positive_anchor=185.11,
+    negative_anchor=60.0,
+    positive_anchor=95.0,
 )
 PET_EPIC_UNAVAILABLE_CALIBRATION = LinearGapCalibration(
-    negative_anchor=69.89,
-    positive_anchor=168.11,
+    negative_anchor=150.0,
+    positive_anchor=210.0,
 )
 
 

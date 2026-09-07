@@ -13,6 +13,8 @@ from uuid import uuid4
 
 from bot.action_executor import ActionExecutor
 from bot.auto_battle import AutoBattleDetector, AutoBattleEnsurer
+from bot.obstruction_recovery import PortalObstructionRecovery
+from bot.portal_notification import PortalNotificationProbe
 from bot.catalog import (
     MENU_QUICK,
     SCREEN_GUILD,
@@ -133,15 +135,53 @@ class ProductiveRuntime:
             navigate_to_guild=self._navigate_to_guild,
         )
 
+    def build_portal_probe(self) -> PortalNotificationProbe:
+        """On-demand probe using the calibrated Heaven/Hell/Guild assets."""
+
+        return PortalNotificationProbe()
+
+    def build_obstruction_recovery(self) -> PortalObstructionRecovery:
+        """Single shared portal cleanup helper for every verifying seam."""
+
+        return PortalObstructionRecovery(
+            self.observer,
+            self.actions,
+            self.build_portal_probe(),
+            events=self.events,
+            cancel_requested=self.cancel_requested,
+        )
+
+    def _shared_obstruction_recovery(self):
+        """Shared recovery, or None when doubles lack the action boundary.
+
+        Production observer/actions always satisfy the interface; legacy test
+        doubles with ``actions=object()`` fall back silently to the previous
+        behavior without portal recovery instead of failing construction or
+        emitting new observable events.
+        """
+
+        try:
+            return self.build_obstruction_recovery()
+        except ValueError:
+            return None
+
+    def build_verified_transition(self) -> VerifiedTransition:
+        """VerifiedTransition already wired to the shared portal recovery."""
+
+        return VerifiedTransition(
+            self.observer,
+            self.actions,
+            self.events,
+            self._shared_obstruction_recovery(),
+        )
+
     def build_rotation(self, character_count: int) -> StandardRotation:
         return StandardRotation(
             self.observer,
             self.actions,
             self.events,
             character_count=character_count,
-            verified_transition=VerifiedTransition(
-                self.observer, self.actions, self.events
-            ),
+            verified_transition=self.build_verified_transition(),
         )
 
     def run_flow(self, definition: FlowDefinition) -> FlowResult:
@@ -233,6 +273,9 @@ class ProductiveRuntime:
             )
             return settled.state.base_context
         except RuntimeWaitTimeout as error:
+            recovered = self._recover_clean_context(error.last_snapshot)
+            if recovered is not None:
+                return recovered
             latest = error.last_snapshot
             self.events.record(
                 "runtime.context_probe_timeout",
@@ -253,6 +296,41 @@ class ProductiveRuntime:
         except RuntimeWaitCancelled:
             return None
 
+    def _recover_clean_context(self, last_snapshot) -> str | None:
+        """Reuse the shared portal recovery for context normalization.
+
+        Single bounded attempt: probe the timed-out snapshot, dismiss on
+        CONFIRMED only, then re-evaluate the original clean-context condition
+        with one more bounded wait. Returns the base context or None.
+        """
+
+        if last_snapshot is None:
+            return None
+        recovery = self._shared_obstruction_recovery()
+        if recovery is None:
+            return None
+        try:
+            recovered = recovery.attempt(
+                last_snapshot, _is_clean_known_context
+            )
+        except Exception:
+            return None
+        if recovered is None:
+            return None
+        try:
+            settled = self.observer.wait_until(
+                _is_clean_known_context,
+                after_sequence=recovered.sequence,
+                timeout=_CLEAN_CONTEXT_TIMEOUT,
+                stable_for=_CLEAN_CONTEXT_STABLE_FOR,
+                cancel_requested=self.cancel_requested,
+            )
+            return settled.state.base_context
+        except (RuntimeWaitTimeout, RuntimeWaitCancelled):
+            return None
+        except Exception:
+            return None
+
     def _navigate_to_lobby(self) -> bool:
         """Normalize an acquired origin to Lobby with its verified direct route."""
 
@@ -266,7 +344,7 @@ class ProductiveRuntime:
             or not _is_clean_base(initial, origin)
         ):
             return False
-        transition = VerifiedTransition(self.observer, self.actions, self.events)
+        transition = self.build_verified_transition()
         policy = VerifiedTransitionPolicy(
             normal_timeout=6.0,
             grace_timeout=2.0,
@@ -340,7 +418,7 @@ class ProductiveRuntime:
             or not _is_clean_base(initial, origin)
         ):
             return False
-        transition = VerifiedTransition(self.observer, self.actions, self.events)
+        transition = self.build_verified_transition()
         policy = VerifiedTransitionPolicy(
             normal_timeout=6.0,
             grace_timeout=2.0,
@@ -394,7 +472,7 @@ class ProductiveRuntime:
         if not _is_clean_base(initial, SCREEN_LOBBY):
             return False
 
-        transition = VerifiedTransition(self.observer, self.actions, self.events)
+        transition = self.build_verified_transition()
         policy = VerifiedTransitionPolicy(
             normal_timeout=6.0,
             grace_timeout=2.0,
@@ -429,7 +507,7 @@ class ProductiveRuntime:
             return True
         if not _is_clean_base(initial, SCREEN_LOBBY):
             return False
-        transition = VerifiedTransition(self.observer, self.actions, self.events)
+        transition = self.build_verified_transition()
         policy = VerifiedTransitionPolicy(
             normal_timeout=6.0,
             grace_timeout=2.0,
@@ -494,7 +572,19 @@ def open_productive_runtime(
             )
             facts = build_runtime_fact_reader(observer, events=events)
             auto_battle = AutoBattleEnsurer(AutoBattleDetector(observer), actions)
-            transition = VerifiedTransition(observer, actions, events)
+            try:
+                shared_recovery: object = PortalObstructionRecovery(
+                    observer,
+                    actions,
+                    PortalNotificationProbe(),
+                    events=events,
+                    cancel_requested=token.is_requested,
+                )
+            except ValueError:
+                shared_recovery = None
+            transition = VerifiedTransition(
+                observer, actions, events, shared_recovery
+            )
             tap_through = TapThroughAnimation(observer, actions, events)
             socket_relief = SocketInventoryRelief(
                 observer,

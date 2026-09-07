@@ -1,4 +1,4 @@
-"""Small bounded primitive for fresh multi-frame runtime observations."""
+"""Small bounded primitives for fresh multi-frame runtime observations."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ from enum import Enum
 from numbers import Integral, Real
 from typing import Callable
 
+from bot.capture import FrameSnapshot
 from bot.runtime_observer import (
+    FrameSource,
     RuntimeObserver,
     RuntimeSnapshot,
     RuntimeWaitCancelled,
@@ -156,6 +158,98 @@ class TemporalObserver:
         return TemporalWindow(TemporalWindowStatus.COMPLETE, tuple(snapshots))
 
 
+@dataclass(frozen=True)
+class FrameHarvest:
+    """Raw frames harvested straight from the source, without semantics.
+
+    Unlike :class:`TemporalWindow`, frames here carry no resolved state: the
+    caller owns context verification (bracketing full observations plus a
+    fresh guard before any input). Only strictly increasing sequences are
+    ever collected, so a stalled decoder can never inject zero-diff
+    duplicates.
+    """
+
+    status: TemporalWindowStatus
+    frames: tuple[FrameSnapshot, ...] = ()
+    detail: str | None = None
+
+
+def harvest_frame_window(
+    source: FrameSource,
+    *,
+    after_sequence: int,
+    frame_count: int,
+    sample_interval: float,
+    timeout: float,
+    poll_interval: float = 0.02,
+    cancel_requested: Callable[[], bool] | None = None,
+    clock: Callable[[], float] = time.monotonic,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> FrameHarvest:
+    """Collect fresh raw frames spaced by capture timestamps, bounded.
+
+    Frames with a repeated or older sequence (decoder stall) never count
+    toward ``frame_count`` nor toward the timestamp spacing: counting them
+    would fabricate ~0 diffs and bias motion classifiers.
+    """
+
+    if not callable(getattr(source, "get_frame", None)):
+        raise ValueError("source must provide get_frame()")
+    if cancel_requested is not None and not callable(cancel_requested):
+        raise ValueError("cancel_requested must be callable")
+    after = _sequence(after_sequence)
+    count = _frame_count(frame_count)
+    interval = _non_negative(sample_interval, "sample_interval")
+    duration = _positive(timeout, "timeout")
+    poll = _positive(poll_interval, "poll_interval")
+    started = clock()
+    deadline = started + duration
+    frames: list[FrameSnapshot] = []
+    cursor = after
+    while len(frames) < count:
+        if cancel_requested is not None and cancel_requested():
+            return FrameHarvest(TemporalWindowStatus.CANCELLED, tuple(frames))
+        remaining = deadline - clock()
+        if remaining <= 0:
+            return FrameHarvest(
+                TemporalWindowStatus.TIMEOUT,
+                tuple(frames),
+                _timeout_detail(
+                    "frame harvest deadline expired",
+                    frames,
+                    count,
+                    duration,
+                    clock() - started,
+                ),
+            )
+        try:
+            frame = source.get_frame()
+        except Exception as error:
+            return FrameHarvest(
+                TemporalWindowStatus.FAILURE, tuple(frames), str(error)
+            )
+        if not isinstance(frame, FrameSnapshot):
+            return FrameHarvest(
+                TemporalWindowStatus.FAILURE,
+                tuple(frames),
+                "source must emit FrameSnapshot instances",
+            )
+        if frame.sequence <= cursor:
+            # Stale or duplicate delivery: never evidence, never spacing.
+            sleeper(min(poll, remaining))
+            continue
+        if frames and frame.timestamp - frames[-1].timestamp < interval:
+            # Fresh but too close in capture time: skip without consuming the
+            # cursor so the spacing baseline stays intact.
+            sleeper(min(poll, remaining))
+            continue
+        frames.append(frame)
+        cursor = frame.sequence
+        if len(frames) < count:
+            sleeper(min(poll, remaining))
+    return FrameHarvest(TemporalWindowStatus.COMPLETE, tuple(frames))
+
+
 def _sequence(value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, Integral) or value < 0:
         raise ValueError("after_sequence must be a non-negative integer")
@@ -204,4 +298,10 @@ def _non_negative(value: object, name: str) -> float:
     return result
 
 
-__all__ = ("TemporalObserver", "TemporalWindow", "TemporalWindowStatus")
+__all__ = (
+    "FrameHarvest",
+    "TemporalObserver",
+    "TemporalWindow",
+    "TemporalWindowStatus",
+    "harvest_frame_window",
+)
