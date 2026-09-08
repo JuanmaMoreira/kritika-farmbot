@@ -33,6 +33,7 @@ from bot.semantic_actions import (
     ClosePetSummonResult,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
+    ExitWorldBoss,
     CancelSocketSell,
     CloseSocketEnhanceAll,
     ConfirmCombineAll,
@@ -349,6 +350,7 @@ class BattleActionTargets:
     start_world_boss_battle: RelativePoint = (0.7740, 0.9346)
     toggle_auto_battle: RelativePoint = (0.8625, 0.0480)
     continue_after_raid: RelativePoint = (0.5000, 0.9100)
+    exit_world_boss: RelativePoint = (0.813, 0.055)
     dismiss_world_boss_bag_full: RelativePoint = (0.6700, 0.3100)
 
     def __post_init__(self) -> None:
@@ -360,6 +362,7 @@ class BattleActionTargets:
             self.start_world_boss_battle,
             self.toggle_auto_battle,
             self.continue_after_raid,
+            self.exit_world_boss,
             self.dismiss_world_boss_bag_full,
         ):
             relative_point_to_pixel(point, 1, 1)
@@ -694,6 +697,8 @@ class ActionExecutor:
             return self.battle_targets.start_world_boss_battle
         if isinstance(action, ContinueAfterWorldBossRaid):
             return self.battle_targets.continue_after_raid
+        if isinstance(action, ExitWorldBoss):
+            return self.battle_targets.exit_world_boss
         if isinstance(action, AcceptSocketInventoryFull):
             return self.socket_targets.accept_inventory_full
         if isinstance(action, RejectSocketInventoryFull):

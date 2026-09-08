@@ -36,7 +36,10 @@ class EligibilityResult:
 
 
 class EligibilityCheck(Protocol):
-    """Evaluate after the flow precondition; restore it before a definitive decision.
+    """Evaluate at the flow entry; preserve it before a definitive decision.
+
+    Prepared activities use their zone hub as entry, so checks may observe several
+    selected cards during one visit. No decision survives leaving that visit.
 
     Implementations own bounded semantic observation/navigation. An inconclusive
     evaluation stops safely; it never authorizes cleanup input from UNKNOWN.

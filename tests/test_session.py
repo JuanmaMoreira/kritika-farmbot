@@ -490,7 +490,7 @@ def test_session_does_not_normalize_lobby_when_rotation_only_needs_capability():
 
 
 @pytest.mark.parametrize("successful_context", [SCREEN_LOBBY, "screen.world_boss"])
-def test_session_accepts_both_declared_world_boss_success_postconditions(
+def test_session_requires_standalone_world_boss_to_finish_in_lobby(
     successful_context,
 ):
     trace = []
@@ -515,8 +515,9 @@ def test_session_accepts_both_declared_world_boss_success_postconditions(
 
     result = runner.run()
 
-    assert result.status is SessionStatus.COMPLETED
-    assert rotation.calls == 1
+    assert result.status is (SessionStatus.COMPLETED if successful_context == SCREEN_LOBBY
+                             else SessionStatus.FAILED)
+    assert rotation.calls == int(successful_context == SCREEN_LOBBY)
 
 
 def test_session_normalizes_through_quick_menu_for_next_exact_lobby_flow():

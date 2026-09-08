@@ -34,16 +34,13 @@ def test_only_resolved_unobstructed_world_boss_card_can_decide(active):
         1, base=SCREEN_BATTLE_MODE_SELECT, overlays=("menu.quick",))) is EligibilityStatus.UNKNOWN
 
 
-def evaluator(frames, *, opening=None, returned=None, cancel_requested=lambda: False):
+def evaluator(frames, *, cancel_requested=lambda: False):
     observer = Mock()
+    observer.observe.return_value = card(2)
     observed_predicates = []
 
     def wait_until(predicate, **kwargs):
         observed_predicates.append((predicate, kwargs))
-        if len(observed_predicates) == 1:
-            value = snapshot(1, base=SCREEN_LOBBY)
-            assert predicate(value)
-            return value
         # Test adapter requires consecutive fresh matches and the requested
         # stability span, including resets on badge changes or UNKNOWN.
         since = None
@@ -61,30 +58,18 @@ def evaluator(frames, *, opening=None, returned=None, cancel_requested=lambda: F
         raise RuntimeWaitTimeout(after_sequence=2, timeout=6, last_snapshot=frames[-1])
 
     observer.wait_until.side_effect = wait_until
-    transition = Mock()
-    transition.execute.return_value = opening or SimpleNamespace(
-        succeeded=True, final_snapshot=card(2))
-    close = Mock(return_value=returned or SimpleNamespace(
-        succeeded=True, final_snapshot=snapshot(20, base=SCREEN_LOBBY)))
-    check = WorldBossDailyEligibility(observer, transition, close,
-                                     cancel_requested=cancel_requested)
-    return check, transition, close, observed_predicates
+    check = WorldBossDailyEligibility(observer, cancel_requested=cancel_requested)
+    return check, observer, observed_predicates
 
 
 @pytest.mark.parametrize("active", [True, False])
 def test_daily_gate_uses_fresh_stable_badge_and_no_gameplay_inputs(active):
-    check, transition, close, predicates = evaluator([card(i, active) for i in range(3, 7)])
+    check, observer, predicates = evaluator([card(i, active) for i in range(3, 7)])
     result = check.evaluate()
     assert result.status is (EligibilityStatus.ELIGIBLE if active else EligibilityStatus.NOT_ELIGIBLE)
-    assert transition.execute.call_count == close.call_count == 1
-    action = transition.execute.call_args.args[1]
-    assert type(action).__name__ == "OpenBattleModeSelect"
-    assert predicates[1][1]["after_sequence"] == 2
-    assert predicates[1][1]["stable_for"] == .75
-    guards = transition.execute.call_args.kwargs
-    assert guards["precondition"](snapshot(1, base=SCREEN_LOBBY))
-    assert not guards["precondition"](snapshot(1))
-    assert not guards["retryable_from"](snapshot(1))
+    assert predicates[0][1]["after_sequence"] == 2
+    assert predicates[0][1]["stable_for"] == .75
+    assert [call[0] for call in observer.mock_calls] == ["observe", "wait_until"]
 
 
 @pytest.mark.parametrize("frames", [
@@ -94,56 +79,34 @@ def test_daily_gate_uses_fresh_stable_badge_and_no_gameplay_inputs(active):
     [card(2)] * 4,
 ])
 def test_unknown_ambiguous_flicker_or_stale_never_skips_or_returns(frames):
-    check, _, close, _ = evaluator(frames)
+    check, observer, _ = evaluator(frames)
     result = check.evaluate()
     assert result.status is EligibilityStatus.UNKNOWN
     assert result.failure.type == "eligibility_unknown"
-    close.assert_not_called()
 
 
 def test_transient_absence_followed_by_stable_active_is_eligible():
-    check, _, _, _ = evaluator([card(3), card(4), card(5, True), card(6, True), card(7, True)])
+    check, _, _ = evaluator([card(3), card(4), card(5, True), card(6, True), card(7, True)])
     assert check.evaluate().status is EligibilityStatus.ELIGIBLE
 
 
 def test_capture_failure_keeps_technical_cause_and_no_cleanup_input():
-    check, _, close, _ = evaluator([OSError("decoder failed")])
+    check, observer, _ = evaluator([OSError("decoder failed")])
     result = check.evaluate()
     assert result.status is EligibilityStatus.FAILED
     assert result.failure.exception_type == "OSError"
-    close.assert_not_called()
-
-
-@pytest.mark.parametrize("stage", ["open", "return"])
-def test_transition_failure_preserves_cause(stage):
-    failure = FailureCause("transition", "failed", evidence_ref="file:///evidence")
-    failed = SimpleNamespace(succeeded=False, failure=failure, error="failed")
-    check, _, close, _ = evaluator([card(i) for i in range(3, 7)], **{
-        "opening" if stage == "open" else "returned": failed})
-    result = check.evaluate()
-    assert result.status is EligibilityStatus.FAILED
-    assert result.failure is failure
-    if stage == "open":
-        close.assert_not_called()
 
 
 def test_cancelled_wait_does_not_return_or_report_not_eligible():
-    check, _, close, _ = evaluator([RuntimeWaitCancelled()])
+    check, observer, _ = evaluator([RuntimeWaitCancelled()])
     assert check.evaluate().status is EligibilityStatus.CANCELLED
-    close.assert_not_called()
 
 
 def test_cancel_before_evaluation_does_not_navigate():
-    check, transition, close, _ = evaluator([], cancel_requested=lambda: True)
+    check, observer, _ = evaluator([], cancel_requested=lambda: True)
     assert check.evaluate().status is EligibilityStatus.CANCELLED
-    transition.execute.assert_not_called()
-    close.assert_not_called()
-
-
-def test_bad_return_is_technical_even_when_badge_is_absent():
-    check, _, _, _ = evaluator([card(i) for i in range(3, 7)], returned=SimpleNamespace(
-        succeeded=True, final_snapshot=card(20)))
-    assert check.evaluate().status is EligibilityStatus.FAILED
+    observer.observe.assert_not_called()
+    observer.wait_until.assert_not_called()
 
 
 def test_acquired_return_frames_are_recognized_by_unchanged_production_detectors():

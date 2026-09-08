@@ -5,7 +5,19 @@ from unittest.mock import Mock
 
 import pytest
 
-from bot.catalog import MENU_QUICK, SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY
+from bot.catalog import (
+    MENU_QUICK, SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, SCREEN_WORLD_BOSS,
+    SCREEN_WORLD_BOSS_BATTLE, OVERLAY_WORLD_BOSS_SELECT_BOSS, OVERLAY_WORLD_BOSS_RAID_COMPLETE,
+)
+from bot.auto_battle import EnsureAutoBattleStatus
+from bot.world_boss_flow import WorldBossFlow
+from bot.verified_transition import VerifiedTransitionResult, VerifiedTransitionOutcome
+from test_world_boss_flow import fact_result
+
+WB_GAMEPLAY = ["OpenWorldBossSelector", "SelectAvailableWorldBoss", "StartWorldBossBattle",
+               "auto_battle", "ContinueAfterWorldBossRaid", "ExitWorldBoss"]
+WB_STANDALONE = ["sapphires", "OpenBattleModeSelect", *WB_GAMEPLAY,
+                 "OpenQuickMenu", "SelectQuickMenuLobby"]
 from bot.event_log import RuntimeEventStream
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
@@ -13,6 +25,7 @@ from bot.gui_model import GuiProgress
 from bot.preconditions import MinimalPreconditionEnsurer
 from bot.runtime_observer import RuntimeWaitTimeout
 from bot.session import SessionStatus
+from bot.eligibility import EligibilityStatus
 from bot.session_report import ReportStatus, build_session_report
 from bot.state import ResolutionStatus
 from test_productive_runtime import _runtime
@@ -21,12 +34,13 @@ from test_world_boss_eligibility import card
 from test_world_boss_flow import snapshot
 
 
-def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatus.RESOLVED):
+def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatus.RESOLVED, sapphires=20):
     trace, events = [], []
 
     class Observer:
         sequence = 0
         base = SCREEN_LOBBY
+        overlays = ()
 
         def observe(self):
             self.sequence += 1
@@ -34,7 +48,7 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
                 return card(self.sequence, active, status=signal_status)
             if self.base == MENU_QUICK:
                 return snapshot(self.sequence, overlays=(MENU_QUICK,))
-            return snapshot(self.sequence, base=self.base)
+            return snapshot(self.sequence, base=self.base, overlays=self.overlays)
 
         def wait_until(self, predicate, **kwargs):
             since = None
@@ -62,14 +76,40 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
             trace.append(kind)
             observer.base = {"OpenBattleModeSelect": SCREEN_BATTLE_MODE_SELECT,
                              "OpenQuickMenu": MENU_QUICK,
-                             "SelectQuickMenuLobby": SCREEN_LOBBY}[kind]
+                             "SelectQuickMenuLobby": SCREEN_LOBBY,
+                             "OpenWorldBossSelector": None,
+                             "SelectAvailableWorldBoss": SCREEN_WORLD_BOSS,
+                             "StartWorldBossBattle": SCREEN_WORLD_BOSS_BATTLE,
+                             "ContinueAfterWorldBossRaid": SCREEN_WORLD_BOSS,
+                             "ExitWorldBoss": SCREEN_BATTLE_MODE_SELECT}[kind]
+            observer.overlays = ((OVERLAY_WORLD_BOSS_SELECT_BOSS,)
+                                 if kind == "OpenWorldBossSelector" else ())
             final = observer.wait_until(kwargs["expected"], after_sequence=before.sequence,
                                         timeout=6, stable_for=kwargs.get("stable_for", 0))
-            return SimpleNamespace(succeeded=True, final_snapshot=final)
+            return VerifiedTransitionResult(name, VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, 1, 0, final)
 
     monkeypatch.setattr(runtime, "build_verified_transition", lambda: Transition())
-    monkeypatch.setattr(runtime, "build_flow", lambda definition: Flow(
-        definition.id, [FlowResult(FlowStatus.COMPLETED)] * 3, trace))
+    def read_sapphires(**kwargs):
+        assert observer.base == SCREEN_LOBBY
+        trace.append("sapphires")
+        return fact_result("resource.sapphires", sapphires, observer.sequence, SCREEN_LOBBY)
+
+    def auto_battle(**kwargs):
+        trace.append("auto_battle")
+        observer.overlays = (OVERLAY_WORLD_BOSS_RAID_COMPLETE,)
+        return SimpleNamespace(status=EnsureAutoBattleStatus.INTERRUPTED, observations=(), tap_count=0)
+
+    def build_flow(definition):
+        if definition.id != "world_boss":
+            return Flow(definition.id, [FlowResult(FlowStatus.COMPLETED)] * 3, trace)
+        return WorldBossFlow(
+            observer, Mock(), Mock(read_sapphires=read_sapphires),
+            Mock(ensure_on_quick=auto_battle), runtime.events,
+            socket_relief=Mock(), equipment_combine_relief=Mock(),
+            verified_transition=runtime.build_verified_transition(),
+        )
+
+    monkeypatch.setattr(runtime, "build_flow", build_flow)
     monkeypatch.setattr(runtime, "build_rotation", lambda count: Rotation(count, trace))
     monkeypatch.setattr(runtime, "build_preconditions", lambda: MinimalPreconditionEnsurer(
         lambda: observer.base if observer.base != MENU_QUICK else None))
@@ -86,15 +126,19 @@ def test_productive_session_applies_daily_but_selected_flows_never_do(monkeypatc
     if manual:
         result = runtime.run_flows_once(definitions)
         assert result.status is FlowStatus.COMPLETED
-        assert trace == [f"{d.id}.run" for d in definitions]
+        expected = ["black_market.run", *WB_STANDALONE]
+        expected += [f"{d.id}.run" for d in definitions[2:]]
+        assert trace == expected
         builder.assert_not_called()
         assert not any(e.event == "flow.skipped_not_eligible" for e in events)
     else:
         result = runtime.run_session(definitions, character_count=2)
         builder.assert_called_once_with()
         assert result.status is SessionStatus.COMPLETED
-        expected = ["black_market.run", "OpenBattleModeSelect", "OpenQuickMenu", "SelectQuickMenuLobby"]
-        expected += [f"{d.id}.run" for d in definitions[1:] if active or d.id != "world_boss"]
+        expected = ["black_market.run", "sapphires", "OpenBattleModeSelect"]
+        expected += WB_GAMEPLAY if active else []
+        expected += ["OpenQuickMenu", "SelectQuickMenuLobby"]
+        expected += [f"{d.id}.run" for d in definitions[2:]]
         expected.append("rotation.advance")
         assert trace == expected * 2
         report = build_session_report(result)
@@ -116,7 +160,7 @@ def test_flow_once_remains_manual_even_with_world_boss_daily_check_available(mon
     runtime, trace, _, builder = composed_runtime(monkeypatch)
     result = runtime.run_flow(DEFAULT_FLOW_REGISTRY.get("world_boss"))
     assert result.status is FlowStatus.COMPLETED
-    assert trace == ["world_boss.run"]
+    assert trace == WB_STANDALONE
     builder.assert_not_called()
 
 
@@ -125,7 +169,7 @@ def test_unconfirmed_daily_in_productive_session_is_technical_without_return_or_
     runtime, trace, events, _ = composed_runtime(monkeypatch, signal_status=status)
     result = runtime.run_session((DEFAULT_FLOW_REGISTRY.get("world_boss"),), character_count=1)
     assert result.status is SessionStatus.FAILED
-    assert trace == ["OpenBattleModeSelect"]
+    assert trace == ["sapphires", "OpenBattleModeSelect"]
     assert result.failure is not None
     assert not any(e.event in {"flow.started", "flow.skipped_not_eligible"} for e in events)
 
@@ -139,13 +183,6 @@ def test_no_daily_policy_for_other_flows(monkeypatch):
     builder.assert_not_called()
 
 
-def test_return_operation_rejects_unknown_before_any_input(monkeypatch):
-    runtime, trace, _, _ = composed_runtime(monkeypatch)
-    with pytest.raises(ValueError, match="confirmed Battle Mode Select"):
-        runtime._return_world_boss_eligibility_to_lobby(snapshot(1))
-    assert trace == []
-
-
 @pytest.mark.parametrize("failed_action", ["OpenQuickMenu", "SelectQuickMenuLobby"])
 def test_return_failure_never_commits_skip_or_starts_world_boss(monkeypatch, failed_action):
     from bot.failure_cause import FailureCause
@@ -157,8 +194,8 @@ def test_return_failure_never_commits_skip_or_starts_world_boss(monkeypatch, fai
         def execute(self, name, action, before, **kwargs):
             if type(action).__name__ == failed_action:
                 trace.append(failed_action)
-                return SimpleNamespace(succeeded=False, final_snapshot=before,
-                                       error="return failed", failure=failure)
+                return VerifiedTransitionResult(name, VerifiedTransitionOutcome.FAILED, 1, 0,
+                                                before, error="return failed", failure=failure)
             return real_builder().execute(name, action, before, **kwargs)
 
     monkeypatch.setattr(runtime, "build_verified_transition", FailingTransition)
@@ -167,3 +204,72 @@ def test_return_failure_never_commits_skip_or_starts_world_boss(monkeypatch, fai
     assert result.failure == failure
     assert not any(name.endswith(".run") or name == "rotation.advance" for name in trace)
     assert not any(e.event in {"flow.started", "flow.skipped_not_eligible"} for e in events)
+
+
+@pytest.mark.parametrize("active", [False, True])
+@pytest.mark.parametrize("sapphires", [4, 20])
+def test_daily_eligibility_precedes_resource_outcome_and_report(monkeypatch, active, sapphires):
+    runtime, trace, events, _ = composed_runtime(monkeypatch, active=active, sapphires=sapphires)
+    result = runtime.run_session((DEFAULT_FLOW_REGISTRY.get("world_boss"),), character_count=1)
+    assert result.status is SessionStatus.COMPLETED
+    played = active and sapphires >= 5
+    expected = ["sapphires", "OpenBattleModeSelect"]
+    expected += WB_GAMEPLAY if played else []
+    expected += ["OpenQuickMenu", "SelectQuickMenuLobby", "rotation.advance"]
+    assert trace == expected
+    raw = result.character_results[0].flow_results[0]
+    assert raw.status is (FlowStatus.COMPLETED if active else FlowStatus.SKIPPED_NOT_ELIGIBLE)
+    blocked = active and sapphires < 5
+    assert raw.event_count("world_boss.insufficient_sapphires") == int(blocked)
+    assert sum(e.event == "world_boss.insufficient_sapphires" for e in events) == int(blocked)
+    assert raw.raid_complete_detected if played else "StartWorldBossBattle" not in trace
+    report = build_session_report(result)
+    expected_flow = (ReportStatus.SKIPPED_NOT_ELIGIBLE if not active else
+                     ReportStatus.BUSINESS_INCOMPLETE if blocked else ReportStatus.COMPLETE)
+    assert report.characters[0].flows[0].status is expected_flow
+    assert report.status is (ReportStatus.BUSINESS_INCOMPLETE if blocked else ReportStatus.COMPLETE)
+    assert report.counts.business_incomplete == int(blocked)
+    assert report.counts.technical_failure == 0
+
+
+@pytest.mark.parametrize("signal", [ResolutionStatus.UNKNOWN, ResolutionStatus.AMBIGUOUS, "failure"])
+def test_inconclusive_daily_overrides_low_sapphires_after_verified_entry(monkeypatch, signal):
+    runtime, trace, events, _ = composed_runtime(monkeypatch, sapphires=4)
+    check = runtime.build_world_boss_daily_eligibility()
+    evaluate = check.evaluate
+    decisions = []
+
+    def unconfirmed():
+        runtime.observer.sequence += 1
+        if signal == "failure":
+            raise OSError("eligibility capture failed")
+        return snapshot(runtime.observer.sequence, status=signal)
+
+    def evaluate_after_entry():
+        assert runtime.observer.base == SCREEN_BATTLE_MODE_SELECT
+        monkeypatch.setattr(runtime.observer, "observe", unconfirmed)
+        decision = evaluate()
+        decisions.append(decision)
+        return decision
+
+    monkeypatch.setattr(check, "evaluate", evaluate_after_entry)
+    monkeypatch.setattr(runtime, "build_world_boss_daily_eligibility", lambda: check)
+    result = runtime.run_session((DEFAULT_FLOW_REGISTRY.get("world_boss"),), character_count=1)
+    assert decisions[0].status is (EligibilityStatus.FAILED if signal == "failure" else EligibilityStatus.UNKNOWN)
+    assert result.status is SessionStatus.FAILED
+    assert result.failure == decisions[0].failure
+    assert trace == ["sapphires", "OpenBattleModeSelect"]
+    assert not any(e.event in {"world_boss.insufficient_sapphires", "flow.started",
+                              "flow.skipped_not_eligible"} for e in events)
+    report = build_session_report(result)
+    assert report.status is ReportStatus.TECHNICAL_FAILURE
+    assert report.counts.business_incomplete == 0
+
+
+def test_selected_standalone_low_sapphires_still_avoids_zone(monkeypatch):
+    runtime, trace, events, builder = composed_runtime(monkeypatch, active=False, sapphires=4)
+    result = runtime.run_flows_once((DEFAULT_FLOW_REGISTRY.get("world_boss"),))
+    assert result.status is FlowStatus.COMPLETED
+    assert trace == ["sapphires"]
+    builder.assert_not_called()
+    assert sum(e.event == "world_boss.insufficient_sapphires" for e in events) == 1

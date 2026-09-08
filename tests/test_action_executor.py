@@ -38,6 +38,7 @@ from bot.semantic_actions import (
     ClosePetSummonResult,
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
+    ExitWorldBoss,
     CancelSocketSell,
     CloseSocketEnhanceAll,
     ConfirmCombineAll,
@@ -277,6 +278,7 @@ def test_character_card_center_must_be_a_relative_point(center):
         (StartWorldBossBattle(), DEFAULT_BATTLE_ACTION_TARGETS.start_world_boss_battle),
         (ToggleAutoBattle(), DEFAULT_BATTLE_ACTION_TARGETS.toggle_auto_battle),
         (ContinueAfterWorldBossRaid(), DEFAULT_BATTLE_ACTION_TARGETS.continue_after_raid),
+        (ExitWorldBoss(), DEFAULT_BATTLE_ACTION_TARGETS.exit_world_boss),
         (DismissWorldBossBagFull(), DEFAULT_BATTLE_ACTION_TARGETS.dismiss_world_boss_bag_full),
     ),
 )

@@ -291,12 +291,12 @@ def test_flow_outcome_helpers_leave_publication_to_runner(flow_module, class_nam
 
 @pytest.mark.parametrize("error", [OSError("later failure"), RuntimeWaitCancelled("stop")])
 def test_world_boss_preserves_pending_outcomes_when_execution_raises(error):
-    from bot.world_boss_flow import WorldBossFlow
+    from bot.world_boss_activity import WorldBossActivity
 
-    flow = object.__new__(WorldBossFlow)
+    flow = object.__new__(WorldBossActivity)
     business = FlowEvent("world_boss.previous_rewards")
 
-    def run_pending(events):
+    def run_pending(events, sapphires):
         events.append(business)
         raise error
 

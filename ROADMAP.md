@@ -34,7 +34,8 @@ Orden de trabajo vigente:
 
 1. Character Identity mínima consolidada en `a5c2648`, baseline 1730 tests; preservar evidencia existente.
 2. Eligibility mínima v1 aceptada: consumer World Boss Daily conectado sólo a sesión, retorno por Quick Menu adquirido y skip estructurado proyectado en SessionReport. Validación: 258 dirigidos, 1771/1771 hardware-free y 413 frames sin errores. Cierra el bloque arquitectónico actual. Ver `docs/ELIGIBILITY_V1.md`.
-3. Próximo paso: reevaluar el milestone completo, sin iniciar otra implementación automática; Arena permanece fuera de alcance.
+3. Battle Mode shared zone implementado para revisión desde `e3db3c1`: World Boss standalone Lobby → Lobby, activity hub → hub y Daily de una sola apertura. Selección/orden explícitos, sin nuevos flows ni planning. Corregida la precedencia Daily: precheck observado antes de abrir, consumido sólo después de Eligibility, sin gate global de zona. Ver `docs/BATTLE_MODE_SHARED_ZONE.md`.
+4. Próximo paso: revisar este refactor; antes de MonsterWaveFlow, cerrar los gaps de adquisición enumerados en ese documento. MW será SKIP-only; Start manual no es un gap. Tower y Arena permanecen futuros.
 
 ### Known future
 
@@ -48,7 +49,8 @@ Orden de trabajo vigente:
 - Hacer polish de UI más adelante; la GUI actual ya es el frontend operativo.
 - Evaluar detector entrenado o fallback VLM provider-agnostic sólo ante un caso no cubierto y evidencia suficiente.
 - Añadir el guard Daily a `GuildCheckInFlow` después de cerrar el negativo live `Attendance activo + Daily ausente`; no cambiar su completion por botón oscuro.
-- Si el costo de navegación de Eligibility lo justifica, discutir una entrada preparada de World Boss para evitar la segunda apertura; el contrato general actual está preservado.
+- Completar evidencia de MW SKIP, boundaries de sapphires/GOLD, ramas No y expiración; adquirir negativo Tower y revisar negativo reciente WB antes de ampliar Eligibility.
+- Reliefs futuros Keys (Trading Center/Keys y Treasure) y materiales (Trading Center/materials y Craft), sin planificación automática MW → Arena.
 
 ## Criterios permanentes de avance
 

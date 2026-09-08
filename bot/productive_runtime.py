@@ -65,11 +65,13 @@ from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughAnimation
 from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 from bot.world_boss_eligibility import WorldBossDailyEligibility
+from bot.world_boss_flow import WorldBossFlow
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _CLEAN_CONTEXTS = frozenset(
     {
+        SCREEN_BATTLE_MODE_SELECT,
         SCREEN_GUILD,
         SCREEN_LOBBY,
         SCREEN_PET_SUMMON,
@@ -306,6 +308,9 @@ class ProductiveRuntime:
         character_count: int,
     ) -> SessionResult:
         flows = self.build_flows(definitions)
+        zone = next((flow.zone for flow in flows if isinstance(flow, WorldBossFlow)), None)
+        flows = tuple(flow.prepared(zone) if isinstance(flow, WorldBossFlow) else flow
+                      for flow in flows)
         rotation = self.build_rotation(character_count)
         plan = SessionPlan.standard(
             flows=flows,
@@ -348,20 +353,8 @@ class ProductiveRuntime:
     def build_world_boss_daily_eligibility(self) -> WorldBossDailyEligibility:
         """Only the daily session composition installs this check; registry is general."""
         return WorldBossDailyEligibility(
-            self.observer, self.build_verified_transition(),
-            self._return_world_boss_eligibility_to_lobby,
+            self.observer,
             cancel_requested=self.cancel_requested,
-        )
-
-    def _return_world_boss_eligibility_to_lobby(self, initial):
-        # This acquisition authorizes the exact Lobby return, without expanding
-        # Rotation's origins or declaring every Quick Menu destination acquired.
-        if not _is_clean_base(initial, SCREEN_BATTLE_MODE_SELECT):
-            raise ValueError("eligibility return requires confirmed Battle Mode Select")
-        return self._quick_menu_to_lobby(
-            initial, self.build_verified_transition(),
-            VerifiedTransitionPolicy(max_attempts=2),
-            prefix="eligibility.world_boss",
         )
 
     def _current_clean_context(self) -> str | None:

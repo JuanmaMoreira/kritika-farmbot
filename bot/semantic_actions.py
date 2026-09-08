@@ -356,6 +356,11 @@ class ContinueAfterWorldBossRaid:
 
 
 @dataclass(frozen=True)
+class ExitWorldBoss:
+    """Request Back from World Boss to Battle Mode Select (human-confirmed)."""
+
+
+@dataclass(frozen=True)
 class AcceptSocketInventoryFull:
     """Request Yes on the global Socket inventory-full guard."""
 
@@ -567,6 +572,7 @@ SemanticAction = (
     | AcknowledgeWorldBossPreviousRewards
     | StartWorldBossBattle
     | ContinueAfterWorldBossRaid
+    | ExitWorldBoss
     | AcceptSocketInventoryFull
     | RejectSocketInventoryFull
     | RejectMeteorInventoryFull
@@ -619,6 +625,7 @@ __all__ = (
     "ClosePetSummonResult",
     "ConfirmCharacterSelection",
     "ContinueAfterWorldBossRaid",
+    "ExitWorldBoss",
     "CancelSocketSell",
     "CloseSocketEnhanceAll",
     "ConfirmCombineAll",

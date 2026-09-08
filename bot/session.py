@@ -25,6 +25,8 @@ from bot.flow_contracts import (
     PerCharacterFlow,
 )
 from bot.preconditions import EnsureResult, PreconditionEnsurer
+from bot.prepared_activity import PreparedActivity
+from bot.runtime_observer import RuntimeWaitCancelled
 from bot.rotation import RotationResult, RotationStrategy
 
 
@@ -231,6 +233,7 @@ class SessionRunner:
                     character_name=context.name,
                 )
                 flow_results: list[FlowResult] = []
+                active_zone = None
                 for flow_position, flow in enumerate(self.plan.flows):
                     with event_scope(flow=flow.name), operation_scope(flow.name):
                         if self._cancelled():
@@ -239,7 +242,10 @@ class SessionRunner:
                             )
                             return self._cancel(character_results, advances_completed)
 
-                        ensured = self._ensure(flow.contract.precondition)
+                        zone = flow.zone if isinstance(flow, PreparedActivity) else None
+                        requirement = (zone.entry_requirement if zone is not None and active_zone is None
+                                       else flow.contract.precondition)
+                        ensured = self._ensure(requirement)
                         if flow_position == 0:
                             # Reuse the first precondition's observation. Identity
                             # adds no capture/navigation and never authorizes input.
@@ -260,8 +266,22 @@ class SessionRunner:
                                 ),
                             )
 
+                        early_result = None
+                        pending_precheck = None
+                        if zone is not None and active_zone is None:
+                            pending_precheck = self._observe_precheck(flow)
+                            early_result = (pending_precheck if pending_precheck is not None
+                                            and pending_precheck.status is FlowStatus.CANCELLED
+                                            else self._enter_zone(zone))
+                            if early_result is None:
+                                active_zone = zone
+                                if not self._current_satisfies_any((flow.contract.precondition,)):
+                                    early_result = FlowResult(FlowStatus.FAILED,
+                                                              error="prepared_hub_entry_unconfirmed")
+                        if self._cancelled():
+                            early_result = FlowResult(FlowStatus.CANCELLED)
                         check = self.plan.eligibility[flow_position]
-                        if check is not None:
+                        if check is not None and early_result is None:
                             decision = self._evaluate_eligibility(check)
                             if self._cancelled() or decision.status is EligibilityStatus.CANCELLED:
                                 character_results.append(
@@ -295,26 +315,55 @@ class SessionRunner:
                                     cause="eligibility_return_postcondition_failed",
                                 )
                             if decision.status is EligibilityStatus.NOT_ELIGIBLE:
-                                flow_results.append(FlowResult(
-                                    FlowStatus.SKIPPED_NOT_ELIGIBLE,
-                                    skip_reason=decision.reason,
-                                ))
-                                self._record(
-                                    "flow.skipped_not_eligible", component=flow.name,
-                                    flow=flow.name, flow_position=flow_position,
-                                    character_index=index, character_name=context.name,
-                                    reason=decision.reason,
-                                )
-                                continue
+                                early_result = FlowResult(
+                                    FlowStatus.SKIPPED_NOT_ELIGIBLE, skip_reason=decision.reason)
 
-                        self._record(
-                            "flow.started",
-                            component=flow.name,
-                            flow=flow.name,
-                            character_index=index,
-                            character_name=context.name,
-                        )
-                        result = self._run_flow(flow)
+                        # Eligibility owns whether this position is due. Resource
+                        # evidence cannot shortcut that decision or gate the hub.
+                        if early_result is None:
+                            early_result = pending_precheck
+                        if early_result is None or early_result.status is FlowStatus.COMPLETED:
+                            self._record(
+                                "flow.started", component=flow.name, flow=flow.name,
+                                character_index=index, character_name=context.name,
+                            )
+                        result = early_result if early_result is not None else self._run_flow(flow)
+                        postconditions = flow.contract.successful_postconditions
+                        if result.status in {FlowStatus.COMPLETED, FlowStatus.SKIPPED_NOT_ELIGIBLE}:
+                            if not self._current_satisfies_any(postconditions):
+                                result = replace(
+                                    result, status=FlowStatus.FAILED, skip_reason=None,
+                                    error="flow_completed_outside_successful_postconditions",
+                                    failure=FailureCause.from_error(
+                                        "flow_completed_outside_successful_postconditions",
+                                        kind="postcondition_rejected",
+                                    ),
+                                )
+                            elif active_zone is not None:
+                                following = (self.plan.flows[flow_position + 1]
+                                             if flow_position + 1 < len(self.plan.flows) else None)
+                                if not isinstance(following, PreparedActivity) or following.zone is not active_zone:
+                                    closed = self._leave_zone(active_zone)
+                                    if closed.succeeded and not self._current_satisfies_any(
+                                            (active_zone.entry_requirement,)):
+                                        closed = FlowResult(FlowStatus.FAILED,
+                                                            error="prepared_zone_return_unconfirmed")
+                                    if closed.succeeded:
+                                        active_zone = None
+                                    else:
+                                        # A failed final return cannot publish a successful skip.
+                                        result = replace(result, status=closed.status,
+                                                         skip_reason=None, error=closed.error,
+                                                         failure=closed.failure)
+                        if result.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
+                            flow_results.append(result)
+                            self._record(
+                                "flow.skipped_not_eligible", component=flow.name,
+                                flow=flow.name, flow_position=flow_position,
+                                character_index=index, character_name=context.name,
+                                reason=result.skip_reason,
+                            )
+                            continue
                         flow_results.append(result)
                         self._record_flow_events(flow.name, result.events, index, context)
                         if result.status is FlowStatus.CANCELLED:
@@ -351,30 +400,6 @@ class SessionRunner:
                                 flow_position=flow_position,
                                 cause=result.error or "flow_failed",
                                 failure=result.failure,
-                            )
-                        if not self._current_satisfies_any(
-                            flow.contract.successful_postconditions
-                        ):
-                            failure = publish_failure(
-                                self.events,
-                                "flow.failed", component=flow.name, flow=flow.name,
-                                error="flow_completed_outside_successful_postconditions",
-                                failure=FailureCause.from_error(
-                                    "flow_completed_outside_successful_postconditions",
-                                    kind="postcondition_rejected",
-                                ),
-                            )
-                            character_results.append(
-                                SessionCharacterResult(index, context, tuple(flow_results))
-                            )
-                            return self._fail(
-                                character_results,
-                                advances_completed,
-                                index=index,
-                                flow=flow.name,
-                                flow_position=flow_position,
-                                cause="flow_completed_outside_successful_postconditions",
-                                failure=failure,
                             )
                         self._record(
                             "flow.completed",
@@ -489,6 +514,48 @@ class SessionRunner:
             advances_completed=result.advances_completed,
         )
         return result
+
+    @staticmethod
+    def _observe_precheck(flow: PreparedActivity) -> FlowResult | None:
+        try:
+            if flow.precheck is not None:
+                result = flow.precheck()
+                if result is not None:
+                    if not isinstance(result, FlowResult) or result.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
+                        raise TypeError("invalid prepared activity precheck result")
+                    return result
+            return None
+        except RuntimeWaitCancelled:
+            return FlowResult(FlowStatus.CANCELLED)
+        except Exception as error:
+            return FlowResult(FlowStatus.FAILED, error=str(error) or type(error).__name__,
+                              failure=FailureCause.from_error(error, kind="exception"))
+
+    @staticmethod
+    def _enter_zone(zone) -> FlowResult | None:
+        try:
+            entered = zone.enter()
+            if not isinstance(entered, FlowResult) or entered.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
+                raise TypeError("invalid zone entry result")
+            return None if entered.succeeded else entered
+        except RuntimeWaitCancelled:
+            return FlowResult(FlowStatus.CANCELLED)
+        except Exception as error:
+            return FlowResult(FlowStatus.FAILED, error=str(error) or type(error).__name__,
+                              failure=FailureCause.from_error(error, kind="exception"))
+
+    @staticmethod
+    def _leave_zone(zone) -> FlowResult:
+        try:
+            result = zone.leave()
+            if not isinstance(result, FlowResult) or result.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
+                raise TypeError("invalid zone return result")
+            return result
+        except RuntimeWaitCancelled:
+            return FlowResult(FlowStatus.CANCELLED)
+        except Exception as error:
+            return FlowResult(FlowStatus.FAILED, error=str(error) or type(error).__name__,
+                              failure=FailureCause.from_error(error, kind="exception"))
 
     def _character_context(self, index: int) -> CharacterContext:
         if self.character_context_factory is None:

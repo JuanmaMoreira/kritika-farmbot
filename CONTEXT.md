@@ -37,9 +37,9 @@ Purchase Confirmation exige `Purchased` fresco en el mismo slot. Insufficient Go
 
 ### World Boss
 
-`WorldBossFlow` es `PER_CHARACTER`, aplica `ALWAYS_PARTICIPATE` y declara Lobby como entrada, con Lobby o World Boss como salidas exitosas. Su primera operación es leer sapphires por OCR; `<5` emite `world_boss.insufficient_sapphires` y termina en Lobby sin input.
+`WorldBossFlow` es el wrapper standalone `PER_CHARACTER`, `ALWAYS_PARTICIPATE`, Lobby → Lobby. Su primera operación es el precheck OCR de sapphires; `<5` conserva `world_boss.insufficient_sapphires` y termina sin input. Compone `BattleModeZone` y la única implementación de gameplay, `WorldBossActivity`, cuyo contrato es Battle Mode Select → Battle Mode Select. Toda completion de gameplay retorna por Back al hub verificado y el wrapper cierra por Quick Menu → Lobby.
 
-Con recursos suficientes navega Lobby → Battle Mode Select → Select Boss → World Boss. En Battle Mode Select tolera el status auxiliar `status.world_boss_daily_active`, pero no lo exige ni lo usa como autorización de negocio. Previous Rewards es una rama opcional que se estabiliza y confirma antes de Start. Después de Start:
+Con recursos suficientes abre una visita a Battle Mode Select y la activity navega Select Boss → World Boss. En Battle Mode Select tolera el status auxiliar `status.world_boss_daily_active`, pero no lo exige ni lo usa como autorización de negocio. Previous Rewards es una rama opcional que se estabiliza y confirma antes de Start. Después de Start:
 
 - primera `popup.socket_inventory_full`: `Yes → SocketInventoryRelief → Back verificado → World Boss`; el permiso positivo se consume sólo tras confirmar Socket y existe una vez por `run()`;
 - segunda `popup.socket_inventory_full`: `No → World Boss`, evento no fatal y fin del flow, sin una segunda entrada positiva;
@@ -66,7 +66,7 @@ Mailbox entra a Character Mail, omite Claim All sin claims y nunca lo reintenta.
 
 ### Semántica Daily y Eligibility
 
-Friends, Guild Attendance y la tarjeta World Boss comparten exactamente el mismo asset verde de Daily, pero lo observan con ROIs contextuales independientes. Guild expone `status.guild_attendance_daily_active` sin alterar la clasificación active/completed; World Boss expone `status.world_boss_daily_active` únicamente en Battle Mode Select. `run_session` consume esta última señal mediante Eligibility externa antes de WorldBossFlow: presencia estable ejecuta; ausencia estable produce skip estructurado; UNKNOWN/error abortan técnicamente. El evaluador retorna por Quick Menu a Lobby verificado. WorldBossFlow permanece general-purpose y Run Selected Flows/Run Flow Once no aplican ese check. Ver `docs/ELIGIBILITY_V1.md`.
+Friends, Guild Attendance y la tarjeta World Boss comparten el asset verde Daily con ROIs contextuales independientes. World Boss expone `status.world_boss_daily_active` sólo en Battle Mode Select. En sesión, `WorldBossDailyEligibility` observa el hub preparado: presencia estable ejecuta, ausencia estable produce skip, UNKNOWN/error abortan técnicamente. No navega ni restaura Lobby. El precheck de sapphires se observa antes de abrir y sólo se consume tras Eligibility: Daily ausente descarta el blocker, incluso con sapphires insuficientes; sólo Daily activo puede producir business incomplete por ese recurso. Standalone sigue evitando abrir con sapphires insuficientes. SessionRunner mantiene la visita entre activities preparadas consecutivas de la misma zona y cierra una vez al final; World Boss Daily eligible pasa de dos aperturas a una. Run Selected Flows/Run Flow Once siguen sin Eligibility. Contrato vigente en `docs/BATTLE_MODE_SHARED_ZONE.md`; antecedente en `docs/ELIGIBILITY_V1.md`.
 
 ### Summon Pet Daily y Pet Summon Space Relief
 
@@ -194,6 +194,8 @@ Character Identity mínima reconoce el nombre personal del HUD de Lobby con Rapi
 
 ## Estado de validación
 
+- Battle Mode shared zone listo para revisión: **183 dirigidos para la corrección de precedencia Daily**, **1797/1797 hardware-free** en 268,39 s y `git diff --check` limpio. Gameplay WB y siete helpers equivalentes por AST a `main@e3db3c1`. Sin cambios perceptivos ni hardware. Los 64 frames de adquisición permanecen accesibles; sin commit ni push. Ver `docs/BATTLE_MODE_SHARED_ZONE.md`.
+
 - Eligibility mínima v1 aceptada: **258 tests dirigidos**, **1771/1771 tests hardware-free** y regresión perceptiva incremental de **413 frames sin errores**. `git diff --check` limpio; nueve raws de adquisición preservados y no versionados. Cierra el bloque arquitectónico actual; el siguiente paso es reevaluar el milestone completo. Detalles en `docs/ELIGIBILITY_V1.md`.
 
 - Character Identity mínima con fallback cerrado: **1730/1730 tests hardware-free verdes**, 242,86 s; **314 dirigidos**. La mejora suma 60 casos netos sobre los 1670 previos. Auditoría 84 raws: 83 identidades correctas, un fallback por score 0,91536 y cero clases incorrectas; 18/18 fixtures correctos. Corpus previo: 388 contextos incompatibles rechazados y 16 Lobby sin ground truth personal; otros 18 negativos disponibles también rechazados. Trazas productivas preservadas con identidad exacta, variantes, desconocido y excepción. Sin hardware, commit ni push; pendiente de revisión. Detalles en `docs/CHARACTER_IDENTITY_V1.md`.
@@ -245,4 +247,4 @@ Character Identity mínima reconoce el nombre personal del HUD de Lobby con Rapi
 
 ## Próximo trabajo
 
-Character Identity mínima está consolidada en `main@a5c2648`, con baseline validada de 1730 tests. Eligibility mínima v1 está aceptada y cierra el bloque arquitectónico actual: checks por posición, World Boss Daily conectado sólo a sesión, retorno adquirido Battle Mode Select → Quick Menu → Lobby y skip no fatal proyectado en report. WorldBossFlow y ejecución manual conservan sus contratos. Ver `docs/ELIGIBILITY_V1.md`. El siguiente paso es reevaluar el milestone completo, sin iniciar otra implementación automática. Se preserva `Character N` ante duda. Arena, pause/resume, dashboards y mantenimiento general de Pets permanecen fuera de alcance. Contratos de identidad en `docs/CHARACTER_IDENTITY_V1.md`, GUI en `docs/GUI_FUNCTIONAL_MINIMUM.md` y observabilidad en `docs/STRUCTURED_OBSERVABILITY_V1.md`, `docs/FAILURE_EVIDENCE_V1.md` y `docs/SESSION_REPORT_V1.md`.
+Battle Mode como zona preparada está implementado para revisión sobre `main@e3db3c1`: World Boss es el único consumidor productivo, con standalone Lobby → Lobby y Daily de una sola apertura. El usuario conserva selección y orden; no hay auto-planning. La adquisición MW/Tower permanece preservada. MW será exclusivamente SKIP por decisión de producto; faltan boundaries y negativos antes de su flow/Eligibility. No se implementaron MW, Tower, Arena, loops, RoutineSpec ni nuevos reliefs. Diseño, ground truth y follow-ups exactos en `docs/BATTLE_MODE_SHARED_ZONE.md`. Identity conserva `Character N` ante duda y Rotation permanece transversal.

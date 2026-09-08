@@ -1,4 +1,10 @@
-# Eligibility mínima v1
+# Eligibility mínima v1 — antecedente
+
+> El recorrido Lobby → check → Lobby de esta v1 fue sustituido por
+> [`BATTLE_MODE_SHARED_ZONE.md`](BATTLE_MODE_SHARED_ZONE.md). Este documento conserva
+> las decisiones y validación del checkpoint anterior. Hoy el check WB sólo observa
+> el hub preparado, el standalone termina en Lobby y Daily eligible abre Battle Mode una vez.
+
 
 Baseline: `main@a5c264899e259a026d49ede64f8321c7526dbcda`, Identity mínima consolidada y última suite anterior de 1730 tests. Eligibility v1 aceptada por el usuario; este checkpoint cierra el bloque arquitectónico actual.
 
