@@ -13,6 +13,7 @@ from bot.session import SessionResult, SessionStatus
 
 class ReportStatus(str, Enum):
     COMPLETE = "complete"
+    SKIPPED_NOT_ELIGIBLE = "skipped_not_eligible"
     BUSINESS_INCOMPLETE = "business_incomplete"
     TECHNICAL_FAILURE = "technical_failure"
     CANCELLED = "cancelled"
@@ -116,6 +117,11 @@ _LABELS = {
 
 
 def _flow_report(raw: FlowResult, name: str | None, label: str) -> FlowReport:
+    if raw.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
+        return FlowReport(
+            name, label, ReportStatus.SKIPPED_NOT_ELIGIBLE, False,
+            (ReportReason("eligibility.not_eligible", raw.skip_reason),),
+        )
     kinds = tuple(
         event.kind if "." in event.kind or name is None else f"{name}.{event.kind}"
         for event in raw.events
@@ -316,6 +322,7 @@ def render_session_report(report: SessionReport) -> str:
         for flow in character.flows:
             label = {
                 ReportStatus.COMPLETE: "complete (no-op)" if flow.no_op else "complete",
+                ReportStatus.SKIPPED_NOT_ELIGIBLE: "skipped (not eligible)",
                 ReportStatus.BUSINESS_INCOMPLETE: "business / Daily incomplete",
                 ReportStatus.TECHNICAL_FAILURE: "technical failure",
                 ReportStatus.CANCELLED: "cancelled", None: "assessment unavailable",

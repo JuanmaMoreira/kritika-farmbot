@@ -185,13 +185,14 @@ class GuiProgress:
         if name == "session.character.started":
             self.character = f"{fields.get('character_index', '-')} / {fields.get('character_count', '-')}"
             self.state = "Running"
-        elif name == "flow.started":
+        elif name in {"flow.started", "flow.skipped_not_eligible"}:
             flow_id = fields.get("flow")
             try:
                 self.flow = registry.get(str(flow_id)).display_name
             except KeyError:
                 self.flow = str(flow_id or "-")
-            self.state = "Running flow"
+            self.state = ("Skipped (not eligible)" if name == "flow.skipped_not_eligible"
+                          else "Running flow")
         elif name == "flow.completed":
             self.flows_completed += 1
         elif name == "rotation.started":

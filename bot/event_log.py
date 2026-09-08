@@ -180,6 +180,7 @@ class RuntimeEventStream:
                 "session.started", "session.completed", "session.failed", "session.cancelled",
                 "session.character.started", "session.character.completed",
                 "flow.started", "flow.completed", "flow.failed", "flow.cancelled",
+                "flow.skipped_not_eligible",
                 "rotation.started", "rotation.completed", "rotation.failed",
             } else "diagnostic"
         ))

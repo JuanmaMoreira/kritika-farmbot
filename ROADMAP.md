@@ -28,13 +28,13 @@ Summon Pet Daily quedó cerrado como flow productivo `PER_CHARACTER` Manage → 
 
 ## Próximo trabajo
 
-El checkpoint OpenCode/Muse está consolidado en `fc66d60`, Structured Observability v1 en `95c6bd6`, Failure Evidence v1 en `16f2d41`, SessionReport v1 en `7865c55` y GUI funcional mínima en `454d111`, baseline validada con 1597 tests. Character Identity mínima está implementada sobre ese baseline, sin commit/push hasta revisión: lookup exacto Lobby HUD → clase y fallback cerrado de cuatro variantes completas de tres nombres, contexto opcional y presentación mediante SessionReport/GUI; sin inputs ni cambios de Rotation. Validación del corpus: 83/84 correctas, un fallback de Demon Blade por baja confianza y cero clases incorrectas; threshold 0,95 intacto. Ver `docs/CHARACTER_IDENTITY_V1.md`.
+El checkpoint OpenCode/Muse está consolidado en `fc66d60`, Structured Observability v1 en `95c6bd6`, Failure Evidence v1 en `16f2d41`, SessionReport v1 en `7865c55`, GUI funcional mínima en `454d111` y Character Identity mínima en `a5c2648`, baseline validada con 1730 tests. Identity usa lookup exacto Lobby HUD → clase y fallback cerrado de cuatro variantes completas de tres nombres, contexto opcional y presentación mediante SessionReport/GUI; sin inputs ni cambios de Rotation. Validación del corpus: 83/84 correctas, un fallback de Demon Blade por baja confianza y cero clases incorrectas; threshold 0,95 intacto. Ver `docs/CHARACTER_IDENTITY_V1.md`.
 
-Orden acordado después de revisar esta fase:
+Orden de trabajo vigente:
 
-1. Revisar Character Identity mínima, sus variantes cerradas y el único raw de Demon Blade bajo threshold; preservar los 84 raws hasta cerrar la revisión.
-2. Eligibility mínima con consumer real.
-3. Reevaluar milestone; Arena permanece fuera de alcance.
+1. Character Identity mínima consolidada en `a5c2648`, baseline 1730 tests; preservar evidencia existente.
+2. Eligibility mínima v1 aceptada: consumer World Boss Daily conectado sólo a sesión, retorno por Quick Menu adquirido y skip estructurado proyectado en SessionReport. Validación: 258 dirigidos, 1771/1771 hardware-free y 413 frames sin errores. Cierra el bloque arquitectónico actual. Ver `docs/ELIGIBILITY_V1.md`.
+3. Próximo paso: reevaluar el milestone completo, sin iniciar otra implementación automática; Arena permanece fuera de alcance.
 
 ### Known future
 
@@ -48,7 +48,7 @@ Orden acordado después de revisar esta fase:
 - Hacer polish de UI más adelante; la GUI actual ya es el frontend operativo.
 - Evaluar detector entrenado o fallback VLM provider-agnostic sólo ante un caso no cubierto y evidencia suficiente.
 - Añadir el guard Daily a `GuildCheckInFlow` después de cerrar el negativo live `Attendance activo + Daily ausente`; no cambiar su completion por botón oscuro.
-- Diseñar la mínima eligibility Daily externa para World Boss sin convertirla en precondición interna de `WorldBossFlow` ni crear todavía un framework de routines.
+- Si el costo de navegación de Eligibility lo justifica, discutir una entrada preparada de World Boss para evitar la segunda apertura; el contrato general actual está preservado.
 
 ## Criterios permanentes de avance
 

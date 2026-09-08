@@ -19,6 +19,7 @@ class FlowScope(str, Enum):
 
 class FlowStatus(str, Enum):
     COMPLETED = "completed"
+    SKIPPED_NOT_ELIGIBLE = "skipped_not_eligible"
     FAILED = "failed"
     CANCELLED = "cancelled"
 
@@ -58,8 +59,16 @@ class FlowResult:
     events: tuple[FlowEvent, ...] = ()
     error: str | None = None
     failure: FailureCause | None = field(default=None, kw_only=True)
+    skip_reason: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
+        if self.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
+            if not isinstance(self.skip_reason, str) or not self.skip_reason.strip():
+                raise ValueError("an eligibility skip requires a reason")
+            if self.error is not None or self.failure is not None or self.events:
+                raise ValueError("an eligibility skip cannot contain flow outcomes")
+        elif self.skip_reason is not None:
+            raise ValueError("only an eligibility skip can contain skip_reason")
         if self.error is not None and self.failure is None:
             object.__setattr__(self, "failure", FailureCause.from_error(self.error))
         object.__setattr__(self, "events", tuple(self.events))

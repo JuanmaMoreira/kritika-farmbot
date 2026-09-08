@@ -141,6 +141,7 @@ DEFAULT_MANIFEST_PATHS = (
     "datasets/quick_menu_evidence_manifest.json",
     "datasets/black_market_interruptions_manifest.json",
     "datasets/world_boss_semantic_manifest.json",
+    "datasets/world_boss_eligibility_return_manifest.json",
     "datasets/socket_inventory_full_evidence_manifest.json",
     "datasets/meteor_inventory_full_evidence_manifest.json",
     "datasets/world_boss_bag_full_evidence_manifest.json",

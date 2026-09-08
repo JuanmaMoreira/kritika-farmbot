@@ -183,10 +183,10 @@ La normalización a Guild tiene dos transiciones explícitas: desde Lobby usa el
 
 ## SessionRunner
 
-`SessionPlan` expresa `character_count`, flows `PER_CHARACTER` ordenados y una `RotationStrategy`. Para cada personaje, `SessionRunner`:
+`SessionPlan` expresa `character_count`, flows `PER_CHARACTER` ordenados y una `RotationStrategy`. Eligibility añade checks opcionales por posición, evaluados tras la precondición y antes de ejecutar el flow. `ProductiveRuntime.run_session` conecta World Boss Daily como único consumidor; registry y ejecución manual permanecen generales. El evaluador consulta el badge real en Battle Mode Select y retorna por Quick Menu a Lobby verificado, reutilizando el normalizador. Un skip estructurado conserva la posición, no ejecuta el flow y permite continuar; UNKNOWN/error abortan técnicamente. No se amplían los orígenes de Rotation. El recorrido elegible conserva una segunda apertura de Battle Mode Select para respetar el contrato normal de WorldBossFlow. Diseño y límites en [`docs/ELIGIBILITY_V1.md`](docs/ELIGIBILITY_V1.md). Para cada personaje, `SessionRunner`:
 
 1. asegura sólo el requisito del siguiente componente;
-2. ejecuta cada flow en orden;
+2. evalúa el check opcional y ejecuta u omite cada flow en orden;
 3. verifica una postcondición permitida y registra sus business events;
 4. ejecuta y verifica exactamente un advance;
 5. conserva resultado/progreso parcial.

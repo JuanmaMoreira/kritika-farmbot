@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-09-08",
+    "source": "live_scrcpy_with_human_navigation",
+    "human_ground_truth": "confirmed_in_chat",
+    "scope": "Battle Mode Select -> Quick Menu -> Lobby return for World Boss Daily eligibility",
+    "daily_active_confirmed": true,
+    "open_quick_menu": {
+      "action": "OpenQuickMenu",
+      "normalized_target": [
+        0.194,
+        0.0564
+      ]
+    },
+    "select_lobby": {
+      "action": "SelectQuickMenuLobby",
+      "normalized_target": [
+        0.202,
+        0.205
+      ]
+    },
+    "targets": "Existing runtime targets visually contained in acquired controls; actions performed by human, no automatic replay.",
+    "quick_menu_base_resolution_required": false,
+    "acquisition_limits": "Three stable frames per human-confirmed state; no continuous timing or automatic target replay measurement.",
+    "raw_retention": "All nine raws preserved by explicit task instruction; curated copies referenced by entries."
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/battle-mode-before/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/battle-mode-before/20260908T010013_856145Z_01.png",
+      "sha256": "74e6c0b55c0cc769ede36231d4d1ba84a08cdef406d567b88970404fb7637ace",
+      "observations": [
+        "indicator.world_boss_daily_active"
+      ]
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/battle-mode-before/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/battle-mode-before/20260908T010014_331458Z_02.png",
+      "sha256": "973d4b7bd412faf37042e33db0bec623ed01a865367992f9b48fc3bf7ddc68fb",
+      "observations": [
+        "indicator.world_boss_daily_active"
+      ]
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/battle-mode-before/03.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/battle-mode-before/20260908T010014_813207Z_03.png",
+      "sha256": "3863db3f4969c994f1a53966c159f012144691610a410f5d07dc80c759b190d4",
+      "observations": [
+        "indicator.world_boss_daily_active"
+      ]
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/quick-menu-open/01.png",
+      "base_context": "unknown",
+      "overlays": [
+        "menu.quick"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/quick-menu-open/20260908T010115_436556Z_01.png",
+      "sha256": "9a42ef9a570159bbb2cb25abd50004e6f79143b3b82c171dca9671d14b294b71"
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/quick-menu-open/02.png",
+      "base_context": "unknown",
+      "overlays": [
+        "menu.quick"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/quick-menu-open/20260908T010115_908017Z_02.png",
+      "sha256": "32cba82da7ab548e1b32bdc94751de8086c625b18bdc291d3abfdb0284f7edec"
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/quick-menu-open/03.png",
+      "base_context": "unknown",
+      "overlays": [
+        "menu.quick"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/quick-menu-open/20260908T010116_384790Z_03.png",
+      "sha256": "e718daaedbbafd7b2016591f4c991089d9ebe9285d63d84b1768bc7d179793aa"
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/lobby-after/01.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/lobby-after/20260908T010231_079486Z_01.png",
+      "sha256": "07000700eee2984fcf52c9437db4de212b915fce03250fdfc7b886d164d40d77"
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/lobby-after/02.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/lobby-after/20260908T010231_567150Z_02.png",
+      "sha256": "31f315b8de971682268c6cbb1eda18d9c00fc7b52a45350848b6139ed632d9ce"
+    },
+    {
+      "path": "screencaps/semantic/eligibility/world-boss-return/lobby-after/03.png",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png",
+      "sha256": "f807d766458291f0ea880efb4bda7747f25c0028da7ac96f1cdd0eee45f4afb7"
+    }
+  ]
+}

@@ -76,6 +76,8 @@ La duración se trunca a segundos y se formatea `HH:MM:SS`, sin timestamps actua
 
 ## Integración y compatibilidad
 
+Eligibility mínima añade la proyección `skipped_not_eligible` sólo para un flow omitido por el runner antes de ejecución. El resultado conserva `skip_reason`; el renderer muestra `skipped (not eligible)` con esa razón. No cuenta como flow completado, business incomplete ni technical failure; un personaje con skips puede completar su plan y Rotation. Builder/renderer siguen sin IO ni publicación. World Boss Daily es el consumidor productivo de sesión; la ejecución manual conserva su contrato general. Ver [Eligibility v1](ELIGIBILITY_V1.md).
+
 - `GuiExecutionResult.report` es opcional y keyword-only. El worker lo construye después de salir del contexto runtime para sesiones que devolvieron `SessionResult`; la queue, status, counters y error legacy conservan sus contratos. No se modifica Tk ni se agregan controles GUI.
 - `Run Flow Once` y excepciones de setup/cleanup sin un resultado de sesión mantienen `report=None`. No se sintetiza una sesión a partir de una excepción ni se implementa replay del lifecycle exterior en esta fase.
 - `tools.run_session` renderiza SessionReport y el path del JSONL al terminar; los códigos de salida permanecen basados en SessionStatus. `tools.runtime_cli.session_summary` conserva su firma y salida legacy para consumidores existentes. El resumen standalone no cambia.
@@ -96,4 +98,4 @@ git diff --check
 
 Validación final: **144 tests dirigidos passed** y **1572/1572 tests hardware-free passed en 265,46 s** sobre el código final, incluyendo 49 casos nuevos. `git diff --check`, whitespace de archivos nuevos y enlaces Markdown locales de la documentación modificada válidos. Sin hardware ni cambios perceptivos; no corresponde recalibración. Los cuatro scripts raíz locales ajenos permanecen preservados. Sin commit ni push.
 
-GUI funcional mínima ya consume el report y permite localizar evidencia bajo acción explícita. Character Identity mínima sustituye ahora la etiqueta cuando el contexto tiene clase, sin alterar la proyección de negocio. El drill-down técnico puede usar `FailureCause` y el JSONL. Eligibility, Arena, nuevas causas semánticas y replay de sesiones interrumpidas antes de producir resultado permanecen fuera de alcance.
+GUI funcional mínima ya consume el report y permite localizar evidencia bajo acción explícita. Character Identity mínima sustituye ahora la etiqueta cuando el contexto tiene clase, sin alterar la proyección de negocio. Eligibility mínima añade la proyección de skip descrita arriba. El drill-down técnico puede usar `FailureCause` y el JSONL. Arena, nuevas causas semánticas y replay de sesiones interrumpidas antes de producir resultado permanecen fuera de alcance.

@@ -17,6 +17,7 @@ from bot.obstruction_recovery import PortalObstructionRecovery
 from bot.portal_notification import PortalNotificationProbe
 from bot.catalog import (
     MENU_QUICK,
+    SCREEN_BATTLE_MODE_SELECT,
     SCREEN_GUILD,
     SCREEN_LOBBY,
     SCREEN_PET_SUMMON,
@@ -30,6 +31,7 @@ from bot.catalog import (
     STATUS_GUILD_ATTENDANCE_ACTIVE,
     STATUS_GUILD_ATTENDANCE_COMPLETED,
     STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
+    STATUS_WORLD_BOSS_DAILY_ACTIVE,
     build_default_resolver,
 )
 from bot.config import RuntimeConfig
@@ -62,6 +64,7 @@ from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughAnimation
 from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
+from bot.world_boss_eligibility import WorldBossDailyEligibility
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -308,6 +311,10 @@ class ProductiveRuntime:
             flows=flows,
             rotation_strategy=rotation,
             character_count=character_count,
+            eligibility=tuple(
+                self.build_world_boss_daily_eligibility() if flow.name == "world_boss" else None
+                for flow in flows
+            ),
         )
         recognizer: LobbyNameRecognizer | None = None
 
@@ -337,6 +344,25 @@ class ProductiveRuntime:
         finally:
             self._identity_snapshot = None
             self._identity_active = False
+
+    def build_world_boss_daily_eligibility(self) -> WorldBossDailyEligibility:
+        """Only the daily session composition installs this check; registry is general."""
+        return WorldBossDailyEligibility(
+            self.observer, self.build_verified_transition(),
+            self._return_world_boss_eligibility_to_lobby,
+            cancel_requested=self.cancel_requested,
+        )
+
+    def _return_world_boss_eligibility_to_lobby(self, initial):
+        # This acquisition authorizes the exact Lobby return, without expanding
+        # Rotation's origins or declaring every Quick Menu destination acquired.
+        if not _is_clean_base(initial, SCREEN_BATTLE_MODE_SELECT):
+            raise ValueError("eligibility return requires confirmed Battle Mode Select")
+        return self._quick_menu_to_lobby(
+            initial, self.build_verified_transition(),
+            VerifiedTransitionPolicy(max_attempts=2),
+            prefix="eligibility.world_boss",
+        )
 
     def _current_clean_context(self) -> str | None:
         self._identity_snapshot = None
@@ -455,8 +481,14 @@ class ProductiveRuntime:
                 policy=policy,
             )
             return lobby.succeeded and not self.cancel_requested()
+        lobby = self._quick_menu_to_lobby(initial, transition, policy)
+        return lobby.succeeded and not self.cancel_requested()
+
+    def _quick_menu_to_lobby(self, initial, transition, policy, *, prefix="precondition"):
+        """Shared acquired return; keep the original transitions for other callers."""
+        origin = initial.state.base_context
         opened = transition.execute(
-            "precondition.open_quick_menu",
+            f"{prefix}.open_quick_menu",
             OpenQuickMenu(),
             initial,
             expected=_has_quick_menu,
@@ -472,9 +504,9 @@ class ProductiveRuntime:
             policy=policy,
         )
         if not opened.succeeded or self.cancel_requested():
-            return False
+            return opened
         lobby = transition.execute(
-            "precondition.select_lobby",
+            f"{prefix}.select_lobby",
             SelectQuickMenuLobby(),
             opened.final_snapshot,
             expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
@@ -486,7 +518,7 @@ class ProductiveRuntime:
             stable_for=_CLEAN_CONTEXT_STABLE_FOR,
             policy=policy,
         )
-        return lobby.succeeded and not self.cancel_requested()
+        return lobby
 
     def _navigate_to_guild(self) -> bool:
         """Navigate a non-Lobby capable origin through Quick Menu to Guild."""
@@ -752,6 +784,8 @@ def _is_clean_base(snapshot, base: str) -> bool:
         )
     elif base == SCREEN_PETS_MANAGE:
         compatible_overlays = overlays <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
+    elif base == SCREEN_BATTLE_MODE_SELECT:
+        compatible_overlays = overlays <= {STATUS_WORLD_BOSS_DAILY_ACTIVE}
     elif base == SCREEN_PET_SUMMON:
         epic = overlays & {
             STATUS_PET_EPIC_AVAILABLE,

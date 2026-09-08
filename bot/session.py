@@ -13,6 +13,7 @@ from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.event_log import EventSink
 from bot.event_context import event_context, event_scope, new_correlation_id, operation_scope
 from bot.failure_cause import FailureCause
+from bot.eligibility import EligibilityCheck, EligibilityResult, EligibilityStatus
 from bot.failure_evidence import publish_failure
 from bot.flow_contracts import publish_flow_events
 from bot.flow_contracts import (
@@ -61,6 +62,7 @@ class SessionPlan:
     character_count: int
     flows: tuple[PerCharacterFlow, ...]
     rotation_strategy: RotationStrategy
+    eligibility: tuple[EligibilityCheck | None, ...] = field(default=(), kw_only=True)
 
     def __post_init__(self) -> None:
         count = _positive_integer(self.character_count, "character_count")
@@ -87,6 +89,13 @@ class SessionPlan:
             raise ValueError("rotation_strategy must declare a ComponentContract")
         object.__setattr__(self, "character_count", count)
         object.__setattr__(self, "flows", flows)
+        checks = tuple(self.eligibility) or (None,) * len(flows)
+        if len(checks) != len(flows) or any(
+            check is not None and not callable(getattr(check, "evaluate", None))
+            for check in checks
+        ):
+            raise ValueError("eligibility must contain one check or None per flow")
+        object.__setattr__(self, "eligibility", checks)
 
     @classmethod
     def standard(
@@ -95,8 +104,9 @@ class SessionPlan:
         flows: tuple[PerCharacterFlow, ...],
         rotation_strategy: RotationStrategy,
         character_count: int = DEFAULT_CHARACTER_COUNT,
+        eligibility: tuple[EligibilityCheck | None, ...] = (),
     ) -> "SessionPlan":
-        return cls(character_count, flows, rotation_strategy)
+        return cls(character_count, flows, rotation_strategy, eligibility=eligibility)
 
 
 @dataclass(frozen=True)
@@ -249,6 +259,53 @@ class SessionRunner:
                                     f"{ensured.error or 'unknown'}"
                                 ),
                             )
+
+                        check = self.plan.eligibility[flow_position]
+                        if check is not None:
+                            decision = self._evaluate_eligibility(check)
+                            if self._cancelled() or decision.status is EligibilityStatus.CANCELLED:
+                                character_results.append(
+                                    SessionCharacterResult(index, context, tuple(flow_results))
+                                )
+                                return self._cancel(character_results, advances_completed)
+                            if decision.status in {EligibilityStatus.UNKNOWN, EligibilityStatus.FAILED}:
+                                character_results.append(
+                                    SessionCharacterResult(index, context, tuple(flow_results))
+                                )
+                                return self._fail(
+                                    character_results, advances_completed, index=index,
+                                    flow=flow.name, flow_position=flow_position,
+                                    cause=decision.reason, failure=decision.failure,
+                                )
+                            # A definitive decision must leave the entry contract
+                            # verified. Do not normalize or retry on a bad return.
+                            entry_restored = self._current_satisfies_any((flow.contract.precondition,))
+                            if self._cancelled():
+                                character_results.append(
+                                    SessionCharacterResult(index, context, tuple(flow_results))
+                                )
+                                return self._cancel(character_results, advances_completed)
+                            if not entry_restored:
+                                character_results.append(
+                                    SessionCharacterResult(index, context, tuple(flow_results))
+                                )
+                                return self._fail(
+                                    character_results, advances_completed, index=index,
+                                    flow=flow.name, flow_position=flow_position,
+                                    cause="eligibility_return_postcondition_failed",
+                                )
+                            if decision.status is EligibilityStatus.NOT_ELIGIBLE:
+                                flow_results.append(FlowResult(
+                                    FlowStatus.SKIPPED_NOT_ELIGIBLE,
+                                    skip_reason=decision.reason,
+                                ))
+                                self._record(
+                                    "flow.skipped_not_eligible", component=flow.name,
+                                    flow=flow.name, flow_position=flow_position,
+                                    character_index=index, character_name=context.name,
+                                    reason=decision.reason,
+                                )
+                                continue
 
                         self._record(
                             "flow.started",
@@ -453,6 +510,11 @@ class SessionRunner:
                     FlowStatus.FAILED,
                     error="flow returned an invalid result",
                 )
+            if result.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
+                return FlowResult(
+                    FlowStatus.FAILED,
+                    error="eligibility skips must originate before flow execution",
+                )
             return result
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -475,6 +537,22 @@ class SessionRunner:
                 RotationOutcome.ABORTED,
                 error=f"{type(error).__name__}: {error}",
                 failure=FailureCause.from_error(error, kind="exception"),
+            )
+
+    @staticmethod
+    def _evaluate_eligibility(check: EligibilityCheck) -> EligibilityResult:
+        try:
+            result = check.evaluate()
+            if not isinstance(result, EligibilityResult):
+                raise TypeError("invalid eligibility result")
+            return result
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as error:
+            return EligibilityResult(
+                EligibilityStatus.FAILED,
+                f"eligibility_failed: {type(error).__name__}: {error}",
+                FailureCause.from_error(error, kind="exception"),
             )
 
     def _ensure(self, requirement: ComponentRequirement) -> EnsureResult:
