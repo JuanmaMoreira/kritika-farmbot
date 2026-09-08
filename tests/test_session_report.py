@@ -35,12 +35,12 @@ def test_complete_report_and_reproducible_text():
     assert report.counts.complete == 2
     assert report.flows_completed == report.advances_completed == 2
     assert report.data_gaps == ()
+    assert len(report.characters) == 2
     assert render_session_report(report) == (
         "Session completed — 2/2\nDuration: 01:29:58\nFlows completed: 2\n"
         "Advances / rotation: 2\n\nCharacters:\n2 complete\n"
         "0 business / Daily incomplete\n0 technical failure\n0 cancelled\n\n"
-        "Character 1\n- Send Stamina Daily: complete (no-op)\n\n"
-        "Character 2\n- Send Stamina Daily: complete"
+        "2 characters had no issues."
     )
     assert build_session_report(raw) == report
 
@@ -193,8 +193,45 @@ def test_class_and_fallback_labels_preserve_execution_order():
     report = build_session_report(raw)
     assert [c.label for c in report.characters] == ["Character 1", "Kaiserin"]
     assert [f.flow_id for f in report.characters[0].flows] == ["world_boss", "black_market"]
-    assert "Kaiserin" in render_session_report(report)
+    assert "Kaiserin" not in render_session_report(report)
+    assert "2 characters had no issues." in render_session_report(report)
     assert raw.character_results[0] is char
+
+
+def test_compact_renderer_hides_clean_characters_and_flows():
+    ok = character(1, flow("send_stamina.noop"), flow("send_stamina.noop"))
+    mixed = SessionCharacterResult(
+        2, CharacterContext(),
+        (flow("send_stamina.noop"), flow(SEND_STAMINA_DAILY_PENDING)),
+        advance_result=None, completed=True,
+    )
+    report = build_session_report(session(ok, mixed, names=("send_stamina", "send_stamina")))
+    assert report.status is ReportStatus.BUSINESS_INCOMPLETE
+    assert (report.counts.complete, report.counts.business_incomplete) == (1, 1)
+    text = render_session_report(report)
+    assert "Character 1" not in text
+    assert "Character 2" in text
+    assert ": complete" not in text
+    assert "business / Daily incomplete" in text
+    assert "Daily still pending" in text
+    assert "1 character had no issues." in text
+
+
+def test_compact_renderer_shows_skip_only_with_other_issues():
+    skipped = flow(status=FlowStatus.SKIPPED_NOT_ELIGIBLE, skip_reason="Daily badge")
+    clean = character(1, flow("send_stamina.noop"), skipped)
+    report = build_session_report(session(clean, names=("send_stamina", "world_boss")))
+    assert report.characters[0].status is ReportStatus.COMPLETE
+    assert "skipped (not eligible)" not in render_session_report(report)
+    troubled = SessionCharacterResult(
+        2, CharacterContext(), (skipped, flow(SEND_STAMINA_DAILY_PENDING)),
+        advance_result=None, completed=True,
+    )
+    report = build_session_report(session(clean, troubled, names=("world_boss", "send_stamina")))
+    text = render_session_report(report)
+    assert "Character 2" in text
+    assert "skipped (not eligible): Daily badge" in text
+    assert "1 character had no issues." in text
 
 
 def test_legacy_aggregate_only_does_not_fabricate_completion_or_details():

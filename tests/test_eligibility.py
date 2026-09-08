@@ -65,7 +65,9 @@ def test_routine_eligibility_preserves_order_rotation_identity_and_report(status
     assert wb_events == (["flow.skipped_not_eligible"] * 2 if skipped
                          else ["flow.started", "flow.completed"] * 2)
     if skipped:
-        assert "World Boss: skipped (not eligible): Daily badge" in render_session_report(report)
+        assert [f.status for f in report.characters[0].flows] == [
+            ReportStatus.COMPLETE, ReportStatus.SKIPPED_NOT_ELIGIBLE, ReportStatus.COMPLETE]
+        assert "2 characters had no issues." in render_session_report(report)
         assert not result.events
 
 

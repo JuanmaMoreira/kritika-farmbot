@@ -317,9 +317,20 @@ def render_session_report(report: SessionReport) -> str:
         lines.append(f"{report.counts.unassessed} unassessed")
     if report.status is ReportStatus.TECHNICAL_FAILURE:
         lines.extend(_failure_lines(report.failure))
+    hidden_complete = 0
     for character in report.characters:
+        if character.status is ReportStatus.COMPLETE and character.failure is None:
+            # Clean characters (including routine skips) stay counted above;
+            # detail only shows characters needing attention.
+            hidden_complete += 1
+            continue
         lines.extend(("", character.label))
-        for flow in character.flows:
+        if character.status is None:
+            # Assessment uncertain: do not hide any flow.
+            visible_flows = character.flows
+        else:
+            visible_flows = tuple(f for f in character.flows if f.status is not ReportStatus.COMPLETE)
+        for flow in visible_flows:
             label = {
                 ReportStatus.COMPLETE: "complete (no-op)" if flow.no_op else "complete",
                 ReportStatus.SKIPPED_NOT_ELIGIBLE: "skipped (not eligible)",
@@ -340,6 +351,11 @@ def render_session_report(report: SessionReport) -> str:
         elif character.status is ReportStatus.TECHNICAL_FAILURE:
             component = "Rotation" if character.failure_component == "rotation" else "Character processing"
             lines.append(f"- {component} ended with technical failure")
+        elif character.status is None and not visible_flows and character.failure is None:
+            lines.append("- Assessment unavailable")
+    if hidden_complete:
+        noun = "character" if hidden_complete == 1 else "characters"
+        lines.extend(("", f"{hidden_complete} {noun} had no issues."))
     if report.data_gaps:
         lines.extend(("", "Report limitations: " + "; ".join(report.data_gaps)))
     return "\n".join(lines)
