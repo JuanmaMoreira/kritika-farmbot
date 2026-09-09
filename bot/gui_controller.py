@@ -24,6 +24,7 @@ class GuiRunStatus(str, Enum):
     RUNNING = "Running"
     STOPPING = "Stopping"
     COMPLETED = "Completed"
+    MANUAL_RESOLUTION = "Manual resolution required"
     CANCELLED = "Cancelled"
     FAILED = "Failed"
 
@@ -215,6 +216,7 @@ class GuiRuntimeController:
 
 def _flow_status(status: FlowStatus) -> GuiRunStatus:
     return {
+        FlowStatus.MANUAL_RESOLUTION: GuiRunStatus.MANUAL_RESOLUTION,
         FlowStatus.COMPLETED: GuiRunStatus.COMPLETED,
         FlowStatus.CANCELLED: GuiRunStatus.CANCELLED,
         FlowStatus.FAILED: GuiRunStatus.FAILED,
@@ -223,6 +225,7 @@ def _flow_status(status: FlowStatus) -> GuiRunStatus:
 
 def _session_status(status: SessionStatus) -> GuiRunStatus:
     return {
+        SessionStatus.MANUAL_RESOLUTION: GuiRunStatus.MANUAL_RESOLUTION,
         SessionStatus.COMPLETED: GuiRunStatus.COMPLETED,
         SessionStatus.CANCELLED: GuiRunStatus.CANCELLED,
         SessionStatus.FAILED: GuiRunStatus.FAILED,

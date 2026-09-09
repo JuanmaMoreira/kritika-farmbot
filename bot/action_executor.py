@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from numbers import Integral
 
 from bot.adb import AdbClient
+from bot.monster_wave_actions import MONSTER_WAVE_TARGETS, SelectMonsterWaveMax
 from bot.geometry import (
     PixelPoint,
     RelativePoint,
@@ -561,7 +562,7 @@ class ActionExecutor:
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
     ) -> ActionExecution | SwipeExecution:
-        """Translate one semantic action to exactly one ADB input command."""
+        """Translate intent to input; MW MAX is an explicit two-tap operation."""
 
         if not isinstance(geometry, FrameGeometry):
             raise ValueError("geometry must be FrameGeometry")
@@ -570,6 +571,9 @@ class ActionExecutor:
         target = self._target_for(action)
         pixel = relative_point_to_pixel(target, geometry.width, geometry.height)
         self.adb.tap(*pixel)
+        if isinstance(action, SelectMonsterWaveMax):
+            # No frame read, wait, decision or retry between the two taps.
+            self.adb.tap(*pixel)
         return ActionExecution(
             action=action,
             normalized_target=target,
@@ -577,6 +581,8 @@ class ActionExecutor:
         )
 
     def _target_for(self, action: SemanticAction) -> RelativePoint:
+        if type(action) in MONSTER_WAVE_TARGETS:
+            return MONSTER_WAVE_TARGETS[type(action)]
         if isinstance(action, OpenBlackMarket):
             return self.targets.open_black_market
         if isinstance(action, CloseBlackMarket):

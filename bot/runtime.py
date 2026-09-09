@@ -10,6 +10,7 @@ from bot.event_log import EventSink
 from bot.ocr import OcrEngine, RapidOcrEngine
 from bot.ocr_extractors import (
     build_sapphires_extractor,
+    build_monster_wave_sapphires_extractor,
     build_socket_sell_level_extractor,
     build_timer_extractor,
 )
@@ -57,4 +58,5 @@ def build_runtime_fact_reader(
             build_timer_extractor(engine),
         ),
         events=events,
+        context_extractors=(build_monster_wave_sapphires_extractor(engine),),
     )

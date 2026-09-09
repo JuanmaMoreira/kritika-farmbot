@@ -13,6 +13,8 @@ from bot.mailbox_flow import MailboxFlow
 from bot.send_stamina_flow import SendStaminaFlow
 from bot.summon_pet_daily_flow import SummonPetDailyFlow
 from bot.world_boss_flow import WorldBossFlow
+from bot.monster_wave_flow import MonsterWaveFlow
+from bot.monster_wave_config import MonsterWaveConfig
 
 
 class FlowDependencies(Protocol):
@@ -129,6 +131,16 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _build_monster_wave(dependencies: FlowDependencies) -> PerCharacterFlow:
+    return MonsterWaveFlow(
+        dependencies.observer, dependencies.actions, dependencies.events,
+        config=getattr(getattr(dependencies, 'config', None), 'monster_wave', MonsterWaveConfig()),
+        facts=dependencies.facts,
+        cancel_requested=dependencies.cancel_requested,
+        verified_transition=_verified_transition_for(dependencies),
+    )
+
+
 def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
     return DailyQuestsFlow(
         dependencies.observer,
@@ -190,6 +202,8 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
         WorldBossFlow.contract,
         _build_world_boss,
     ),
+    FlowDefinition('monster_wave', 'Monster Wave', MonsterWaveFlow.scope,
+                   MonsterWaveFlow.contract, _build_monster_wave),
     FlowDefinition(
         "send_stamina",
         "Send Stamina",

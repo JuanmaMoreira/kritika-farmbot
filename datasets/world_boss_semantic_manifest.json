@@ -85,12 +85,18 @@
     }
   },
   "entries": [
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230905_545895Z_01.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_089202Z_02.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_628075Z_03.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_314994Z_01.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_806451Z_02.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231734_295455Z_03.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230905_545895Z_01.png","base_context":"screen.battle_mode_select","overlays": ["status.world_boss_daily_active", "status.monster_wave_daily_active"],"observations": ["indicator.world_boss_daily_active", "indicator.monster_wave_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_089202Z_02.png","base_context":"screen.battle_mode_select","overlays": ["status.world_boss_daily_active", "status.monster_wave_daily_active"],"observations": ["indicator.world_boss_daily_active", "indicator.monster_wave_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T230906_628075Z_03.png","base_context":"screen.battle_mode_select","overlays": ["status.world_boss_daily_active", "status.monster_wave_daily_active"],"observations": ["indicator.world_boss_daily_active", "indicator.monster_wave_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_314994Z_01.png","base_context":"screen.battle_mode_select","overlays": ["status.monster_wave_daily_active"],"review_status":"confirmed",
+      "observations": ["indicator.monster_wave_daily_active"]
+    },
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231733_806451Z_02.png","base_context":"screen.battle_mode_select","overlays": ["status.monster_wave_daily_active"],"review_status":"confirmed",
+      "observations": ["indicator.monster_wave_daily_active"]
+    },
+    {"path":"screencaps/semantic/world_boss/battle_mode/20260827T231734_295455Z_03.png","base_context":"screen.battle_mode_select","overlays": ["status.monster_wave_daily_active"],"review_status":"confirmed",
+      "observations": ["indicator.monster_wave_daily_active"]
+    },
 
     {"path":"screencaps/semantic/world_boss/select_boss/20260827T230927_858806Z_01.png","base_context":"unknown","overlays":["overlay.world_boss_select_boss"],"review_status":"confirmed"},
     {"path":"screencaps/semantic/world_boss/select_boss/20260827T230928_786264Z_03.png","base_context":"unknown","overlays":["overlay.world_boss_select_boss"],"review_status":"confirmed"},

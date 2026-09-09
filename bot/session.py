@@ -32,6 +32,7 @@ from bot.rotation import RotationResult, RotationStrategy
 
 class SessionStatus(str, Enum):
     COMPLETED = "completed"
+    MANUAL_RESOLUTION = "manual_resolution"
     FAILED = "failed"
     CANCELLED = "cancelled"
 
@@ -366,6 +367,17 @@ class SessionRunner:
                             continue
                         flow_results.append(result)
                         self._record_flow_events(flow.name, result.events, index, context)
+                        if result.status is FlowStatus.MANUAL_RESOLUTION:
+                            self._record('flow.manual_resolution', component=flow.name,
+                                         flow=flow.name, character_index=index)
+                            character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                            self._record('session.manual_resolution', flow=flow.name, character_index=index)
+                            return SessionResult(
+                                SessionStatus.MANUAL_RESOLUTION,
+                                characters_processed=sum(item.completed for item in character_results),
+                                advances_completed=advances_completed,
+                                character_results=tuple(character_results),
+                            )
                         if result.status is FlowStatus.CANCELLED:
                             self._record(
                                 "flow.cancelled",

@@ -19,6 +19,7 @@ def test_default_registry_is_explicit_and_preserves_selection_order():
     assert [item.id for item in registry.definitions] == [
         "black_market",
         "world_boss",
+        "monster_wave",
         "send_stamina",
         "summon_pet_daily",
         "daily_quests",

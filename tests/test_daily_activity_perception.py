@@ -118,6 +118,7 @@ def test_guild_daily_is_independent_from_existing_attendance_state():
 
 
 def test_world_boss_daily_uses_only_its_card_badge():
+    from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
     active_batch, active = _resolve(
         "screencaps/semantic/daily_activity/world-boss/daily-active/01.png"
     )
@@ -126,8 +127,8 @@ def test_world_boss_daily_uses_only_its_card_badge():
     )
 
     assert active.base_context == SCREEN_BATTLE_MODE_SELECT
-    assert active.overlays == (STATUS_WORLD_BOSS_DAILY_ACTIVE,)
+    assert set(active.overlays) == {STATUS_WORLD_BOSS_DAILY_ACTIVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE}
     assert active_batch.best(INDICATOR_WORLD_BOSS_DAILY_ACTIVE)
     assert inactive.base_context == SCREEN_BATTLE_MODE_SELECT
-    assert inactive.overlays == ()
+    assert inactive.overlays == (STATUS_MONSTER_WAVE_DAILY_ACTIVE,)
     assert inactive_batch.best(INDICATOR_WORLD_BOSS_DAILY_ACTIVE) is None

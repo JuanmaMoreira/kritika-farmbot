@@ -147,6 +147,7 @@ class OcrFactExtractor:
     max_observations: int = 3
     min_ocr_confidence: float = 0.50
     sample_interval: float = 0.0
+    require_clean_context: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "name", validate_semantic_name(self.name))
@@ -158,6 +159,10 @@ class OcrFactExtractor:
         if len(set(overlays)) != len(overlays):
             raise ValueError("required_overlays must not contain duplicates")
         object.__setattr__(self, "required_overlays", overlays)
+        if not isinstance(self.require_clean_context, bool):
+            raise ValueError('require_clean_context must be a bool')
+        if self.require_clean_context and overlays:
+            raise ValueError('a clean context cannot require overlays')
         if not callable(getattr(self.engine, "recognize", None)):
             raise ValueError("engine must provide recognize(image)")
         if not callable(self.parser):
@@ -199,6 +204,7 @@ class OcrFactExtractor:
             state.status is not ResolutionStatus.RESOLVED
             or state.base_context != self.context
             or not set(self.required_overlays).issubset(state.overlays)
+            or (self.require_clean_context and bool(state.overlays))
         ):
             return FactExtraction(
                 status=ExtractionStatus.CONTEXT_MISMATCH,
@@ -311,6 +317,18 @@ def build_sapphires_extractor(engine: OcrEngine) -> OcrFactExtractor:
     )
 
 
+def build_monster_wave_sapphires_extractor(engine: OcrEngine) -> OcrFactExtractor:
+    from bot.monster_wave_semantics import SCREEN_MONSTER_WAVE
+
+    # Reviewed global HUD number, excluding sapphire icon and purchase button.
+    return OcrFactExtractor(
+        name=RESOURCE_SAPPHIRES, context=SCREEN_MONSTER_WAVE,
+        region=(.617, .040, .676, .082), engine=engine, parser=parse_integer,
+        preprocessing=SAPPHIRES_PREPROCESSING, require_clean_context=True,
+        confirmations=2, max_observations=3, sample_interval=.20,
+    )
+
+
 def build_timer_extractor(engine: OcrEngine) -> OcrFactExtractor:
     return OcrFactExtractor(
         name=BATTLE_TIMER_REMAINING,
@@ -362,6 +380,7 @@ __all__ = (
     "SOCKET_SELL_LEVEL_ROI",
     "WORLD_BOSS_TIMER_ROI",
     "build_sapphires_extractor",
+    "build_monster_wave_sapphires_extractor",
     "build_socket_sell_level_extractor",
     "build_timer_extractor",
     "parse_duration_seconds",

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Mapping
 
 from dotenv import dotenv_values
+from bot.monster_wave_config import MonsterWaveConfig
 
 
 DEFAULT_ADB_EXECUTABLE = "adb"
@@ -28,8 +29,11 @@ class RuntimeConfig:
     scrcpy_server_path: str
     adb_executable: str = DEFAULT_ADB_EXECUTABLE
     game_package: str = DEFAULT_GAME_PACKAGE
+    monster_wave: MonsterWaveConfig = MonsterWaveConfig()
 
     def __post_init__(self) -> None:
+        if not isinstance(self.monster_wave, MonsterWaveConfig):
+            raise ValueError('monster_wave must be MonsterWaveConfig')
         for field_name in (
             "device_serial",
             "scrcpy_server_path",
@@ -70,6 +74,7 @@ class RuntimeConfig:
             scrcpy_server_path=_required(values, "SCRCPY_SERVER_PATH"),
             adb_executable=values.get("ADB_PATH", DEFAULT_ADB_EXECUTABLE),
             game_package=values.get("GAME_PACKAGE", DEFAULT_GAME_PACKAGE),
+            monster_wave=MonsterWaveConfig.from_env(values),
         )
 
 

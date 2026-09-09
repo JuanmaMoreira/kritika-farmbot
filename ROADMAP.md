@@ -35,7 +35,7 @@ Orden de trabajo vigente:
 1. Character Identity mínima consolidada en `a5c2648`, baseline 1730 tests; preservar evidencia existente.
 2. Eligibility mínima v1 aceptada: consumer World Boss Daily conectado sólo a sesión, retorno por Quick Menu adquirido y skip estructurado proyectado en SessionReport. Validación: 258 dirigidos, 1771/1771 hardware-free y 413 frames sin errores. Cierra el bloque arquitectónico actual. Ver `docs/ELIGIBILITY_V1.md`.
 3. Battle Mode shared zone implementado para revisión desde `e3db3c1`: World Boss standalone Lobby → Lobby, activity hub → hub y Daily de una sola apertura. Selección/orden explícitos, sin nuevos flows ni planning. Corregida la precedencia Daily: precheck observado antes de abrir, consumido sólo después de Eligibility, sin gate global de zona. Ver `docs/BATTLE_MODE_SHARED_ZONE.md`.
-4. Próximo paso: revisar este refactor; antes de MonsterWaveFlow, cerrar los gaps de adquisición enumerados en ese documento. MW será SKIP-only; Start manual no es un gap. Tower y Arena permanecen futuros.
+4. Monster Wave SKIP-only implementado en `feature/monster-wave-skip`, pendiente de revisión sin commit ni push: MAX fijo con double tap verificado, compra opcional Fill All, board configurable con default false, boundaries reales y composición WB/MW de una visita. Patch de entrada Weekly/Ranking y mínimo Daily ≥4 con OCR fresco completado: 1925/1925 tests y 510 frames sin wrong/ambiguous. Revisar `docs/MONSTER_WAVE_SKIP.md`. Start manual está excluido; Tower y Arena permanecen futuros.
 
 ### Known future
 
@@ -49,7 +49,7 @@ Orden de trabajo vigente:
 - Hacer polish de UI más adelante; la GUI actual ya es el frontend operativo.
 - Evaluar detector entrenado o fallback VLM provider-agnostic sólo ante un caso no cubierto y evidencia suficiente.
 - Añadir el guard Daily a `GuildCheckInFlow` después de cerrar el negativo live `Attendance activo + Daily ausente`; no cambiar su completion por botón oscuro.
-- Completar evidencia de MW SKIP, boundaries de sapphires/GOLD, ramas No y expiración; adquirir negativo Tower y revisar negativo reciente WB antes de ampliar Eligibility.
+- MW: adquirir GOLD insuficiente al comprar tickets, returns de Socket/Equipment y rama negativa del blocker. Weekly Results y New Ranking ya se normalizan con OK verificado; Daily exige ≥4 sapphires frescos del HUD MW, sin mínimo en manual. Expiración durante preparación detiene conservadoramente, sin reactivación automática. Eligibility MW y ramas No de sapphires/board ya están promovidas; board sigue false por defecto. Tower requiere su evidencia propia.
 - Reliefs futuros Keys (Trading Center/Keys y Treasure) y materiales (Trading Center/materials y Craft), sin planificación automática MW → Arena.
 
 ## Criterios permanentes de avance

@@ -1,0 +1,1368 @@
+{
+  "version": 1,
+  "curation": {
+    "source": [
+      "acquisition-battle-mode-monster-wave",
+      "acquisition-monster-wave-skip-boundaries",
+      "acquisition-monster-wave-weekly-reset"
+    ],
+    "raw_retention": "Preserved by explicit user instruction",
+    "labels": "Human acquisition ground truth plus reviewed visible landmarks; no inferred resource balances",
+    "limitations": "No GOLD-insufficient purchase evidence or acquired relief return",
+    "entry_returns": "Human-confirmed Weekly Results OK and New Ranking OK return to clean MW; no assumed combined order"
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-initial/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-initial/20260908T071230_053801Z_01.png",
+      "sha256": "00d518df40c00d71192d5e184c93c02cc6890444ae2d443b4906af5f303fc77c"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-initial/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-initial/20260908T071230_528806Z_02.png",
+      "sha256": "7bad10662fdcfcd62af540c6dce890b662f2e58412751e456ad53b4d84a211f2"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-initial/03.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-initial/20260908T071231_003781Z_03.png",
+      "sha256": "d2292194915c59e9e129ba3688318e9fc9d86be85c549901c4998dc6edfbe071"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-ranking-popup/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_new_ranking"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_new_ranking"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-ranking-popup/20260908T071533_753348Z_01.png",
+      "sha256": "c415cb7ed2ef167206fc4dea41b787e43a0e5c0a92f48004db2bc176387f1a46"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-ranking-popup/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_new_ranking"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_new_ranking"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-ranking-popup/20260908T071534_187008Z_02.png",
+      "sha256": "2ec4d9825e8dc53e3bb9bbd688d5dff4b1ae698d4afd8a9bc3d59fc5948b423a"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-ranking-popup/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_new_ranking"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_new_ranking"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-ranking-popup/20260908T071534_620795Z_03.png",
+      "sha256": "dd904c8147497ee7e7dc8119bfe13686a7d382441dba814939d1a985d422d699"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-clean/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-clean/20260908T071618_778292Z_01.png",
+      "sha256": "58de013354d71742ff7f8aac18fc38dd33b022c78fc46dae13ad16397aec4b48"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-clean/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-clean/20260908T071619_232696Z_02.png",
+      "sha256": "996dca01f69c8dafa95d7a687ddc34ebda32a59ccf8a486cea334b3b09ff91ab"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-clean/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-clean/20260908T071619_698642Z_03.png",
+      "sha256": "be964b212735e8fcf1210b66547b64f35fd894db25d42c2c31900d751c994743"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-after-mw-back/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-after-mw-back/20260908T071711_780163Z_01.png",
+      "sha256": "b69aa139b5ad564a35dc87f021d1c2eaf988518fe04cedcd987dfde2c74c2e33"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-after-mw-back/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-after-mw-back/20260908T071712_253349Z_02.png",
+      "sha256": "b195dd2f98be38f82390690d2a6ece4f8b60c05f244fd0e8faa3995d618faeaa"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-after-mw-back/03.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-after-mw-back/20260908T071712_726909Z_03.png",
+      "sha256": "8bfce45ff67efe7d602a414a68dc9823012428113be60c850a53ee3c61994fbe"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-reenable/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-reenable/20260908T071955_360015Z_01.png",
+      "sha256": "727f9502e53f7f7e844db94304ccddef616b8d2be488c963b5d418ae48fae0ef"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-reenable/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-reenable/20260908T071955_811194Z_02.png",
+      "sha256": "d1c5d7c470b1b4ae412bd788596510d724852138ee3f566c3b9f810591259e9f"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-reenable/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-reenable/20260908T071956_277147Z_03.png",
+      "sha256": "d3c2fb2cc636d0d4ec238c44da8e2fa24483d9bcb9739da348f1297aaaac632b"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-nobuff/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-nobuff/20260908T072119_007941Z_01.png",
+      "sha256": "1a51b9fc1456e23941f96300065f2127ea0c031021d8639a23ba6e02c57f9038"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-nobuff/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-nobuff/20260908T072119_460775Z_02.png",
+      "sha256": "a9cac0d72ebe6ff3b677b5e29028943d548c5df9e33702f29c515f52f57771dd"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-nobuff/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-entry-nobuff/20260908T072119_920765Z_03.png",
+      "sha256": "166eb8498ff373c10b5108ebda115ec96c52f54305603484cb644de52b32d6af"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-popup/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_ticket_purchase"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_ticket_purchase"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-popup/20260908T072442_513044Z_01.png",
+      "sha256": "a92321c17e4d865f155513221777d97dde29e6d2369320409028799bd234cffe"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-popup/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_ticket_purchase"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_ticket_purchase"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-popup/20260908T072442_943526Z_02.png",
+      "sha256": "b4d6704def8866adeb40d86ac409fd2b521c8217c39835372f83962c86bca4e9"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-popup/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_ticket_purchase"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_ticket_purchase"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-popup/20260908T072443_384350Z_03.png",
+      "sha256": "512e26d82e0833bb3bccd1fd89d6b6081343e7b84fc6958dd2a5e7648cbc36e7"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-30-30/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_ticket_purchase"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_ticket_purchase",
+        "indicator.monster_wave_purchase_full"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-30-30/20260908T072643_497512Z_01.png",
+      "sha256": "f5ef9667f4812cadba459bc6dce3fc0f8aa85110b6362d39bec379a2e4a8634f"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-30-30/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_ticket_purchase"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_ticket_purchase",
+        "indicator.monster_wave_purchase_full"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-30-30/20260908T072643_935030Z_02.png",
+      "sha256": "beb1d0437bf5bdbebb25aab79c960f58f375b271c5736ad0d3fea94f152d57d9"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-30-30/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_ticket_purchase"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_ticket_purchase",
+        "indicator.monster_wave_purchase_full"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-30-30/20260908T072644_369192Z_03.png",
+      "sha256": "a9b8786f4648443489349df2e34094109ebcea1d20274b4663313f812afb8064"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-ready/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_ready",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-ready/20260908T072751_582370Z_01.png",
+      "sha256": "b71de7e370901c860d0c03c9c5e5b4995b1a527f3f148d39bf4809d69f0c5e6c"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-ready/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_ready",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-ready/20260908T072752_036705Z_02.png",
+      "sha256": "8423c55f2488910992e723f6eac7db03d058e5579fbfda6dfb62911f8da4f200"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-ready/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_ready",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-ready/20260908T072752_501680Z_03.png",
+      "sha256": "6adf02609621e1b5d5d8f2fc36de4e01e63a342c634ac3ea18be57a2c8928aed"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-active/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-active/20260908T072925_161244Z_01.png",
+      "sha256": "87994aaf807434d737ebbed9a86abcc9f45bdc93bed31bf8202b4b7b496d8279"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-active/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-active/20260908T072925_619894Z_02.png",
+      "sha256": "b057c1c82f5780b9372e27e2ed9210481c3796f5328ec6ca705b57ad23136c99"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-active/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-active/20260908T072926_080253Z_03.png",
+      "sha256": "d992e7dc6c51892559850181640037bbf0bafe95a5c98cc394f87a2cd016885d"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-sapphires-max-menu/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "overlay.monster_wave_usage_tooltip"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_tooltip"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-sapphires-max-menu/20260908T073130_927490Z_01.png",
+      "sha256": "21f5d03def4d459141a05dda0fa72d266693396f5981b940ebb6ac46fc8f86bc"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-sapphires-max-menu/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "overlay.monster_wave_usage_tooltip"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_tooltip"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-sapphires-max-menu/20260908T073131_384849Z_02.png",
+      "sha256": "04d9b10b8c5c36014c856c783335033f206e7baef9577630e1e678080a9ee2eb"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-sapphires-max-menu/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "overlay.monster_wave_usage_tooltip"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_tooltip"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-sapphires-max-menu/20260908T073131_848653Z_03.png",
+      "sha256": "453d234242b384dbfe6c503453dd096554320ae70e338892365d94cdb328d736"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-sapphires-max-selected/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-sapphires-max-selected/20260908T073252_840878Z_01.png",
+      "sha256": "46b1a32974a8ecbf7d47a1cee202c56384b8e26bfacc316a224af9cd47b8ba5c"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-sapphires-max-selected/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-sapphires-max-selected/20260908T073253_294880Z_02.png",
+      "sha256": "23ef5f6eb212f758b059b8193b2f592ee30c52cdfb076d0d6b4723682dd41725"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-sapphires-max-selected/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-sapphires-max-selected/20260908T073253_758298Z_03.png",
+      "sha256": "d8d777c92f0b21b27c7dfb5513c0278f0a8866793684cd0f09e326ef60ddb26d"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-inventory-board/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_inventory_board"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_inventory_board"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-inventory-board/20260908T073431_639207Z_01.png",
+      "sha256": "87fc7c4e49bf7bea50bbc2aa894f7602098fa0318731b9d3ec03ae30c4ab64b6"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-inventory-board/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_inventory_board"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_inventory_board"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-inventory-board/20260908T073432_097669Z_02.png",
+      "sha256": "49d2d49313d2cbb5b81a7ddd45f041e3526022babd0826513e1a84cd6a9fcff0"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-inventory-board/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_inventory_board"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_inventory_board"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-inventory-board/20260908T073432_563002Z_03.png",
+      "sha256": "2adce2c982a05f08191b247a6e5438c648fefea890b866fe6f5e81ab0f503194"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-bag-full/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.socket_inventory_full"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-bag-full/20260908T073606_566149Z_01.png",
+      "sha256": "39cd5c2b06c02621b4b166afc3c2a3b97920fcfd63881ab5c63c932f997e7ec2"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-bag-full/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.socket_inventory_full"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-bag-full/20260908T073607_019694Z_02.png",
+      "sha256": "770222b73bfa4be1b874fc0f14960fc60928550c561d855d1eb5041274192954"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-bag-full/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.socket_inventory_full"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-bag-full/20260908T073607_484283Z_03.png",
+      "sha256": "bcfcdfb77005a1a26b5e2c045b6d79fee65f17df039e3067eb7f161a810cc73e"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-clear/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_clear"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_clear"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-clear/20260908T073826_584147Z_01.png",
+      "sha256": "307232d174f8d73d7a06f74bda20663fed89448c49695e5360e04979421e6e3d"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-clear/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_clear"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_clear"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-clear/20260908T073827_017397Z_02.png",
+      "sha256": "876ca10d9acaa9ae5662a016880116e16e78620e15fcd9b65097b9270940d67c"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-clear/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_clear"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_clear"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-skip-clear/20260908T073827_456118Z_03.png",
+      "sha256": "c60cfd0cc2cbcd20d8a6f0f549ef7cc32f4c3b87fac85982a6a6e9a02463e187"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-after-clear/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-after-clear/20260908T073957_138631Z_01.png",
+      "sha256": "da3d5b53add84690153833dd477ebd7cd5671521e8164457eefa25bb28eca161"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-after-clear/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-after-clear/20260908T073957_592045Z_02.png",
+      "sha256": "08d2f5ae03aeaaf9a85f6e5aa67358a7ce184508c679e8c3c4fb963b97581a71"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-after-clear/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-after-clear/20260908T073958_067395Z_03.png",
+      "sha256": "6e1528df8695429859b4ed2e6603d4ca0cbc32c78eda83ca558f4ad6f6e81af8"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-pre-tot/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-pre-tot/20260908T074319_282647Z_01.png",
+      "sha256": "5675a4571cee141e002fff8b840efe8279d55f403a25bebbe2613d0b3f2328ac"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-pre-tot/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-pre-tot/20260908T074319_757119Z_02.png",
+      "sha256": "4bb0216fd52c23b5adcefed4668c063c610dcd29281f56d13f58e811c8f367de"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/tower-tribulation-entry/01.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/tower-tribulation-entry/20260908T074407_057674Z_01.png",
+      "sha256": "a8bafc831e7856e7c8dacf138028f8c9c185886cdd9f605636499ba5e8088dee"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/tower-tribulation-entry/02.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/tower-tribulation-entry/20260908T074407_523118Z_02.png",
+      "sha256": "a94d78f18a60c1b54992770ce9d1021466d75ff4f59caa862a7d655d42224a33"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/tower-tribulation-entry/03.png",
+      "base_context": "unknown",
+      "overlays": [],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/tower-tribulation-entry/20260908T074407_999583Z_03.png",
+      "sha256": "c0f57ba3fb6e78b8f9dd42d478765ba749f82669504c5cafbc6175b78005c2f2"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-after-tot-back/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-after-tot-back/20260908T074538_260684Z_01.png",
+      "sha256": "3e766b790dba2a4b392bb6af022df4823bf7d530b156afa7a8cd62c393eae377"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-after-tot-back/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/battle-mode-select-after-tot-back/20260908T074538_730766Z_02.png",
+      "sha256": "a993b7fb9044ba1e3323fb5154485336d1e08bbbcb39bb982b19250e1c7c8bcf"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-daily-done/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-daily-done/20260908T074729_757855Z_01.png",
+      "sha256": "42f3768d6febe3bcadc178224f54e73bda087cd7dabf8fb6469f200394661f43"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-daily-done/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-daily-done/20260908T074730_214801Z_02.png",
+      "sha256": "7e93a4a75d736c5bdee53c2d25967c1735a5d01de26069d53d4677455ea23ec9"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-daily-done/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-battle-mode-monster-wave/monster-wave-daily-done/20260908T074730_673241Z_03.png",
+      "sha256": "e71a0f924ad181c071289a0eb64b1fc92a7a2b17481026b1f1293be36e76d401"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-day2/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/battle-mode-select-day2/20260908T233336_419609Z_01.png",
+      "sha256": "abf7fdaca8f7fb77f354e684c71a1b4376bbcae881a1e453ae83001275f74915"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-day2/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/battle-mode-select-day2/20260908T233336_936735Z_02.png",
+      "sha256": "11a6f4a581abd20f3aa900aedf6c49a1d4b50651590350b92b64ea882314f8c0"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-day2/03.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/battle-mode-select-day2/20260908T233337_443612Z_03.png",
+      "sha256": "a74ab97d91ed769e4d6c12bdd89f43c293ea3d646590d2fc75819142d1628557"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-skip-inactive/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-entry-skip-inactive/20260908T233630_376346Z_01.png",
+      "sha256": "f6f326c428c4d646b03702d1dab395f5ad9678a01d3f090c86a55b16cf193929"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-skip-inactive/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-entry-skip-inactive/20260908T233630_835280Z_02.png",
+      "sha256": "164b2a2809fccdc37a3e5185a40f5d5a98dc577589f8915a656659e18dad22a9"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-skip-inactive/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-entry-skip-inactive/20260908T233631_299844Z_03.png",
+      "sha256": "ed82fa942a5a334e69a22073492479bf882c72e3a7125ff5196db955a5eb71b5"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-tickets-30-30/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_ready",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-skip-tickets-30-30/20260908T233905_363735Z_01.png",
+      "sha256": "60bb9821ba5f8932a885cd36f09461c5bfbe3009b89caad4f4afe4f452c1a44c"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-tickets-30-30/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_ready",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-skip-tickets-30-30/20260908T233905_822177Z_02.png",
+      "sha256": "a1649b4f627698b2d056570e900d38f9137865267dbf5b482d0252d5046cd9ec"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-tickets-30-30/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_ready",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-skip-tickets-30-30/20260908T233906_290489Z_03.png",
+      "sha256": "83cb78b7f64de8429a3d7835a6aa740cd0bd5041d66db639d09a67123fe54559"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-active-day2/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-skip-active-day2/20260908T234021_603557Z_01.png",
+      "sha256": "1bff55b4c28c8fd9135a1396832baff58c41efa716326ba94ee682b3797b8ca8"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-active-day2/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-skip-active-day2/20260908T234022_061862Z_02.png",
+      "sha256": "c260e21840136dc9367e283c0bbff333ff5c2908d47a1f3c65bad4d01887f61e"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-skip-active-day2/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-skip-active-day2/20260908T234022_522346Z_03.png",
+      "sha256": "de71ada030747846cec8994da7b8e4fdb9f2d9e6af61f490f9da4ae320b4f274"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-board-day2/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_inventory_board"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_inventory_board"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-board-day2/20260908T234147_651399Z_01.png",
+      "sha256": "779ef2ba5c142d63ba16e6ab32747d20f2fb6159c5268372d63c9cad5df739d5"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-board-day2/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_inventory_board"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_inventory_board"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-board-day2/20260908T234148_105155Z_02.png",
+      "sha256": "2227d344c5da4cf3daee3a68f5da0eade6e361df18e68b8def1a8bb1aa41d09b"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-board-day2/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_inventory_board"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_inventory_board"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-board-day2/20260908T234148_570136Z_03.png",
+      "sha256": "c0ceab875eb4bcfd4325abe9bf1e26a4a9fc7914239ec709ff2f974be3a60fb9"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-board-no-after/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-board-no-after/20260908T234316_887451Z_01.png",
+      "sha256": "b04fc36ed2783e13eda8b685df3074679c207326e34e3e6946dca12d0b34c748"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-board-no-after/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-board-no-after/20260908T234317_336722Z_02.png",
+      "sha256": "723a48595857a039cc29568779205cd5082784b9eef8335fa02e07a7e3589171"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-board-no-after/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-board-no-after/20260908T234317_794115Z_03.png",
+      "sha256": "255401cafba620fbf35a60bba8077b8e0e7c3826b06e8e550d9a2dca779b9be9"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-insufficient-sapphires/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_insufficient_sapphires"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_insufficient_sapphires"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-insufficient-sapphires/20260908T234811_900904Z_01.png",
+      "sha256": "7419b663c31cc37b564ed83f8ef60bc04a71b97559678540706de8904d028218"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-insufficient-sapphires/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_insufficient_sapphires"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_insufficient_sapphires"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-insufficient-sapphires/20260908T234812_381094Z_02.png",
+      "sha256": "3c1bc2369e3a5541d2f328ad927624c76b78a8a397f5ce11e091b5197b914308"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-insufficient-sapphires/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_insufficient_sapphires"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed",
+        "landmark.monster_wave_insufficient_sapphires"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-insufficient-sapphires/20260908T234812_843870Z_03.png",
+      "sha256": "03f986ad47b00297e319063e873a577dd1be1de93d7eab132f167d55ee7c4e1f"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-insufficient-no-after/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-insufficient-no-after/20260908T235000_534521Z_01.png",
+      "sha256": "a04a3d11dcff89cd0b086e5dc968eb23fa573b7f6e064c245fd9d790a971b969"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-insufficient-no-after/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-insufficient-no-after/20260908T235000_995254Z_02.png",
+      "sha256": "a1857a2bb4780ad3e24f8c74eb197efdf3c3a36ad60b4d4f2866e9a179235770"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-insufficient-no-after/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_skip_process",
+        "indicator.monster_wave_time_remaining",
+        "indicator.monster_wave_max_selected",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/monster-wave-insufficient-no-after/20260908T235001_465143Z_03.png",
+      "sha256": "334af14de75f532260295851fdd59ae6f7615e40e1d216a5fa4dabd6300c13dc"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-day2-close/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/battle-mode-select-day2-close/20260908T235959_403907Z_01.png",
+      "sha256": "185fdcd0e318ccbc870c4481e7cb9e070933eedc026f818040d79520b0d9beab"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-day2-close/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/battle-mode-select-day2-close/20260908T235959_875221Z_02.png",
+      "sha256": "a7755825d0579bd4c1c7300349dee26d5a5855d71430292b1fdcc34e14d51722"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-day2-close/03.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active"
+      ],
+      "observations": [],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-skip-boundaries/battle-mode-select-day2-close/20260909T000000_363769Z_03.png",
+      "sha256": "5078e3fd95fa215d08052d31f9e4dbf3cfbeafe70158163b1d32d080b709ace5"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-before-weekly/01.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/battle-mode-select-before-weekly/20260909T012730_852784Z_01.png",
+      "sha256": "2b17d89524ddf3bc2632c4ff5f3aae40fea442a44c0191f4d3cffb8907355702"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-before-weekly/02.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/battle-mode-select-before-weekly/20260909T012731_348133Z_02.png",
+      "sha256": "029d643e9a9e49fc5a3997f2cb54f3d48bf2d5c4c4c26af168c2361edbee696d"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-before-weekly/03.png",
+      "base_context": "screen.battle_mode_select",
+      "overlays": [
+        "status.world_boss_daily_active",
+        "status.monster_wave_daily_active"
+      ],
+      "observations": [
+        "indicator.monster_wave_daily_active"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/battle-mode-select-before-weekly/20260909T012731_825271Z_03.png",
+      "sha256": "356c966f288d3eaf6fec94eb0e0a5ec04021cbedf0cac6836d1291463df65077"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-weekly-reward/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_weekly_results"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_weekly_results"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-weekly-reward/20260909T012939_791673Z_01.png",
+      "sha256": "2d2bd4321cef6c021f89551eb6055068f13d9a2ea7483408c9ff15c75da708fb"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-weekly-reward/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_weekly_results"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_weekly_results"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-weekly-reward/20260909T012940_222083Z_02.png",
+      "sha256": "408e49150a5e10c4e0926ae99b15ce332bf4ea6fdbdd6ab9bdb08d471dac4757"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-weekly-reward/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [
+        "popup.monster_wave_weekly_results"
+      ],
+      "observations": [
+        "landmark.monster_wave_title",
+        "landmark.monster_wave_weekly_results"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-weekly-reward/20260909T012940_660089Z_03.png",
+      "sha256": "e126dd284bff7346de20e5c62946bf604c7ab045079c28451cb5514ec5fced70"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-after-weekly-clean/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-after-weekly-clean/20260909T013124_920322Z_01.png",
+      "sha256": "bcb791b4117e03378965ffde9a3fe65eabed4fc434657585ccba1129f27dbf49"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-after-weekly-clean/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-after-weekly-clean/20260909T013125_375379Z_02.png",
+      "sha256": "792bf9b99929e7c2a35a082a510a9d8299b9f31e4695d11271e3878587f811e5"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-after-weekly-clean/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-after-weekly-clean/20260909T013125_848963Z_03.png",
+      "sha256": "db903e1f80626f934ede2f7d8116317221c93cb91818deb4786f1985d9a805b9"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-reentry-clean/01.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-reentry-clean/20260909T013416_839375Z_01.png",
+      "sha256": "54f679a7de58197ba7810395c556c35d3341cd869bf234e8c7d3794573e939c3"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-reentry-clean/02.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-reentry-clean/20260909T013417_306800Z_02.png",
+      "sha256": "784c1927159877055d89aafb294c1362d7e19370038e00a3e585d1b51fd30096"
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-reentry-clean/03.png",
+      "base_context": "screen.monster_wave",
+      "overlays": [],
+      "observations": [
+        "landmark.monster_wave_title",
+        "indicator.monster_wave_needs_tickets",
+        "landmark.monster_wave_usage_unobstructed"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "artifacts/acquisition-monster-wave-weekly-reset/monster-wave-reentry-clean/20260909T013417_805961Z_03.png",
+      "sha256": "0d078d2ce4c9cba04483ba229d580a6610d2257e4da1153e9ad728c900d3395e"
+    }
+  ]
+}

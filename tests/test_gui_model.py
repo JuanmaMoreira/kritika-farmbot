@@ -32,6 +32,7 @@ def test_selection_is_populated_only_from_registry_and_defaults_active():
     assert model.active_ids == (
         "black_market",
         "world_boss",
+        "monster_wave",
         "send_stamina",
         "summon_pet_daily",
         "daily_quests",
@@ -47,6 +48,7 @@ def test_toggle_and_move_preserve_exact_active_order():
     assert model.active_ids == (
         "world_boss",
         "black_market",
+        "monster_wave",
         "send_stamina",
         "summon_pet_daily",
         "daily_quests",
@@ -56,6 +58,7 @@ def test_toggle_and_move_preserve_exact_active_order():
     model.set_enabled("world_boss", False)
     assert model.active_ids == (
         "black_market",
+        "monster_wave",
         "send_stamina",
         "summon_pet_daily",
         "daily_quests",
@@ -66,6 +69,7 @@ def test_toggle_and_move_preserve_exact_active_order():
     assert model.active_ids == (
         "world_boss",
         "black_market",
+        "monster_wave",
         "send_stamina",
         "summon_pet_daily",
         "daily_quests",

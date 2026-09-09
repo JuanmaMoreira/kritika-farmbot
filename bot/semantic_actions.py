@@ -7,6 +7,7 @@ from enum import Enum
 from numbers import Integral
 
 from bot.geometry import RelativePoint, relative_point_to_pixel
+from bot.monster_wave_actions import MonsterWaveAction
 
 
 _BLACK_MARKET_SLOT_COUNT = 10
@@ -515,7 +516,8 @@ class DismissWorldBossBagFull:
 
 
 SemanticAction = (
-    OpenBlackMarket
+    MonsterWaveAction
+    | OpenBlackMarket
     | CloseBlackMarket
     | OpenQuests
     | SelectDailyQuests

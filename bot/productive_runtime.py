@@ -66,6 +66,9 @@ from bot.tap_through_animation import TapThroughAnimation
 from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 from bot.world_boss_eligibility import WorldBossDailyEligibility
 from bot.world_boss_flow import WorldBossFlow
+from bot.monster_wave_flow import MonsterWaveFlow
+from bot.monster_wave_eligibility import MonsterWaveDailyEligibility
+from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -262,6 +265,7 @@ class ProductiveRuntime:
                         error="flow_completed_outside_successful_postconditions",
                     )
         event = {
+            FlowStatus.MANUAL_RESOLUTION: "flow.manual_resolution",
             FlowStatus.COMPLETED: "flow.completed",
             FlowStatus.CANCELLED: "flow.cancelled",
             FlowStatus.FAILED: "flow.failed",
@@ -308,8 +312,9 @@ class ProductiveRuntime:
         character_count: int,
     ) -> SessionResult:
         flows = self.build_flows(definitions)
-        zone = next((flow.zone for flow in flows if isinstance(flow, WorldBossFlow)), None)
-        flows = tuple(flow.prepared(zone) if isinstance(flow, WorldBossFlow) else flow
+        zone = next((flow.zone for flow in flows if isinstance(flow, (WorldBossFlow, MonsterWaveFlow))), None)
+        flows = tuple(flow.prepared(zone, daily=True) if isinstance(flow, MonsterWaveFlow) else
+                      flow.prepared(zone) if isinstance(flow, WorldBossFlow) else flow
                       for flow in flows)
         rotation = self.build_rotation(character_count)
         plan = SessionPlan.standard(
@@ -317,7 +322,9 @@ class ProductiveRuntime:
             rotation_strategy=rotation,
             character_count=character_count,
             eligibility=tuple(
-                self.build_world_boss_daily_eligibility() if flow.name == "world_boss" else None
+                self.build_world_boss_daily_eligibility() if flow.name == "world_boss" else
+                MonsterWaveDailyEligibility(self.observer, cancel_requested=self.cancel_requested)
+                if flow.name == 'monster_wave' else None
                 for flow in flows
             ),
         )
@@ -778,7 +785,7 @@ def _is_clean_base(snapshot, base: str) -> bool:
     elif base == SCREEN_PETS_MANAGE:
         compatible_overlays = overlays <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
     elif base == SCREEN_BATTLE_MODE_SELECT:
-        compatible_overlays = overlays <= {STATUS_WORLD_BOSS_DAILY_ACTIVE}
+        compatible_overlays = overlays <= {STATUS_WORLD_BOSS_DAILY_ACTIVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE}
     elif base == SCREEN_PET_SUMMON:
         epic = overlays & {
             STATUS_PET_EPIC_AVAILABLE,

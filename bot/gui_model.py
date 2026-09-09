@@ -202,6 +202,8 @@ class GuiProgress:
             self.state = "Waiting"
         elif name == "session.completed":
             self.state = "Completed"
+        elif name in {'flow.manual_resolution', 'session.manual_resolution'}:
+            self.state = 'Manual resolution required'
 
 
 def event_visible(event: RuntimeEvent, *, debug: bool) -> bool:

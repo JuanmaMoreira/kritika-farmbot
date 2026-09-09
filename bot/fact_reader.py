@@ -43,6 +43,7 @@ class RuntimeFactReader:
         *,
         clock: Callable[[], float] = time.monotonic,
         events: EventSink | None = None,
+        context_extractors: Iterable[OcrFactExtractor] = (),
     ) -> None:
         if not isinstance(observer, RuntimeObserver):
             raise ValueError("observer must be a RuntimeObserver")
@@ -57,6 +58,16 @@ class RuntimeFactReader:
             raise ValueError("at least one extractor is required")
         self.observer = observer
         self._extractors = registry
+        self._context_extractors = {(e.name, e.context): e for e in registry.values()}
+        for extractor in context_extractors:
+            if not isinstance(extractor, OcrFactExtractor):
+                raise ValueError('context_extractors must contain OcrFactExtractor instances')
+            if extractor.name not in registry:
+                raise ValueError('context extractor requires a registered default fact')
+            key = (extractor.name, extractor.context)
+            if key in self._context_extractors:
+                raise ValueError(f'duplicate context fact extractor: {key}')
+            self._context_extractors[key] = extractor
         self._clock = clock
         self.events = events
 
@@ -71,6 +82,7 @@ class RuntimeFactReader:
         after_sequence: int,
         timeout: float,
         cancel_requested: Callable[[], bool] | None = None,
+        context: str | None = None,
     ) -> FactReadResult[int]:
         name = validate_semantic_name(name)
         if name not in self._extractors:
@@ -78,7 +90,9 @@ class RuntimeFactReader:
         after = _sequence(after_sequence)
         duration = _positive_duration(timeout)
         deadline = self._clock() + duration
-        extractor = self._extractors[name]
+        # Default consumers retain their existing ROI/context contract (WB: Lobby).
+        extractor = (self._extractors[name] if context is None else
+                     self._context_extractors[(name, validate_semantic_name(context))])
         cursor = after
         evidence: list[FactEvidence] = []
         values: list[int] = []

@@ -19,6 +19,7 @@ class FlowScope(str, Enum):
 
 class FlowStatus(str, Enum):
     COMPLETED = "completed"
+    MANUAL_RESOLUTION = "manual_resolution"
     SKIPPED_NOT_ELIGIBLE = "skipped_not_eligible"
     FAILED = "failed"
     CANCELLED = "cancelled"

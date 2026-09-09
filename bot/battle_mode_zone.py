@@ -12,13 +12,14 @@ from bot.runtime_observer import RuntimeWaitCancelled
 from bot.semantic_actions import OpenBattleModeSelect, OpenQuickMenu, SelectQuickMenuLobby
 from bot.state import ResolutionStatus
 from bot.verified_transition import VerifiedTransitionPolicy
+from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
 
 
 def is_battle_mode_select(snapshot):
     state = snapshot.state
     return (state.status is ResolutionStatus.RESOLVED
             and state.base_context == SCREEN_BATTLE_MODE_SELECT
-            and set(state.overlays) <= {STATUS_WORLD_BOSS_DAILY_ACTIVE})
+            and set(state.overlays) <= {STATUS_WORLD_BOSS_DAILY_ACTIVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE})
 
 
 def is_lobby(snapshot):

@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from bot.resolver import ContextResolver, ContextRule
+from bot.monster_wave_semantics import (
+    MW_OBSERVATIONS, MW_OVERLAY_LANDMARKS, MW_SCREEN, MW_DAILY,
+    SCREEN_MONSTER_WAVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE,
+)
 
 SEMANTIC_CONFIDENCE_THRESHOLD = 0.80
 
@@ -229,6 +233,7 @@ CANDIDATE_PET_LOW_TIER = "candidate.pet_low_tier"
 INDICATOR_WORLD_BOSS_DAILY_ACTIVE = "indicator.world_boss_daily_active"
 
 SEMANTIC_OBSERVATION_NAMES = (
+    *MW_OBSERVATIONS,
     ACTIVITY_COMBINE_ANIMATION_TAPPABLE,
     ACTIVITY_MAILBOX_CLAIM_PROCESSING,
     CANDIDATE_PET_LOW_TIER,
@@ -307,6 +312,7 @@ SEMANTIC_OBSERVATION_NAMES = (
 )
 
 BASE_CONTEXT_RULES = (
+    ContextRule(SCREEN_MONSTER_WAVE, (MW_SCREEN,), SEMANTIC_CONFIDENCE_THRESHOLD),
     ContextRule(
         name=SCREEN_BLACK_MARKET,
         requires=(LANDMARK_BLACK_MARKET_TITLE,),
@@ -408,6 +414,11 @@ BASE_CONTEXT_RULES = (
 )
 
 OVERLAY_RULES = (
+    *(ContextRule(name, (landmark,), SEMANTIC_CONFIDENCE_THRESHOLD)
+      for name, landmark in MW_OVERLAY_LANDMARKS),
+    ContextRule(STATUS_MONSTER_WAVE_DAILY_ACTIVE,
+                (LANDMARK_BATTLE_MODE_SELECT_HEADER, MW_DAILY),
+                SEMANTIC_CONFIDENCE_THRESHOLD),
     ContextRule(
         name=STATUS_PET_SUMMON_DAILY_ACTIVE,
         requires=(

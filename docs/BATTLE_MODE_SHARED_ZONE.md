@@ -1,5 +1,11 @@
 # Battle Mode como zona preparada
 
+Estado actual: World Boss y Monster Wave SKIP-only son consumidores productivos de
+la misma zona; MW implementa Daily/standalone, MAX fijo, compra y board configurables.
+Ver [`MONSTER_WAVE_SKIP.md`](MONSTER_WAVE_SKIP.md) para contratos, calibración y gaps
+vigentes. El resto de este documento preserva el diseño del checkpoint original
+de zona preparada, cuando WB era su único consumidor.
+
 Fase desde `main@e3db3c13076e0ad7baa4cc37184a3a336c418bc9`, en
 `feature/battle-mode-shared-zone`. World Boss es el único consumidor productivo.
 La adquisición `artifacts/acquisition-battle-mode-monster-wave/` permanece completa,
@@ -176,7 +182,7 @@ MW: Brawler's Badges (**Arena Tickets**), Weapon Material, Hero Weapon Material,
 Bronze Key y Silver Key. Advierte que rewards que excedan capacidad no se obtendrán
 y permite decidir continuar. Socket y Equipment son blockers duros con sus popups,
 aunque no aparezcan en ese tablero. El popup “The bag is full. Would you like to
-organize your bag?” es el boundary ya conocido en WB (`popup.equipment_inventory_full`);
+organize your bag?” es el boundary ya conocido en WB (`popup.socket_inventory_full`);
 no se duplicará semántica MW-specific.
 
 Tower: card, entry, Back → hub, Sapphires Used 1, Physical/Magical, floor selection

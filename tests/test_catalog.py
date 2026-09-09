@@ -66,6 +66,7 @@ from bot.catalog import (
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.resolver import ContextResolver, match_rule
 from bot.state import ResolutionStatus
+from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
 
 
 def observation(name, confidence=SEMANTIC_CONFIDENCE_THRESHOLD):
@@ -100,6 +101,7 @@ def test_each_catalog_overlay_rule_resolves_individually(overlay_rule):
         STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE: SCREEN_GUILD,
         STATUS_FRIENDS_SEND_STAMINA_DAILY_ACTIVE: SCREEN_FRIENDS,
         STATUS_WORLD_BOSS_DAILY_ACTIVE: SCREEN_BATTLE_MODE_SELECT,
+        STATUS_MONSTER_WAVE_DAILY_ACTIVE: SCREEN_BATTLE_MODE_SELECT,
     }.get(overlay_rule.name)
     expected_status = (
         ResolutionStatus.RESOLVED
@@ -378,9 +380,9 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 17
-    assert len(OVERLAY_RULES) == 49
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 75
+    assert len(BASE_CONTEXT_RULES) == 18
+    assert len(OVERLAY_RULES) == 57
+    assert len(SEMANTIC_OBSERVATION_NAMES) == 91
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

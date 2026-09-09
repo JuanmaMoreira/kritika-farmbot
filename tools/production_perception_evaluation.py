@@ -135,6 +135,7 @@ from tools.semantic_slice_evaluation import (
 )
 
 DEFAULT_MANIFEST_PATHS = (
+    "datasets/monster_wave_semantic_manifest.json",
     "datasets/semantic_slice_manifest.json",
     "datasets/semantic_acquisition_manifest.json",
     "datasets/workbench_evidence_manifest.json",
@@ -751,6 +752,9 @@ def evaluate_production_perception(
 
 
 def _is_positive(name: str, entry: ManifestEntry) -> bool:
+    from bot.monster_wave_semantics import MW_OBSERVATIONS
+    if name in MW_OBSERVATIONS:
+        return name in entry.observations
     if name in {
         CANDIDATE_PET_LOW_TIER,
         INDICATOR_PET_PREMIUM_GOLD,

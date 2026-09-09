@@ -7,13 +7,14 @@ from bot.eligibility import EligibilityResult, EligibilityStatus
 from bot.failure_cause import FailureCause
 from bot.runtime_observer import RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.state import ResolutionStatus
+from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
 
 
 def world_boss_daily_status(snapshot) -> EligibilityStatus:
     state = snapshot.state
     if (state.status is not ResolutionStatus.RESOLVED
             or state.base_context != SCREEN_BATTLE_MODE_SELECT
-            or not set(state.overlays) <= {STATUS_WORLD_BOSS_DAILY_ACTIVE}):
+            or not set(state.overlays) <= {STATUS_WORLD_BOSS_DAILY_ACTIVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE}):
         return EligibilityStatus.UNKNOWN
     return (EligibilityStatus.ELIGIBLE if STATUS_WORLD_BOSS_DAILY_ACTIVE in state.overlays
             else EligibilityStatus.NOT_ELIGIBLE)

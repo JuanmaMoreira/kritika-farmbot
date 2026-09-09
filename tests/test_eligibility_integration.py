@@ -122,7 +122,9 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
 @pytest.mark.parametrize("manual", [True, False])
 def test_productive_session_applies_daily_but_selected_flows_never_do(monkeypatch, active, manual):
     runtime, trace, events, builder = composed_runtime(monkeypatch, active=active)
-    definitions = DEFAULT_FLOW_REGISTRY.definitions
+    # This fixture exercises WB and ordinary flows; real WB/MW composition has
+    # its own integration scenarios in test_monster_wave_integration.py.
+    definitions = tuple(d for d in DEFAULT_FLOW_REGISTRY.definitions if d.id != 'monster_wave')
     if manual:
         result = runtime.run_flows_once(definitions)
         assert result.status is FlowStatus.COMPLETED
@@ -176,7 +178,7 @@ def test_unconfirmed_daily_in_productive_session_is_technical_without_return_or_
 
 def test_no_daily_policy_for_other_flows(monkeypatch):
     runtime, trace, _, builder = composed_runtime(monkeypatch)
-    definitions = tuple(d for d in DEFAULT_FLOW_REGISTRY.definitions if d.id != "world_boss")
+    definitions = tuple(d for d in DEFAULT_FLOW_REGISTRY.definitions if d.id not in {"world_boss", "monster_wave"})
     result = runtime.run_session(definitions, character_count=1)
     assert result.status is SessionStatus.COMPLETED
     assert trace == [f"{d.id}.run" for d in definitions] + ["rotation.advance"]

@@ -66,12 +66,18 @@
     {"path":"screencaps/semantic/guild/completed/02.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},
     {"path":"screencaps/semantic/guild/completed/03.png","base_context":"screen.guild","overlays":["status.guild_attendance_completed"],"observations":["indicator.guild_attendance_completed"],"review_status":"confirmed"},
 
-    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/01.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/02.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/03.png","base_context":"screen.battle_mode_select","overlays":["status.world_boss_daily_active"],"observations":["indicator.world_boss_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/01.png","base_context":"screen.battle_mode_select","overlays": ["status.world_boss_daily_active", "status.monster_wave_daily_active"],"observations": ["indicator.world_boss_daily_active", "indicator.monster_wave_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/02.png","base_context":"screen.battle_mode_select","overlays": ["status.world_boss_daily_active", "status.monster_wave_daily_active"],"observations": ["indicator.world_boss_daily_active", "indicator.monster_wave_daily_active"],"review_status":"confirmed"},
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-active/03.png","base_context":"screen.battle_mode_select","overlays": ["status.world_boss_daily_active", "status.monster_wave_daily_active"],"observations": ["indicator.world_boss_daily_active", "indicator.monster_wave_daily_active"],"review_status":"confirmed"},
 
-    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/01.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/02.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"},
-    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/03.png","base_context":"screen.battle_mode_select","overlays":[],"review_status":"confirmed"}
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/01.png","base_context":"screen.battle_mode_select","overlays": ["status.monster_wave_daily_active"],"review_status":"confirmed",
+      "observations": ["indicator.monster_wave_daily_active"]
+    },
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/02.png","base_context":"screen.battle_mode_select","overlays": ["status.monster_wave_daily_active"],"review_status":"confirmed",
+      "observations": ["indicator.monster_wave_daily_active"]
+    },
+    {"path":"screencaps/semantic/daily_activity/world-boss/daily-inactive/03.png","base_context":"screen.battle_mode_select","overlays": ["status.monster_wave_daily_active"],"review_status":"confirmed",
+      "observations": ["indicator.monster_wave_daily_active"]
+    }
   ]
 }

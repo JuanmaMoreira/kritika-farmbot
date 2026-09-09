@@ -168,6 +168,9 @@ from .specs import (
 )
 
 
+from .monster_wave import MONSTER_WAVE_SPECS
+
+
 def build_default_perception(
     asset_root: str | Path | None = None,
 ) -> PerceptionEngine:
@@ -182,7 +185,7 @@ def build_default_perception(
         detectors=(
             *(
                 LocalCvDetector(spec, asset_root=root)
-                for spec in DEFAULT_LOCAL_CV_SPECS
+                for spec in (*DEFAULT_LOCAL_CV_SPECS, *MONSTER_WAVE_SPECS)
             ),
             BlackMarketGoldDetector(asset_root=root),
             BlackMarketPurchasedDetector(asset_root=root),

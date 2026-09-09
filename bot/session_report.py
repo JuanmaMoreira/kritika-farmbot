@@ -81,6 +81,11 @@ class SessionReport:
 # Explicit projection of existing business contracts, not a failure taxonomy.
 # Do not infer causal explanations from detail/error text or diagnostic events.
 _INCOMPLETE = {
+    'monster_wave.tickets_missing_purchase_disabled': 'SKIP tickets missing; purchase disabled',
+    'monster_wave.insufficient_sapphires': 'insufficient sapphires for SKIP',
+    'monster_wave.daily_sapphires_below_minimum': 'Daily requires 4 fresh sapphires; SKIP intentionally not started',
+    'monster_wave.inventory_warning_declined': 'non-blocking inventory warning declined',
+    'monster_wave.manual_resolution': 'Monster Wave requires manual resolution; acquired return unavailable',
     "black_market.low_gold": "insufficient GOLD for a purchase",
     "black_market.inventory_full": "inventory full; purchase not completed",
     "send_stamina.daily_pending": "Daily still pending after All had no effect",
@@ -99,6 +104,7 @@ _NOOPS = frozenset(f"{name}.noop" for name in (
     "send_stamina", "summon_pet_daily", "daily_quests", "guild_check_in", "mailbox",
 ))
 _INFORMATIONAL = _NOOPS | frozenset({
+    'monster_wave.completed', 'monster_wave.tickets_purchased',
     "send_stamina.all_executed", "send_stamina.completed",
     "summon_pet_daily.completed", "guild_check_in.tap_executed",
     "guild_check_in.attendance_completed", "daily_quests.claim_all_executed",
@@ -109,6 +115,7 @@ _INFORMATIONAL = _NOOPS | frozenset({
     "world_boss.previous_rewards",
 })
 _LABELS = {
+    'monster_wave': 'Monster Wave',
     "black_market": "Black Market", "world_boss": "World Boss",
     "send_stamina": "Send Stamina Daily", "summon_pet_daily": "Summon Pet Daily",
     "daily_quests": "Daily Quests", "mailbox": "Mailbox",
@@ -226,6 +233,8 @@ def build_session_report(
             result.status is SessionStatus.CANCELLED and not character.completed
         ):
             status = ReportStatus.CANCELLED
+        elif any(raw.status is FlowStatus.MANUAL_RESOLUTION for raw in character.flow_results):
+            status = ReportStatus.BUSINESS_INCOMPLETE
         elif (not character.completed or not flows
               or (names and len(character.flow_results) != len(names))):
             status = None
