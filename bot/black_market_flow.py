@@ -102,6 +102,7 @@ class BlackMarketFlow:
         transition_max_attempts: int = 2,
         verified_transition: VerifiedTransition | None = None,
         slot_transition: VerifiedTransition | None = None,
+        purchase_transition: VerifiedTransition | None = None,
         cancel_requested: Callable[[], bool] = lambda: False,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
@@ -168,6 +169,11 @@ class BlackMarketFlow:
         if not callable(getattr(slot_transition, "execute", None)):
             raise ValueError("slot_transition must provide execute()")
         self.slot_transition = slot_transition
+        if purchase_transition is None:
+            purchase_transition = verified_transition
+        if not callable(getattr(purchase_transition, "execute", None)):
+            raise ValueError("purchase_transition must provide execute()")
+        self.purchase_transition = purchase_transition
 
     def run(self, *, max_slot_attempts: int | None = None) -> BlackMarketFlowResult:
         """Run the flow, optionally bounded by an explicit debug attempt limit.
@@ -317,7 +323,7 @@ class BlackMarketFlow:
 
             overlays = set(branch.state.overlays)
             if overlays == {POPUP_PURCHASE_CONFIRMATION}:
-                completed_purchase = self.verified_transition.execute(
+                completed_purchase = self.purchase_transition.execute(
                     "black_market.accept_purchase",
                     AcceptPurchaseConfirmation(),
                     branch,

@@ -107,17 +107,23 @@ def _verified_transition_for(dependencies: FlowDependencies):
     )
 
 
-def _slot_transition_for(dependencies: FlowDependencies, main_transition):
-    """Experimental scoped transition for ``black_market.select_slot`` only.
+def _scoped_transition_for(
+    dependencies: FlowDependencies,
+    main_transition,
+    *,
+    scope_builder,
+    active_event: str,
+    unavailable_event: str,
+):
+    """Shared core for experimental single-transition perception scopes.
 
     It reuses the main transition's actions, events and obstruction
-    recovery; only the observer runs the minimal slot detector subset.
+    recovery; only the observer runs the requested detector subset.
     Any wiring failure falls back to the main transition, preserving
     today's behavior exactly.
     """
 
     from bot.event_log import record_best_effort
-    from bot.perception import black_market_slot_perception
     from bot.verified_transition import VerifiedTransition
 
     observer = dependencies.observer
@@ -126,27 +132,55 @@ def _slot_transition_for(dependencies: FlowDependencies, main_transition):
     if not callable(scoped) or perception is None:
         return main_transition
     try:
-        slot_observer = scoped(black_market_slot_perception(perception))
+        scoped_observer = scoped(scope_builder(perception))
         transition = VerifiedTransition(
-            slot_observer,
+            scoped_observer,
             dependencies.actions,
             dependencies.events,
             getattr(main_transition, "obstruction_recovery", None),
         )
-        detector_count = len(slot_observer.perception.detectors)
+        detector_count = len(scoped_observer.perception.detectors)
     except (AttributeError, TypeError, ValueError) as error:
         record_best_effort(
             dependencies.events,
-            "black_market.slot_scope_unavailable",
+            unavailable_event,
             error=f"{type(error).__name__}: {error}",
         )
         return main_transition
     record_best_effort(
         dependencies.events,
-        "black_market.slot_scope_active",
+        active_event,
         detector_count=detector_count,
     )
     return transition
+
+
+def _slot_transition_for(dependencies: FlowDependencies, main_transition):
+    """Experimental scoped transition for ``black_market.select_slot`` only."""
+
+    from bot.perception import black_market_slot_perception
+
+    return _scoped_transition_for(
+        dependencies,
+        main_transition,
+        scope_builder=black_market_slot_perception,
+        active_event="black_market.slot_scope_active",
+        unavailable_event="black_market.slot_scope_unavailable",
+    )
+
+
+def _purchase_transition_for(dependencies: FlowDependencies, main_transition):
+    """Experimental scoped transition for ``black_market.accept_purchase``."""
+
+    from bot.perception import black_market_purchase_perception
+
+    return _scoped_transition_for(
+        dependencies,
+        main_transition,
+        scope_builder=black_market_purchase_perception,
+        active_event="black_market.purchase_scope_active",
+        unavailable_event="black_market.purchase_scope_unavailable",
+    )
 
 
 def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
@@ -157,6 +191,9 @@ def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
         dependencies.events,
         verified_transition=main_transition,
         slot_transition=_slot_transition_for(dependencies, main_transition),
+        purchase_transition=_purchase_transition_for(
+            dependencies, main_transition
+        ),
         cancel_requested=dependencies.cancel_requested,
     )
 
