@@ -97,6 +97,7 @@ class DailyQuestsFlow:
         actions: ActionExecutor,
         events: EventSink,
         *,
+        claim_observer: RuntimeObserver | None = None,
         navigation_timeout: float = 6.0,
         claim_timeout: float = 8.0,
         navigation_stable_for: float = 0.25,
@@ -109,6 +110,14 @@ class DailyQuestsFlow:
             getattr(observer, "wait_until", None)
         ):
             raise ValueError("observer must provide observe() and wait_until()")
+        if claim_observer is None:
+            claim_observer = observer
+        if not callable(
+            getattr(claim_observer, "observe", None)
+        ) or not callable(getattr(claim_observer, "wait_until", None)):
+            raise ValueError(
+                "claim_observer must provide observe() and wait_until()"
+            )
         if not callable(getattr(actions, "execute", None)):
             raise ValueError("actions must provide execute()")
         if not callable(getattr(events, "record", None)):
@@ -118,6 +127,7 @@ class DailyQuestsFlow:
         if not callable(clock) or not callable(sleeper):
             raise ValueError("clock and sleeper must be callable")
         self.observer: _Observer = observer
+        self.claim_observer: _Observer = claim_observer
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -294,6 +304,7 @@ class DailyQuestsFlow:
                     abort_if=self._has_incompatible_daily_state,
                     timeout=self.claim_timeout,
                     stable_for=self.claim_stable_for,
+                    observer=self.claim_observer,
                 )
                 claim_completed = True
                 self._append_event(events, DAILY_QUESTS_CLAIM_ALL_COMPLETED)
@@ -378,11 +389,13 @@ class DailyQuestsFlow:
         abort_if,
         timeout: float,
         stable_for: float,
+        observer: _Observer | None = None,
     ) -> RuntimeSnapshot:
         if self._cancelled():
             raise RuntimeWaitCancelled("daily quests flow cancelled")
         self.actions.execute(action, before.geometry)
-        return self.observer.wait_until(
+        waiter = self.observer if observer is None else observer
+        return waiter.wait_until(
             expected,
             after_sequence=before.sequence,
             timeout=timeout,

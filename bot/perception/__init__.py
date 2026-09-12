@@ -234,6 +234,23 @@ BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES = frozenset(
 )
 
 
+# Experimental minimal subset for the Daily Quests ``ClaimAll`` wait only.
+# These are exactly the observations its expected/abort predicates consume
+# plus the observation its post-wait snapshot must still carry: the Quests
+# base landmark, the Daily mode tab, the row-claim button (whose absence
+# defines the settle condition) and the progress-reward indicator. The
+# indicator does not gate the settle predicate, but the flow reads the same
+# final snapshot to decide whether the independent progress reward needs a
+# second wait; omitting it would silently skip that reward.
+DAILY_CLAIM_SCOPE_SPEC_NAMES = frozenset(
+    {
+        DAILY_QUESTS_TITLE_SPEC.name,
+        DAILY_QUESTS_TAB_ACTIVE_SPEC.name,
+        DAILY_QUESTS_ROW_CLAIM_SPEC.name,
+    }
+)
+
+
 def _select_scope_detectors(
     source: PerceptionEngine,
     *,
@@ -313,6 +330,51 @@ def black_market_purchase_perception(
     )
 
 
+def daily_claim_perception(
+    source: PerceptionEngine,
+) -> PerceptionEngine:
+    """Select the detectors needed for the Daily Quests ``ClaimAll`` wait.
+
+    The subset preserves source order and reuses the same detector
+    instances, so calibration, thresholds and assets are unchanged. Only
+    the detector count per frame changes. Raises ``ValueError`` when the
+    source engine lacks any required detector instead of running degraded.
+
+    The Black Market helper above cannot serve here: it pins the Black
+    Market GOLD/Purchased specialized types, while this wait needs the
+    Daily progress-reward indicator instead.
+    """
+
+    if not isinstance(source, PerceptionEngine):
+        raise ValueError("source must be a PerceptionEngine")
+    selected = tuple(
+        detector
+        for detector in source.detectors
+        if getattr(getattr(detector, "spec", None), "name", None)
+        in DAILY_CLAIM_SCOPE_SPEC_NAMES
+        or isinstance(detector, DailyQuestsProgressRewardDetector)
+    )
+    present = {
+        detector.spec.name
+        for detector in selected
+        if isinstance(detector, LocalCvDetector)
+    }
+    missing = set(DAILY_CLAIM_SCOPE_SPEC_NAMES) - present
+    if missing:
+        raise ValueError(
+            "claim scope is missing detectors: "
+            + ", ".join(sorted(missing))
+        )
+    if not any(
+        isinstance(item, DailyQuestsProgressRewardDetector)
+        for item in selected
+    ):
+        raise ValueError(
+            "claim scope is missing the progress reward detector"
+        )
+    return PerceptionEngine(detectors=selected)
+
+
 __all__ = (
     "BLACK_MARKET_GOLD_ASSET",
     "BLACK_MARKET_GOLD_CALIBRATION",
@@ -352,6 +414,7 @@ __all__ = (
     "COMBINE_ROWS_UPPER_INDICATOR_SPEC",
     "COMBINE_TRANSMUTE_ACTIVE_SPEC",
     "CombineContextDetector",
+    "DAILY_CLAIM_SCOPE_SPEC_NAMES",
     "DAILY_QUESTS_PROGRESS_REWARD_CALIBRATION",
     "DAILY_QUESTS_PROGRESS_REWARD_CONFIDENCE_THRESHOLD",
     "DAILY_QUESTS_PROGRESS_REWARD_HSV_LOWER",
@@ -467,4 +530,5 @@ __all__ = (
     "black_market_purchase_perception",
     "black_market_slot_perception",
     "build_default_perception",
+    "daily_claim_perception",
 )
