@@ -93,7 +93,7 @@ class MailboxFlow:
         navigation_timeout: float = 6.0,
         activity_onset_timeout: float = 2.0,
         processing_timeout: float = 30.0,
-        delete_timeout: float = 6.0,
+        delete_timeout: float = 12.0,
         navigation_stable_for: float = 0.25,
         processing_stable_for: float = 0.75,
         no_effect_stable_for: float = 0.5,

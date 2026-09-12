@@ -433,3 +433,171 @@ def test_processing_completion_timeout_fails_without_delete_or_close():
     assert actions.count(ClaimAllCharacterMail()) == 1
     assert DeleteReadCharacterMail() not in actions
     assert CloseMailbox() not in actions
+
+
+def test_delete_confirmation_tolerates_late_stable_postcondition():
+    # Regression: a transient toast can hide the Character Mail tab for
+    # several seconds after Delete Read. The stable postcondition only
+    # reappears after the old 6s budget but within the new 12s budget.
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    account = snapshot(2, 2.0, base=SCREEN_MAILBOX)
+    claims = character_overlays(STATUS_MAILBOX_CLAIMABLE)
+    character = snapshot(3, 3.0, base=SCREEN_MAILBOX, overlays=claims)
+    after_claim = snapshot(
+        4,
+        4.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_a = snapshot(
+        5,
+        5.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_b = snapshot(
+        6,
+        5.8,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    transit_a = snapshot(7, 6.2, base=SCREEN_MAILBOX)
+    transit_b = snapshot(8, 8.0, base=SCREEN_MAILBOX)
+    transit_c = snapshot(9, 10.0, base=SCREEN_MAILBOX)
+    transit_d = snapshot(10, 12.0, base=SCREEN_MAILBOX)
+    late_a = snapshot(
+        11, 13.0, base=SCREEN_MAILBOX, overlays=character_overlays()
+    )
+    late_b = snapshot(
+        12, 13.6, base=SCREEN_MAILBOX, overlays=character_overlays()
+    )
+    returned = snapshot(13, 14.0, base=SCREEN_LOBBY)
+    onset_timeout = RuntimeWaitTimeout(
+        after_sequence=3,
+        timeout=2.0,
+        last_snapshot=after_claim,
+    )
+
+    result, actions, _, observer = run_flow(
+        lobby,
+        [
+            [account],
+            [character],
+            onset_timeout,
+            [settled_a, settled_b],
+            [transit_a, transit_b, transit_c, transit_d, late_a, late_b],
+            [returned],
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.delete_read_executed
+    assert observer.calls[4].timeout == pytest.approx(12.0)
+    assert observer.calls[4].stable_for == pytest.approx(0.5)
+    # The stable match arrives beyond the old 6s budget.
+    assert late_a.timestamp - transit_a.timestamp > 6.0
+    assert actions.count(DeleteReadCharacterMail()) == 1
+    assert actions[-1] == CloseMailbox()
+
+
+def test_delete_confirmation_completes_immediately_when_already_stable():
+    # The wider budget must not delay a fast postcondition.
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    account = snapshot(2, 2.0, base=SCREEN_MAILBOX)
+    claims = character_overlays(STATUS_MAILBOX_CLAIMABLE)
+    character = snapshot(3, 3.0, base=SCREEN_MAILBOX, overlays=claims)
+    after_claim = snapshot(
+        4,
+        4.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_a = snapshot(
+        5,
+        5.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_b = snapshot(
+        6,
+        5.8,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    match_a = snapshot(
+        7, 6.0, base=SCREEN_MAILBOX, overlays=character_overlays()
+    )
+    match_b = snapshot(
+        8, 6.6, base=SCREEN_MAILBOX, overlays=character_overlays()
+    )
+    returned = snapshot(9, 7.0, base=SCREEN_LOBBY)
+    onset_timeout = RuntimeWaitTimeout(
+        after_sequence=3,
+        timeout=2.0,
+        last_snapshot=after_claim,
+    )
+
+    result, actions, _, observer = run_flow(
+        lobby,
+        [
+            [account],
+            [character],
+            onset_timeout,
+            [settled_a, settled_b],
+            [match_a, match_b],
+            [returned],
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.delete_read_executed
+    assert observer.calls[4].timeout == pytest.approx(12.0)
+    assert observer.calls[4].stable_for == pytest.approx(0.5)
+    assert actions.count(DeleteReadCharacterMail()) == 1
+
+
+def test_delete_confirmation_timeout_remains_bounded():
+    # A postcondition that never stabilizes must still fail bounded.
+    lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
+    account = snapshot(2, 2.0, base=SCREEN_MAILBOX)
+    claims = character_overlays(STATUS_MAILBOX_CLAIMABLE)
+    character = snapshot(3, 3.0, base=SCREEN_MAILBOX, overlays=claims)
+    after_claim = snapshot(
+        4,
+        4.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_a = snapshot(
+        5,
+        5.0,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    settled_b = snapshot(
+        6,
+        5.8,
+        base=SCREEN_MAILBOX,
+        overlays=character_overlays(STATUS_MAILBOX_READ_MAIL_PRESENT),
+    )
+    stuck = snapshot(7, 6.2, base=SCREEN_MAILBOX)
+    delete_timeout = RuntimeWaitTimeout(
+        after_sequence=6,
+        timeout=12.0,
+        last_snapshot=stuck,
+    )
+    onset_timeout = RuntimeWaitTimeout(
+        after_sequence=3,
+        timeout=2.0,
+        last_snapshot=after_claim,
+    )
+
+    result, actions, _, observer = run_flow(
+        lobby,
+        [[account], [character], onset_timeout, [settled_a, settled_b], delete_timeout],
+    )
+
+    assert result.status is FlowStatus.FAILED
+    assert actions.count(DeleteReadCharacterMail()) == 1
+    assert CloseMailbox() not in actions
+    assert observer.calls[4].timeout == pytest.approx(12.0)
