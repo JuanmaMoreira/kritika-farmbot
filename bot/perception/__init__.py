@@ -203,6 +203,63 @@ def build_default_perception(
     )
 
 
+# Experimental minimal subset for ``black_market.select_slot`` only.
+# These are exactly the observations its expected/abort/precondition
+# predicates consume: the Black Market base landmark, the three purchase
+# branch popups and the GOLD/Purchased slot facts. Every other detector is
+# irrelevant to distinguishing the select_slot outcomes.
+BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES = frozenset(
+    {
+        BLACK_MARKET_TITLE_SPEC.name,
+        PURCHASE_CONFIRMATION_PROMPT_SPEC.name,
+        INSUFFICIENT_GOLD_PROMPT_SPEC.name,
+        INVENTORY_FULL_OK_BUTTON_SPEC.name,
+    }
+)
+
+
+def black_market_slot_perception(
+    source: PerceptionEngine,
+) -> PerceptionEngine:
+    """Select the detectors needed for ``black_market.select_slot`` outcomes.
+
+    The subset preserves source order and reuses the same detector
+    instances, so calibration, thresholds and assets are unchanged. Only
+    the detector count per frame changes. Raises ``ValueError`` when the
+    source engine lacks any required detector instead of running degraded.
+    """
+
+    if not isinstance(source, PerceptionEngine):
+        raise ValueError("source must be a PerceptionEngine")
+    selected = tuple(
+        detector
+        for detector in source.detectors
+        if getattr(getattr(detector, "spec", None), "name", None)
+        in BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES
+        or isinstance(
+            detector,
+            (BlackMarketGoldDetector, BlackMarketPurchasedDetector),
+        )
+    )
+    present = {
+        detector.spec.name
+        for detector in selected
+        if isinstance(detector, LocalCvDetector)
+    }
+    missing = set(BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES) - present
+    if missing:
+        raise ValueError(
+            "slot scope is missing detectors: " + ", ".join(sorted(missing))
+        )
+    if not any(isinstance(item, BlackMarketGoldDetector) for item in selected):
+        raise ValueError("slot scope is missing the GOLD detector")
+    if not any(
+        isinstance(item, BlackMarketPurchasedDetector) for item in selected
+    ):
+        raise ValueError("slot scope is missing the Purchased detector")
+    return PerceptionEngine(detectors=selected)
+
+
 __all__ = (
     "BLACK_MARKET_GOLD_ASSET",
     "BLACK_MARKET_GOLD_CALIBRATION",
@@ -212,6 +269,7 @@ __all__ = (
     "BLACK_MARKET_GRID_COLUMNS",
     "BLACK_MARKET_GRID_ROWS",
     "BLACK_MARKET_SLOT_COUNT",
+    "BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES",
     "BLACK_MARKET_PURCHASED_ASSETS",
     "BLACK_MARKET_PURCHASED_CALIBRATION",
     "BLACK_MARKET_PURCHASED_CONFIDENCE_THRESHOLD",
@@ -352,5 +410,6 @@ __all__ = (
     "LocalCvSpec",
     "PerceptionDetector",
     "PerceptionEngine",
+    "black_market_slot_perception",
     "build_default_perception",
 )

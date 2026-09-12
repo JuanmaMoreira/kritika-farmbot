@@ -231,6 +231,29 @@ class RuntimeObserver:
         self._analysis_count = self._analysis_errors = 0
         self._analysis_elapsed = self._analysis_max = 0.0
 
+    def scoped(self, perception: Perception) -> RuntimeObserver:
+        """Share source/resolver/timing while narrowing the perception engine.
+
+        Experimental seam for single-transition scoping: the returned
+        observer reads the same frames with the same waits and emits the
+        same event names through the same sink and snapshot consumer.
+        Only the detector set per analyzed frame changes.
+        """
+
+        if not callable(getattr(perception, "analyze", None)):
+            raise ValueError("perception must provide analyze(snapshot)")
+        return RuntimeObserver(
+            self.source,
+            perception,
+            self.resolver,
+            poll_interval=self.poll_interval,
+            clock=self._clock,
+            sleeper=self._sleeper,
+            events=self.events,
+            metrics_clock=self._metrics_clock,
+            snapshot_consumer=self._snapshot_consumer,
+        )
+
     def wait_until(
         self,
         condition: Callable[[RuntimeSnapshot], bool],

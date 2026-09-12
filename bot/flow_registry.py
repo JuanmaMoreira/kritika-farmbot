@@ -107,12 +107,56 @@ def _verified_transition_for(dependencies: FlowDependencies):
     )
 
 
+def _slot_transition_for(dependencies: FlowDependencies, main_transition):
+    """Experimental scoped transition for ``black_market.select_slot`` only.
+
+    It reuses the main transition's actions, events and obstruction
+    recovery; only the observer runs the minimal slot detector subset.
+    Any wiring failure falls back to the main transition, preserving
+    today's behavior exactly.
+    """
+
+    from bot.event_log import record_best_effort
+    from bot.perception import black_market_slot_perception
+    from bot.verified_transition import VerifiedTransition
+
+    observer = dependencies.observer
+    scoped = getattr(observer, "scoped", None)
+    perception = getattr(observer, "perception", None)
+    if not callable(scoped) or perception is None:
+        return main_transition
+    try:
+        slot_observer = scoped(black_market_slot_perception(perception))
+        transition = VerifiedTransition(
+            slot_observer,
+            dependencies.actions,
+            dependencies.events,
+            getattr(main_transition, "obstruction_recovery", None),
+        )
+        detector_count = len(slot_observer.perception.detectors)
+    except (AttributeError, TypeError, ValueError) as error:
+        record_best_effort(
+            dependencies.events,
+            "black_market.slot_scope_unavailable",
+            error=f"{type(error).__name__}: {error}",
+        )
+        return main_transition
+    record_best_effort(
+        dependencies.events,
+        "black_market.slot_scope_active",
+        detector_count=detector_count,
+    )
+    return transition
+
+
 def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
+    main_transition = _verified_transition_for(dependencies)
     return BlackMarketFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
-        verified_transition=_verified_transition_for(dependencies),
+        verified_transition=main_transition,
+        slot_transition=_slot_transition_for(dependencies, main_transition),
         cancel_requested=dependencies.cancel_requested,
     )
 

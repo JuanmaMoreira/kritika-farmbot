@@ -101,6 +101,7 @@ class BlackMarketFlow:
         transition_grace_timeout: float = 2.0,
         transition_max_attempts: int = 2,
         verified_transition: VerifiedTransition | None = None,
+        slot_transition: VerifiedTransition | None = None,
         cancel_requested: Callable[[], bool] = lambda: False,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
@@ -162,6 +163,11 @@ class BlackMarketFlow:
         if not callable(getattr(verified_transition, "execute", None)):
             raise ValueError("verified_transition must provide execute()")
         self.verified_transition = verified_transition
+        if slot_transition is None:
+            slot_transition = verified_transition
+        if not callable(getattr(slot_transition, "execute", None)):
+            raise ValueError("slot_transition must provide execute()")
+        self.slot_transition = slot_transition
 
     def run(self, *, max_slot_attempts: int | None = None) -> BlackMarketFlowResult:
         """Run the flow, optionally bounded by an explicit debug attempt limit.
@@ -284,7 +290,7 @@ class BlackMarketFlow:
                 )
 
             attempted.append(slot)
-            selected_slot = self.verified_transition.execute(
+            selected_slot = self.slot_transition.execute(
                 "black_market.select_slot",
                 SelectBlackMarketSlot(slot),
                 current,
