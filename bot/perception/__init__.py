@@ -248,6 +248,19 @@ BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES = frozenset(
 )
 
 
+# Generic-scope declaration for ``black_market.accept_purchase``. Same
+# subset as the legacy ``black_market_purchase_perception`` builder,
+# expressed as an explicit ScopeSpec (no semantic auto-derivation).
+BLACK_MARKET_PURCHASE_SCOPE = ScopeSpec(
+    name="purchase",
+    spec_names=BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES,
+    specialized_types=(
+        BlackMarketGoldDetector,
+        BlackMarketPurchasedDetector,
+    ),
+)
+
+
 # Experimental minimal subset for the Mailbox ``ClaimAll`` claim-processing
 # phase only (onset + completion/fallback, Caso A: they share one coherent
 # detector set and one abort predicate).
@@ -464,6 +477,7 @@ __all__ = (
     "BLACK_MARKET_SLOT_COUNT",
     "BLACK_MARKET_SLOT_SCOPE",
     "BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES",
+    "BLACK_MARKET_PURCHASE_SCOPE",
     "BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES",
     "BLACK_MARKET_PURCHASED_ASSETS",
     "BLACK_MARKET_PURCHASED_CALIBRATION",

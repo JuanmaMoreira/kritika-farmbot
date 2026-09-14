@@ -107,54 +107,6 @@ def _verified_transition_for(dependencies: FlowDependencies):
     )
 
 
-def _scoped_transition_for(
-    dependencies: FlowDependencies,
-    main_transition,
-    *,
-    scope_builder,
-    active_event: str,
-    unavailable_event: str,
-):
-    """Shared core for experimental single-transition perception scopes.
-
-    It reuses the main transition's actions, events and obstruction
-    recovery; only the observer runs the requested detector subset.
-    Any wiring failure falls back to the main transition, preserving
-    today's behavior exactly.
-    """
-
-    from bot.event_log import record_best_effort
-    from bot.verified_transition import VerifiedTransition
-
-    observer = dependencies.observer
-    scoped = getattr(observer, "scoped", None)
-    perception = getattr(observer, "perception", None)
-    if not callable(scoped) or perception is None:
-        return main_transition
-    try:
-        scoped_observer = scoped(scope_builder(perception))
-        transition = VerifiedTransition(
-            scoped_observer,
-            dependencies.actions,
-            dependencies.events,
-            getattr(main_transition, "obstruction_recovery", None),
-        )
-        detector_count = len(scoped_observer.perception.detectors)
-    except (AttributeError, TypeError, ValueError) as error:
-        record_best_effort(
-            dependencies.events,
-            unavailable_event,
-            error=f"{type(error).__name__}: {error}",
-        )
-        return main_transition
-    record_best_effort(
-        dependencies.events,
-        active_event,
-        detector_count=detector_count,
-    )
-    return transition
-
-
 def _scoped_subset_observer(dependencies: FlowDependencies, scope):
     """Shared core for generic scoped perception wiring.
 
@@ -272,14 +224,14 @@ def _slot_transition_for(dependencies: FlowDependencies, main_transition):
 
 
 def _purchase_transition_for(dependencies: FlowDependencies, main_transition):
-    """Experimental scoped transition for ``black_market.accept_purchase``."""
+    """Scoped transition for ``black_market.accept_purchase`` (generic rehost)."""
 
-    from bot.perception import black_market_purchase_perception
+    from bot.perception import BLACK_MARKET_PURCHASE_SCOPE
 
-    return _scoped_transition_for(
+    return scoped_transition_for(
         dependencies,
         main_transition,
-        scope_builder=black_market_purchase_perception,
+        scope=BLACK_MARKET_PURCHASE_SCOPE,
         active_event="black_market.purchase_scope_active",
         unavailable_event="black_market.purchase_scope_unavailable",
     )

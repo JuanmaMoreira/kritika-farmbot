@@ -8,6 +8,8 @@ bounded fallback to the main transition.
 
 from pathlib import Path
 
+import inspect
+
 import cv2
 import numpy as np
 import pytest
@@ -31,9 +33,11 @@ from bot.flow_contracts import FlowStatus
 from bot.flow_registry import _build_black_market, _purchase_transition_for
 from bot.observations import ObservationBatch
 from bot.perception import (
+    BLACK_MARKET_PURCHASE_SCOPE,
     BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES,
     black_market_purchase_perception,
     build_default_perception,
+    select_detectors,
 )
 from bot.perception.black_market import (
     BlackMarketGoldDetector,
@@ -531,3 +535,47 @@ def test_registry_builds_black_market_with_all_three_transitions():
     assert flow.purchase_transition is not flow.slot_transition
     assert len(flow.purchase_transition.observer.perception.detectors) == 6
     assert len(flow.slot_transition.observer.perception.detectors) == 6
+
+
+def test_purchase_rehost_matches_legacy_builder_exactly():
+    source = build_default_perception(ROOT)
+
+    generic = select_detectors(source, BLACK_MARKET_PURCHASE_SCOPE)
+    legacy = black_market_purchase_perception(source)
+
+    assert len(generic.detectors) == 6
+    assert tuple(generic.detectors) == tuple(legacy.detectors)
+
+
+def test_generic_scope_matches_legacy_on_post_yes_frames():
+    source = build_default_perception(ROOT)
+    generic = select_detectors(source, BLACK_MARKET_PURCHASE_SCOPE)
+    legacy = black_market_purchase_perception(source)
+    resolver = build_default_resolver()
+
+    for name, path in POST_YES_FRAMES.items():
+        generic_snapshot = _wrap(path, generic, resolver, sequence=1)
+        legacy_snapshot = _wrap(path, legacy, resolver, sequence=1)
+        assert (
+            generic_snapshot.observations
+            == legacy_snapshot.observations
+        ), name
+        assert generic_snapshot.state == legacy_snapshot.state, name
+        assert generic_snapshot.facts == legacy_snapshot.facts, name
+        for slot in (0, 4, 7):
+            assert _is_verified_purchase(
+                generic_snapshot, slot
+            ) == _is_verified_purchase(legacy_snapshot, slot), (name, slot)
+        assert _is_purchase_confirmation(
+            generic_snapshot
+        ) == _is_purchase_confirmation(legacy_snapshot), name
+        assert _has_incompatible_post_purchase(
+            generic_snapshot
+        ) == _has_incompatible_post_purchase(legacy_snapshot), name
+
+
+def test_purchase_uses_generic_infra():
+    source_text = inspect.getsource(_purchase_transition_for)
+    assert "scoped_transition_for(" in source_text
+    assert "_scoped_transition_for(" not in source_text
+    assert "black_market_purchase_perception" not in source_text

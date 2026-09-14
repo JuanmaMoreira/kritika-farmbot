@@ -607,15 +607,16 @@ def test_generic_scope_matches_legacy_on_select_branch_frames():
         ) == _is_actionable_gold_slot(legacy_snapshot, 0), name
 
 
-def test_slot_uses_generic_infra_and_purchase_stays_legacy():
-    source_text = inspect.getsource(_slot_transition_for)
-    assert "scoped_transition_for(" in source_text
-    assert "_scoped_transition_for(" not in source_text
-    assert "black_market_slot_perception" not in source_text
-    purchase_text = inspect.getsource(_purchase_transition_for)
-    assert "_scoped_transition_for(" in purchase_text
-    assert "scoped_transition_for(" not in purchase_text.replace(
-        "_scoped_transition_for(", ""
+def test_both_black_market_transitions_use_generic_infra():
+    for wiring in (_slot_transition_for, _purchase_transition_for):
+        source_text = inspect.getsource(wiring)
+        assert "scoped_transition_for(" in source_text
+        assert "_scoped_transition_for(" not in source_text
+    assert "black_market_slot_perception" not in inspect.getsource(
+        _slot_transition_for
+    )
+    assert "black_market_purchase_perception" not in inspect.getsource(
+        _purchase_transition_for
     )
 
     frame = FrameSnapshot(
