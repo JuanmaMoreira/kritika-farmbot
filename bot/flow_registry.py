@@ -277,7 +277,7 @@ def _build_monster_wave(dependencies: FlowDependencies) -> PerCharacterFlow:
 
 
 def _daily_claim_observer_for(dependencies: FlowDependencies, main_observer):
-    """Experimental scoped observer for the Daily Quests ``ClaimAll`` wait.
+    """Scoped observer for the Daily Quests ``ClaimAll`` wait (generic rehost).
 
     Unlike Black Market, this flow waits on the observer directly instead
     of a ``VerifiedTransition``, so the scope narrows the observer rather
@@ -285,30 +285,15 @@ def _daily_claim_observer_for(dependencies: FlowDependencies, main_observer):
     the main observer, preserving today's behavior exactly.
     """
 
-    from bot.event_log import record_best_effort
-    from bot.perception import daily_claim_perception
+    from bot.perception import DAILY_CLAIM_SCOPE
 
-    observer = dependencies.observer
-    scoped = getattr(observer, "scoped", None)
-    perception = getattr(observer, "perception", None)
-    if not callable(scoped) or perception is None:
-        return main_observer
-    try:
-        scoped_observer = scoped(daily_claim_perception(perception))
-        detector_count = len(scoped_observer.perception.detectors)
-    except (AttributeError, TypeError, ValueError) as error:
-        record_best_effort(
-            dependencies.events,
-            "daily_quests.claim_scope_unavailable",
-            error=f"{type(error).__name__}: {error}",
-        )
-        return main_observer
-    record_best_effort(
-        dependencies.events,
-        "daily_quests.claim_scope_active",
-        detector_count=detector_count,
+    return scoped_observer_for(
+        dependencies,
+        main_observer,
+        scope=DAILY_CLAIM_SCOPE,
+        active_event="daily_quests.claim_scope_active",
+        unavailable_event="daily_quests.claim_scope_unavailable",
     )
-    return scoped_observer
 
 
 def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:

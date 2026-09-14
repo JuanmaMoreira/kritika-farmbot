@@ -11,6 +11,8 @@ The independent progress-reward wait is intentionally out of scope.
 
 from pathlib import Path
 
+import inspect
+
 import cv2
 import numpy as np
 import pytest
@@ -30,9 +32,11 @@ from bot.flow_contracts import FlowStatus
 from bot.flow_registry import _build_daily_quests, _daily_claim_observer_for
 from bot.observations import ObservationBatch
 from bot.perception import (
+    DAILY_CLAIM_SCOPE,
     DAILY_CLAIM_SCOPE_SPEC_NAMES,
     build_default_perception,
     daily_claim_perception,
+    select_detectors,
 )
 from bot.perception.daily_quests import DailyQuestsProgressRewardDetector
 from bot.perception.engine import PerceptionEngine
@@ -595,3 +599,68 @@ def test_registry_builds_daily_quests_with_claim_observer():
     assert isinstance(flow, DailyQuestsFlow)
     assert flow.claim_observer is not observer
     assert len(flow.claim_observer.perception.detectors) == 4
+
+
+def test_claim_rehost_matches_legacy_builder_exactly():
+    source = build_default_perception(ROOT)
+
+    generic = select_detectors(source, DAILY_CLAIM_SCOPE)
+    legacy = daily_claim_perception(source)
+
+    assert len(generic.detectors) == 4
+    assert tuple(generic.detectors) == tuple(legacy.detectors)
+
+
+def test_generic_scope_matches_legacy_on_claim_frames():
+    source = build_default_perception(ROOT)
+    generic = select_detectors(source, DAILY_CLAIM_SCOPE)
+    legacy = daily_claim_perception(source)
+    resolver = build_default_resolver()
+
+    for name, path in CLAIM_FRAMES.items():
+        generic_snapshot = _wrap(path, generic, resolver, sequence=1)
+        legacy_snapshot = _wrap(path, legacy, resolver, sequence=1)
+        assert (
+            generic_snapshot.observations
+            == legacy_snapshot.observations
+        ), name
+        assert generic_snapshot.state == legacy_snapshot.state, name
+        assert DailyQuestsFlow._is_daily_quests_settled(
+            generic_snapshot
+        ) == DailyQuestsFlow._is_daily_quests_settled(legacy_snapshot), name
+        assert DailyQuestsFlow._is_daily_quests_fully_settled(
+            generic_snapshot
+        ) == DailyQuestsFlow._is_daily_quests_fully_settled(
+            legacy_snapshot
+        ), name
+        assert DailyQuestsFlow._has_incompatible_daily_state(
+            generic_snapshot
+        ) == DailyQuestsFlow._has_incompatible_daily_state(
+            legacy_snapshot
+        ), name
+
+
+def test_generic_scope_preserves_progress_reward_carry():
+    source = build_default_perception(ROOT)
+    generic = select_detectors(source, DAILY_CLAIM_SCOPE)
+    resolver = build_default_resolver()
+
+    _, progress_batch = _resolve(
+        CLAIM_FRAMES["progress/01"], generic, resolver
+    )
+    _, claimed_batch = _resolve(
+        CLAIM_FRAMES["claimed/01"], generic, resolver
+    )
+    progress_names = {item.name for item in progress_batch.observations}
+    claimed_names = {item.name for item in claimed_batch.observations}
+    assert "indicator.daily_quests_progress_reward_claimable" in progress_names
+    assert (
+        "indicator.daily_quests_progress_reward_claimable"
+        not in claimed_names
+    )
+
+
+def test_claim_wiring_uses_generic_infra():
+    source_text = inspect.getsource(_daily_claim_observer_for)
+    assert "scoped_observer_for(" in source_text
+    assert "daily_claim_perception" not in source_text

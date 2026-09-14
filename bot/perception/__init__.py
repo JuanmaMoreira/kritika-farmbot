@@ -298,6 +298,17 @@ DAILY_CLAIM_SCOPE_SPEC_NAMES = frozenset(
 )
 
 
+# Generic-scope declaration for the Daily Quests ``ClaimAll`` wait. Same
+# subset as the legacy ``daily_claim_perception`` builder, expressed as an
+# explicit ScopeSpec (no semantic auto-derivation). The progress-reward
+# indicator stays included as snapshot carry for the follow-up decision.
+DAILY_CLAIM_SCOPE = ScopeSpec(
+    name="claim",
+    spec_names=DAILY_CLAIM_SCOPE_SPEC_NAMES,
+    specialized_types=(DailyQuestsProgressRewardDetector,),
+)
+
+
 def _select_scope_detectors(
     source: PerceptionEngine,
     *,
@@ -507,6 +518,7 @@ __all__ = (
     "COMBINE_ROWS_UPPER_INDICATOR_SPEC",
     "COMBINE_TRANSMUTE_ACTIVE_SPEC",
     "CombineContextDetector",
+    "DAILY_CLAIM_SCOPE",
     "DAILY_CLAIM_SCOPE_SPEC_NAMES",
     "DAILY_QUESTS_PROGRESS_REWARD_CALIBRATION",
     "DAILY_QUESTS_PROGRESS_REWARD_CONFIDENCE_THRESHOLD",
