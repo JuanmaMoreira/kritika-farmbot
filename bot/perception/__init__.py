@@ -346,6 +346,69 @@ GUILD_ATTENDANCE_SCOPE = ScopeSpec(
 )
 
 
+# Minimal subset for the Black Market ``open`` navigation wait only
+# (Lobby -> clean Black Market, Caso navigation B1).
+# These are exactly the observations its expected/retryable/abort
+# predicates consume plus the facts its post-wait snapshot must still
+# carry: the Black Market base landmark, the Lobby base landmark (the
+# retryable_from predicate requires a clean Lobby, without it a flaky
+# open would lose its second attempt), the three purchase-branch popups
+# referenced by the navigation abort predicate, and the GOLD/Purchased
+# slot facts (without them every open would spuriously trigger the
+# empty-gold confirmation wait). Same fail-fast guarantees as the slot
+# and purchase scopes.
+BLACK_MARKET_OPEN_SCOPE_SPEC_NAMES = frozenset(
+    {
+        BLACK_MARKET_TITLE_SPEC.name,
+        PURCHASE_CONFIRMATION_PROMPT_SPEC.name,
+        INSUFFICIENT_GOLD_PROMPT_SPEC.name,
+        INVENTORY_FULL_OK_BUTTON_SPEC.name,
+        LOBBY_TRADING_CENTER_LABEL_SPEC.name,
+    }
+)
+
+
+# Generic-scope declaration for the Black Market ``open`` wait, expressed
+# as an explicit ScopeSpec (no semantic auto-derivation).
+BLACK_MARKET_OPEN_SCOPE = ScopeSpec(
+    name="open",
+    spec_names=BLACK_MARKET_OPEN_SCOPE_SPEC_NAMES,
+    specialized_types=(
+        BlackMarketGoldDetector,
+        BlackMarketPurchasedDetector,
+    ),
+)
+
+
+# Minimal subset for the direct Lobby -> Guild navigation wait only
+# (``precondition.open_guild``, Caso navigation B1).
+# These are exactly the observations its expected/retryable/abort
+# predicates consume: the Guild base landmark, the Daily badge indicator
+# and the active/completed Attendance states (Guild clean allows them),
+# the Lobby base landmark (retryable_from requires a clean Lobby), and
+# the Quick Menu tile (the destination abort explicitly excuses a Quick
+# Menu frame; without the tile that frame would abort instead of waiting).
+# The final snapshot feeds no further semantic decision (the caller only
+# checks success), so no extra carry is needed.
+GUILD_NAVIGATE_SCOPE_SPEC_NAMES = frozenset(
+    {
+        GUILD_MESSAGE_TAB_SPEC.name,
+        GUILD_ATTENDANCE_DAILY_SPEC.name,
+        LOBBY_TRADING_CENTER_LABEL_SPEC.name,
+        QUICK_MENU_LOBBY_TILE_SPEC.name,
+    }
+)
+
+
+# Generic-scope declaration for the direct Lobby -> Guild navigation wait,
+# expressed as an explicit ScopeSpec (no semantic auto-derivation).
+GUILD_NAVIGATE_SCOPE = ScopeSpec(
+    name="navigate",
+    spec_names=GUILD_NAVIGATE_SCOPE_SPEC_NAMES,
+    specialized_types=(GuildAttendanceDetector,),
+)
+
+
 # Minimal subset for the Send Stamina post-tap completion waits only
 # (completion + daily-active fallback, Caso A: both waits share one coherent
 # detector set and one abort predicate).
@@ -557,6 +620,8 @@ __all__ = (
     "BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES",
     "BLACK_MARKET_PURCHASE_SCOPE",
     "BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES",
+    "BLACK_MARKET_OPEN_SCOPE",
+    "BLACK_MARKET_OPEN_SCOPE_SPEC_NAMES",
     "BLACK_MARKET_PURCHASED_ASSETS",
     "BLACK_MARKET_PURCHASED_CALIBRATION",
     "BLACK_MARKET_PURCHASED_CONFIDENCE_THRESHOLD",
@@ -605,6 +670,8 @@ __all__ = (
     "GUILD_ATTENDANCE_REGION",
     "GUILD_ATTENDANCE_SCOPE",
     "GUILD_ATTENDANCE_SCOPE_SPEC_NAMES",
+    "GUILD_NAVIGATE_SCOPE",
+    "GUILD_NAVIGATE_SCOPE_SPEC_NAMES",
     "GUILD_MESSAGE_TAB_SPEC",
     "GUILD_ATTENDANCE_DAILY_SPEC",
     "GuildAttendanceDetector",

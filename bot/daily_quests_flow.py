@@ -292,6 +292,13 @@ class DailyQuestsFlow:
             if self._cancelled():
                 return self._cancel(events)
             lobby = self._initial_lobby(seed)
+            # OpenQuests stays on the main (global) observer on purpose: the
+            # navigation expected (panel title + tab) is satisfied before the
+            # mission list populates, and the claim/noop decision reads the
+            # open snapshot directly. The global perception latency (~2 s)
+            # implicitly lets content load; the faster scoped wait exposed a
+            # false noop on live content (Batch B1 HIL). Content readiness
+            # belongs to a dedicated Daily task, not to navigation scoping.
             quests = self._act_and_wait(
                 OpenQuests(),
                 lobby,

@@ -460,7 +460,9 @@ def test_claim_wait_routes_through_claim_observer_only():
         ClaimAllDailyQuests(),
         CloseDailyQuests(),
     ]
-    # Same contract as the global wait: one shot, 8 s timeout, 0.5 s settle.
+    # OpenQuests stays global on purpose (content-readiness timing; see
+    # Batch B1 HIL): only the claim shot runs scoped, with the same
+    # contract as the global wait (8 s timeout, 0.5 s settle).
     assert claim.calls == [(8.0, 0.5)]
     assert main.calls == [(6.0, 0.25), (6.0, 0.25)]
 

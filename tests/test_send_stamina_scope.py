@@ -6,8 +6,10 @@ predicate): detector subset composition, expected/abort semantics, flow
 routing of exactly those waits through the scoped observer, and the registry
 wiring with its bounded fallback to the main observer.
 
-The initial ``observe()`` (precondition/no-op check), navigation, close and
-Lobby latency stay global on purpose. This is the second scope created
+The initial ``observe()`` (precondition/no-op check), close and
+Lobby latency stay global on purpose. Batch B1 additionally routes the
+``OpenFriends`` navigation wait through the same scope: its vocabulary
+is exactly the completion scope, so no new scope was needed. This is the second scope created
 directly on the generic infrastructure (``ScopeSpec`` + ``select_detectors``
 + ``scoped_observer_for``): no legacy builder, no custom hook.
 """
@@ -281,10 +283,12 @@ def test_only_completion_waits_use_scoped_observer():
         7, 4.3, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY
     )
 
-    # The flow routes open + close through main and completion through the
-    # injected observer: open (main) -> completion (scoped) -> close (main).
-    main = RecordingObserver(lobby, [[opened_a, opened_b], [returned_a, returned_b]])
-    scoped = RecordingObserver(lobby, [[settled_a, settled_b]])
+    # Batch B1: the flow routes open + completion through the injected
+    # observer and only close through main: open (scoped) -> completion
+    # (scoped) -> close (main). The open vocabulary is exactly the
+    # completion scope, so no new scope was needed.
+    main = RecordingObserver(lobby, [[returned_a, returned_b]])
+    scoped = RecordingObserver(lobby, [[opened_a, opened_b], [settled_a, settled_b]])
 
     flow = SendStaminaFlow(main, Actions(), Events(), completion_observer=scoped)
     result = flow.run()
@@ -294,9 +298,9 @@ def test_only_completion_waits_use_scoped_observer():
     assert result.event_count(SEND_STAMINA_ALL_EXECUTED) == 1
     assert result.event_count(SEND_STAMINA_COMPLETED) == 1
     assert main.observe_calls == 1
-    assert main.wait_calls == [(1, 6.0, 0.25), (5, 6.0, 0.25)]
+    assert main.wait_calls == [(5, 6.0, 0.25)]
     assert scoped.observe_calls == 0
-    assert scoped.wait_calls == [(3, 3.0, 0.75)]
+    assert scoped.wait_calls == [(1, 6.0, 0.25), (3, 3.0, 0.75)]
 
 
 def test_both_completion_waits_share_the_same_scoped_observer():
@@ -313,10 +317,11 @@ def test_both_completion_waits_share_the_same_scoped_observer():
         8, 5.8, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY
     )
 
-    main = RecordingObserver(lobby, [[opened_a, opened_b], [returned_a, returned_b]])
+    main = RecordingObserver(lobby, [[returned_a, returned_b]])
     scoped = RecordingObserver(
         lobby,
         [
+            [opened_a, opened_b],
             RuntimeWaitTimeout(
                 after_sequence=3, timeout=3.0, last_snapshot=still_active
             ),
@@ -329,11 +334,12 @@ def test_both_completion_waits_share_the_same_scoped_observer():
 
     assert result.status is FlowStatus.COMPLETED
     assert result.daily_pending and result.all_no_effect
-    # Both completion waits (initial + fallback) ran on the same observer.
+    # Open plus both completion waits (initial + fallback) ran on the same
+    # observer; only the Lobby close stayed global.
     assert main.observe_calls == 1
-    assert main.wait_calls == [(1, 6.0, 0.25), (6, 6.0, 0.25)]
+    assert main.wait_calls == [(6, 6.0, 0.25)]
     assert scoped.observe_calls == 0
-    assert scoped.wait_calls == [(3, 3.0, 0.75), (4, 3.0, 0.75)]
+    assert scoped.wait_calls == [(1, 6.0, 0.25), (3, 3.0, 0.75), (4, 3.0, 0.75)]
 
 
 def test_completion_observer_defaults_to_main_observer():

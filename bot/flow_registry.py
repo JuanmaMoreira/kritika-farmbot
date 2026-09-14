@@ -237,6 +237,20 @@ def _purchase_transition_for(dependencies: FlowDependencies, main_transition):
     )
 
 
+def _open_transition_for(dependencies: FlowDependencies, main_transition):
+    """Scoped transition for ``black_market.open`` (generic rehost)."""
+
+    from bot.perception import BLACK_MARKET_OPEN_SCOPE
+
+    return scoped_transition_for(
+        dependencies,
+        main_transition,
+        scope=BLACK_MARKET_OPEN_SCOPE,
+        active_event="black_market.open_scope_active",
+        unavailable_event="black_market.open_scope_unavailable",
+    )
+
+
 def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
     main_transition = _verified_transition_for(dependencies)
     return BlackMarketFlow(
@@ -248,6 +262,7 @@ def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
         purchase_transition=_purchase_transition_for(
             dependencies, main_transition
         ),
+        open_transition=_open_transition_for(dependencies, main_transition),
         cancel_requested=dependencies.cancel_requested,
     )
 

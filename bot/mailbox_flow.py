@@ -180,6 +180,7 @@ class MailboxFlow:
                 abort_if=_has_incompatible_mailbox_navigation,
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
+                observer=self.claim_observer,
             )
             if not _is_character_mail(mailbox):
                 mailbox = self._act_and_wait(
@@ -329,11 +330,13 @@ class MailboxFlow:
         abort_if,
         timeout: float,
         stable_for: float,
+        observer: _Observer | None = None,
     ) -> RuntimeSnapshot:
         if self._cancelled():
             raise RuntimeWaitCancelled("mailbox flow cancelled")
         self.actions.execute(action, before.geometry)
-        return self.observer.wait_until(
+        waiter = self.observer if observer is None else observer
+        return waiter.wait_until(
             expected,
             after_sequence=before.sequence,
             timeout=timeout,

@@ -103,6 +103,7 @@ class BlackMarketFlow:
         verified_transition: VerifiedTransition | None = None,
         slot_transition: VerifiedTransition | None = None,
         purchase_transition: VerifiedTransition | None = None,
+        open_transition: VerifiedTransition | None = None,
         cancel_requested: Callable[[], bool] = lambda: False,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
@@ -174,6 +175,11 @@ class BlackMarketFlow:
         if not callable(getattr(purchase_transition, "execute", None)):
             raise ValueError("purchase_transition must provide execute()")
         self.purchase_transition = purchase_transition
+        if open_transition is None:
+            open_transition = verified_transition
+        if not callable(getattr(open_transition, "execute", None)):
+            raise ValueError("open_transition must provide execute()")
+        self.open_transition = open_transition
 
     def run(self, *, max_slot_attempts: int | None = None) -> BlackMarketFlowResult:
         """Run the flow, optionally bounded by an explicit debug attempt limit.
@@ -215,7 +221,7 @@ class BlackMarketFlow:
             except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
                 return self._abort(f"precondition_lobby_failed: {error}")
 
-        opened = self.verified_transition.execute(
+        opened = self.open_transition.execute(
             "black_market.open",
             OpenBlackMarket(),
             initial,
@@ -366,7 +372,7 @@ class BlackMarketFlow:
 
             if overlays == {POPUP_INSUFFICIENT_GOLD}:
                 flow_events.append(FlowEvent("low_gold"))
-                rejected = self.verified_transition.execute(
+                rejected = self.slot_transition.execute(
                     "black_market.reject_insufficient_gold",
                     RejectInsufficientGold(),
                     branch,

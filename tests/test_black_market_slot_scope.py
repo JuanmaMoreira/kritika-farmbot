@@ -369,8 +369,13 @@ def test_insufficient_gold_branch_keeps_routing_and_outcome():
     assert result.status is FlowStatus.COMPLETED
     assert result.insufficient_gold_count == 1
     assert SelectBlackMarketSlot(1) in actions
-    assert slot_names == ["black_market.select_slot"]
-    assert "black_market.reject_insufficient_gold" in main_names
+    # Batch B1: the insufficient-gold popup vocabulary is exactly the slot
+    # scope, so reject runs on the slot transition instead of the global one.
+    assert slot_names == [
+        "black_market.select_slot",
+        "black_market.reject_insufficient_gold",
+    ]
+    assert "black_market.reject_insufficient_gold" not in main_names
 
 
 def test_unknown_branch_aborts_bounded_without_further_input():
@@ -407,6 +412,7 @@ def test_slot_transition_defaults_to_main_transition():
     )
     flow = BlackMarketFlow(observer, Actions(), Events())
     assert flow.slot_transition is flow.verified_transition
+    assert flow.open_transition is flow.verified_transition
 
 
 def test_slot_transition_rejects_non_executable():
@@ -416,6 +422,13 @@ def test_slot_transition_rejects_non_executable():
             Actions(),
             Events(),
             slot_transition=object(),
+        )
+    with pytest.raises(ValueError):
+        BlackMarketFlow(
+            ScriptedObserver([], []),
+            Actions(),
+            Events(),
+            open_transition=object(),
         )
 
 

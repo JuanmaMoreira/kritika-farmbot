@@ -535,9 +535,9 @@ def test_claim_waits_route_through_claim_observer_only():
     closed = _snapshot(9, 7.2, base=SCREEN_LOBBY)
 
     main = RecordingObserver(
-        lobby, [[account], [character], [deleted_a, deleted_b], [closed]]
+        lobby, [[character], [deleted_a, deleted_b], [closed]]
     )
-    claim = RecordingObserver(lobby, [[active], [settled_a, settled_b]])
+    claim = RecordingObserver(lobby, [[account], [active], [settled_a, settled_b]])
     flow = MailboxFlow(
         main,
         Actions(),
@@ -559,10 +559,10 @@ def test_claim_waits_route_through_claim_observer_only():
         DeleteReadCharacterMail(),
         CloseMailbox(),
     ]
-    # Same contract as the global waits: 2 s onset without stability,
-    # then 30 s completion with 0.75 s stability.
-    assert claim.calls == [(2.0, 0.0), (30.0, 0.75)]
-    assert main.calls == [(6.0, 0.0), (6.0, 0.0), (12.0, 0.5), (6.0, 0.0)]
+    # Same contract as the global waits: 6 s open without stability, then
+    # 2 s onset without stability and 30 s completion with 0.75 s stability.
+    assert claim.calls == [(6.0, 0.0), (2.0, 0.0), (30.0, 0.75)]
+    assert main.calls == [(6.0, 0.0), (12.0, 0.5), (6.0, 0.0)]
 
 
 def test_onset_fallback_routes_through_claim_observer_with_same_contract():
@@ -597,10 +597,10 @@ def test_onset_fallback_routes_through_claim_observer_with_same_contract():
     )
 
     main = RecordingObserver(
-        lobby, [[account], [character], [deleted_a, deleted_b], [closed]]
+        lobby, [[character], [deleted_a, deleted_b], [closed]]
     )
     claim = RecordingObserver(
-        lobby, [onset_timeout, [settled_a, settled_b]]
+        lobby, [[account], onset_timeout, [settled_a, settled_b]]
     )
     flow = MailboxFlow(
         main,
@@ -617,9 +617,9 @@ def test_onset_fallback_routes_through_claim_observer_with_same_contract():
     assert result.status is FlowStatus.COMPLETED
     assert not result.processing_observed
     assert result.processing_completed
-    # Fallback keeps the functional contract: 30 s with
+    # Fallback keeps the functional contract: 6 s open, then 30 s with
     # max(no_effect, processing) stability = 0.75 s.
-    assert claim.calls == [(2.0, 0.0), (30.0, 0.75)]
+    assert claim.calls == [(6.0, 0.0), (2.0, 0.0), (30.0, 0.75)]
 
 
 def test_claim_wait_abort_through_scope_fails_bounded_without_further_input():
@@ -632,8 +632,8 @@ def test_claim_wait_abort_through_scope_fails_bounded_without_further_input():
     )
     incompatible = _snapshot(4, 4.0, base=SCREEN_LOBBY)
 
-    main = RecordingObserver(lobby, [[account], [character]])
-    claim = RecordingObserver(lobby, [[incompatible]])
+    main = RecordingObserver(lobby, [[character]])
+    claim = RecordingObserver(lobby, [[account], [incompatible]])
     actions = Actions()
     flow = MailboxFlow(
         main,
@@ -653,7 +653,7 @@ def test_claim_wait_abort_through_scope_fails_bounded_without_further_input():
         SelectCharacterMail(),
         ClaimAllCharacterMail(),
     ]
-    assert claim.calls == [(2.0, 0.0)]
+    assert claim.calls == [(6.0, 0.0), (2.0, 0.0)]
 
 
 def test_claim_observer_defaults_to_main_observer():

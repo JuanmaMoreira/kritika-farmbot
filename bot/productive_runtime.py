@@ -44,8 +44,8 @@ from bot.failure_cause import FailureCause
 from bot.failure_evidence import FailureEvidence, publish_failure
 from bot.equipment_combine_relief import EquipmentCombineRelief
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
-from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry
-from bot.perception import build_default_perception
+from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry, scoped_transition_for
+from bot.perception import GUILD_NAVIGATE_SCOPE, build_default_perception
 from bot.pet_summon_space_relief import PetSummonSpaceRelief
 from bot.preconditions import MinimalPreconditionEnsurer
 from bot.quick_menu import quick_menu_accessible, select_quick_menu_guild_action
@@ -643,12 +643,19 @@ class ProductiveRuntime:
         if not _is_clean_base(initial, SCREEN_LOBBY):
             return False
         transition = self.build_verified_transition()
+        guild_transition = scoped_transition_for(
+            self,
+            transition,
+            scope=GUILD_NAVIGATE_SCOPE,
+            active_event="precondition.guild_navigate_scope_active",
+            unavailable_event="precondition.guild_navigate_scope_unavailable",
+        )
         policy = VerifiedTransitionPolicy(
             normal_timeout=6.0,
             grace_timeout=2.0,
             max_attempts=2,
         )
-        guild = transition.execute(
+        guild = guild_transition.execute(
             "precondition.open_guild",
             OpenGuild(),
             initial,
