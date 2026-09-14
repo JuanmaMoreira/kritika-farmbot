@@ -219,6 +219,19 @@ BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES = frozenset(
 )
 
 
+# Generic-scope declaration for ``black_market.select_slot``. Same subset
+# as the legacy ``black_market_slot_perception`` builder, expressed as an
+# explicit ScopeSpec (no semantic auto-derivation).
+BLACK_MARKET_SLOT_SCOPE = ScopeSpec(
+    name="slot",
+    spec_names=BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES,
+    specialized_types=(
+        BlackMarketGoldDetector,
+        BlackMarketPurchasedDetector,
+    ),
+)
+
+
 # Experimental minimal subset for ``black_market.accept_purchase`` only.
 # These are exactly the observations its expected/abort/precondition
 # predicates consume: the Black Market base landmark, the purchase
@@ -449,6 +462,7 @@ __all__ = (
     "BLACK_MARKET_GRID_COLUMNS",
     "BLACK_MARKET_GRID_ROWS",
     "BLACK_MARKET_SLOT_COUNT",
+    "BLACK_MARKET_SLOT_SCOPE",
     "BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES",
     "BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES",
     "BLACK_MARKET_PURCHASED_ASSETS",

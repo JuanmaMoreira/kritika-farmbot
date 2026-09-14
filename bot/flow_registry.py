@@ -258,14 +258,14 @@ def scoped_transition_for(
 
 
 def _slot_transition_for(dependencies: FlowDependencies, main_transition):
-    """Experimental scoped transition for ``black_market.select_slot`` only."""
+    """Scoped transition for ``black_market.select_slot`` (generic rehost)."""
 
-    from bot.perception import black_market_slot_perception
+    from bot.perception import BLACK_MARKET_SLOT_SCOPE
 
-    return _scoped_transition_for(
+    return scoped_transition_for(
         dependencies,
         main_transition,
-        scope_builder=black_market_slot_perception,
+        scope=BLACK_MARKET_SLOT_SCOPE,
         active_event="black_market.slot_scope_active",
         unavailable_event="black_market.slot_scope_unavailable",
     )

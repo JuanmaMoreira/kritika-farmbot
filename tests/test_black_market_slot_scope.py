@@ -8,6 +8,8 @@ with its bounded fallback to the main transition.
 
 from pathlib import Path
 
+import inspect
+
 import cv2
 import numpy as np
 import pytest
@@ -29,12 +31,18 @@ from bot.catalog import (
     build_default_resolver,
 )
 from bot.flow_contracts import FlowStatus
-from bot.flow_registry import _build_black_market, _slot_transition_for
+from bot.flow_registry import (
+    _build_black_market,
+    _purchase_transition_for,
+    _slot_transition_for,
+)
 from bot.observations import ObservationBatch
 from bot.perception import (
+    BLACK_MARKET_SLOT_SCOPE,
     BLACK_MARKET_SLOT_SCOPE_SPEC_NAMES,
     black_market_slot_perception,
     build_default_perception,
+    select_detectors,
 )
 from bot.perception.black_market import (
     BlackMarketGoldDetector,
@@ -563,3 +571,72 @@ def test_registry_builds_black_market_with_slot_transition():
     assert isinstance(flow, BlackMarketFlow)
     assert flow.slot_transition is not flow.verified_transition
     assert len(flow.slot_transition.observer.perception.detectors) == 6
+
+
+def test_slot_rehost_matches_legacy_builder_exactly():
+    source = build_default_perception(ROOT)
+
+    generic = select_detectors(source, BLACK_MARKET_SLOT_SCOPE)
+    legacy = black_market_slot_perception(source)
+
+    assert len(generic.detectors) == 6
+    assert tuple(generic.detectors) == tuple(legacy.detectors)
+
+
+def test_generic_scope_matches_legacy_on_select_branch_frames():
+    source = build_default_perception(ROOT)
+    generic = select_detectors(source, BLACK_MARKET_SLOT_SCOPE)
+    legacy = black_market_slot_perception(source)
+    resolver = build_default_resolver()
+
+    for name, path in SELECT_BRANCH_FRAMES.items():
+        generic_state, generic_batch = _resolve(path, generic, resolver)
+        legacy_state, legacy_batch = _resolve(path, legacy, resolver)
+        assert generic_batch == legacy_batch, name
+        assert generic_state == legacy_state, name
+        generic_snapshot = _wrap(path, generic, resolver, sequence=1)
+        legacy_snapshot = _wrap(path, legacy, resolver, sequence=1)
+        assert _is_expected_purchase_branch(
+            generic_snapshot
+        ) == _is_expected_purchase_branch(legacy_snapshot), name
+        assert _has_incompatible_branch(
+            generic_snapshot
+        ) == _has_incompatible_branch(legacy_snapshot), name
+        assert _is_actionable_gold_slot(
+            generic_snapshot, 0
+        ) == _is_actionable_gold_slot(legacy_snapshot, 0), name
+
+
+def test_slot_uses_generic_infra_and_purchase_stays_legacy():
+    source_text = inspect.getsource(_slot_transition_for)
+    assert "scoped_transition_for(" in source_text
+    assert "_scoped_transition_for(" not in source_text
+    assert "black_market_slot_perception" not in source_text
+    purchase_text = inspect.getsource(_purchase_transition_for)
+    assert "_scoped_transition_for(" in purchase_text
+    assert "scoped_transition_for(" not in purchase_text.replace(
+        "_scoped_transition_for(", ""
+    )
+
+    frame = FrameSnapshot(
+        image=np.zeros((8, 8, 3), dtype=np.uint8),
+        timestamp=1.0,
+        sequence=1,
+    )
+    events = Events()
+    observer = RuntimeObserver(
+        FakeSource(frame),
+        build_default_perception(ROOT),
+        build_default_resolver(),
+        events=events,
+    )
+    deps = FakeDependencies(observer, Actions(), events)
+
+    flow = _build_black_market(deps)
+
+    recorded = [(name, fields) for name, fields in events.events]
+    assert ("black_market.slot_scope_active", {"detector_count": 6}) in recorded
+    assert (
+        "black_market.purchase_scope_active",
+        {"detector_count": 6},
+    ) in recorded
