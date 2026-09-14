@@ -155,6 +155,108 @@ def _scoped_transition_for(
     return transition
 
 
+def _scoped_subset_observer(dependencies: FlowDependencies, scope):
+    """Shared core for generic scoped perception wiring.
+
+    Returns a scoped observer sharing source/resolver/timing with the
+    main observer, or None when scoping is unsupported. Raises
+    ``AttributeError``/``TypeError``/``ValueError`` on configuration
+    errors so callers can fall back to the main observer. Flow-agnostic:
+    it never names flows, waits, timeouts or predicates.
+    """
+
+    from bot.perception import select_detectors
+
+    observer = dependencies.observer
+    scoped = getattr(observer, "scoped", None)
+    perception = getattr(observer, "perception", None)
+    if not callable(scoped) or perception is None:
+        return None
+    return scoped(select_detectors(perception, scope))
+
+
+def scoped_observer_for(
+    dependencies: FlowDependencies,
+    main_observer,
+    *,
+    scope,
+    active_event: str,
+    unavailable_event: str,
+):
+    """Generic scoped observer wiring for one wait's detector subset.
+
+    Success records ``active_event`` with the detector count; any
+    construction/configuration failure records ``unavailable_event``
+    and returns the main observer, preserving current behavior exactly.
+    """
+
+    from bot.event_log import record_best_effort
+
+    try:
+        scoped_observer = _scoped_subset_observer(dependencies, scope)
+        if scoped_observer is None:
+            return main_observer
+        detector_count = len(scoped_observer.perception.detectors)
+    except (AttributeError, TypeError, ValueError) as error:
+        record_best_effort(
+            dependencies.events,
+            unavailable_event,
+            error=f"{type(error).__name__}: {error}",
+        )
+        return main_observer
+    record_best_effort(
+        dependencies.events,
+        active_event,
+        detector_count=detector_count,
+    )
+    return scoped_observer
+
+
+def scoped_transition_for(
+    dependencies: FlowDependencies,
+    main_transition,
+    *,
+    scope,
+    active_event: str,
+    unavailable_event: str,
+):
+    """Generic scoped transition wiring for one wait's detector subset.
+
+    It reuses the main transition's actions, events and obstruction
+    recovery; only the observer runs the requested detector subset.
+    Any wiring failure falls back to the main transition, preserving
+    current behavior exactly.
+    """
+
+    from bot.event_log import record_best_effort
+    from bot.verified_transition import VerifiedTransition
+
+    try:
+        scoped_observer = _scoped_subset_observer(dependencies, scope)
+        if scoped_observer is None:
+            return main_transition
+        transition = VerifiedTransition(
+            scoped_observer,
+            dependencies.actions,
+            dependencies.events,
+            getattr(main_transition, "obstruction_recovery", None),
+        )
+        detector_count = len(scoped_observer.perception.detectors)
+    except (AttributeError, TypeError, ValueError) as error:
+        record_best_effort(
+            dependencies.events,
+            unavailable_event,
+            error=f"{type(error).__name__}: {error}",
+        )
+        return main_transition
+    record_best_effort(
+        dependencies.events,
+        active_event,
+        detector_count=detector_count,
+    )
+    return transition
+
+
 def _slot_transition_for(dependencies: FlowDependencies, main_transition):
     """Experimental scoped transition for ``black_market.select_slot`` only."""
 

@@ -169,6 +169,7 @@ from .specs import (
 
 
 from .monster_wave import MONSTER_WAVE_SPECS
+from .scope import ScopeSpec, select_detectors
 
 
 def build_default_perception(
@@ -567,6 +568,7 @@ __all__ = (
     "SocketEnhanceAnimationReading",
     "SocketIncompatibleOpalDetector",
     "SocketIncompatibleOpalReading",
+    "select_detectors",
     "WORLD_BOSS_BATTLE_CURRENT_DAMAGE_SPEC",
     "WORLD_BOSS_PREVIOUS_REWARDS_NOTICE_SPEC",
     "WORLD_BOSS_RAID_COMPLETE_TITLE_SPEC",
@@ -587,6 +589,7 @@ __all__ = (
     "MAILBOX_TITLE_SPEC",
     "MailboxClaimProcessingDetector",
     "MailboxClaimProcessingReading",
+    "ScopeSpec",
     "LocalCvDetection",
     "LocalCvDetector",
     "LocalCvSpec",
