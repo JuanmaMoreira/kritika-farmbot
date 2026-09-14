@@ -83,6 +83,7 @@ class GuildCheckInFlow:
         actions: ActionExecutor,
         events: EventSink,
         *,
+        completion_observer: RuntimeObserver | None = None,
         completion_timeout: float = 10.0,
         completion_stable_for: float = 0.75,
         cancel_requested: Callable[[], bool] = lambda: False,
@@ -91,6 +92,14 @@ class GuildCheckInFlow:
             getattr(observer, "wait_until", None)
         ):
             raise ValueError("observer must provide observe() and wait_until()")
+        if completion_observer is None:
+            completion_observer = observer
+        if not callable(
+            getattr(completion_observer, "observe", None)
+        ) or not callable(getattr(completion_observer, "wait_until", None)):
+            raise ValueError(
+                "completion_observer must provide observe() and wait_until()"
+            )
         if not callable(getattr(actions, "execute", None)):
             raise ValueError("actions must provide execute()")
         if not callable(getattr(events, "record", None)):
@@ -98,6 +107,7 @@ class GuildCheckInFlow:
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
         self.observer: _Observer = observer
+        self.completion_observer: _Observer = completion_observer
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -135,7 +145,7 @@ class GuildCheckInFlow:
             self.actions.execute(CheckInGuildAttendance(), initial.geometry)
             tap_executed = True
             self._append_event(events, GUILD_CHECK_IN_TAP_EXECUTED)
-            completed = self.observer.wait_until(
+            completed = self.completion_observer.wait_until(
                 _is_attendance_completed,
                 after_sequence=initial.sequence,
                 timeout=self.completion_timeout,

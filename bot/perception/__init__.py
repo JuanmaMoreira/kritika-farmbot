@@ -321,6 +321,31 @@ DAILY_CLAIM_SCOPE = ScopeSpec(
 )
 
 
+# Minimal subset for the Guild Attendance post-tap completion wait only.
+# These are exactly the observations its expected/abort predicates consume:
+# the Guild base landmark, the Daily badge indicator and the
+# active/completed Attendance states. Both Attendance states come from the
+# single ``GuildAttendanceDetector``. The final snapshot feeds no further
+# decision (the flow only asserts completion), so no extra carry is needed.
+GUILD_ATTENDANCE_SCOPE_SPEC_NAMES = frozenset(
+    {
+        GUILD_MESSAGE_TAB_SPEC.name,
+        GUILD_ATTENDANCE_DAILY_SPEC.name,
+    }
+)
+
+
+# Generic-scope declaration for the Guild Attendance completion wait,
+# expressed as an explicit ScopeSpec (no semantic auto-derivation and no
+# legacy builder: this is the first scope created directly on the generic
+# infrastructure).
+GUILD_ATTENDANCE_SCOPE = ScopeSpec(
+    name="attendance",
+    spec_names=GUILD_ATTENDANCE_SCOPE_SPEC_NAMES,
+    specialized_types=(GuildAttendanceDetector,),
+)
+
+
 def _select_scope_detectors(
     source: PerceptionEngine,
     *,
@@ -548,6 +573,8 @@ __all__ = (
     "GUILD_ATTENDANCE_COMPLETED_CALIBRATION",
     "GUILD_ATTENDANCE_CONFIDENCE_THRESHOLD",
     "GUILD_ATTENDANCE_REGION",
+    "GUILD_ATTENDANCE_SCOPE",
+    "GUILD_ATTENDANCE_SCOPE_SPEC_NAMES",
     "GUILD_MESSAGE_TAB_SPEC",
     "GUILD_ATTENDANCE_DAILY_SPEC",
     "GuildAttendanceDetector",

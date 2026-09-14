@@ -360,11 +360,35 @@ def _build_mailbox(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _guild_attendance_observer_for(dependencies: FlowDependencies, main_observer):
+    """Scoped observer for the Guild Attendance completion wait.
+
+    The post-tap completion wait runs on the observer directly instead of
+    a ``VerifiedTransition``, so the scope narrows the observer rather
+    than a transition. Same fallback contract as Daily/Mailbox: any wiring
+    failure returns the main observer, preserving today's behavior exactly.
+    The initial ``observe()`` (precondition/no-op check) stays global.
+    """
+
+    from bot.perception import GUILD_ATTENDANCE_SCOPE
+
+    return scoped_observer_for(
+        dependencies,
+        main_observer,
+        scope=GUILD_ATTENDANCE_SCOPE,
+        active_event="guild_check_in.attendance_scope_active",
+        unavailable_event="guild_check_in.attendance_scope_unavailable",
+    )
+
+
 def _build_guild_check_in(dependencies: FlowDependencies) -> PerCharacterFlow:
     return GuildCheckInFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
+        completion_observer=_guild_attendance_observer_for(
+            dependencies, dependencies.observer
+        ),
         cancel_requested=dependencies.cancel_requested,
     )
 
