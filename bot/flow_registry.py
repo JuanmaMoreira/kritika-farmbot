@@ -288,11 +288,50 @@ def _build_send_stamina(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _mailbox_claim_observer_for(dependencies: FlowDependencies, main_observer):
+    """Experimental scoped observer for the Mailbox ``ClaimAll`` waits.
+
+    The claim-processing phase (onset + completion/fallback, Caso A) waits
+    on the observer directly instead of a ``VerifiedTransition``, so the
+    scope narrows the observer rather than a transition. Same fallback
+    contract as Daily: any wiring failure returns the main observer,
+    preserving today's behavior exactly.
+    """
+
+    from bot.event_log import record_best_effort
+    from bot.perception import mailbox_claim_perception
+
+    observer = dependencies.observer
+    scoped = getattr(observer, "scoped", None)
+    perception = getattr(observer, "perception", None)
+    if not callable(scoped) or perception is None:
+        return main_observer
+    try:
+        scoped_observer = scoped(mailbox_claim_perception(perception))
+        detector_count = len(scoped_observer.perception.detectors)
+    except (AttributeError, TypeError, ValueError) as error:
+        record_best_effort(
+            dependencies.events,
+            "mailbox.claim_scope_unavailable",
+            error=f"{type(error).__name__}: {error}",
+        )
+        return main_observer
+    record_best_effort(
+        dependencies.events,
+        "mailbox.claim_scope_active",
+        detector_count=detector_count,
+    )
+    return scoped_observer
+
+
 def _build_mailbox(dependencies: FlowDependencies) -> PerCharacterFlow:
     return MailboxFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
+        claim_observer=_mailbox_claim_observer_for(
+            dependencies, dependencies.observer
+        ),
         cancel_requested=dependencies.cancel_requested,
     )
 

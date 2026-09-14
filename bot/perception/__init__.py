@@ -234,6 +234,26 @@ BLACK_MARKET_PURCHASE_SCOPE_SPEC_NAMES = frozenset(
 )
 
 
+# Experimental minimal subset for the Mailbox ``ClaimAll`` claim-processing
+# phase only (onset + completion/fallback, Caso A: they share one coherent
+# detector set and one abort predicate).
+# These are exactly the observations the claim waits consume plus the
+# observation the post-wait snapshot must still carry: the Mailbox base
+# landmark, the Character Mail mode tab, the row-claim button (whose absence
+# defines the settle condition and whose presence defines the no-effect
+# branch), the row-delete button (the same final snapshot decides whether
+# Delete Read runs next; omitting it would silently skip that step, same
+# precedent as the Daily progress-reward indicator) and the claim-processing
+# activity indicator.
+MAILBOX_CLAIM_SCOPE_SPEC_NAMES = frozenset(
+    {
+        MAILBOX_TITLE_SPEC.name,
+        MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC.name,
+        MAILBOX_ROW_CLAIM_SPEC.name,
+        MAILBOX_ROW_DELETE_SPEC.name,
+    }
+)
+
 # Experimental minimal subset for the Daily Quests ``ClaimAll`` wait only.
 # These are exactly the observations its expected/abort predicates consume
 # plus the observation its post-wait snapshot must still carry: the Quests
@@ -375,6 +395,50 @@ def daily_claim_perception(
     return PerceptionEngine(detectors=selected)
 
 
+def mailbox_claim_perception(
+    source: PerceptionEngine,
+) -> PerceptionEngine:
+    """Select the detectors needed for the Mailbox ``ClaimAll`` waits.
+
+    Covers onset + completion/fallback as one coherent claim-processing
+    phase (Caso A): all three waits share the same predicates over the
+    same observations and the same abort predicate, so one subset serves
+    them all. Same reuse and fail-fast guarantees as
+    :func:`daily_claim_perception`, scoped to the Mailbox claim
+    predicates plus the read-mail observation the post-wait snapshot
+    must still carry for the Delete Read decision.
+    """
+
+    if not isinstance(source, PerceptionEngine):
+        raise ValueError("source must be a PerceptionEngine")
+    selected = tuple(
+        detector
+        for detector in source.detectors
+        if getattr(getattr(detector, "spec", None), "name", None)
+        in MAILBOX_CLAIM_SCOPE_SPEC_NAMES
+        or isinstance(detector, MailboxClaimProcessingDetector)
+    )
+    present = {
+        detector.spec.name
+        for detector in selected
+        if isinstance(detector, LocalCvDetector)
+    }
+    missing = set(MAILBOX_CLAIM_SCOPE_SPEC_NAMES) - present
+    if missing:
+        raise ValueError(
+            "mailbox claim scope is missing detectors: "
+            + ", ".join(sorted(missing))
+        )
+    if not any(
+        isinstance(item, MailboxClaimProcessingDetector)
+        for item in selected
+    ):
+        raise ValueError(
+            "mailbox claim scope is missing the claim processing detector"
+        )
+    return PerceptionEngine(detectors=selected)
+
+
 __all__ = (
     "BLACK_MARKET_GOLD_ASSET",
     "BLACK_MARKET_GOLD_CALIBRATION",
@@ -512,6 +576,7 @@ __all__ = (
     "LinearGapCalibration",
     "LOBBY_TRADING_CENTER_LABEL_SPEC",
     "MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC",
+    "MAILBOX_CLAIM_SCOPE_SPEC_NAMES",
     "MAILBOX_CLAIM_PROCESSING_CALIBRATION",
     "MAILBOX_CLAIM_PROCESSING_CONFIDENCE_THRESHOLD",
     "MAILBOX_CLAIM_PROCESSING_HSV_LOWER",
@@ -531,4 +596,5 @@ __all__ = (
     "black_market_slot_perception",
     "build_default_perception",
     "daily_claim_perception",
+    "mailbox_claim_perception",
 )

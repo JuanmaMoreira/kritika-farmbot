@@ -90,6 +90,7 @@ class MailboxFlow:
         actions: ActionExecutor,
         events: EventSink,
         *,
+        claim_observer: RuntimeObserver | None = None,
         navigation_timeout: float = 6.0,
         activity_onset_timeout: float = 2.0,
         processing_timeout: float = 30.0,
@@ -110,7 +111,16 @@ class MailboxFlow:
             raise ValueError("events must provide record()")
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
+        if claim_observer is None:
+            claim_observer = observer
+        if not callable(getattr(claim_observer, "observe", None)) or not callable(
+            getattr(claim_observer, "wait_until", None)
+        ):
+            raise ValueError(
+                "claim_observer must provide observe() and wait_until()"
+            )
         self.observer: _Observer = observer
+        self.claim_observer: _Observer = claim_observer
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -177,7 +187,7 @@ class MailboxFlow:
                 self.actions.execute(ClaimAllCharacterMail(), mailbox.geometry)
                 self._record("mailbox.claim_all_executed")
                 try:
-                    active = self.observer.wait_until(
+                    active = self.claim_observer.wait_until(
                         _has_claim_processing_activity,
                         after_sequence=mailbox.sequence,
                         timeout=self.activity_onset_timeout,
@@ -186,7 +196,7 @@ class MailboxFlow:
                     )
                 except RuntimeWaitTimeout as onset_timeout:
                     anchor = onset_timeout.last_snapshot or mailbox
-                    mailbox = self.observer.wait_until(
+                    mailbox = self.claim_observer.wait_until(
                         _is_character_mail_without_activity,
                         after_sequence=anchor.sequence,
                         timeout=self.processing_timeout,
@@ -210,7 +220,7 @@ class MailboxFlow:
                     self._append_event(
                         events, MAILBOX_CLAIM_PROCESSING_OBSERVED
                     )
-                    mailbox = self.observer.wait_until(
+                    mailbox = self.claim_observer.wait_until(
                         _is_character_mail_without_activity,
                         after_sequence=active.sequence,
                         timeout=self.processing_timeout,
