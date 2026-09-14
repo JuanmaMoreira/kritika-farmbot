@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Protocol, runtime_checkable
+from typing import Any, Callable, Protocol, runtime_checkable
 
 from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY, SCREEN_PETS_MANAGE
 from bot.component_contracts import (
@@ -28,6 +28,7 @@ class EnsureResult:
     context_before: str | None
     context_after: str | None
     error: str | None = None
+    snapshot: Any = None
 
     @property
     def succeeded(self) -> bool:
@@ -49,11 +50,19 @@ class MinimalPreconditionEnsurer:
     The navigation callbacks are interaction boundaries. A production
     adapter must implement observed, verified transitions; the runner never
     receives actions, coordinates, or ADB.
+
+    ``current_context`` may return a plain context name (legacy: no
+    reusable evidence) or a ``(context, snapshot)`` pair produced by a
+    single observation. On success the returned snapshot is attached to
+    :class:`EnsureResult`: for ``ALREADY_SATISFIED`` the entry observation
+    itself, after navigation the final re-probe that verified the
+    destination. It is the only evidence the runner may offer back as a
+    flow's initial snapshot, and only while no input occurred since.
     """
 
     def __init__(
         self,
-        current_context: Callable[[], str | None],
+        current_context: Callable[[], str | None | tuple[str | None, Any]],
         *,
         navigate_to_lobby: Callable[[], bool] | None = None,
         navigate_to_pets_manage: Callable[[], bool] | None = None,
@@ -87,13 +96,14 @@ class MinimalPreconditionEnsurer:
     def ensure(self, requirement: ComponentRequirement) -> EnsureResult:
         if not isinstance(requirement, ComponentRequirement):
             raise ValueError("requirement must be ComponentRequirement")
-        before = self._current_context()
+        before, before_snapshot = self._current_entry()
         if self._satisfies(before, requirement):
             return EnsureResult(
                 EnsureOutcome.ALREADY_SATISFIED,
                 requirement,
                 before,
                 before,
+                snapshot=before_snapshot,
             )
 
         if requirement.kind is RequirementKind.EXACT_STATE:
@@ -157,13 +167,30 @@ class MinimalPreconditionEnsurer:
         return any(self._satisfies(context, requirement) for requirement in values)
 
     def _current_context(self) -> str | None:
+        context, _ = self._current_entry()
+        return context
+
+    def _current_entry(self) -> tuple[str | None, Any]:
+        """Read one entry observation as a context/snapshot pair.
+
+        A single adapter invocation backs both values, so a returned
+        snapshot is always the evidence its context was derived from.
+        Plain string returns keep legacy adapters working with no
+        reusable evidence.
+        """
+
         try:
             value = self.current_context()
-            return value if isinstance(value, str) and value else None
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
-            return None
+            return None, None
+        if isinstance(value, tuple):
+            context, snapshot = value
+            if context is not None and not isinstance(context, str):
+                return None, None
+            return (context if isinstance(context, str) and context else None), snapshot
+        return (value if isinstance(value, str) and value else None), None
 
     def _satisfies(
         self,
@@ -202,13 +229,14 @@ class MinimalPreconditionEnsurer:
                 f"{navigation}_navigation_failed: "
                 f"{type(error).__name__}: {error}",
             )
-        after = self._current_context()
+        after, after_snapshot = self._current_entry()
         if navigated and self._satisfies(after, requirement):
             return EnsureResult(
                 EnsureOutcome.NORMALIZED,
                 requirement,
                 before,
                 after,
+                snapshot=after_snapshot,
             )
         return self._failed(
             requirement,

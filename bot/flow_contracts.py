@@ -101,6 +101,35 @@ class PerCharacterFlow(Protocol):
     def run(self) -> FlowResult: ...
 
 
+@runtime_checkable
+class InitialSnapshotFlow(Protocol):
+    """Opt-in seam for reusing a freshly verified precondition snapshot.
+
+    A runner may offer the exact ``RuntimeSnapshot`` on which the flow's
+    precondition was just verified (no physical input has occurred since
+    its capture). Flows whose initial observation only needs that evidence
+    implement ``run_with_initial``; every other flow keeps ``run()`` and
+    the runner falls back to it. The snapshot travels as an explicit
+    argument: no cache, no shared state, no automatic staleness.
+    """
+
+    def run_with_initial(self, snapshot: object) -> FlowResult: ...
+
+
+def run_flow_with_optional_seed(flow: PerCharacterFlow, snapshot: object | None) -> FlowResult:
+    """Run a flow on reused precondition evidence when the flow opts in.
+
+    Falls back to a normal ``run()`` when there is no snapshot or the flow
+    does not implement :class:`InitialSnapshotFlow`. Never inspects or
+    coerces the snapshot: validation stays inside the flow, which must
+    observe fresh when the seed is unusable.
+    """
+
+    if snapshot is not None and isinstance(flow, InitialSnapshotFlow):
+        return flow.run_with_initial(snapshot)
+    return flow.run()
+
+
 def publish_flow_events(sink, flow_name: str, events: tuple[FlowEvent, ...], **context):
     """Runner-owned publication of business outcomes; results retain their data."""
     for event in events:
@@ -120,5 +149,7 @@ __all__ = (
     "FlowResult",
     "FlowScope",
     "FlowStatus",
+    "InitialSnapshotFlow",
     "PerCharacterFlow",
+    "run_flow_with_optional_seed",
 )

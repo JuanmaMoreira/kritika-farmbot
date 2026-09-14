@@ -190,7 +190,7 @@ def test_carry_none_final_snapshot_feeds_no_semantic_decision():
     # The post-completion snapshot only supplies geometry for CloseFriends;
     # the daily branch is already encoded in the flow flags. Documented as
     # carry: none (same precedent as Guild).
-    source = inspect.getsource(SendStaminaFlow.run)
+    source = inspect.getsource(SendStaminaFlow._run)
     assert "completion_observer.wait_until" in source
     # Close still waits on the main observer, not the scoped one.
     assert source.count("completion_observer.wait_until") == 2

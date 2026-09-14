@@ -119,12 +119,29 @@ class GuildCheckInFlow:
         )
 
     def run(self) -> GuildCheckInFlowResult:
+        return self._run(None)
+
+    def run_with_initial(self, snapshot: RuntimeSnapshot | None) -> GuildCheckInFlowResult:
+        """Run on a freshly verified precondition snapshot when usable.
+
+        The seed must already show the Guild attendance state this flow
+        decides on; anything else falls back to a normal fresh
+        observation, preserving the baseline behavior exactly.
+        """
+
+        return self._run(snapshot)
+
+    def _run(self, seed: RuntimeSnapshot | None) -> GuildCheckInFlowResult:
         events: list[FlowEvent] = []
         tap_executed = False
         try:
             if self._cancelled():
                 return self._cancel(events, tap_executed=False)
-            initial = self.observer.observe()
+            initial = (
+                seed
+                if _is_usable_initial_seed(seed)
+                else self.observer.observe()
+            )
             if _is_attendance_completed(initial):
                 self._append_event(events, GUILD_CHECK_IN_NOOP)
                 return GuildCheckInFlowResult(
@@ -224,6 +241,19 @@ class GuildCheckInFlow:
 
 def _is_attendance_active(snapshot: RuntimeSnapshot) -> bool:
     return _is_guild_with_attendance(snapshot, STATUS_GUILD_ATTENDANCE_ACTIVE)
+
+
+def _is_usable_initial_seed(snapshot: RuntimeSnapshot | None) -> bool:
+    """Whether a precondition snapshot can replace the initial observe.
+
+    Only a snapshot that already decides the flow (completed noop or
+    active tap) carries the needed evidence; anything else must fall back
+    to a fresh observation with unchanged semantics.
+    """
+
+    return isinstance(snapshot, RuntimeSnapshot) and (
+        _is_attendance_completed(snapshot) or _is_attendance_active(snapshot)
+    )
 
 
 def _is_attendance_completed(snapshot: RuntimeSnapshot) -> bool:

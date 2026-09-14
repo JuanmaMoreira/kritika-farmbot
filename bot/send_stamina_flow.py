@@ -126,6 +126,19 @@ class SendStaminaFlow:
         )
 
     def run(self) -> SendStaminaFlowResult:
+        return self._run(None)
+
+    def run_with_initial(self, snapshot: RuntimeSnapshot | None) -> SendStaminaFlowResult:
+        """Run on a freshly verified precondition snapshot when usable.
+
+        The seed must already show the clean Lobby this flow starts from;
+        anything else falls back to a normal fresh observation, preserving
+        the baseline behavior exactly.
+        """
+
+        return self._run(snapshot)
+
+    def _run(self, seed: RuntimeSnapshot | None) -> SendStaminaFlowResult:
         events: list[FlowEvent] = []
         all_executed = False
         all_no_effect = False
@@ -134,7 +147,7 @@ class SendStaminaFlow:
         try:
             if self._cancelled():
                 return self._cancel(events, all_executed=False)
-            lobby = self._initial_lobby()
+            lobby = self._initial_lobby(seed)
             friends = self._act_and_wait(
                 OpenFriends(),
                 lobby,
@@ -222,7 +235,9 @@ class SendStaminaFlow:
                 all_executed=all_executed,
             )
 
-    def _initial_lobby(self) -> RuntimeSnapshot:
+    def _initial_lobby(self, seed: RuntimeSnapshot | None = None) -> RuntimeSnapshot:
+        if isinstance(seed, RuntimeSnapshot) and _is_clean_lobby(seed):
+            return seed
         initial = self.observer.observe()
         if _is_clean_lobby(initial):
             return initial

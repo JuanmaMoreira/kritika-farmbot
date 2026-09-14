@@ -15,7 +15,7 @@ from bot.event_context import event_context, event_scope, new_correlation_id, op
 from bot.failure_cause import FailureCause
 from bot.eligibility import EligibilityCheck, EligibilityResult, EligibilityStatus
 from bot.failure_evidence import publish_failure
-from bot.flow_contracts import publish_flow_events
+from bot.flow_contracts import publish_flow_events, run_flow_with_optional_seed
 from bot.flow_contracts import (
     FlowEvent,
     FlowContract,
@@ -328,7 +328,19 @@ class SessionRunner:
                                 "flow.started", component=flow.name, flow=flow.name,
                                 character_index=index, character_name=context.name,
                             )
-                        result = early_result if early_result is not None else self._run_flow(flow)
+                        # A verified precondition snapshot may seed the flow's
+                        # initial observation only while this runner sent no
+                        # input since its capture: no eligibility decision and
+                        # no zone entry on this position. The probes in between
+                        # (eligibility return check, entry restore) observe but
+                        # never act, so they cannot stale the evidence.
+                        # Ensurers without snapshot evidence behave as before.
+                        seed = (
+                            getattr(ensured, "snapshot", None)
+                            if check is None and zone is None
+                            else None
+                        )
+                        result = early_result if early_result is not None else self._run_flow(flow, seed)
                         postconditions = flow.contract.successful_postconditions
                         if result.status in {FlowStatus.COMPLETED, FlowStatus.SKIPPED_NOT_ELIGIBLE}:
                             if not self._current_satisfies_any(postconditions):
@@ -581,9 +593,9 @@ class SessionRunner:
         # Optional identity used for observability must never make gameplay fatal.
         return CharacterContext()
 
-    def _run_flow(self, flow: PerCharacterFlow) -> FlowResult:
+    def _run_flow(self, flow: PerCharacterFlow, initial_snapshot: object | None = None) -> FlowResult:
         try:
-            result = flow.run()
+            result = run_flow_with_optional_seed(flow, initial_snapshot)
             if not isinstance(result, FlowResult):
                 return FlowResult(
                     FlowStatus.FAILED,

@@ -39,7 +39,7 @@ from bot.character_identity import LobbyNameRecognizer
 from bot.ocr import RapidOcrEngine
 from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtime_event_stream
 from bot.event_context import event_scope, operation_scope
-from bot.flow_contracts import publish_flow_events
+from bot.flow_contracts import publish_flow_events, run_flow_with_optional_seed
 from bot.failure_cause import FailureCause
 from bot.failure_evidence import FailureEvidence, publish_failure
 from bot.equipment_combine_relief import EquipmentCombineRelief
@@ -162,7 +162,7 @@ class ProductiveRuntime:
 
     def build_preconditions(self) -> MinimalPreconditionEnsurer:
         return MinimalPreconditionEnsurer(
-            lambda: self._current_clean_context(),
+            lambda: self._clean_context_entry(),
             navigate_to_lobby=self._navigate_to_lobby,
             navigate_to_pets_manage=self._navigate_to_pets_manage,
             navigate_lobby_to_guild=self._navigate_lobby_to_guild,
@@ -250,7 +250,14 @@ class ProductiveRuntime:
                 )
             else:
                 try:
-                    result = flow.run()
+                    # Nothing runs between ensure and flow start on this
+                    # path, so the verified snapshot is still the latest
+                    # validated evidence. Opted-in flows consume it as
+                    # their initial snapshot; the rest run normally.
+                    # Ensurers without snapshot evidence (legacy doubles)
+                    # behave exactly as before via getattr.
+                    seed = getattr(ensured, "snapshot", None)
+                    result = run_flow_with_optional_seed(flow, seed)
                 except RuntimeWaitCancelled:
                     result = FlowResult(FlowStatus.CANCELLED)
                 if (
@@ -365,13 +372,25 @@ class ProductiveRuntime:
         )
 
     def _current_clean_context(self) -> str | None:
+        context, _ = self._clean_context_entry()
+        return context
+
+    def _clean_context_entry(self) -> tuple[str | None, object | None]:
+        """Observe one clean-context entry as a context/snapshot pair.
+
+        The snapshot is the exact observation the context was derived
+        from: the immediate clean frame, or the settled frame of the
+        bounded wait. Recovery and timeout paths carry no reusable
+        evidence and report ``None``.
+        """
+
         self._identity_snapshot = None
         try:
             initial = self.observer.observe()
             if _is_clean_known_context(initial):
                 if self._identity_active:
                     self._identity_snapshot = initial
-                return initial.state.base_context
+                return initial.state.base_context, initial
             settled = self.observer.wait_until(
                 _is_clean_known_context,
                 after_sequence=initial.sequence,
@@ -381,11 +400,11 @@ class ProductiveRuntime:
             )
             if self._identity_active:
                 self._identity_snapshot = settled
-            return settled.state.base_context
+            return settled.state.base_context, settled
         except RuntimeWaitTimeout as error:
             recovered = self._recover_clean_context(error.last_snapshot)
             if recovered is not None:
-                return recovered
+                return recovered, None
             latest = error.last_snapshot
             self.events.record(
                 "runtime.context_probe_timeout",
@@ -402,9 +421,9 @@ class ProductiveRuntime:
                     sorted(latest.state.overlays) if latest is not None else []
                 ),
             )
-            return None
+            return None, None
         except RuntimeWaitCancelled:
-            return None
+            return None, None
 
     def _recover_clean_context(self, last_snapshot) -> str | None:
         """Reuse the shared portal recovery for context normalization.
