@@ -318,11 +318,37 @@ def _build_summon_pet_daily(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _send_stamina_completion_observer_for(dependencies: FlowDependencies, main_observer):
+    """Scoped observer for the Send Stamina completion waits.
+
+    Both post-tap waits (completion + daily-active fallback, Caso A) run on
+    the observer directly instead of a ``VerifiedTransition``, so the scope
+    narrows the observer rather than a transition. Same fallback contract
+    as Daily/Mailbox/Guild: any wiring failure returns the main observer,
+    preserving today's behavior exactly. The initial ``observe()``
+    (precondition/no-op check), navigation, close and Lobby latency stay
+    global on purpose.
+    """
+
+    from bot.perception import SEND_STAMINA_COMPLETION_SCOPE
+
+    return scoped_observer_for(
+        dependencies,
+        main_observer,
+        scope=SEND_STAMINA_COMPLETION_SCOPE,
+        active_event="send_stamina.completion_scope_active",
+        unavailable_event="send_stamina.completion_scope_unavailable",
+    )
+
+
 def _build_send_stamina(dependencies: FlowDependencies) -> PerCharacterFlow:
     return SendStaminaFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
+        completion_observer=_send_stamina_completion_observer_for(
+            dependencies, dependencies.observer
+        ),
         cancel_requested=dependencies.cancel_requested,
     )
 

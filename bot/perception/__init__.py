@@ -346,6 +346,36 @@ GUILD_ATTENDANCE_SCOPE = ScopeSpec(
 )
 
 
+# Minimal subset for the Send Stamina post-tap completion waits only
+# (completion + daily-active fallback, Caso A: both waits share one coherent
+# detector set and one abort predicate).
+# These are exactly the observations their expected/abort predicates consume:
+# the Friends base landmarks (title + all button) and the Daily badge
+# indicator whose absence defines completion and whose presence defines the
+# no-effect branch. No specialized detector exists for this flow. The final
+# snapshot feeds no further semantic decision (CloseFriends only needs its
+# geometry and the branch flag is already known), so no extra carry is needed
+# (carry: none, same precedent as Guild).
+SEND_STAMINA_COMPLETION_SCOPE_SPEC_NAMES = frozenset(
+    {
+        FRIENDS_TITLE_SPEC.name,
+        FRIENDS_ALL_BUTTON_SPEC.name,
+        FRIENDS_SEND_STAMINA_DAILY_SPEC.name,
+    }
+)
+
+
+# Generic-scope declaration for the Send Stamina completion waits,
+# expressed as an explicit ScopeSpec (no semantic auto-derivation and no
+# legacy builder: this is the second scope created directly on the generic
+# infrastructure).
+SEND_STAMINA_COMPLETION_SCOPE = ScopeSpec(
+    name="completion",
+    spec_names=SEND_STAMINA_COMPLETION_SCOPE_SPEC_NAMES,
+    specialized_types=(),
+)
+
+
 def _select_scope_detectors(
     source: PerceptionEngine,
     *,
@@ -643,6 +673,8 @@ __all__ = (
     "SOCKET_OPAL_SLOT_REGIONS",
     "SOCKET_SELL_BULK_BUTTON_SPEC",
     "SOCKET_TAB_SPEC",
+    "SEND_STAMINA_COMPLETION_SCOPE",
+    "SEND_STAMINA_COMPLETION_SCOPE_SPEC_NAMES",
     "SocketEnhanceAnimationDetector",
     "SocketEnhanceAnimationReading",
     "SocketIncompatibleOpalDetector",
