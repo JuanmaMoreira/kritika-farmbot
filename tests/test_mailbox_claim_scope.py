@@ -13,6 +13,8 @@ variable is which perception runs per frame.
 
 from pathlib import Path
 
+import inspect
+
 import cv2
 import numpy as np
 import pytest
@@ -37,9 +39,11 @@ from bot.mailbox_flow import (
 )
 from bot.observations import ObservationBatch
 from bot.perception import (
+    MAILBOX_CLAIM_SCOPE,
     MAILBOX_CLAIM_SCOPE_SPEC_NAMES,
     build_default_perception,
     mailbox_claim_perception,
+    select_detectors,
 )
 from bot.perception.engine import PerceptionEngine
 from bot.perception.local_cv import LocalCvDetector
@@ -758,3 +762,54 @@ def test_registry_builds_mailbox_with_claim_observer():
     assert isinstance(flow, MailboxFlow)
     assert flow.claim_observer is not observer
     assert len(flow.claim_observer.perception.detectors) == 5
+
+
+def test_claim_rehost_matches_legacy_builder_exactly():
+    source = build_default_perception(ROOT)
+
+    generic = select_detectors(source, MAILBOX_CLAIM_SCOPE)
+    legacy = mailbox_claim_perception(source)
+
+    assert len(generic.detectors) == 5
+    assert tuple(generic.detectors) == tuple(legacy.detectors)
+
+
+def test_generic_scope_matches_legacy_on_mailbox_frames():
+    source = build_default_perception(ROOT)
+    generic = select_detectors(source, MAILBOX_CLAIM_SCOPE)
+    legacy = mailbox_claim_perception(source)
+    resolver = build_default_resolver()
+
+    for name, path in CLAIM_FRAMES.items():
+        generic_snapshot = _wrap(path, generic, resolver, sequence=1)
+        legacy_snapshot = _wrap(path, legacy, resolver, sequence=1)
+        assert (
+            generic_snapshot.observations
+            == legacy_snapshot.observations
+        ), name
+        assert generic_snapshot.state == legacy_snapshot.state, name
+        assert _has_claim_processing_activity(
+            generic_snapshot
+        ) == _has_claim_processing_activity(legacy_snapshot), name
+        assert _is_character_mail_without_activity(
+            generic_snapshot
+        ) == _is_character_mail_without_activity(legacy_snapshot), name
+        assert _has_incompatible_processing_state(
+            generic_snapshot
+        ) == _has_incompatible_processing_state(legacy_snapshot), name
+
+
+def test_generic_scope_preserves_row_delete_carry():
+    source = build_default_perception(ROOT)
+    generic = select_detectors(source, MAILBOX_CLAIM_SCOPE)
+    resolver = build_default_resolver()
+
+    snapshot = _wrap(CLAIM_FRAMES["read/01"], generic, resolver, sequence=1)
+    assert _is_character_mail_without_activity(snapshot)
+    assert STATUS_MAILBOX_READ_MAIL_PRESENT in snapshot.state.overlays
+
+
+def test_claim_wiring_uses_generic_infra():
+    source_text = inspect.getsource(_mailbox_claim_observer_for)
+    assert "scoped_observer_for(" in source_text
+    assert "mailbox_claim_perception" not in source_text

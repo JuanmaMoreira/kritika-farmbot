@@ -281,6 +281,18 @@ MAILBOX_CLAIM_SCOPE_SPEC_NAMES = frozenset(
     }
 )
 
+
+# Generic-scope declaration for the Mailbox ``ClaimAll`` claim-processing
+# phase. Same subset as the legacy ``mailbox_claim_perception`` builder,
+# expressed as an explicit ScopeSpec (no semantic auto-derivation). The
+# row-delete observation stays included as snapshot carry for the Delete
+# Read decision that follows claim completion.
+MAILBOX_CLAIM_SCOPE = ScopeSpec(
+    name="mailbox_claim",
+    spec_names=MAILBOX_CLAIM_SCOPE_SPEC_NAMES,
+    specialized_types=(MailboxClaimProcessingDetector,),
+)
+
 # Experimental minimal subset for the Daily Quests ``ClaimAll`` wait only.
 # These are exactly the observations its expected/abort predicates consume
 # plus the observation its post-wait snapshot must still carry: the Quests
@@ -618,6 +630,7 @@ __all__ = (
     "LinearGapCalibration",
     "LOBBY_TRADING_CENTER_LABEL_SPEC",
     "MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC",
+    "MAILBOX_CLAIM_SCOPE",
     "MAILBOX_CLAIM_SCOPE_SPEC_NAMES",
     "MAILBOX_CLAIM_PROCESSING_CALIBRATION",
     "MAILBOX_CLAIM_PROCESSING_CONFIDENCE_THRESHOLD",
