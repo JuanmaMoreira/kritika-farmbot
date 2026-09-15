@@ -10,6 +10,8 @@ from typing import Callable, Protocol
 
 from bot.action_executor import ActionExecutor
 from bot.catalog import (
+    ACTIVITY_DAILY_QUESTS_LOADING,
+    INDICATOR_DAILY_QUESTS_ROWS_POPULATED,
     MODE_DAILY_QUESTS,
     SCREEN_LOBBY,
     SCREEN_QUESTS,
@@ -98,6 +100,7 @@ class DailyQuestsFlow:
         events: EventSink,
         *,
         claim_observer: RuntimeObserver | None = None,
+        open_observer: RuntimeObserver | None = None,
         navigation_timeout: float = 6.0,
         claim_timeout: float = 8.0,
         navigation_stable_for: float = 0.25,
@@ -118,6 +121,14 @@ class DailyQuestsFlow:
             raise ValueError(
                 "claim_observer must provide observe() and wait_until()"
             )
+        if open_observer is None:
+            open_observer = observer
+        if not callable(
+            getattr(open_observer, "observe", None)
+        ) or not callable(getattr(open_observer, "wait_until", None)):
+            raise ValueError(
+                "open_observer must provide observe() and wait_until()"
+            )
         if not callable(getattr(actions, "execute", None)):
             raise ValueError("actions must provide execute()")
         if not callable(getattr(events, "record", None)):
@@ -128,6 +139,7 @@ class DailyQuestsFlow:
             raise ValueError("clock and sleeper must be callable")
         self.observer: _Observer = observer
         self.claim_observer: _Observer = claim_observer
+        self.open_observer: _Observer = open_observer
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -181,6 +193,41 @@ class DailyQuestsFlow:
                 STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
             }
         )
+
+    @staticmethod
+    def _is_content_ready(snapshot: RuntimeSnapshot) -> bool:
+        """Quests chrome with a populated list and no loading ring.
+
+        Absence of ``STATUS_DAILY_QUESTS_CLAIMABLE`` is only a legitimate
+        noop once the list itself is proven populated; chrome plus tab
+        alone complete while the list is still loading (Batch B1 false
+        noop). Both readiness observations are read from the same snapshot
+        the flow afterwards consumes for the claim/noop decision.
+        """
+
+        return (
+            DailyQuestsFlow._is_quests(snapshot)
+            and snapshot.observations.best(
+                INDICATOR_DAILY_QUESTS_ROWS_POPULATED
+            )
+            is not None
+            and snapshot.observations.best(ACTIVITY_DAILY_QUESTS_LOADING)
+            is None
+        )
+
+    @staticmethod
+    def _is_open_done(snapshot: RuntimeSnapshot) -> bool:
+        """Chrome satisfies the open wait off the Daily tab; on the Daily
+        tab the list must additionally be populated without the loading
+        ring. The readiness detectors are Daily-gated, so an off-Daily
+        panel can never report rows and must proceed to tab selection.
+        """
+
+        if not DailyQuestsFlow._is_quests(snapshot):
+            return False
+        if not DailyQuestsFlow._is_daily_quests(snapshot):
+            return True
+        return DailyQuestsFlow._is_content_ready(snapshot)
 
     @staticmethod
     def _is_daily_quests_settled(snapshot: RuntimeSnapshot) -> bool:
@@ -292,20 +339,21 @@ class DailyQuestsFlow:
             if self._cancelled():
                 return self._cancel(events)
             lobby = self._initial_lobby(seed)
-            # OpenQuests stays on the main (global) observer on purpose: the
-            # navigation expected (panel title + tab) is satisfied before the
-            # mission list populates, and the claim/noop decision reads the
-            # open snapshot directly. The global perception latency (~2 s)
-            # implicitly lets content load; the faster scoped wait exposed a
-            # false noop on live content (Batch B1 HIL). Content readiness
-            # belongs to a dedicated Daily task, not to navigation scoping.
+            # OpenQuests waits for content readiness, not just chrome: the
+            # navigation expected (panel title + tab) is satisfied before
+            # the mission list populates, and the claim/noop decision reads
+            # the open snapshot directly. Gating on rows-populated without
+            # loading closes the Batch B1 false noop while keeping the wait
+            # scoped. The final snapshot still carries the claimable and
+            # progress-reward observations the flow reads next.
             quests = self._act_and_wait(
                 OpenQuests(),
                 lobby,
-                expected=self._is_quests,
+                expected=self._is_open_done,
                 abort_if=self._has_incompatible_daily_navigation,
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
+                observer=self.open_observer,
             )
             if not self._is_daily_quests(quests):
                 daily = self._wait_for_daily_tab(quests)
@@ -427,12 +475,13 @@ class DailyQuestsFlow:
         )
 
     def _wait_for_daily_tab(self, initial_quests: RuntimeSnapshot) -> RuntimeSnapshot:
-        """Wait for Daily Quests tab to become active with bounded retries.
+        """Wait for Daily Quests tab to become content-ready with bounded retries.
 
-        - If Daily is already active, return immediately.
+        - If Daily is already content-ready, return immediately.
         - From clean Quests state, tap SelectDailyQuests and wait ~1s.
-        - If Daily becomes active, succeed.
+        - If Daily becomes content-ready, succeed.
         - If still in clean Quests without Daily, retry tap (bounded by timeout).
+        - Daily-active-but-loading frames wait passively without tapping.
         - UNKNOWN/AMBIGUOUS: wait passively.
         - Contradictory RESOLVED context: abort.
         - Total timeout bounded by navigation_timeout.
@@ -465,7 +514,10 @@ class DailyQuestsFlow:
                 continue
             last_evaluated = current.sequence
 
-            if self._is_daily_quests(current):
+            # The post-tab snapshot feeds the claim/noop decision, so it
+            # must be content-ready too: selecting Daily can populate the
+            # list behind a loading ring exactly like a cold open.
+            if self._is_content_ready(current):
                 self._record("daily_quests.tab_activated")
                 return current
 

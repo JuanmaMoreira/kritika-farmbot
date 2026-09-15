@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "curation": {
+    "captured_at_utc": "2026-09-14",
+    "human_ground_truth": "confirmed_in_chat",
+    "scope": "Daily Quests content-readiness only; rows-populated versus loading ring. No flows or gameplay implementation",
+    "interpretation": {
+      "rows_loading": "Quests chrome plus Daily tab with populated rows and the cyan loading ring visible: pre-ready, never READY.",
+      "rows_clear": "Quests chrome plus Daily tab with an empty black list and no ring: refresh/clear, never READY.",
+      "rows_ready": "Quests chrome plus Daily tab with populated rows and no ring: READY. Claimability varies independently.",
+      "rows_warm": "Warm open lands directly on populated rows without any ring: READY without a cold lifecycle."
+    }
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-loading/phase-a.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["activity.daily_quests_loading", "indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-loading/phase-b.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["activity.daily_quests_loading", "indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-loading/phase-c.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["activity.daily_quests_loading", "indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-loading/phase-d.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["activity.daily_quests_loading", "indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-clear/clear-0016.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-ready/first-ready-0017.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-ready/mid-ready-0060.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-ready/settled-ready-0109.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-warm/warm-first-0001.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-warm/warm-mid-0032.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    },
+    {
+      "path": "screencaps/semantic/daily-quests-readiness/rows-warm/warm-last-0064.png",
+      "base_context": "screen.quests",
+      "overlays": ["mode.daily_quests", "status.daily_quests_claimable"],
+      "observations": ["indicator.daily_quests_rows_populated"],
+      "review_status": "confirmed"
+    }
+  ]
+}

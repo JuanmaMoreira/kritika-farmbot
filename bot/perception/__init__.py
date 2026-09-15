@@ -26,13 +26,26 @@ from .black_market import (
 from .engine import PerceptionDetector, PerceptionEngine
 from .combine import CombineContextDetector
 from .daily_quests import (
+    DAILY_QUESTS_LOADING_CALIBRATION,
+    DAILY_QUESTS_LOADING_CONFIDENCE_THRESHOLD,
+    DAILY_QUESTS_LOADING_HSV_LOWER,
+    DAILY_QUESTS_LOADING_HSV_UPPER,
+    DAILY_QUESTS_LOADING_REGION,
     DAILY_QUESTS_PROGRESS_REWARD_CALIBRATION,
     DAILY_QUESTS_PROGRESS_REWARD_CONFIDENCE_THRESHOLD,
     DAILY_QUESTS_PROGRESS_REWARD_HSV_LOWER,
     DAILY_QUESTS_PROGRESS_REWARD_HSV_UPPER,
     DAILY_QUESTS_PROGRESS_REWARD_REGION,
+    DAILY_QUESTS_ROWS_BRIGHT_VALUE,
+    DAILY_QUESTS_ROWS_CALIBRATION,
+    DAILY_QUESTS_ROWS_CONFIDENCE_THRESHOLD,
+    DAILY_QUESTS_ROWS_REGION,
+    DailyQuestsLoadingDetector,
+    DailyQuestsLoadingReading,
     DailyQuestsProgressRewardDetector,
     DailyQuestsProgressRewardReading,
+    DailyQuestsRowsDetector,
+    DailyQuestsRowsReading,
 )
 from .guild import (
     GUILD_ATTENDANCE_ACTIVE_CALIBRATION,
@@ -194,6 +207,8 @@ def build_default_perception(
             SocketEnhanceAnimationDetector(),
             CombineContextDetector(asset_root=root),
             DailyQuestsProgressRewardDetector(asset_root=root),
+            DailyQuestsRowsDetector(asset_root=root),
+            DailyQuestsLoadingDetector(asset_root=root),
             MailboxClaimProcessingDetector(asset_root=root),
             GuildAttendanceDetector(asset_root=root),
             PetEpicAvailabilityDetector(asset_root=root),
@@ -318,6 +333,38 @@ DAILY_CLAIM_SCOPE = ScopeSpec(
     name="claim",
     spec_names=DAILY_CLAIM_SCOPE_SPEC_NAMES,
     specialized_types=(DailyQuestsProgressRewardDetector,),
+)
+
+
+# Minimal subset for the Daily Quests ``OpenQuests`` navigation wait only.
+# These are exactly the observations its readiness expected predicate
+# consumes plus the observations its post-wait snapshot must still carry:
+# the Quests base landmark, the Daily mode tab, the rows-populated
+# indicator (whose absence withholds readiness), the loading activity
+# (whose presence withholds readiness), the row-claim button (the same
+# final snapshot decides claim versus legitimate noop) and the
+# progress-reward indicator (the same snapshot decides whether the
+# independent progress reward needs a second wait). Same fail-fast
+# guarantees as the claim scope.
+DAILY_OPEN_SCOPE_SPEC_NAMES = frozenset(
+    {
+        DAILY_QUESTS_TITLE_SPEC.name,
+        DAILY_QUESTS_TAB_ACTIVE_SPEC.name,
+        DAILY_QUESTS_ROW_CLAIM_SPEC.name,
+    }
+)
+
+
+# Generic-scope declaration for the Daily Quests ``OpenQuests`` wait,
+# expressed as an explicit ScopeSpec (no semantic auto-derivation).
+DAILY_OPEN_SCOPE = ScopeSpec(
+    name="open",
+    spec_names=DAILY_OPEN_SCOPE_SPEC_NAMES,
+    specialized_types=(
+        DailyQuestsProgressRewardDetector,
+        DailyQuestsRowsDetector,
+        DailyQuestsLoadingDetector,
+    ),
 )
 
 
@@ -652,13 +699,28 @@ __all__ = (
     "CombineContextDetector",
     "DAILY_CLAIM_SCOPE",
     "DAILY_CLAIM_SCOPE_SPEC_NAMES",
+    "DAILY_OPEN_SCOPE",
+    "DAILY_OPEN_SCOPE_SPEC_NAMES",
+    "DAILY_QUESTS_LOADING_CALIBRATION",
+    "DAILY_QUESTS_LOADING_CONFIDENCE_THRESHOLD",
+    "DAILY_QUESTS_LOADING_HSV_LOWER",
+    "DAILY_QUESTS_LOADING_HSV_UPPER",
+    "DAILY_QUESTS_LOADING_REGION",
     "DAILY_QUESTS_PROGRESS_REWARD_CALIBRATION",
     "DAILY_QUESTS_PROGRESS_REWARD_CONFIDENCE_THRESHOLD",
     "DAILY_QUESTS_PROGRESS_REWARD_HSV_LOWER",
     "DAILY_QUESTS_PROGRESS_REWARD_HSV_UPPER",
     "DAILY_QUESTS_PROGRESS_REWARD_REGION",
+    "DAILY_QUESTS_ROWS_BRIGHT_VALUE",
+    "DAILY_QUESTS_ROWS_CALIBRATION",
+    "DAILY_QUESTS_ROWS_CONFIDENCE_THRESHOLD",
+    "DAILY_QUESTS_ROWS_REGION",
+    "DailyQuestsLoadingDetector",
+    "DailyQuestsLoadingReading",
     "DailyQuestsProgressRewardDetector",
     "DailyQuestsProgressRewardReading",
+    "DailyQuestsRowsDetector",
+    "DailyQuestsRowsReading",
     "DEFAULT_LOCAL_CV_SPECS",
     "EQUIPMENT_INVENTORY_FULL_PROMPT_SPEC",
     "FRIENDS_ALL_BUTTON_SPEC",

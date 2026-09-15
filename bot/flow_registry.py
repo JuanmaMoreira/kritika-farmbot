@@ -311,12 +311,36 @@ def _daily_claim_observer_for(dependencies: FlowDependencies, main_observer):
     )
 
 
+def _daily_open_observer_for(dependencies: FlowDependencies, main_observer):
+    """Scoped observer for the Daily Quests ``OpenQuests`` wait.
+
+    The readiness expected predicate (chrome plus rows-populated without
+    loading) and the claim/progress carry the post-wait snapshot must keep
+    all run on this scope. Same fallback contract as the claim scope: any
+    wiring failure returns the main observer, preserving today's behavior
+    exactly.
+    """
+
+    from bot.perception import DAILY_OPEN_SCOPE
+
+    return scoped_observer_for(
+        dependencies,
+        main_observer,
+        scope=DAILY_OPEN_SCOPE,
+        active_event="daily_quests.open_scope_active",
+        unavailable_event="daily_quests.open_scope_unavailable",
+    )
+
+
 def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
     return DailyQuestsFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
         claim_observer=_daily_claim_observer_for(
+            dependencies, dependencies.observer
+        ),
+        open_observer=_daily_open_observer_for(
             dependencies, dependencies.observer
         ),
         cancel_requested=dependencies.cancel_requested,

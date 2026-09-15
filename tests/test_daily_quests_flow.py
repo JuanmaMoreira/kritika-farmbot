@@ -21,7 +21,7 @@ from bot.daily_quests_flow import (
     DailyQuestsFlow,
 )
 from bot.flow_contracts import FlowStatus
-from bot.observations import ObservationBatch
+from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.runtime_observer import (
     RuntimeFacts,
     RuntimeSnapshot,
@@ -117,13 +117,22 @@ class Events:
         self.items.append((event, fields))
 
 
-def snapshot(sequence, timestamp, *, base, overlays=(), status=None):
+def rows_observation():
+    return Observation(
+        "indicator.daily_quests_rows_populated",
+        0.95,
+        ObservationSource.LOCAL_CV,
+    )
+
+
+def snapshot(sequence, timestamp, *, base, overlays=(), status=None,
+             observations=()):
     if status is None:
         status = ResolutionStatus.RESOLVED if base else ResolutionStatus.UNKNOWN
     image = np.zeros((120, 240, 3), dtype=np.uint8)
     return RuntimeSnapshot(
         FrameSnapshot(image, timestamp, sequence),
-        ObservationBatch(sequence, timestamp),
+        ObservationBatch(sequence, timestamp, tuple(observations)),
         ResolvedState(
             status,
             sequence,
@@ -165,7 +174,7 @@ def test_daily_retry_rejects_repeated_and_regressing_frame_sequences():
 
 def test_stale_daily_snapshot_cannot_authorize_claims_or_completion():
     current = snapshot(10, 10.0, base=SCREEN_QUESTS)
-    stale_daily = snapshot(9, 9.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    stale_daily = snapshot(9, 9.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     observer = ScriptedObserver(stale_daily, [])
     now = [0.0]
     flow = DailyQuestsFlow(
@@ -178,8 +187,8 @@ def test_stale_daily_snapshot_cannot_authorize_claims_or_completion():
 
 def test_noop_without_claims_never_touches_claim_all_or_karats():
     lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
-    daily_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    daily_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    daily_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     returned_a = snapshot(4, 3.0, base=SCREEN_LOBBY)
     returned_b = snapshot(5, 3.3, base=SCREEN_LOBBY)
 
@@ -198,8 +207,8 @@ def test_remembered_non_daily_tab_is_switched_to_daily_and_verified():
     lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
     quests_a = snapshot(2, 2.0, base=SCREEN_QUESTS)
     quests_b = snapshot(3, 2.3, base=SCREEN_QUESTS)
-    daily_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    daily_b = snapshot(5, 3.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    daily_b = snapshot(5, 3.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     returned_a = snapshot(6, 4.0, base=SCREEN_LOBBY)
     returned_b = snapshot(7, 4.3, base=SCREEN_LOBBY)
 
@@ -234,8 +243,8 @@ def test_daily_tab_selection_retries_once_when_still_non_daily_after_first_tap()
     quests_c = snapshot(4, 3.3, base=SCREEN_QUESTS)
     quests_d = snapshot(5, 3.6, base=SCREEN_QUESTS)
     # After second tap: Daily becomes active
-    daily_a = snapshot(6, 4.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    daily_b = snapshot(7, 4.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_a = snapshot(6, 4.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    daily_b = snapshot(7, 4.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     returned_a = snapshot(8, 5.0, base=SCREEN_LOBBY)
     returned_b = snapshot(9, 5.3, base=SCREEN_LOBBY)
 
@@ -293,8 +302,8 @@ def test_unknown_state_does_not_authorize_daily_tab_tap():
     quests_c = snapshot(5, 4.0, base=SCREEN_QUESTS)
     quests_d = snapshot(6, 4.3, base=SCREEN_QUESTS)
     # Then Daily becomes active
-    daily_a = snapshot(7, 5.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    daily_b = snapshot(8, 5.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_a = snapshot(7, 5.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    daily_b = snapshot(8, 5.3, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     returned_a = snapshot(9, 6.0, base=SCREEN_LOBBY)
     returned_b = snapshot(10, 6.3, base=SCREEN_LOBBY)
 
@@ -347,12 +356,12 @@ def test_incompatible_resolved_context_aborts_daily_tab_selection():
 def test_claim_disappearance_must_remain_stable_before_close():
     lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
     claimable = (MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE)
-    daily_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable)
-    daily_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable)
-    absent_once = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    claim_reappears = snapshot(5, 3.2, base=SCREEN_QUESTS, overlays=claimable)
-    settled_a = snapshot(6, 3.4, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    settled_b = snapshot(7, 4.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    daily_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),))
+    daily_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),))
+    absent_once = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    claim_reappears = snapshot(5, 3.2, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),))
+    settled_a = snapshot(6, 3.4, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    settled_b = snapshot(7, 4.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     lobby_a = snapshot(8, 5.0, base=SCREEN_LOBBY)
     lobby_b = snapshot(9, 5.3, base=SCREEN_LOBBY)
 
@@ -381,13 +390,13 @@ def test_claim_all_reevaluates_and_claims_newly_unlocked_progress_reward():
         MODE_DAILY_QUESTS,
         STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     )
-    opened_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable)
-    opened_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable)
-    progress_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=progress)
-    progress_b = snapshot(5, 3.6, base=SCREEN_QUESTS, overlays=progress)
-    still_progress = snapshot(6, 4.0, base=SCREEN_QUESTS, overlays=progress)
-    settled_a = snapshot(7, 4.2, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    settled_b = snapshot(8, 4.8, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    opened_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),))
+    opened_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),))
+    progress_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=progress, observations=(rows_observation(),))
+    progress_b = snapshot(5, 3.6, base=SCREEN_QUESTS, overlays=progress, observations=(rows_observation(),))
+    still_progress = snapshot(6, 4.0, base=SCREEN_QUESTS, overlays=progress, observations=(rows_observation(),))
+    settled_a = snapshot(7, 4.2, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    settled_b = snapshot(8, 4.8, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     lobby_a = snapshot(9, 5.0, base=SCREEN_LOBBY)
     lobby_b = snapshot(10, 5.3, base=SCREEN_LOBBY)
 
@@ -422,10 +431,10 @@ def test_already_available_progress_reward_is_claimed_without_claim_all():
         MODE_DAILY_QUESTS,
         STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     )
-    progress_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=progress)
-    progress_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=progress)
-    settled_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
-    settled_b = snapshot(5, 3.6, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))
+    progress_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=progress, observations=(rows_observation(),))
+    progress_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=progress, observations=(rows_observation(),))
+    settled_a = snapshot(4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
+    settled_b = snapshot(5, 3.6, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,), observations=(rows_observation(),))
     lobby_a = snapshot(6, 4.0, base=SCREEN_LOBBY)
     lobby_b = snapshot(7, 4.3, base=SCREEN_LOBBY)
 
@@ -455,8 +464,8 @@ def test_progress_reward_claim_is_single_attempt_and_requires_disappearance():
         MODE_DAILY_QUESTS,
         STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
     )
-    progress_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=progress)
-    progress_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=progress)
+    progress_a = snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=progress, observations=(rows_observation(),))
+    progress_b = snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=progress, observations=(rows_observation(),))
 
     result, actions, _, _ = run_flow(
         lobby,
@@ -485,8 +494,8 @@ def test_claim_timeout_or_incompatible_state_fails_conservatively(claim_script):
     lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
     claimable = (MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE)
     opened = [
-        snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable),
-        snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable),
+        snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),)),
+        snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),)),
     ]
     script = claim_script[0] if isinstance(claim_script, list) else claim_script
     result, actions, events, _ = run_flow(lobby, [opened, script])
@@ -501,8 +510,8 @@ def test_cancellation_during_claim_wait_returns_cancelled_without_close():
     lobby = snapshot(1, 1.0, base=SCREEN_LOBBY)
     claimable = (MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE)
     opened = [
-        snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable),
-        snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable),
+        snapshot(2, 2.0, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),)),
+        snapshot(3, 2.3, base=SCREEN_QUESTS, overlays=claimable, observations=(rows_observation(),)),
     ]
     result, actions, events, _ = run_flow(
         lobby,

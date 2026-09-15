@@ -30,7 +30,7 @@ from bot.catalog import (
 from bot.daily_quests_flow import DailyQuestsFlow
 from bot.flow_contracts import FlowStatus
 from bot.flow_registry import _build_daily_quests, _daily_claim_observer_for
-from bot.observations import ObservationBatch
+from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.perception import (
     DAILY_CLAIM_SCOPE,
     DAILY_CLAIM_SCOPE_SPEC_NAMES,
@@ -405,11 +405,19 @@ class Events:
         self.items.append((event, fields))
 
 
-def _snapshot(sequence, timestamp, *, base, overlays=()):
+def _rows_observation():
+    return Observation(
+        "indicator.daily_quests_rows_populated",
+        0.95,
+        ObservationSource.LOCAL_CV,
+    )
+
+
+def _snapshot(sequence, timestamp, *, base, overlays=(), observations=()):
     image = np.zeros((120, 240, 3), dtype=np.uint8)
     return RuntimeSnapshot(
         FrameSnapshot(image, timestamp, sequence),
-        ObservationBatch(sequence, timestamp),
+        ObservationBatch(sequence, timestamp, tuple(observations)),
         ResolvedState(
             ResolutionStatus.RESOLVED if base else ResolutionStatus.UNKNOWN,
             sequence,
@@ -429,12 +437,14 @@ def test_claim_wait_routes_through_claim_observer_only():
         2.0,
         base=SCREEN_QUESTS,
         overlays=(MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE),
+        observations=(_rows_observation(),),
     )
     open_b = _snapshot(
         3,
         2.3,
         base=SCREEN_QUESTS,
         overlays=(MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE),
+        observations=(_rows_observation(),),
     )
     settled_a = _snapshot(
         4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,)
@@ -460,9 +470,10 @@ def test_claim_wait_routes_through_claim_observer_only():
         ClaimAllDailyQuests(),
         CloseDailyQuests(),
     ]
-    # OpenQuests stays global on purpose (content-readiness timing; see
-    # Batch B1 HIL): only the claim shot runs scoped, with the same
-    # contract as the global wait (8 s timeout, 0.5 s settle).
+    # Without an explicit open_observer the open wait runs on the main
+    # observer but still gates on content readiness; only the claim shot
+    # runs scoped, with the same contract as the global wait (8 s timeout,
+    # 0.5 s settle).
     assert claim.calls == [(8.0, 0.5)]
     assert main.calls == [(6.0, 0.25), (6.0, 0.25)]
 
@@ -474,12 +485,14 @@ def test_claim_wait_abort_fails_bounded_without_further_input():
         2.0,
         base=SCREEN_QUESTS,
         overlays=(MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE),
+        observations=(_rows_observation(),),
     )
     open_b = _snapshot(
         3,
         2.3,
         base=SCREEN_QUESTS,
         overlays=(MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE),
+        observations=(_rows_observation(),),
     )
     incompatible = _snapshot(4, 3.0, base=SCREEN_LOBBY)
 

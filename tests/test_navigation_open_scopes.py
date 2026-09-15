@@ -75,7 +75,7 @@ from bot.mailbox_flow import (
     _is_character_mail,
     _is_mailbox,
 )
-from bot.observations import ObservationBatch
+from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.perception import (
     BLACK_MARKET_OPEN_SCOPE,
     BLACK_MARKET_OPEN_SCOPE_SPEC_NAMES,
@@ -120,6 +120,14 @@ from bot.verified_transition import VerifiedTransition
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _rows_observation():
+    return Observation(
+        "indicator.daily_quests_rows_populated",
+        0.95,
+        ObservationSource.LOCAL_CV,
+    )
+
+
 def _snapshot(
     sequence,
     timestamp,
@@ -128,13 +136,17 @@ def _snapshot(
     base=SCREEN_LOBBY,
     overlays=(),
     facts=None,
+    observations=(),
 ):
     if status is not ResolutionStatus.RESOLVED:
         base = None
     image = np.zeros((120, 240, 3), dtype=np.uint8)
     return RuntimeSnapshot(
         FrameSnapshot(image, timestamp, sequence),
-        ObservationBatch(sequence=sequence, timestamp=timestamp),
+        ObservationBatch(
+            sequence=sequence, timestamp=timestamp,
+            observations=tuple(observations),
+        ),
         ResolvedState(
             status,
             sequence,
@@ -551,39 +563,53 @@ def test_mailbox_open_uses_claim_observer_rest_stays_global():
     assert main.wait_calls == [(6.0, 0.25)]
 
 
-def test_daily_open_stays_global_for_content_readiness():
-    # Batch B1 HIL divergence: the scoped OpenQuests wait (~0.4 s) completes
-    # on panel chrome before the mission list populates, and the claim/noop
-    # decision reads that snapshot directly -> false noop. The global wait
-    # stays until a dedicated Daily task proves content readiness. Only the
-    # Claim All wait runs scoped.
+def test_daily_open_uses_readiness_scoped_wait():
+    # Batch B1 HIL divergence: the chrome-only scoped OpenQuests wait
+    # (~0.4 s) completed before the mission list populated, and the
+    # claim/noop decision read that snapshot directly -> false noop. The
+    # open wait now runs on the readiness scope and gates on rows-populated
+    # without the loading ring; chrome without rows never satisfies it.
     lobby = _lobby(1, 1.0)
-    opened = _snapshot(
+    chrome_bare = _snapshot(
         2,
         2.0,
         status=ResolutionStatus.RESOLVED,
         base=SCREEN_QUESTS,
         overlays=(MODE_DAILY_QUESTS,),
     )
-    opened_b = _snapshot(
+    opened = _snapshot(
         3,
+        2.5,
+        status=ResolutionStatus.RESOLVED,
+        base=SCREEN_QUESTS,
+        overlays=(MODE_DAILY_QUESTS,),
+        observations=(_rows_observation(),),
+    )
+    opened_b = _snapshot(
+        4,
         2.8,
         status=ResolutionStatus.RESOLVED,
         base=SCREEN_QUESTS,
         overlays=(MODE_DAILY_QUESTS,),
+        observations=(_rows_observation(),),
     )
-    lobby_b = _lobby(4, 4.0)
-    lobby_c = _lobby(5, 4.3)
+    lobby_b = _lobby(5, 4.0)
+    lobby_c = _lobby(6, 4.3)
 
-    main = RecordingObserver(lobby, [opened, opened_b, lobby_b, lobby_c])
-    scoped = RecordingObserver(lobby, [])
-    flow = DailyQuestsFlow(main, Actions(), Events(), claim_observer=scoped)
+    main = RecordingObserver(lobby, [lobby_b, lobby_c])
+    open_scoped = RecordingObserver(lobby, [chrome_bare, opened, opened_b])
+    claim_scoped = RecordingObserver(lobby, [])
+    flow = DailyQuestsFlow(
+        main, Actions(), Events(), claim_observer=claim_scoped,
+        open_observer=open_scoped,
+    )
     result = flow.run()
 
     assert result.status is FlowStatus.COMPLETED
     assert result.no_op
-    assert main.wait_calls == [(6.0, 0.25), (6.0, 0.25)]
-    assert scoped.wait_calls == []
+    assert open_scoped.wait_calls == [(6.0, 0.25)]
+    assert main.wait_calls == [(6.0, 0.25)]
+    assert claim_scoped.wait_calls == []
 
 
 def _verified(observer, actions, events):
