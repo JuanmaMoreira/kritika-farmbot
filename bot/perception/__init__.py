@@ -183,6 +183,7 @@ from .specs import (
 
 from .monster_wave import MONSTER_WAVE_SPECS
 from .scope import ScopeSpec, select_detectors
+from bot.monster_wave_semantics import MW_DAILY
 
 
 def build_default_perception(
@@ -474,6 +475,21 @@ ROTATION_CHARACTER_SELECTION_SCOPE_SPEC_NAMES = frozenset(
 ROTATION_CHARACTER_SELECTION_SCOPE = ScopeSpec(
     name="rotation_character_selection",
     spec_names=ROTATION_CHARACTER_SELECTION_SCOPE_SPEC_NAMES,
+)
+
+
+# World Boss Daily is decided only on a positively resolved Battle Mode card.
+# Preserve the adjacent Monster Wave badge and overlays that can obscure the
+# prepared hub; eligibility consistency and timing remain in the reader.
+WORLD_BOSS_ELIGIBILITY_SCOPE = ScopeSpec(
+    name="world_boss_eligibility",
+    spec_names=frozenset({
+        BATTLE_MODE_SELECT_HEADER_SPEC.name,
+        WORLD_BOSS_DAILY_SPEC.name,
+        MW_DAILY,
+        QUICK_MENU_LOBBY_TILE_SPEC.name,
+        WORLD_BOSS_SELECT_BOSS_HEADER_SPEC.name,
+    }),
 )
 
 
@@ -838,6 +854,7 @@ __all__ = (
     "WORLD_BOSS_SAPPHIRES_USED_SPEC",
     "WORLD_BOSS_SELECT_BOSS_HEADER_SPEC",
     "WORLD_BOSS_DAILY_SPEC",
+    "WORLD_BOSS_ELIGIBILITY_SCOPE",
     "LinearGapCalibration",
     "LOBBY_TRADING_CENTER_LABEL_SPEC",
     "MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC",

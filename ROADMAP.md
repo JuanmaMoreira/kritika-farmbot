@@ -35,6 +35,7 @@ Elegir un único hot path estable, medir baseline, limitar detectores relevantes
 
 - Rotation R1 (`select_predecessor_character`) — DONE: 95→2 detectores, policy/reader local intactos, 2144/2144 hardware-free y smoke natural 1/1 hasta Lobby confirmado.
 - Rotation R2-A (wait post-swipe Character Select) — DONE: reutiliza el subset semánticamente idéntico de R1, 95→2, `stable_for=1.0` y scroll/sentinel intactos; 2151/2151 hardware-free y HIL natural 1/1 con Lobby confirmado. R2-B (Select→Lobby) evaluada y dejada global: un subset pequeño no cubre los overlays que definen Lobby limpio; no iniciar B2 como parte de R2.
+- World Boss WB-1 (elegibilidad Daily) — DONE: scope 95→5 en snapshot inicial y wait estable; 2152/2152 hardware-free y `Run Session` natural 1/1, sin cambiar policy ni inputs. WB-2 (D locales) queda diferido por falta de carry/freshness equivalente; WB-3 Start y WB-4 inventario mantienen percepción global porque `_is_known_incompatible` aborta sobre cualquier base RESOLVED/AMBIGUOUS y un subset pequeño la degrada a UNKNOWN. WB-5 retorno queda global por blockers de overlay amplio. No acotar selector, Previous Rewards, Continue ni Raid Complete hasta resolver autorización overlay-only, terminal contradictorio y freshness del poll.
 
 ### 5. Estabilizar percepción acotada
 

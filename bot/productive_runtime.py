@@ -48,6 +48,7 @@ from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistr
 from bot.perception import (
     GUILD_NAVIGATE_SCOPE,
     ROTATION_CHARACTER_SELECTION_SCOPE,
+    WORLD_BOSS_ELIGIBILITY_SCOPE,
     build_default_perception,
 )
 from bot.pet_summon_space_relief import PetSummonSpaceRelief
@@ -387,8 +388,14 @@ class ProductiveRuntime:
 
     def build_world_boss_daily_eligibility(self) -> WorldBossDailyEligibility:
         """Only the daily session composition installs this check; registry is general."""
+        observer = scoped_observer_for(
+            self, self.observer,
+            scope=WORLD_BOSS_ELIGIBILITY_SCOPE,
+            active_event="world_boss.eligibility_scope_active",
+            unavailable_event="world_boss.eligibility_scope_unavailable",
+        )
         return WorldBossDailyEligibility(
-            self.observer,
+            observer,
             cancel_requested=self.cancel_requested,
         )
 

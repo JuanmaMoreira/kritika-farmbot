@@ -128,3 +128,43 @@ def test_acquired_return_frames_are_recognized_by_unchanged_production_detectors
         assert state.status is (ResolutionStatus.UNKNOWN if entry.base_context == "unknown"
                                 else ResolutionStatus.RESOLVED)
         assert set(state.overlays) == set(entry.overlays)
+
+
+def test_scoped_daily_decision_matches_global_on_curated_hub_and_foreign_frames():
+    from pathlib import Path
+    import cv2
+    from bot.capture import FrameSnapshot
+    from bot.catalog import build_default_resolver
+    from bot.perception import (
+        WORLD_BOSS_ELIGIBILITY_SCOPE, build_default_perception, select_detectors,
+    )
+    from tools.semantic_slice_evaluation import load_manifest
+
+    root = Path(__file__).resolve().parents[1]
+    global_engine = build_default_perception(root)
+    scoped_engine = select_detectors(global_engine, WORLD_BOSS_ELIGIBILITY_SCOPE)
+    resolver = build_default_resolver()
+    assert len(global_engine.detectors) == 95
+    assert len(scoped_engine.detectors) == 5
+
+    daily = [entry for entry in load_manifest(root / "datasets/daily_activity_semantic_manifest.json")
+             if "/world-boss/" in entry.path]
+    returns = load_manifest(root / "datasets/world_boss_eligibility_return_manifest.json")
+    selector = [entry for entry in load_manifest(root / "datasets/world_boss_semantic_manifest.json")
+                if "/select_boss/" in entry.path]
+    assert (len(daily), len(returns), len(selector)) == (6, 9, 4)
+    for i, entry in enumerate((*daily, *returns, *selector), 1):
+        frame = cv2.imread(str(root / entry.path))
+        assert frame is not None, entry.path
+        snapshot = FrameSnapshot(frame, float(i), i)
+        global_state = resolver.resolve(global_engine.analyze(snapshot))
+        scoped_state = resolver.resolve(scoped_engine.analyze(snapshot))
+        global_decision = world_boss_daily_status(SimpleNamespace(state=global_state))
+        scoped_decision = world_boss_daily_status(SimpleNamespace(state=scoped_state))
+        assert scoped_decision is global_decision, entry.path
+        if entry in daily:
+            assert scoped_state.status is ResolutionStatus.RESOLVED, entry.path
+            assert scoped_state.base_context == SCREEN_BATTLE_MODE_SELECT, entry.path
+            assert set(scoped_state.overlays) == set(entry.overlays), entry.path
+        elif entry in selector:
+            assert scoped_decision is EligibilityStatus.UNKNOWN, entry.path
