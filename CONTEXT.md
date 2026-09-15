@@ -9,7 +9,7 @@ El código productivo vigente proviene del checkpoint estable:
 feat: add monster wave skip activity
 ```
 
-La rama `rebuild/stable-baseline` preserva ese origen y añadió Rotation R1: percepción acotada únicamente en la verificación de `select_predecessor_character`. No porta código de la línea experimental Inventory Relief. La evidencia Git prevalece sobre referencias históricas que describían Monster Wave como «sin commit» o «sin push».
+La rama `rebuild/stable-baseline` preserva ese origen y añadió Rotation R1: percepción acotada únicamente en la verificación de `select_predecessor_character`. Rotation R2-A, en `codex/rotation-r2`, reutiliza el mismo subset para el wait post-swipe de Character Select; R2-B (Select→Lobby) sigue global. No porta código de la línea experimental Inventory Relief. La evidencia Git prevalece sobre referencias históricas que describían Monster Wave como «sin commit» o «sin push».
 
 Kritika FarmBot automatiza tareas por personaje de **Kritika: The White Knights** sobre Android físico. GUI Tkinter y CLI son frontends del mismo composition root. Código y tests determinan lo implementado; [`ARCHITECTURE.md`](ARCHITECTURE.md) fija contratos, [`ROADMAP.md`](ROADMAP.md) ordena el trabajo y [`docs/HISTORY.md`](docs/HISTORY.md) conserva la evolución.
 
@@ -61,6 +61,7 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 
 - Checkpoint anterior a Rotation R1: **2129/2129 tests hardware-free** (`f4be77a`).
 - Rotation R1: **2144/2144 tests hardware-free**; smoke HIL natural **1/1**, con tarjeta `SELECTED` estable, `Select` final y Lobby confirmado por la persona usuaria.
+- Rotation R2-A: **2151/2151 tests hardware-free**; smoke HIL natural **1/1**, wait post-swipe scoped 95→2 con `stable_for=1.0`, 1 swipe, tarjeta y Select en primer intento, Lobby confirmado visualmente por la persona usuaria. R2-B quedó global por cobertura insuficiente de overlays en un subset pequeño.
 - Evaluación semántica de Monster Wave: **510 frames**, sin resoluciones wrong/ambiguous.
 - Evidencia live histórica: Rotation 28/28 y sesiones combinadas 28/28 sin fallos técnicos; Monster Wave confirmó ACTIVE, MAX, Start y board negativo.
 
@@ -81,7 +82,7 @@ Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en
 No forman parte del runtime estable:
 
 - Inventory Relief Chain general, Trading, Craft, Treasure o Equipment Sell;
-- percepción runtime acotada en otros hot paths de Rotation aún no scopeados por R1;
+- confirmación Select→Lobby y otros hot paths de Rotation aún no scopeados por R1/R2-A;
 - framework temporal de input/readiness;
 - estrategia de farming, scheduler, grafo general de navegación o recuperación de conexión post-World Boss;
 - Tower y Arena.
@@ -90,4 +91,4 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-Rotation R1 quedó validada y se detuvo en su scope; post-swipe, confirmación a Lobby y recovery permanecen globales. El siguiente hot path requiere una decisión y evidencia propias, según [`ROADMAP.md`](ROADMAP.md).
+Rotation R2-A quedó validada con el wait post-swipe scoped; confirmación a Lobby y recovery permanecen globales. La extensión de Lobby requiere evidencia independiente de overlays y temporada; no iniciar B2 dentro de R2, según [`ROADMAP.md`](ROADMAP.md).

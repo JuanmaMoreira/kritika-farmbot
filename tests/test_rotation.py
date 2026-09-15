@@ -1406,3 +1406,83 @@ def test_rotation_no_longer_consumes_observed_scroll():
     assert "observed_scroll" not in source
     assert "SelectLastVisibleCharacter" not in source
     assert "scroll_limit_reached" not in source
+
+
+def test_post_swipe_wait_uses_scoped_observer_and_fresh_sentinel_frame():
+    from bot.character_select_scroll import CharacterSelectScrollProfile
+
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    post = _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy())
+    scoped = ScriptedObserver([], [post])
+
+    class RecordingSentinel(ScriptedSentinel):
+        def __init__(self):
+            super().__init__([_absent(), _found()])
+            self.frames = []
+
+        def measure(self, frame):
+            self.frames.append(frame)
+            return super().measure(frame)
+
+    sentinel = RecordingSentinel()
+    rotation, actions, _, main = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=_selected_frame_at(grid, target)),
+            _snapshot(6, base=SCREEN_LOBBY),
+        ],
+        sentinel=sentinel,
+        post_swipe_observer=scoped,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 1
+    assert scoped.wait_calls == [(3, 1.0)]
+    assert main.wait_calls == [(1, 0.0), (2, 1.0), (4, 0.25), (5, 0.0)]
+    assert sentinel.frames[1] is post.frame
+    assert [a for a in actions.actions if isinstance(a, Swipe)] == [
+        CharacterSelectScrollProfile().progress_swipe
+    ]
+    assert actions.actions.count(_expected_tap(SENTINEL_COL2)) == 1
+    assert actions.actions.count(ConfirmCharacterSelection()) == 1
+
+
+def test_every_coarse_and_fine_swipe_wait_uses_scoped_observer():
+    from bot.character_select_scroll import CharacterSelectScrollProfile
+
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    scoped = ScriptedObserver([], [
+        _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+        _snapshot(5, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+        _snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+    ])
+    rotation, actions, _, main = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=_selected_frame_at(grid, target)),
+            _snapshot(8, base=SCREEN_LOBBY),
+        ],
+        sentinel=ScriptedSentinel([_absent(), _absent(), _absent(), _found()]),
+        post_swipe_observer=scoped,
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 3
+    assert scoped.wait_calls == [(3, 1.0), (4, 1.0), (5, 1.0)]
+    assert main.wait_calls == [(1, 0.0), (2, 1.0), (6, 0.25), (7, 0.0)]
+    profile = CharacterSelectScrollProfile()
+    assert [a for a in actions.actions if isinstance(a, Swipe)] == [
+        profile.progress_swipe, profile.progress_swipe, profile.fine_swipe,
+    ]
+    assert actions.actions.count(_expected_tap(SENTINEL_COL2)) == 1
+    assert actions.actions.count(ConfirmCharacterSelection()) == 1

@@ -44,7 +44,7 @@ from bot.failure_cause import FailureCause
 from bot.failure_evidence import FailureEvidence, publish_failure
 from bot.equipment_combine_relief import EquipmentCombineRelief
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
-from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry, scoped_transition_for
+from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry, scoped_observer_for, scoped_transition_for
 from bot.perception import (
     GUILD_NAVIGATE_SCOPE,
     ROTATION_CHARACTER_SELECTION_SCOPE,
@@ -221,6 +221,13 @@ class ProductiveRuntime:
             self.events,
             character_count=character_count,
             verified_transition=main_transition,
+            post_swipe_observer=scoped_observer_for(
+                self,
+                self.observer,
+                scope=ROTATION_CHARACTER_SELECTION_SCOPE,
+                active_event="rotation.post_swipe_scope_active",
+                unavailable_event="rotation.post_swipe_scope_unavailable",
+            ),
             selection_transition=scoped_transition_for(
                 self,
                 main_transition,

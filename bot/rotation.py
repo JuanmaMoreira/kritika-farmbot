@@ -158,6 +158,7 @@ class StandardRotation:
         ),
         verified_transition: VerifiedTransition | None = None,
         selection_transition: VerifiedTransition | None = None,
+        post_swipe_observer: RuntimeObserver | None = None,
         quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
         selection_detector: CharacterSelectionDetector = (
             DEFAULT_CHARACTER_SELECTION_DETECTOR
@@ -209,7 +210,12 @@ class StandardRotation:
             selection_transition = verified_transition
         if not callable(getattr(selection_transition, "execute", None)):
             raise ValueError("selection_transition must provide execute()")
+        if post_swipe_observer is None:
+            post_swipe_observer = observer
+        if not callable(getattr(post_swipe_observer, "wait_until", None)):
+            raise ValueError("post_swipe_observer must provide wait_until()")
         self.observer: _Observer = observer
+        self.post_swipe_observer: _Observer = post_swipe_observer
         self.actions = actions
         self.events = events
         self.scroll_profile = scroll_profile
@@ -329,7 +335,7 @@ class StandardRotation:
                 self.actions.execute(gesture, character_select.geometry)
                 swipe_count += 1
                 try:
-                    character_select = self.observer.wait_until(
+                    character_select = self.post_swipe_observer.wait_until(
                         lambda snapshot: _is_clean_base(
                             snapshot, SCREEN_CHARACTER_SELECT
                         ),
