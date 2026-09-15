@@ -47,6 +47,7 @@ from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry, scoped_observer_for, scoped_transition_for
 from bot.perception import (
     GUILD_NAVIGATE_SCOPE,
+    PETS_MANAGE_NAVIGATE_SCOPE,
     ROTATION_CHARACTER_SELECTION_SCOPE,
     WORLD_BOSS_ELIGIBILITY_SCOPE,
     build_default_perception,
@@ -636,12 +637,19 @@ class ProductiveRuntime:
             return False
 
         transition = self.build_verified_transition()
+        pets_transition = scoped_transition_for(
+            self,
+            transition,
+            scope=PETS_MANAGE_NAVIGATE_SCOPE,
+            active_event="precondition.pets_manage_navigate_scope_active",
+            unavailable_event="precondition.pets_manage_navigate_scope_unavailable",
+        )
         policy = VerifiedTransitionPolicy(
             normal_timeout=6.0,
             grace_timeout=2.0,
             max_attempts=2,
         )
-        pets = transition.execute(
+        pets = pets_transition.execute(
             "precondition.open_pets",
             OpenPets(),
             initial,

@@ -1,14 +1,14 @@
 """Experimental claim-scoped perception for the Mailbox ``ClaimAll`` waits.
 
-Covers only the claim-processing phase (onset + completion/fallback):
-detector subset composition, resolution equivalence against the global
-engine on curated Mailbox frames, flow routing of exactly those waits
-through the scoped observer, the ``RuntimeObserver.scoped`` seam and the
-registry wiring with its bounded fallback to the main observer.
-
-Mailbox open, Character Mail navigation, Delete Read, close, timeouts and
-stable_for values are intentionally out of scope: the only experimental
-variable is which perception runs per frame.
+Covers the Mailbox Character Mail closed vocabulary on one shared scope:
+open, Character Mail navigation, claim-processing phase (onset +
+completion/fallback) and Delete Read: detector subset composition,
+resolution equivalence against the global engine on curated Mailbox
+frames, flow routing of exactly those waits through the scoped observer,
+the ``RuntimeObserver.scoped`` seam and the registry wiring with its
+bounded fallback to the main observer. Close, timeouts and stable_for
+values are intentionally out of scope: the only experimental variable is
+which perception runs per frame.
 """
 
 from pathlib import Path
@@ -34,8 +34,13 @@ from bot.flow_registry import _build_mailbox, _mailbox_claim_observer_for
 from bot.mailbox_flow import (
     MailboxFlow,
     _has_claim_processing_activity,
+    _has_incompatible_character_mail_entry,
+    _has_incompatible_delete_state,
     _has_incompatible_processing_state,
+    _is_character_mail,
     _is_character_mail_without_activity,
+    _is_character_mail_without_read,
+    _is_mailbox,
 )
 from bot.observations import ObservationBatch
 from bot.perception import (
@@ -281,6 +286,83 @@ def test_scoped_predicates_agree_with_global_on_mailbox_frames():
         assert _has_incompatible_processing_state(
             scoped_snapshot
         ) == _has_incompatible_processing_state(global_snapshot), name
+
+
+def test_select_and_delete_predicates_agree_with_global_on_mailbox_frames():
+    """SelectChar/DeleteRead share the claim scope's closed vocabulary.
+
+    No new ScopeSpec: the same five detectors carry the mode, both row
+    statuses and the processing activity the delete postcondition needs.
+    """
+
+    full = build_default_perception(ROOT)
+    scoped = _scoped_engine()
+    resolver = build_default_resolver()
+
+    for name, path in CLAIM_FRAMES.items():
+        global_snapshot = _wrap(path, full, resolver, sequence=1)
+        scoped_snapshot = _wrap(path, scoped, resolver, sequence=1)
+        assert _is_mailbox(scoped_snapshot) == _is_mailbox(
+            global_snapshot
+        ), name
+        assert _is_character_mail(scoped_snapshot) == _is_character_mail(
+            global_snapshot
+        ), name
+        assert _is_character_mail_without_read(
+            scoped_snapshot
+        ) == _is_character_mail_without_read(global_snapshot), name
+        assert _has_incompatible_character_mail_entry(
+            scoped_snapshot
+        ) == _has_incompatible_character_mail_entry(
+            global_snapshot
+        ), name
+        assert _has_incompatible_delete_state(
+            scoped_snapshot
+        ) == _has_incompatible_delete_state(global_snapshot), name
+
+
+def test_select_and_delete_unknown_never_authorizes_input_or_retry():
+    snapshot = _synthetic_snapshot(
+        status=ResolutionStatus.UNKNOWN, base=None, overlays=()
+    )
+    assert not _is_mailbox(snapshot)
+    assert not _is_character_mail(snapshot)
+    assert not _is_character_mail_without_read(snapshot)
+    assert not _has_incompatible_character_mail_entry(snapshot)
+    assert not _has_incompatible_delete_state(snapshot)
+
+
+def test_select_and_delete_ambiguous_aborts_without_success():
+    snapshot = _synthetic_snapshot(
+        status=ResolutionStatus.AMBIGUOUS,
+        base=None,
+        overlays=(),
+        candidates=(SCREEN_LOBBY, SCREEN_MAILBOX),
+    )
+    assert not _is_mailbox(snapshot)
+    assert not _is_character_mail(snapshot)
+    assert not _is_character_mail_without_read(snapshot)
+    assert _has_incompatible_character_mail_entry(snapshot)
+    assert _has_incompatible_delete_state(snapshot)
+
+
+def test_select_and_delete_foreign_lobby_stays_bounded_without_input():
+    """Lobby resolves UNKNOWN under the scope: wait, never succeed/abort."""
+
+    full = build_default_perception(ROOT)
+    scoped = _scoped_engine()
+    resolver = build_default_resolver()
+
+    for name, path in LOBBY_FRAMES.items():
+        scoped_snapshot = _wrap(path, scoped, resolver, sequence=1)
+        assert scoped_snapshot.state.status is ResolutionStatus.UNKNOWN, name
+        assert not _is_mailbox(scoped_snapshot), name
+        assert not _is_character_mail(scoped_snapshot), name
+        assert not _is_character_mail_without_read(scoped_snapshot), name
+        assert not _has_incompatible_character_mail_entry(
+            scoped_snapshot
+        ), name
+        assert not _has_incompatible_delete_state(scoped_snapshot), name
 
 
 def test_completion_semantics_hold_under_the_scope():
@@ -534,10 +616,17 @@ def test_claim_waits_route_through_claim_observer_only():
     )
     closed = _snapshot(9, 7.2, base=SCREEN_LOBBY)
 
-    main = RecordingObserver(
-        lobby, [[character], [deleted_a, deleted_b], [closed]]
+    main = RecordingObserver(lobby, [[closed]])
+    claim = RecordingObserver(
+        lobby,
+        [
+            [account],
+            [character],
+            [active],
+            [settled_a, settled_b],
+            [deleted_a, deleted_b],
+        ],
     )
-    claim = RecordingObserver(lobby, [[account], [active], [settled_a, settled_b]])
     flow = MailboxFlow(
         main,
         Actions(),
@@ -559,10 +648,17 @@ def test_claim_waits_route_through_claim_observer_only():
         DeleteReadCharacterMail(),
         CloseMailbox(),
     ]
-    # Same contract as the global waits: 6 s open without stability, then
-    # 2 s onset without stability and 30 s completion with 0.75 s stability.
-    assert claim.calls == [(6.0, 0.0), (2.0, 0.0), (30.0, 0.75)]
-    assert main.calls == [(6.0, 0.0), (12.0, 0.5), (6.0, 0.0)]
+    # Same contract as the global waits: 6 s open, 6 s select and 12 s
+    # delete without extra stability, then 2 s onset without stability
+    # and 30 s completion with 0.75 s stability.
+    assert claim.calls == [
+        (6.0, 0.0),
+        (6.0, 0.0),
+        (2.0, 0.0),
+        (30.0, 0.75),
+        (12.0, 0.5),
+    ]
+    assert main.calls == [(6.0, 0.0)]
 
 
 def test_onset_fallback_routes_through_claim_observer_with_same_contract():
@@ -596,11 +692,11 @@ def test_onset_fallback_routes_through_claim_observer_with_same_contract():
         after_sequence=3, timeout=2.0, last_snapshot=after_claim
     )
 
-    main = RecordingObserver(
-        lobby, [[character], [deleted_a, deleted_b], [closed]]
-    )
+    main = RecordingObserver(lobby, [[closed]])
     claim = RecordingObserver(
-        lobby, [[account], onset_timeout, [settled_a, settled_b]]
+        lobby,
+        [[account], [character], onset_timeout, [settled_a, settled_b],
+         [deleted_a, deleted_b]],
     )
     flow = MailboxFlow(
         main,
@@ -617,9 +713,17 @@ def test_onset_fallback_routes_through_claim_observer_with_same_contract():
     assert result.status is FlowStatus.COMPLETED
     assert not result.processing_observed
     assert result.processing_completed
-    # Fallback keeps the functional contract: 6 s open, then 30 s with
-    # max(no_effect, processing) stability = 0.75 s.
-    assert claim.calls == [(6.0, 0.0), (2.0, 0.0), (30.0, 0.75)]
+    # Fallback keeps the functional contract: 6 s open, 6 s select, then
+    # 30 s with max(no_effect, processing) stability = 0.75 s, then
+    # 12 s delete with 0.5 s stability.
+    assert claim.calls == [
+        (6.0, 0.0),
+        (6.0, 0.0),
+        (2.0, 0.0),
+        (30.0, 0.75),
+        (12.0, 0.5),
+    ]
+    assert main.calls == [(6.0, 0.0)]
 
 
 def test_claim_wait_abort_through_scope_fails_bounded_without_further_input():
@@ -632,8 +736,10 @@ def test_claim_wait_abort_through_scope_fails_bounded_without_further_input():
     )
     incompatible = _snapshot(4, 4.0, base=SCREEN_LOBBY)
 
-    main = RecordingObserver(lobby, [[character]])
-    claim = RecordingObserver(lobby, [[account], [incompatible]])
+    main = RecordingObserver(lobby, [])
+    claim = RecordingObserver(
+        lobby, [[account], [character], [incompatible]]
+    )
     actions = Actions()
     flow = MailboxFlow(
         main,
@@ -653,7 +759,80 @@ def test_claim_wait_abort_through_scope_fails_bounded_without_further_input():
         SelectCharacterMail(),
         ClaimAllCharacterMail(),
     ]
-    assert claim.calls == [(6.0, 0.0), (2.0, 0.0)]
+    assert claim.calls == [(6.0, 0.0), (6.0, 0.0), (2.0, 0.0)]
+    assert main.calls == []
+
+
+def test_select_abort_through_scope_fails_bounded_without_further_input():
+    """SelectChar abort stops before any claim tap: 2 actions, no close."""
+
+    lobby = _snapshot(1, 1.0, base=SCREEN_LOBBY)
+    account = _snapshot(2, 2.0, base=SCREEN_MAILBOX)
+    incompatible = _snapshot(3, 3.0, base=SCREEN_LOBBY)
+
+    main = RecordingObserver(lobby, [])
+    claim = RecordingObserver(lobby, [[account], [incompatible]])
+    actions = Actions()
+    flow = MailboxFlow(
+        main,
+        actions,
+        Events(),
+        claim_observer=claim,
+        navigation_stable_for=0.0,
+        processing_stable_for=0.75,
+        no_effect_stable_for=0.5,
+        delete_stable_for=0.5,
+    )
+    result = flow.run()
+
+    assert result.status is FlowStatus.FAILED
+    assert actions.items == [OpenMailbox(), SelectCharacterMail()]
+    assert claim.calls == [(6.0, 0.0), (6.0, 0.0)]
+    assert main.calls == []
+
+
+def test_delete_abort_through_scope_fails_bounded_without_close():
+    """DeleteRead abort stops before close: 4 actions, recovery boundary.
+
+    No-claim path (read mail only): Open + Select + Delete taps run on
+    the shared scope, the incompatible delete wait fails closed and
+    CloseMailbox never runs.
+    """
+
+    lobby = _snapshot(1, 1.0, base=SCREEN_LOBBY)
+    account = _snapshot(2, 2.0, base=SCREEN_MAILBOX)
+    read_only = _snapshot(
+        3, 3.0, base=SCREEN_MAILBOX, overlays=_character(
+            STATUS_MAILBOX_READ_MAIL_PRESENT
+        ),
+    )
+    incompatible = _snapshot(4, 4.0, base=SCREEN_LOBBY)
+
+    main = RecordingObserver(lobby, [])
+    claim = RecordingObserver(
+        lobby, [[account], [read_only], [incompatible]]
+    )
+    actions = Actions()
+    flow = MailboxFlow(
+        main,
+        actions,
+        Events(),
+        claim_observer=claim,
+        navigation_stable_for=0.0,
+        processing_stable_for=0.75,
+        no_effect_stable_for=0.5,
+        delete_stable_for=0.5,
+    )
+    result = flow.run()
+
+    assert result.status is FlowStatus.FAILED
+    assert actions.items == [
+        OpenMailbox(),
+        SelectCharacterMail(),
+        DeleteReadCharacterMail(),
+    ]
+    assert claim.calls == [(6.0, 0.0), (6.0, 0.0), (12.0, 0.5)]
+    assert main.calls == []
 
 
 def test_claim_observer_defaults_to_main_observer():

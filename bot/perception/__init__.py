@@ -457,6 +457,39 @@ GUILD_NAVIGATE_SCOPE = ScopeSpec(
 )
 
 
+# Minimal subset for the direct Lobby -> Pets Manage navigation wait only
+# (``precondition.open_pets``, Caso navigation B1).
+# These are exactly the observations its expected/retryable/abort
+# predicates consume: the Pets Manage base landmarks (shell package plus
+# manage-active tab, both required for base resolution), the Daily badge
+# indicator (Pets Manage clean allows it), the Lobby base landmark
+# (retryable_from requires a clean Lobby), and the Quick Menu tile (the
+# destination abort explicitly excuses a Quick Menu frame; without the
+# tile a PetsManage+Quick frame would falsely succeed as clean Pets).
+# The final snapshot feeds no further semantic decision (the caller only
+# checks success), so no extra carry is needed. Quick Menu is accessible
+# from Pets Manage, so the tile is a required blocker, same precedent as
+# the Guild navigate scope.
+PETS_MANAGE_NAVIGATE_SCOPE_SPEC_NAMES = frozenset(
+    {
+        PETS_SHELL_SUMMON_PACKAGE_SPEC.name,
+        PETS_MANAGE_ACTIVE_SPEC.name,
+        PET_SUMMON_DAILY_SPEC.name,
+        LOBBY_TRADING_CENTER_LABEL_SPEC.name,
+        QUICK_MENU_LOBBY_TILE_SPEC.name,
+    }
+)
+
+
+# Generic-scope declaration for the direct Lobby -> Pets Manage navigation
+# wait, expressed as an explicit ScopeSpec (no semantic auto-derivation).
+PETS_MANAGE_NAVIGATE_SCOPE = ScopeSpec(
+    name="pets_manage_navigate",
+    spec_names=PETS_MANAGE_NAVIGATE_SCOPE_SPEC_NAMES,
+    specialized_types=(),
+)
+
+
 # Minimal subset for ``rotation.select_predecessor_character`` only.
 # The Character Select header resolves the clean source/expected/retry state.
 # The Quick Menu tile preserves the only cross-context overlay that can cover
@@ -771,6 +804,8 @@ __all__ = (
     "GUILD_ATTENDANCE_SCOPE_SPEC_NAMES",
     "GUILD_NAVIGATE_SCOPE",
     "GUILD_NAVIGATE_SCOPE_SPEC_NAMES",
+    "PETS_MANAGE_NAVIGATE_SCOPE",
+    "PETS_MANAGE_NAVIGATE_SCOPE_SPEC_NAMES",
     "GUILD_MESSAGE_TAB_SPEC",
     "GUILD_ATTENDANCE_DAILY_SPEC",
     "GuildAttendanceDetector",

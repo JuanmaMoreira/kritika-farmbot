@@ -190,6 +190,7 @@ class MailboxFlow:
                     abort_if=_has_incompatible_character_mail_entry,
                     timeout=self.navigation_timeout,
                     stable_for=self.navigation_stable_for,
+                    observer=self.claim_observer,
                 )
 
             initial_claims = _has_status(mailbox, STATUS_MAILBOX_CLAIMABLE)
@@ -261,6 +262,7 @@ class MailboxFlow:
                     abort_if=_has_incompatible_delete_state,
                     timeout=self.delete_timeout,
                     stable_for=self.delete_stable_for,
+                    observer=self.claim_observer,
                 )
                 if (
                     not claims_leftover
