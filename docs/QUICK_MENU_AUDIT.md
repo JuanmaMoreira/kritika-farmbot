@@ -1,6 +1,6 @@
 # Auditoría transversal de Quick Menu (baseline `0cca707`)
 
-Estado: **contrato pendiente; implementación detenida**. Esta auditoría distingue la base física conocida por la adquisición de la base que resuelve el runtime en un frame. No cambia código ni aceptación perceptiva. Checkpoint recibido: `2202/2202` hardware-free.
+Estado: **contrato pendiente; implementación detenida**. La [decisión posterior de handoff](QUICK_MENU_HANDOFF_DECISION.md) reemplaza la recomendación final de buscar landmarks bajo el panel para el normal path; los datos y la matriz de este audit siguen vigentes. Esta auditoría distingue la base física conocida por la adquisición de la base que resuelve el runtime en un frame. No cambia código ni aceptación perceptiva. Checkpoint recibido: `2202/2202` hardware-free.
 
 ## Contrato observado
 
