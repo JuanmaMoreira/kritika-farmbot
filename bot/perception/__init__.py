@@ -456,6 +456,27 @@ GUILD_NAVIGATE_SCOPE = ScopeSpec(
 )
 
 
+# Minimal subset for ``rotation.select_predecessor_character`` only.
+# The Character Select header resolves the clean source/expected/retry state.
+# The Quick Menu tile preserves the only cross-context overlay that can cover
+# a base screen; every other catalog overlay is tied to a foreign screen and
+# safely degrades to UNKNOWN here, which authorizes neither success nor retry.
+# The target-local yellow-border reader keeps consuming the raw snapshot frame
+# outside the perception engine, so it is deliberately not a global detector.
+ROTATION_CHARACTER_SELECTION_SCOPE_SPEC_NAMES = frozenset(
+    {
+        CHARACTER_SELECT_HEADER_SPEC.name,
+        QUICK_MENU_LOBBY_TILE_SPEC.name,
+    }
+)
+
+
+ROTATION_CHARACTER_SELECTION_SCOPE = ScopeSpec(
+    name="rotation_character_selection",
+    spec_names=ROTATION_CHARACTER_SELECTION_SCOPE_SPEC_NAMES,
+)
+
+
 # Minimal subset for the Send Stamina post-tap completion waits only
 # (completion + daily-active fallback, Caso A: both waits share one coherent
 # detector set and one abort predicate).
@@ -783,6 +804,8 @@ __all__ = (
     "PetMassEvolveConfirmationReading",
     "PURCHASE_CONFIRMATION_PROMPT_SPEC",
     "QUICK_MENU_LOBBY_TILE_SPEC",
+    "ROTATION_CHARACTER_SELECTION_SCOPE",
+    "ROTATION_CHARACTER_SELECTION_SCOPE_SPEC_NAMES",
     "SOCKET_ENHANCE_ALL_TITLE_SPEC",
     "SOCKET_ENHANCE_ANIMATION_CALIBRATION",
     "SOCKET_ENHANCE_ANIMATION_CONFIDENCE_THRESHOLD",

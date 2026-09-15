@@ -45,7 +45,11 @@ from bot.failure_evidence import FailureEvidence, publish_failure
 from bot.equipment_combine_relief import EquipmentCombineRelief
 from bot.flow_contracts import FlowResult, FlowStatus, PerCharacterFlow
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistry, scoped_transition_for
-from bot.perception import GUILD_NAVIGATE_SCOPE, build_default_perception
+from bot.perception import (
+    GUILD_NAVIGATE_SCOPE,
+    ROTATION_CHARACTER_SELECTION_SCOPE,
+    build_default_perception,
+)
 from bot.pet_summon_space_relief import PetSummonSpaceRelief
 from bot.preconditions import MinimalPreconditionEnsurer
 from bot.quick_menu import quick_menu_accessible, select_quick_menu_guild_action
@@ -210,12 +214,22 @@ class ProductiveRuntime:
         )
 
     def build_rotation(self, character_count: int) -> StandardRotation:
+        main_transition = self.build_verified_transition()
         return StandardRotation(
             self.observer,
             self.actions,
             self.events,
             character_count=character_count,
-            verified_transition=self.build_verified_transition(),
+            verified_transition=main_transition,
+            selection_transition=scoped_transition_for(
+                self,
+                main_transition,
+                scope=ROTATION_CHARACTER_SELECTION_SCOPE,
+                active_event="rotation.character_selection_scope_active",
+                unavailable_event=(
+                    "rotation.character_selection_scope_unavailable"
+                ),
+            ),
         )
 
     def run_flow(self, definition: FlowDefinition) -> FlowResult:

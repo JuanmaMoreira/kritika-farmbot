@@ -33,6 +33,8 @@ Ejecutar desde la GUI productiva una prueba breve y representativa, no otra rota
 
 Elegir un único hot path estable, medir baseline, limitar detectores relevantes y conservar escalación amplia sólo donde haga falta. Validar tests dirigidos, benchmark y un smoke corto antes de avanzar al siguiente consumidor.
 
+- Rotation R1 (`select_predecessor_character`) — DONE: 95→2 detectores, policy/reader local intactos, 2144/2144 hardware-free y smoke natural 1/1 hasta Lobby confirmado. No iniciar R2 post-swipe ni confirm→Lobby dentro de este checkpoint.
+
 ### 5. Estabilizar percepción acotada
 
 Extender de a un flow, asegurar observaciones frescas, recovery y diagnóstico. Detener la expansión si aparecen estados omitidos, costo impredecible o acoplamiento con policy.

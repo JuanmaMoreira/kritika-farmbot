@@ -96,11 +96,11 @@ AdbClient == sole ADB boundary
 
 La persona usuaria es el planner: decide objetivo, orden de flows y configuración. El bot ejecuta operaciones deterministas, pequeñas y verificables. Nuevas abstracciones sólo se incorporan cuando existe un consumidor y evidencia causal; nombres como Sequence, Loop o Condition son posibilidades de composición, no componentes actuales.
 
-## Dirección aceptada, aún no implementada
+## Dirección aceptada, aún no completamente implementada
 
 ### Percepción acotada incremental
 
-Los hot paths deberían evaluar sólo evidencia relevante para el estado y la operación actuales. La percepción más amplia queda para descubrimiento, recovery y evaluación. La reintroducción será de un flow o hot path por vez, con benchmark y smoke antes de ampliar alcance.
+Los hot paths deberían evaluar sólo evidencia relevante para el estado y la operación actuales. Rotation R1 acota exclusivamente la verificación de `select_predecessor_character` con `ScopeSpec` y `scoped_transition_for`: el reader amarillo local sigue sobre el frame crudo, y post-swipe, confirmación a Lobby y recovery permanecen globales. La percepción más amplia queda para descubrimiento, recovery y evaluación. La expansión será de un flow o hot path por vez, con benchmark y smoke antes de ampliar alcance.
 
 Esta dirección conserva el principio demostrado por el experimento, pero no adopta sus APIs, planes léxicos ni acoplamientos con Inventory Relief.
 

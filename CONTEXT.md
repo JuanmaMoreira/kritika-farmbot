@@ -9,7 +9,7 @@ El código productivo vigente proviene del checkpoint estable:
 feat: add monster wave skip activity
 ```
 
-La rama de reconstrucción añade únicamente disciplina operativa y documentación; no porta código de la línea experimental Inventory Relief. La evidencia Git prevalece sobre referencias históricas que describían Monster Wave como «sin commit» o «sin push».
+La rama `rebuild/stable-baseline` preserva ese origen y añadió Rotation R1: percepción acotada únicamente en la verificación de `select_predecessor_character`. No porta código de la línea experimental Inventory Relief. La evidencia Git prevalece sobre referencias históricas que describían Monster Wave como «sin commit» o «sin push».
 
 Kritika FarmBot automatiza tareas por personaje de **Kritika: The White Knights** sobre Android físico. GUI Tkinter y CLI son frontends del mismo composition root. Código y tests determinan lo implementado; [`ARCHITECTURE.md`](ARCHITECTURE.md) fija contratos, [`ROADMAP.md`](ROADMAP.md) ordena el trabajo y [`docs/HISTORY.md`](docs/HISTORY.md) conserva la evolución.
 
@@ -59,7 +59,8 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 
 ## Validación vigente
 
-- Baseline hardware-free canónica del checkpoint productivo: **1925/1925 tests**.
+- Checkpoint anterior a Rotation R1: **2129/2129 tests hardware-free** (`f4be77a`).
+- Rotation R1: **2144/2144 tests hardware-free**; smoke HIL natural **1/1**, con tarjeta `SELECTED` estable, `Select` final y Lobby confirmado por la persona usuaria.
 - Evaluación semántica de Monster Wave: **510 frames**, sin resoluciones wrong/ambiguous.
 - Evidencia live histórica: Rotation 28/28 y sesiones combinadas 28/28 sin fallos técnicos; Monster Wave confirmó ACTIVE, MAX, Start y board negativo.
 
@@ -80,7 +81,7 @@ Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en
 No forman parte del runtime estable:
 
 - Inventory Relief Chain general, Trading, Craft, Treasure o Equipment Sell;
-- percepción runtime acotada por hot path;
+- percepción runtime acotada en otros hot paths de Rotation aún no scopeados por R1;
 - framework temporal de input/readiness;
 - estrategia de farming, scheduler, grafo general de navegación o recuperación de conexión post-World Boss;
 - Tower y Arena.
@@ -89,4 +90,4 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-Tras esta reconstrucción documental, corresponde un smoke corto del baseline y luego reintroducir percepción acotada de manera incremental, un hot path por vez. El orden y los criterios de parada están en [`ROADMAP.md`](ROADMAP.md).
+Rotation R1 quedó validada y se detuvo en su scope; post-swipe, confirmación a Lobby y recovery permanecen globales. El siguiente hot path requiere una decisión y evidencia propias, según [`ROADMAP.md`](ROADMAP.md).

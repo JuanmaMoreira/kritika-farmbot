@@ -157,6 +157,7 @@ class StandardRotation:
             DEFAULT_SENTINEL_DETECTOR
         ),
         verified_transition: VerifiedTransition | None = None,
+        selection_transition: VerifiedTransition | None = None,
         quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
         selection_detector: CharacterSelectionDetector = (
             DEFAULT_CHARACTER_SELECTION_DETECTOR
@@ -204,12 +205,17 @@ class StandardRotation:
             verified_transition = VerifiedTransition(observer, actions, events)
         if not callable(getattr(verified_transition, "execute", None)):
             raise ValueError("verified_transition must provide execute()")
+        if selection_transition is None:
+            selection_transition = verified_transition
+        if not callable(getattr(selection_transition, "execute", None)):
+            raise ValueError("selection_transition must provide execute()")
         self.observer: _Observer = observer
         self.actions = actions
         self.events = events
         self.scroll_profile = scroll_profile
         self.sentinel_detector = sentinel_detector
         self.verified_transition = verified_transition
+        self.selection_transition = selection_transition
         self.quick_menu_policy = quick_menu_policy
         self.selection_detector = selection_detector
 
@@ -386,7 +392,7 @@ class StandardRotation:
                 transitions=tuple(transitions),
             )
 
-        selection_result = self.verified_transition.execute(
+        selection_result = self.selection_transition.execute(
             "rotation.select_predecessor_character",
             SelectCharacterCard(target),
             character_select,

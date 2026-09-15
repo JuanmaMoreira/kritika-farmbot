@@ -44,6 +44,7 @@ from bot.semantic_actions import (
     Swipe,
 )
 from bot.state import ResolutionStatus, ResolvedState
+from bot.verified_transition import VerifiedTransition
 
 ROOT = Path(__file__).resolve().parents[1]
 COND01 = (
@@ -907,6 +908,236 @@ def test_card_selection_leaving_character_select_aborts_without_retry():
         if isinstance(action, SelectCharacterCard)
     ]
     assert len(taps) == 1
+    assert ConfirmCharacterSelection() not in actions.actions
+
+
+def test_selection_late_expected_proves_stability_entirely_on_scoped_transition():
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    selected = _selected_frame_at(grid, target)
+    main_observer = ScriptedObserver(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+    )
+    scoped_observer = ScriptedObserver(
+        [_snapshot(6, base=SCREEN_CHARACTER_SELECT, image=selected)],
+        [
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    4, base=SCREEN_CHARACTER_SELECT, image=selected
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=0.75,
+                last_snapshot=_snapshot(
+                    5, base=SCREEN_CHARACTER_SELECT, image=selected
+                ),
+            ),
+            [
+                _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=selected),
+                _snapshot(8, base=SCREEN_CHARACTER_SELECT, image=selected),
+            ],
+        ],
+    )
+    actions = Actions()
+    events = Events()
+    rotation = StandardRotation(
+        main_observer,
+        actions,
+        events,
+        sentinel_detector=ScriptedSentinel([_found()]),
+        verified_transition=VerifiedTransition(main_observer, actions, events),
+        selection_transition=VerifiedTransition(
+            scoped_observer, actions, events
+        ),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.transitions[2].outcome == "success_after_grace"
+    assert result.transitions[2].attempt_count == 1
+    assert result.transitions[2].grace_wait_count == 1
+    assert scoped_observer.wait_calls == [
+        (3, 0.25),
+        (4, 0.25),
+        (6, 0.25),
+    ]
+    assert main_observer.wait_calls == [(1, 0.0), (2, 1.0), (8, 0.0)]
+    assert actions.actions.count(SelectCharacterCard(target)) == 1
+    assert actions.actions.count(ConfirmCharacterSelection()) == 1
+
+
+def test_selection_retry_keeps_both_attempts_on_scoped_transition():
+    grid = _frame(grid_fill=80)
+    target = predecessor_center(SENTINEL_COL2)
+    selected = _selected_frame_at(grid, target)
+    main_observer = ScriptedObserver(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(9, base=SCREEN_LOBBY),
+        ],
+    )
+    scoped_observer = ScriptedObserver(
+        [_snapshot(6, base=SCREEN_CHARACTER_SELECT, image=grid)],
+        [
+            RuntimeWaitTimeout(
+                after_sequence=3,
+                timeout=1.0,
+                last_snapshot=_snapshot(
+                    4, base=SCREEN_CHARACTER_SELECT, image=grid
+                ),
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=4,
+                timeout=0.75,
+                last_snapshot=_snapshot(
+                    5, base=SCREEN_CHARACTER_SELECT, image=grid
+                ),
+            ),
+            [
+                _snapshot(7, base=SCREEN_CHARACTER_SELECT, image=selected),
+                _snapshot(8, base=SCREEN_CHARACTER_SELECT, image=selected),
+            ],
+        ],
+    )
+    actions = Actions()
+    events = Events()
+    rotation = StandardRotation(
+        main_observer,
+        actions,
+        events,
+        sentinel_detector=ScriptedSentinel([_found()]),
+        verified_transition=VerifiedTransition(main_observer, actions, events),
+        selection_transition=VerifiedTransition(
+            scoped_observer, actions, events
+        ),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.transitions[2].outcome == "success_after_retry"
+    assert result.transitions[2].attempt_count == 2
+    assert scoped_observer.wait_calls == [
+        (3, 0.25),
+        (4, 0.25),
+        (6, 0.25),
+    ]
+    assert main_observer.wait_calls == [(1, 0.0), (2, 1.0), (8, 0.0)]
+    assert actions.actions.count(SelectCharacterCard(target)) == 2
+    assert actions.actions.count(ConfirmCharacterSelection()) == 1
+
+
+def test_selection_target_comes_from_fresh_post_swipe_sentinel_snapshot():
+    from bot.character_select_scroll import CharacterSelectScrollProfile
+
+    grid = _frame(grid_fill=80)
+    sentinel_location = (COLUMN_CENTERS[2], 0.60)
+    target = predecessor_center(sentinel_location)
+    selected = _selected_frame_at(grid, target)
+    main_observer = ScriptedObserver(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+            _snapshot(4, base=SCREEN_CHARACTER_SELECT, image=grid.copy()),
+            _snapshot(6, base=SCREEN_LOBBY),
+        ],
+    )
+    scoped_observer = ScriptedObserver(
+        [],
+        [_snapshot(5, base=SCREEN_CHARACTER_SELECT, image=selected)],
+    )
+    actions = Actions()
+    events = Events()
+    rotation = StandardRotation(
+        main_observer,
+        actions,
+        events,
+        sentinel_detector=ScriptedSentinel(
+            [_absent(), _found(location=sentinel_location)]
+        ),
+        scroll_profile=CharacterSelectScrollProfile(
+            progress_swipe=Swipe((0.5, 0.7), (0.5, 0.3), 300),
+            fine_swipe=Swipe((0.5, 0.7), (0.5, 0.5), 250),
+            settle_for=0.25,
+        ),
+        verified_transition=VerifiedTransition(main_observer, actions, events),
+        selection_transition=VerifiedTransition(
+            scoped_observer, actions, events
+        ),
+    )
+
+    result = rotation.advance()
+
+    assert result.succeeded
+    assert result.swipe_count == 1
+    assert SelectCharacterCard(target) in actions.actions
+    assert scoped_observer.wait_calls == [(4, 0.25)]
+    assert main_observer.wait_calls[-1] == (5, 0.0)
+
+
+@pytest.mark.parametrize(
+    "unsafe",
+    (
+        _snapshot(6, status=ResolutionStatus.UNKNOWN),
+        _snapshot(
+            6,
+            base=SCREEN_CHARACTER_SELECT,
+            overlays={MENU_QUICK},
+        ),
+    ),
+)
+def test_selection_unknown_or_overlay_never_authorizes_extra_input(unsafe):
+    grid = _frame(grid_fill=80)
+    main_observer = ScriptedObserver(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, overlays={MENU_QUICK}),
+            _snapshot(3, base=SCREEN_CHARACTER_SELECT, image=grid),
+        ],
+    )
+    if unsafe.state.overlays:
+        waits = [unsafe]
+        observes = []
+    else:
+        waits = [
+            RuntimeWaitTimeout(
+                after_sequence=3, timeout=1.0, last_snapshot=_snapshot(4)
+            ),
+            RuntimeWaitTimeout(
+                after_sequence=4, timeout=0.75, last_snapshot=_snapshot(5)
+            ),
+        ]
+        observes = [unsafe]
+    scoped_observer = ScriptedObserver(observes, waits)
+    actions = Actions()
+    events = Events()
+    rotation = StandardRotation(
+        main_observer,
+        actions,
+        events,
+        sentinel_detector=ScriptedSentinel([_found()]),
+        verified_transition=VerifiedTransition(main_observer, actions, events),
+        selection_transition=VerifiedTransition(
+            scoped_observer, actions, events
+        ),
+    )
+
+    result = rotation.advance()
+
+    assert result.outcome is RotationOutcome.ABORTED
+    assert sum(isinstance(item, SelectCharacterCard) for item in actions.actions) == 1
     assert ConfirmCharacterSelection() not in actions.actions
 
 
