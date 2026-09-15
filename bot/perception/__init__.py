@@ -490,6 +490,57 @@ PETS_MANAGE_NAVIGATE_SCOPE = ScopeSpec(
 )
 
 
+# Shared subset for the Summon Pet Daily normal-path waits only
+# (Manage -> Summon navigation, summon outcome, result/insufficient/pet-full
+# dismissal back to Summon, pet-full -> Combine, Combine -> Summon re-entry).
+# Union of exactly what those waits consume, nothing derived automatically:
+# the pets shell package (required by the Manage, Summon and Combine base
+# rules), the Manage/Summon/Combine base landmarks, the Daily badge and the
+# Premium gold/ticket indicators (allowed statuses on clean Summon), the
+# Epic availability states (the summon guard and the Epic/Premium branch;
+# single specialized detector), the Epic/Premium selector landmarks (the
+# outcome wait stays passive on them as retryable), the Summon Result
+# banner/parchment (outcome expected + result-dismissal retryable), the
+# insufficient-gold and pet-inventory-full prompts (outcome expected +
+# dismissal retryables), and the Quick Menu tile (Quick Menu is accessible
+# from Manage and Summon: without the tile a covered Summon would falsely
+# read as summon-ready and authorize card taps). The final snapshots carry
+# the Epic status the summon guard and branch read next. Epic
+# insufficient-fragments and runes-full popups stay out: the flow only taps
+# single-summon buttons, so they cannot appear on this path; if one ever
+# did, the scoped view would degrade to a bounded timeout (no input),
+# same fail-closed terminal as today.
+PET_SUMMON_SCOPE_SPEC_NAMES = frozenset(
+    {
+        PETS_SHELL_SUMMON_PACKAGE_SPEC.name,
+        PETS_MANAGE_ACTIVE_SPEC.name,
+        PET_SUMMON_ACTIVE_SPEC.name,
+        PET_COMBINE_ACTIVE_SPEC.name,
+        PET_COMBINE_EVOLVE_PROMPT_SPEC.name,
+        PET_SUMMON_DAILY_SPEC.name,
+        PET_PREMIUM_GOLD_SPEC.name,
+        PET_PREMIUM_TICKET_SPEC.name,
+        PET_SUMMON_RESULT_BANNER_SPEC.name,
+        PET_SUMMON_RESULT_PARCHMENT_SPEC.name,
+        INSUFFICIENT_GOLD_PROMPT_SPEC.name,
+        PET_INVENTORY_FULL_PROMPT_SPEC.name,
+        PET_EPIC_SELECTOR_SPEC.name,
+        PET_PREMIUM_GOLD_SELECTOR_SPEC.name,
+        PET_PREMIUM_TICKET_SELECTOR_SPEC.name,
+        QUICK_MENU_LOBBY_TILE_SPEC.name,
+    }
+)
+
+
+# Generic-scope declaration for the Summon Pet Daily waits, expressed as an
+# explicit ScopeSpec (no semantic auto-derivation).
+PET_SUMMON_SCOPE = ScopeSpec(
+    name="pet_summon",
+    spec_names=PET_SUMMON_SCOPE_SPEC_NAMES,
+    specialized_types=(PetEpicAvailabilityDetector,),
+)
+
+
 # Minimal subset for ``rotation.select_predecessor_character`` only.
 # The Character Select header resolves the clean source/expected/retry state.
 # The Quick Menu tile preserves the only cross-context overlay that can cover
@@ -806,6 +857,8 @@ __all__ = (
     "GUILD_NAVIGATE_SCOPE_SPEC_NAMES",
     "PETS_MANAGE_NAVIGATE_SCOPE",
     "PETS_MANAGE_NAVIGATE_SCOPE_SPEC_NAMES",
+    "PET_SUMMON_SCOPE",
+    "PET_SUMMON_SCOPE_SPEC_NAMES",
     "GUILD_MESSAGE_TAB_SPEC",
     "GUILD_ATTENDANCE_DAILY_SPEC",
     "GuildAttendanceDetector",

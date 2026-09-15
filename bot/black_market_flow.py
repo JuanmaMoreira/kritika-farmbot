@@ -104,6 +104,7 @@ class BlackMarketFlow:
         slot_transition: VerifiedTransition | None = None,
         purchase_transition: VerifiedTransition | None = None,
         open_transition: VerifiedTransition | None = None,
+        confirmation_observer: _Observer | None = None,
         cancel_requested: Callable[[], bool] = lambda: False,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
@@ -180,6 +181,15 @@ class BlackMarketFlow:
         if not callable(getattr(open_transition, "execute", None)):
             raise ValueError("open_transition must provide execute()")
         self.open_transition = open_transition
+        if confirmation_observer is None:
+            confirmation_observer = observer
+        if not callable(
+            getattr(confirmation_observer, "observe", None)
+        ) or not callable(getattr(confirmation_observer, "wait_until", None)):
+            raise ValueError(
+                "confirmation_observer must provide observe() and wait_until()"
+            )
+        self.confirmation_observer: _Observer = confirmation_observer
 
     def run(self, *, max_slot_attempts: int | None = None) -> BlackMarketFlowResult:
         """Run the flow, optionally bounded by an explicit debug attempt limit.
@@ -247,7 +257,7 @@ class BlackMarketFlow:
 
         if not market.facts.gold_slots:
             try:
-                market = self.observer.wait_until(
+                market = self.confirmation_observer.wait_until(
                     lambda snapshot: (
                         _is_clean_base(snapshot, SCREEN_BLACK_MARKET)
                         and bool(snapshot.facts.gold_slots)
@@ -399,7 +409,7 @@ class BlackMarketFlow:
 
             flow_events.append(FlowEvent("inventory_full"))
             acknowledged = acknowledge_inventory_full(
-                self.verified_transition,
+                self.slot_transition,
                 branch,
                 policy=self.inventory_full_policy,
                 stable_for=self.post_branch_settle_for,

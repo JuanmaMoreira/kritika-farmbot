@@ -121,6 +121,7 @@ class SummonPetDailyFlow:
         events: EventSink,
         pet_summon_space_relief: _Relief,
         *,
+        summon_observer=None,
         navigation_timeout: float = 6.0,
         outcome_timeout: float = 12.0,
         navigation_stable_for: float = 0.25,
@@ -131,6 +132,14 @@ class SummonPetDailyFlow:
             getattr(observer, "wait_until", None)
         ):
             raise ValueError("observer must provide observe() and wait_until()")
+        if summon_observer is None:
+            summon_observer = observer
+        if not callable(
+            getattr(summon_observer, "observe", None)
+        ) or not callable(getattr(summon_observer, "wait_until", None)):
+            raise ValueError(
+                "summon_observer must provide observe() and wait_until()"
+            )
         if not callable(getattr(actions, "execute", None)):
             raise ValueError("actions must provide execute()")
         if not callable(getattr(events, "record", None)):
@@ -140,6 +149,7 @@ class SummonPetDailyFlow:
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
         self.observer: _Observer = observer
+        self.summon_observer: _Observer = summon_observer
         self.actions = actions
         self.events = events
         self.pet_summon_space_relief = pet_summon_space_relief
@@ -361,7 +371,7 @@ class SummonPetDailyFlow:
             self.actions.execute(OpenSinglePremiumPet(), summon.geometry)
 
         # Wait for result (summon result, insufficient gold, or pet full)
-        return self.observer.wait_until(
+        return self.summon_observer.wait_until(
             lambda snapshot: self._is_summon_result(snapshot)
                 or self._is_insufficient_gold(snapshot)
                 or self._is_pet_full(snapshot),
@@ -410,7 +420,7 @@ class SummonPetDailyFlow:
         if not retryable_from(before):
             raise RuntimeError("summon_pet_navigation_guard_missing")
         self.actions.execute(action, before.geometry)
-        return self.observer.wait_until(
+        return self.summon_observer.wait_until(
             expected,
             after_sequence=before.sequence,
             timeout=timeout,

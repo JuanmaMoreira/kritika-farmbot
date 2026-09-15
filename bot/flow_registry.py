@@ -263,7 +263,34 @@ def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
             dependencies, main_transition
         ),
         open_transition=_open_transition_for(dependencies, main_transition),
+        confirmation_observer=_black_market_confirmation_observer_for(
+            dependencies, dependencies.observer
+        ),
         cancel_requested=dependencies.cancel_requested,
+    )
+
+
+def _black_market_confirmation_observer_for(
+    dependencies: FlowDependencies, main_observer
+):
+    """Scoped observer for the Black Market empty-gold confirmation wait.
+
+    The post-open read (clean Black Market plus GOLD facts, Caso read)
+    shares the open navigation detector set: the base landmark, the three
+    purchase-branch popups of its abort predicate and the GOLD/Purchased
+    facts. Same fallback contract as every other scope: any wiring
+    failure returns the main observer, preserving today's behavior
+    exactly.
+    """
+
+    from bot.perception import BLACK_MARKET_OPEN_SCOPE
+
+    return scoped_observer_for(
+        dependencies,
+        main_observer,
+        scope=BLACK_MARKET_OPEN_SCOPE,
+        active_event="black_market.gold_confirmation_scope_active",
+        unavailable_event="black_market.gold_confirmation_scope_unavailable",
     )
 
 
@@ -353,7 +380,37 @@ def _build_summon_pet_daily(dependencies: FlowDependencies) -> PerCharacterFlow:
         dependencies.actions,
         dependencies.events,
         dependencies.pet_summon_space_relief,
+        summon_observer=_summon_pet_observer_for(
+            dependencies, dependencies.observer
+        ),
         cancel_requested=dependencies.cancel_requested,
+    )
+
+
+def _summon_pet_observer_for(
+    dependencies: FlowDependencies, main_observer
+):
+    """Scoped observer for the Summon Pet Daily normal-path waits.
+
+    Navigation (Manage/Summon/Combine), the summon outcome and every
+    dismissal share one pets-family detector set: the shell package all
+    three bases require, the Manage/Summon/Combine landmarks, the
+    Daily/Premium indicators, the Epic availability states, the selectors
+    the outcome wait stays passive on, the Result landmarks, both outcome
+    popups and the Quick Menu tile. The initial Manage observe stays
+    global (discovery); the relief keeps its own observer. Same fallback
+    contract as every other scope: any wiring failure returns the main
+    observer, preserving today's behavior exactly.
+    """
+
+    from bot.perception import PET_SUMMON_SCOPE
+
+    return scoped_observer_for(
+        dependencies,
+        main_observer,
+        scope=PET_SUMMON_SCOPE,
+        active_event="summon_pet_daily.summon_scope_active",
+        unavailable_event="summon_pet_daily.summon_scope_unavailable",
     )
 
 
