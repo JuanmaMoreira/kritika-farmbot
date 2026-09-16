@@ -47,6 +47,7 @@ from bot.runtime_facts import FactReadStatus
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
+    RuntimeWaitAborted,
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
@@ -332,6 +333,12 @@ class WorldBossActivity:
                 after_sequence=entered.sequence,
                 timeout=self.fact_timeout,
                 stable_for=self.entry_settle_for,
+                abort_if=lambda item: _is_known_incompatible(
+                    item,
+                    lambda candidate: _is_previous_rewards(candidate)
+                    or _is_clean_base(candidate, SCREEN_WORLD_BOSS),
+                    lambda _: False,
+                ),
                 cancel_requested=self.cancel_requested,
             )
 
@@ -359,6 +366,13 @@ class WorldBossActivity:
                 after_sequence=entered.sequence,
                 timeout=self.fact_timeout,
                 stable_for=self.stable_for,
+                abort_if=lambda item: _is_known_incompatible(
+                    item,
+                    lambda candidate: _is_clean_base(
+                        candidate, SCREEN_WORLD_BOSS
+                    ),
+                    lambda _: False,
+                ),
                 cancel_requested=self.cancel_requested,
             )
         else:
@@ -596,6 +610,7 @@ class WorldBossActivity:
                     _is_raid_complete,
                     after_sequence=auto_after,
                     timeout=self.fact_timeout,
+                    abort_if=_is_raid_complete_poll_contradiction,
                     cancel_requested=self.cancel_requested,
                 )
             except RuntimeWaitCancelled:
@@ -606,6 +621,17 @@ class WorldBossActivity:
             except RuntimeWaitTimeout:
                 return self._failed(
                     "raid_complete_after_auto_interruption_timeout",
+                    sapphires=sapphires,
+                    flow_events=flow_events,
+                    previous_rewards=previous_rewards,
+                    auto_battle_initial=initial_auto,
+                    auto_battle_taps=ensured.tap_count,
+                    transitions=transitions,
+                )
+            except RuntimeWaitAborted as error:
+                return self._failed(
+                    "raid_complete_after_auto_interruption_contradictory_state: "
+                    f"{error}",
                     sapphires=sapphires,
                     flow_events=flow_events,
                     previous_rewards=previous_rewards,
@@ -666,6 +692,9 @@ class WorldBossActivity:
                 timeout=self.fact_timeout,
                 cancel_requested=self.cancel_requested,
             )
+            raid_after = max(
+                (timer_after, *(item.sequence for item in timer_read.evidence))
+            )
             if timer_read.status is FactReadStatus.CANCELLED:
                 return self._cancelled(
                     sapphires, flow_events, previous_rewards, initial_auto,
@@ -703,7 +732,9 @@ class WorldBossActivity:
                 timer = timer_fact.value
                 self._record_best_effort("world_boss.timer_read", seconds=timer)
 
-            wait_result, raid = self._wait_for_raid_complete(timer)
+            wait_result, raid = self._wait_for_raid_complete(
+                timer, after_sequence=raid_after
+            )
             wait_elapsed = wait_result.elapsed
             wait_checks = wait_result.poll_count
             self._record_best_effort(
@@ -758,7 +789,8 @@ class WorldBossActivity:
             raid,
             expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
             precondition=_is_raid_complete,
-            retryable_from=_is_raid_complete,
+            retryable_from=lambda _: False,
+            tolerated=_is_raid_complete,
         )
         if returned is None:
             return self._transition_failure(
@@ -817,12 +849,16 @@ class WorldBossActivity:
         transitions.append(result)
         return result.final_snapshot if result.succeeded else None
 
-    def _wait_for_raid_complete(self, timer: int):
+    def _wait_for_raid_complete(self, timer: int, *, after_sequence: int):
         latest: RuntimeSnapshot | None = None
         detected_at: float | None = None
         unknown_count = 0
+        ambiguous_count = 0
+        stale_count = 0
         poll_index = 0
         raid_complete_max_confidence = 0.0
+        terminal_detected = False
+        terminal_detail: str | None = None
         started_at = self.clock()
         initial_wait_duration = float(timer) + self.wait_policy.post_timer_margin
         polling_started_at: float | None = None
@@ -833,31 +869,49 @@ class WorldBossActivity:
             post_timer_margin=self.wait_policy.post_timer_margin,
             completion_poll_interval=self.wait_policy.completion_poll_interval,
             completion_timeout=self.wait_policy.completion_timeout,
+            after_sequence=after_sequence,
         )
 
         def check() -> bool:
-            nonlocal latest, detected_at, unknown_count
+            nonlocal latest, detected_at, unknown_count, ambiguous_count
+            nonlocal stale_count, terminal_detected, terminal_detail
             nonlocal poll_index, raid_complete_max_confidence
             poll_index += 1
             latest = self.observer.observe()
-            raid_complete = _is_raid_complete(latest)
+            fresh = latest.sequence > after_sequence
+            raid_complete_visible = _is_raid_complete_visible(latest)
+            raid_complete = fresh and _is_raid_complete(latest)
             landmark = latest.observations.best(
                 LANDMARK_WORLD_BOSS_RAID_COMPLETE_TITLE
             )
             confidence = landmark.confidence if landmark is not None else 0.0
-            raid_complete_max_confidence = max(
-                raid_complete_max_confidence, confidence
-            )
+            if fresh:
+                raid_complete_max_confidence = max(
+                    raid_complete_max_confidence, confidence
+                )
+                terminal_detected = _is_raid_complete_poll_contradiction(latest)
+                if terminal_detected:
+                    terminal_detail = (
+                        "fresh resolved state cannot produce Raid Complete: "
+                        f"base={latest.state.base_context}, "
+                        f"overlays={latest.state.overlays}"
+                    )
+            else:
+                stale_count += 1
             self._record_best_effort(
                 "world_boss.wait.poll",
                 poll_index=poll_index,
                 sequence=latest.frame.sequence,
+                after_sequence=after_sequence,
+                fresh=fresh,
                 resolution_status=latest.state.status.value,
                 base_state=(
                     latest.state.base_context or latest.state.status.value
                 ),
                 overlays=latest.state.overlays,
+                raid_complete_visible=raid_complete_visible,
                 raid_complete_detected=raid_complete,
+                contradictory=terminal_detected,
                 raid_complete_confidence=confidence,
                 semantic_confidence_threshold=SEMANTIC_CONFIDENCE_THRESHOLD,
             )
@@ -865,8 +919,10 @@ class WorldBossActivity:
                 if detected_at is None:
                     detected_at = self.clock()
                 return True
-            if latest.state.status is ResolutionStatus.UNKNOWN:
+            if fresh and latest.state.status is ResolutionStatus.UNKNOWN:
                 unknown_count += 1
+            elif fresh and latest.state.status is ResolutionStatus.AMBIGUOUS:
+                ambiguous_count += 1
             return False
 
         initial = self.initial_wait.wait(
@@ -881,8 +937,12 @@ class WorldBossActivity:
                 detected_at,
                 initial,
                 unknown_count,
+                ambiguous_count,
+                stale_count,
                 latest,
                 raid_complete_max_confidence,
+                after_sequence,
+                terminal_detail,
             )
             return initial, latest
 
@@ -898,12 +958,14 @@ class WorldBossActivity:
         completion = self.completion_wait.wait(
             expected_duration=self.wait_policy.completion_timeout,
             completion_condition=check,
+            terminal_condition=lambda: terminal_detected,
             cancel_requested=self.cancel_requested,
         )
         combined = _combined_wait(
             completion,
             initial.elapsed + completion.elapsed,
             completion.poll_count,
+            error=terminal_detail,
         )
         self._record_wait_finished(
             timer,
@@ -912,8 +974,12 @@ class WorldBossActivity:
             detected_at,
             combined,
             unknown_count,
+            ambiguous_count,
+            stale_count,
             latest,
             raid_complete_max_confidence,
+            after_sequence,
+            terminal_detail,
         )
         return combined, latest
 
@@ -925,8 +991,12 @@ class WorldBossActivity:
         detected_at,
         result,
         unknown_count,
+        ambiguous_count,
+        stale_count,
         latest,
         raid_complete_max_confidence,
+        after_sequence,
+        terminal_detail,
     ):
         self._record_best_effort(
             "world_boss.wait.finished",
@@ -939,7 +1009,10 @@ class WorldBossActivity:
             raid_complete_detected_at=detected_at,
             actual_elapsed=result.elapsed,
             poll_count=result.poll_count,
+            after_sequence=after_sequence,
             unknown_count=unknown_count,
+            ambiguous_count=ambiguous_count,
+            stale_count=stale_count,
             last_base_state=(
                 latest.state.base_context or latest.state.status.value
                 if latest is not None
@@ -948,6 +1021,7 @@ class WorldBossActivity:
             last_overlays=(latest.state.overlays if latest is not None else ()),
             last_sequence=(latest.frame.sequence if latest is not None else None),
             raid_complete_max_confidence=raid_complete_max_confidence,
+            terminal_detail=terminal_detail,
             semantic_confidence_threshold=SEMANTIC_CONFIDENCE_THRESHOLD,
             outcome=result.outcome.value,
         )
@@ -1025,10 +1099,16 @@ class WorldBossActivity:
             pass
 
 
-def _combined_wait(result, elapsed, polls):
+def _combined_wait(result, elapsed, polls, *, error=None):
     from bot.controlled_wait import ControlledWaitResult
 
-    return ControlledWaitResult(result.outcome, elapsed, polls, result.error)
+    return ControlledWaitResult(
+        result.outcome,
+        elapsed,
+        polls,
+        error if error is not None else result.error,
+        failure=result.failure,
+    )
 
 
 def _transition_outcomes(transitions):
@@ -1055,15 +1135,40 @@ def _has_only_overlay(snapshot: RuntimeSnapshot, overlay: str) -> bool:
 
 
 def _is_select_boss(snapshot: RuntimeSnapshot) -> bool:
-    return _has_only_overlay(snapshot, OVERLAY_WORLD_BOSS_SELECT_BOSS)
+    return (
+        snapshot.state.status is ResolutionStatus.RESOLVED
+        and snapshot.state.base_context == SCREEN_BATTLE_MODE_SELECT
+        and _has_only_overlay(snapshot, OVERLAY_WORLD_BOSS_SELECT_BOSS)
+    )
 
 
 def _is_previous_rewards(snapshot: RuntimeSnapshot) -> bool:
-    return _has_only_overlay(snapshot, POPUP_WORLD_BOSS_PREVIOUS_REWARDS)
+    return (
+        snapshot.state.status is ResolutionStatus.RESOLVED
+        and snapshot.state.base_context == SCREEN_WORLD_BOSS
+        and _has_only_overlay(snapshot, POPUP_WORLD_BOSS_PREVIOUS_REWARDS)
+    )
+
+
+def _is_raid_complete_visible(snapshot: RuntimeSnapshot) -> bool:
+    return OVERLAY_WORLD_BOSS_RAID_COMPLETE in snapshot.state.overlays
 
 
 def _is_raid_complete(snapshot: RuntimeSnapshot) -> bool:
-    return OVERLAY_WORLD_BOSS_RAID_COMPLETE in snapshot.state.overlays
+    return (
+        snapshot.state.status is ResolutionStatus.RESOLVED
+        and snapshot.state.base_context == SCREEN_WORLD_BOSS_BATTLE
+        and _has_only_overlay(snapshot, OVERLAY_WORLD_BOSS_RAID_COMPLETE)
+    )
+
+
+def _is_raid_complete_poll_contradiction(snapshot: RuntimeSnapshot) -> bool:
+    if snapshot.state.status is not ResolutionStatus.RESOLVED:
+        return False
+    return not (
+        _is_clean_base(snapshot, SCREEN_WORLD_BOSS_BATTLE)
+        or _is_raid_complete(snapshot)
+    )
 
 
 def _is_world_boss_inventory_full(snapshot: RuntimeSnapshot) -> bool:

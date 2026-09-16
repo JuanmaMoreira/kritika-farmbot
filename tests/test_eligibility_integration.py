@@ -45,6 +45,12 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
         def observe(self):
             self.sequence += 1
             if self.base == SCREEN_BATTLE_MODE_SELECT:
+                if self.overlays == (OVERLAY_WORLD_BOSS_SELECT_BOSS,):
+                    return snapshot(
+                        self.sequence,
+                        base=SCREEN_BATTLE_MODE_SELECT,
+                        overlays=self.overlays,
+                    )
                 return card(self.sequence, active, status=signal_status)
             if self.base == MENU_QUICK:
                 return snapshot(self.sequence, overlays=(MENU_QUICK,))
@@ -77,7 +83,7 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
             observer.base = {"OpenBattleModeSelect": SCREEN_BATTLE_MODE_SELECT,
                              "OpenQuickMenu": MENU_QUICK,
                              "SelectQuickMenuLobby": SCREEN_LOBBY,
-                             "OpenWorldBossSelector": None,
+                             "OpenWorldBossSelector": SCREEN_BATTLE_MODE_SELECT,
                              "SelectAvailableWorldBoss": SCREEN_WORLD_BOSS,
                              "StartWorldBossBattle": SCREEN_WORLD_BOSS_BATTLE,
                              "ContinueAfterWorldBossRaid": SCREEN_WORLD_BOSS,

@@ -71,6 +71,14 @@ from bot.world_boss_flow import (
     WorldBossFlow,
     WorldBossWaitPolicy,
 )
+from bot.world_boss_activity import (
+    _is_known_incompatible,
+    _is_previous_rewards,
+    _is_raid_complete,
+    _is_raid_complete_poll_contradiction,
+    _is_raid_complete_visible,
+    _is_select_boss,
+)
 
 
 def snapshot(
@@ -275,7 +283,11 @@ def standalone_transitions(frames, outcomes):
                        snapshot(1004, base=SCREEN_LOBBY)])
         statuses.extend([success] * 3)
     for i, item in enumerate(frames):
-        if item.state.base_context == SCREEN_BATTLE_MODE_SELECT and result:
+        if (
+            item.state.base_context == SCREEN_BATTLE_MODE_SELECT
+            and OVERLAY_WORLD_BOSS_SELECT_BOSS not in item.state.overlays
+            and result
+        ):
             close()
         result.append(item)
         statuses.append(outcomes[i] if outcomes and i < len(outcomes) else success)
@@ -333,9 +345,17 @@ def happy_inputs(*, previous=False):
         base=SCREEN_BATTLE_MODE_SELECT,
         overlays=(STATUS_WORLD_BOSS_DAILY_ACTIVE,),
     )
-    selector = snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+    selector = snapshot(
+        4,
+        base=SCREEN_BATTLE_MODE_SELECT,
+        overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+    )
     entered = (
-        snapshot(5, overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,))
+        snapshot(
+            5,
+            base=SCREEN_WORLD_BOSS,
+            overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
+        )
         if previous else snapshot(5, base=SCREEN_WORLD_BOSS)
     )
     main = snapshot(6 if not previous else 7, base=SCREEN_WORLD_BOSS)
@@ -418,8 +438,38 @@ def test_complete_flow_handles_optional_previous_rewards_and_finishes_world_boss
     assert result.initial_timer == 20
     assert result.raid_complete_detected
     assert driver.calls[-4][0] == "world_boss.continue_after_raid"
+    assert [call[0] for call in driver.calls].count(
+        "world_boss.continue_after_raid"
+    ) == 1
+    continue_call = next(
+        call
+        for call in driver.calls
+        if call[0] == "world_boss.continue_after_raid"
+    )
+    valid_raid = snapshot(
+        200,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    unknown_raid = snapshot(201, overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+    foreign_raid = snapshot(
+        202,
+        base=SCREEN_LOBBY,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    assert not continue_call[3]["retryable_from"](valid_raid)
+    assert not continue_call[3]["retryable_from"](unknown_raid)
+    assert not continue_call[3]["abort_if"](valid_raid)
+    assert not continue_call[3]["abort_if"](unknown_raid)
+    assert continue_call[3]["abort_if"](foreign_raid)
     assert [item[0] for item in facts.trace].count("timer") == 1
     assert any(name == "world_boss.previous_rewards" for name, _ in events.records) is previous
+    wait_started = next(
+        fields
+        for name, fields in events.records
+        if name == "world_boss.wait.started"
+    )
+    assert wait_started["after_sequence"] == 9
 
 
 def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle():
@@ -428,6 +478,7 @@ def test_complete_flow_treats_unknown_as_transit_and_never_rechecks_auto_battle(
     unknown_b = snapshot(101)
     raid = snapshot(
         102,
+        base=SCREEN_WORLD_BOSS_BATTLE,
         overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
     )
     auto = Mock()
@@ -553,7 +604,9 @@ def test_previous_rewards_may_arrive_after_transient_world_boss_main():
     lobby = snapshot(2, base=SCREEN_LOBBY)
     transient_main = snapshot(5, base=SCREEN_WORLD_BOSS)
     delayed_rewards = snapshot(
-        6, overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,)
+        6,
+        base=SCREEN_WORLD_BOSS,
+        overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
     )
     stable_main = snapshot(8, base=SCREEN_WORLD_BOSS)
     battle = snapshot(9, base=SCREEN_WORLD_BOSS_BATTLE)
@@ -565,7 +618,11 @@ def test_previous_rewards_may_arrive_after_transient_world_boss_main():
     returned = snapshot(12, base=SCREEN_WORLD_BOSS)
     transitions = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(
+            4,
+            base=SCREEN_BATTLE_MODE_SELECT,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
         transient_main,
         snapshot(7, base=SCREEN_WORLD_BOSS),
         battle,
@@ -616,7 +673,11 @@ def test_inventory_full_uses_one_positive_relief_then_no_and_completes_nonfatall
     returned = snapshot(11, base=SCREEN_WORLD_BOSS)
     transitions = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(
+            4,
+            base=SCREEN_BATTLE_MODE_SELECT,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         inventory,
         socket,
@@ -700,7 +761,11 @@ def test_successful_socket_relief_returns_and_world_boss_continues_normally():
         observes=[raid],
         transitions=[
             snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-            snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+            snapshot(
+                4,
+                base=SCREEN_BATTLE_MODE_SELECT,
+                overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+            ),
             snapshot(5, base=SCREEN_WORLD_BOSS),
             inventory,
             socket,
@@ -737,7 +802,11 @@ def test_positive_allowance_is_not_consumed_when_socket_entry_is_unverified():
         waits=[lobby, main],
         transitions=[
             snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-            snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+            snapshot(
+                4,
+                base=SCREEN_BATTLE_MODE_SELECT,
+                overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+            ),
             snapshot(5, base=SCREEN_WORLD_BOSS),
             inventory,
             inventory,
@@ -795,7 +864,11 @@ def test_socket_relief_cancel_and_failure_stop_before_another_world_boss_start(
         waits=[snapshot(2, base=SCREEN_LOBBY), snapshot(6, base=SCREEN_WORLD_BOSS)],
         transitions=[
             snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-            snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+            snapshot(
+                4,
+                base=SCREEN_BATTLE_MODE_SELECT,
+                overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+            ),
             snapshot(5, base=SCREEN_WORLD_BOSS),
             inventory,
             snapshot(8, base=SCREEN_SOCKET),
@@ -819,7 +892,11 @@ def test_positive_socket_allowance_is_fresh_for_each_run():
     )
     transition_cycle = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(
+            4,
+            base=SCREEN_BATTLE_MODE_SELECT,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         inventory,
         snapshot(8, base=SCREEN_SOCKET),
@@ -879,7 +956,11 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
     ),))
     transitions = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(
+            4,
+            base=SCREEN_BATTLE_MODE_SELECT,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         bag_full,
         combine,
@@ -931,7 +1012,11 @@ def test_bag_full_close_failure_is_structured_and_does_not_claim_completion():
     )
     transitions = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(
+            4,
+            base=SCREEN_BATTLE_MODE_SELECT,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         bag_full,
         snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,)),
@@ -980,7 +1065,11 @@ def test_positive_equipment_allowance_is_fresh_for_each_run():
     )
     transition_cycle = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(
+            4,
+            base=SCREEN_BATTLE_MODE_SELECT,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         bag_full,
         snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,)),
@@ -1044,7 +1133,11 @@ def test_equipment_combine_relief_cancel_and_failure_stop_before_another_start(
         waits=[snapshot(2, base=SCREEN_LOBBY), snapshot(6, base=SCREEN_WORLD_BOSS)],
         transitions=[
             snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-            snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+            snapshot(
+                4,
+                base=SCREEN_BATTLE_MODE_SELECT,
+                overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+            ),
             snapshot(5, base=SCREEN_WORLD_BOSS),
             bag_full,
             snapshot(8, base=SCREEN_COMBINE, overlays=(MODE_COMBINE_FUSE,)),
@@ -1409,20 +1502,89 @@ def test_unknown_is_not_a_retry_guard_for_any_world_boss_transition():
     assert not retryable(unknown)
 
 
+@pytest.mark.parametrize(
+    ("predicate", "valid_base", "overlay"),
+    (
+        (_is_select_boss, SCREEN_BATTLE_MODE_SELECT, OVERLAY_WORLD_BOSS_SELECT_BOSS),
+        (_is_previous_rewards, SCREEN_WORLD_BOSS, POPUP_WORLD_BOSS_PREVIOUS_REWARDS),
+        (_is_raid_complete, SCREEN_WORLD_BOSS_BATTLE, OVERLAY_WORLD_BOSS_RAID_COMPLETE),
+    ),
+)
+def test_world_boss_overlay_actions_require_exact_resolved_base(
+    predicate, valid_base, overlay
+):
+    valid = snapshot(20, base=valid_base, overlays=(overlay,))
+    unknown = snapshot(21, overlays=(overlay,))
+    ambiguous = snapshot(
+        22,
+        overlays=(overlay,),
+        status=ResolutionStatus.AMBIGUOUS,
+    )
+    foreign = snapshot(23, base=SCREEN_LOBBY, overlays=(overlay,))
+    absent = snapshot(24, base=valid_base)
+
+    assert predicate(valid)
+    assert not predicate(unknown)
+    assert not predicate(ambiguous)
+    assert not predicate(foreign)
+    assert not predicate(absent)
+    assert _is_known_incompatible(foreign, predicate, predicate)
+
+
+def test_raid_complete_visibility_does_not_grant_continue_authority():
+    unknown = snapshot(30, overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+    ambiguous = snapshot(
+        31,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+        status=ResolutionStatus.AMBIGUOUS,
+    )
+
+    assert _is_raid_complete_visible(unknown)
+    assert _is_raid_complete_visible(ambiguous)
+    assert not _is_raid_complete(unknown)
+    assert not _is_raid_complete(ambiguous)
+    assert not _is_raid_complete_poll_contradiction(unknown)
+    assert not _is_raid_complete_poll_contradiction(ambiguous)
+
+
+def test_raid_complete_poll_contract_classifies_wait_and_terminal_states():
+    clean_battle = snapshot(40, base=SCREEN_WORLD_BOSS_BATTLE)
+    valid_raid = snapshot(
+        41,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    foreign_without_overlay = snapshot(42, base=SCREEN_LOBBY)
+    foreign_with_overlay = snapshot(
+        43,
+        base=SCREEN_LOBBY,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+
+    assert not _is_raid_complete_poll_contradiction(clean_battle)
+    assert not _is_raid_complete_poll_contradiction(valid_raid)
+    assert _is_raid_complete_poll_contradiction(foreign_without_overlay)
+    assert _is_raid_complete_poll_contradiction(foreign_with_overlay)
+
+
 class TimedObserver:
     def __init__(
         self,
         fake,
         raid_at=None,
         unknown_until=None,
+        ambiguous_until=None,
         always_unknown=False,
         raid_base=SCREEN_WORLD_BOSS_BATTLE,
+        base_before_raid=SCREEN_WORLD_BOSS_BATTLE,
     ):
         self.fake = fake
         self.raid_at = raid_at
         self.unknown_until = unknown_until
+        self.ambiguous_until = ambiguous_until
         self.always_unknown = always_unknown
         self.raid_base = raid_base
+        self.base_before_raid = base_before_raid
         self.observe_times = []
 
     def observe(self):
@@ -1444,19 +1606,31 @@ class TimedObserver:
             self.unknown_until is not None and self.fake.current < self.unknown_until
         ):
             return snapshot(sequence)
-        return snapshot(sequence, base=SCREEN_WORLD_BOSS_BATTLE)
+        if (
+            self.ambiguous_until is not None
+            and self.fake.current < self.ambiguous_until
+        ):
+            return snapshot(sequence, status=ResolutionStatus.AMBIGUOUS)
+        return snapshot(sequence, base=self.base_before_raid)
 
     def wait_until(self, *args, **kwargs):
         raise AssertionError("not used")
 
 
-def raid_wait_flow(*, raid_at=None, unknown_until=None, always_unknown=False,
-                   cancel=lambda: False, policy=None,
-                   raid_base=SCREEN_WORLD_BOSS_BATTLE):
+def raid_wait_flow(*, raid_at=None, unknown_until=None, ambiguous_until=None,
+                   always_unknown=False, cancel=lambda: False, policy=None,
+                   raid_base=SCREEN_WORLD_BOSS_BATTLE,
+                   base_before_raid=SCREEN_WORLD_BOSS_BATTLE):
     fake = FakeTime()
     policy = policy or WorldBossWaitPolicy()
     observer = TimedObserver(
-        fake, raid_at, unknown_until, always_unknown, raid_base
+        fake,
+        raid_at,
+        unknown_until,
+        ambiguous_until,
+        always_unknown,
+        raid_base,
+        base_before_raid,
     )
     actions = Mock()
     auto = Mock(ensure_on_quick=Mock())
@@ -1481,7 +1655,7 @@ def raid_wait_flow(*, raid_at=None, unknown_until=None, always_unknown=False,
 def test_timer_sixty_waits_sixty_five_without_perception_then_polls_once():
     flow, fake, observer, actions, auto = raid_wait_flow(raid_at=65)
 
-    result, raid = flow.activity._wait_for_raid_complete(60)
+    result, raid = flow.activity._wait_for_raid_complete(60, after_sequence=0)
 
     assert result.outcome is ControlledWaitOutcome.COMPLETED
     assert result.elapsed == pytest.approx(65)
@@ -1497,7 +1671,7 @@ def test_final_polling_runs_each_second_and_accepts_late_raid_complete():
         unknown_until=68,
     )
 
-    result, raid = flow.activity._wait_for_raid_complete(60)
+    result, raid = flow.activity._wait_for_raid_complete(60, after_sequence=0)
 
     assert result.outcome is ControlledWaitOutcome.COMPLETED
     assert result.elapsed == pytest.approx(68)
@@ -1507,18 +1681,71 @@ def test_final_polling_runs_each_second_and_accepts_late_raid_complete():
     actions.execute.assert_not_called()
 
 
-@pytest.mark.parametrize("raid_base", [None, SCREEN_LOBBY])
-def test_raid_complete_overlay_succeeds_independently_of_base_state(raid_base):
+def test_unknown_raid_complete_overlay_is_visual_only_and_times_out_bounded():
+    # Historical tests accepted this synthetic overlay without its battle
+    # base. It remains observable, but UNKNOWN cannot authorize Continue.
+    flow, _, observer, actions, _ = raid_wait_flow(raid_at=65, raid_base=None)
+
+    result, raid = flow.activity._wait_for_raid_complete(60, after_sequence=0)
+
+    assert result.outcome is ControlledWaitOutcome.TIMEOUT
+    assert raid is not None
+    assert raid.state.status is ResolutionStatus.UNKNOWN
+    assert OVERLAY_WORLD_BOSS_RAID_COMPLETE in raid.state.overlays
+    assert observer.observe_times[0] == 65
+    assert observer.observe_times[-1] == 90
+    actions.execute.assert_not_called()
+
+
+def test_ambiguous_is_transient_during_battle_poll_and_never_actionable():
     flow, _, observer, actions, _ = raid_wait_flow(
-        raid_at=65,
-        raid_base=raid_base,
+        raid_at=68,
+        ambiguous_until=68,
     )
 
-    result, raid = flow.activity._wait_for_raid_complete(60)
+    result, raid = flow.activity._wait_for_raid_complete(60, after_sequence=0)
 
     assert result.outcome is ControlledWaitOutcome.COMPLETED
-    assert raid is not None
-    assert OVERLAY_WORLD_BOSS_RAID_COMPLETE in raid.state.overlays
+    assert result.elapsed == pytest.approx(68)
+    assert observer.observe_times == [65, 66, 67, 68]
+    assert raid is not None and _is_raid_complete(raid)
+    actions.execute.assert_not_called()
+
+
+def test_stale_raid_complete_before_anchor_does_not_count():
+    flow, _, observer, actions, _ = raid_wait_flow(raid_at=65)
+
+    result, raid = flow.activity._wait_for_raid_complete(
+        60, after_sequence=700
+    )
+
+    assert result.outcome is ControlledWaitOutcome.COMPLETED
+    assert result.elapsed == pytest.approx(70)
+    assert observer.observe_times == [65, 66, 67, 68, 69, 70]
+    assert raid is not None and raid.sequence == 701
+    finished = [
+        fields
+        for name, fields in flow.activity.events.records
+        if name == "world_boss.wait.finished"
+    ][-1]
+    assert finished["after_sequence"] == 700
+    assert finished["stale_count"] == 5
+    actions.execute.assert_not_called()
+
+
+def test_foreign_resolved_raid_complete_overlay_is_terminal_contradiction():
+    # Lobby plus a Raid Complete overlay was historical permissiveness, not a
+    # valid World Boss result source.
+    flow, _, observer, actions, _ = raid_wait_flow(
+        raid_at=65,
+        raid_base=SCREEN_LOBBY,
+    )
+
+    result, raid = flow.activity._wait_for_raid_complete(60, after_sequence=0)
+
+    assert result.outcome is ControlledWaitOutcome.TERMINATED
+    assert "base=screen.lobby" in result.error
+    assert raid is not None and raid.state.base_context == SCREEN_LOBBY
     assert observer.observe_times == [65]
     actions.execute.assert_not_called()
 
@@ -1526,7 +1753,7 @@ def test_raid_complete_overlay_succeeds_independently_of_base_state(raid_base):
 def test_persistent_unknown_times_out_without_input_or_recovery():
     flow, _, observer, actions, auto = raid_wait_flow(always_unknown=True)
 
-    result, raid = flow.activity._wait_for_raid_complete(60)
+    result, raid = flow.activity._wait_for_raid_complete(60, after_sequence=0)
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
     assert result.elapsed == pytest.approx(90)
@@ -1562,7 +1789,7 @@ def test_wait_telemetry_records_timer_margin_poll_start_detection_and_elapsed():
     policy = WorldBossWaitPolicy(post_timer_margin=2)
     flow, _, _, _, _ = raid_wait_flow(raid_at=8, policy=policy)
 
-    result, _ = flow.activity._wait_for_raid_complete(5)
+    result, _ = flow.activity._wait_for_raid_complete(5, after_sequence=0)
 
     finished = [fields for name, fields in flow.activity.events.records if name == "world_boss.wait.finished"][-1]
     assert result.succeeded
@@ -1594,21 +1821,36 @@ def test_controlled_wait_propagates_cancellation_without_failure():
     # Bind cancellation to the flow's actual injected clock.
     flow.activity.cancel_requested = lambda: flow.activity.clock() >= 2
 
-    result, _ = flow.activity._wait_for_raid_complete(10)
+    result, _ = flow.activity._wait_for_raid_complete(10, after_sequence=0)
 
     assert result.outcome is ControlledWaitOutcome.CANCELLED
     assert observer.observe_times == []
     actions.execute.assert_not_called()
 
 
-def test_known_non_completion_state_also_waits_until_timeout():
+def test_valid_battle_without_overlay_waits_until_timeout():
     flow, _, observer, actions, _ = raid_wait_flow()
 
-    result, _ = flow.activity._wait_for_raid_complete(5)
+    result, _ = flow.activity._wait_for_raid_complete(5, after_sequence=0)
 
     assert result.outcome is ControlledWaitOutcome.TIMEOUT
     assert observer.observe_times[0] == 10
     assert observer.observe_times[-1] == 35
+    actions.execute.assert_not_called()
+
+
+def test_contradictory_resolved_state_without_overlay_terminates_immediately():
+    flow, _, observer, actions, _ = raid_wait_flow(
+        base_before_raid=SCREEN_LOBBY
+    )
+
+    result, raid = flow.activity._wait_for_raid_complete(5, after_sequence=0)
+
+    assert result.outcome is ControlledWaitOutcome.TERMINATED
+    assert result.elapsed == pytest.approx(10)
+    assert "base=screen.lobby" in result.error
+    assert raid is not None and raid.state.base_context == SCREEN_LOBBY
+    assert observer.observe_times == [10]
     actions.execute.assert_not_called()
 
 
@@ -1647,7 +1889,11 @@ def test_meteor_full_after_start_rejects_once_and_completes_for_character():
         waits=[lobby, main],
         transitions=[
             snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-            snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+            snapshot(
+                4,
+                base=SCREEN_BATTLE_MODE_SELECT,
+                overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+            ),
             snapshot(5, base=SCREEN_WORLD_BOSS),
             meteor,
             returned,
@@ -1699,7 +1945,11 @@ def test_meteor_full_reject_failure_is_structured_and_does_not_claim_completion(
     )
     transitions = [
         snapshot(3, base=SCREEN_BATTLE_MODE_SELECT),
-        snapshot(4, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)),
+        snapshot(
+            4,
+            base=SCREEN_BATTLE_MODE_SELECT,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
         snapshot(5, base=SCREEN_WORLD_BOSS),
         meteor,
         meteor,

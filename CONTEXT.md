@@ -65,6 +65,7 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 - World Boss WB-1: **2152/2152 tests hardware-free**; `Run Session` natural **1/1** tras el cambio, con elegibilidad 95→5, wait estable 2,61→0,91 s, 0 retries/recoveries y World Boss completado. Detector/asset/ROI/OCR y semántica de batalla intactos; Start, boundaries de inventario y retorno siguen globales por contrato abierto de abort/overlays.
 - Quick Menu verified-origin handoff: **2231/2231 tests hardware-free**; action-source lineage y recovery invalidation explícitos; consumers principales migrados sin cambios de hitboxes/detectores. R2-C y waits con vocabulario de contradicción permanecen globales.
 - Clean Lobby/B2: **2364/2364 tests hardware-free** y **398/398 regresión dirigida**. CloseFriends, Mailbox, Daily, Black Market, ClosePets, `select_lobby`, BattleModeZone.leave y R2-B acotan sólo el wait final 95→77. Los scopes preservan todas las dependencias de las 17 bases y 57 overlays; benchmark sobre cinco frames reales: 657.53 ms/frame global frente a 411.73–423.54 ms/frame scoped. No cambió detector, ROI, asset ni calibración.
+- World Boss correctness, checkpoint parcial: predicates y transiciones ya exigen la base `RESOLVED` exacta para Select Boss, Previous Rewards y Raid Complete; el poll de Raid Complete tiene anchor causal, stale rejection y terminal para `RESOLVED` contradictorio; Auto Battle conserva interrupción visual separada de la autorización y `Continue` es single-attempt. La evidencia curada demuestra `screen.world_boss_battle + Raid Complete`, pero Select Boss y Previous Rewards todavía resuelven `UNKNOWN` porque el overlay oculta el landmark base actual. El runtime queda fail-closed, no productivo en esos dos pasos; este checkpoint no autoriza declarar cerrada la ruta ni ejecutar HIL natural.
 - Evaluación semántica de Monster Wave: **510 frames**, sin resoluciones wrong/ambiguous.
 - Evidencia live histórica: Rotation 28/28 y sesiones combinadas 28/28 sin fallos técnicos; Monster Wave confirmó ACTIVE, MAX, Start y board negativo.
 
@@ -89,7 +90,7 @@ No forman parte del runtime estable:
 - Inventory Relief Chain general, Trading, Craft, Treasure o Equipment Sell;
 - R2-C (Quick Menu→Character Select) conserva observación global porque el subset actual de dos detectores no muestra bases contradictorias bajo el menú;
 - no existe aún una señal positiva estructural y multitemporada de Lobby; scopes menores por consumer y reuse D quedan diferidos hasta obtener evidencia física o un carry explícito de snapshot;
-- World Boss: selector, Previous Rewards y Raid Complete conservan deuda semántica de autorización overlay-only sobre base UNKNOWN/AMBIGUOUS; Raid Complete debe decidir el terminal contradictorio y el poll debe revisar `after_sequence`/freshness. Los D locales requieren un snapshot fresco equivalente antes de reutilizarse;
+- World Boss: la autorización overlay-only, Raid Complete y su poll están corregidos fail-closed. Falta evidencia física para una base observable bajo Select Boss y Previous Rewards, o una decisión explícita de provenance causal; hasta entonces la ruta productiva se detiene antes del input. Los D locales requieren un snapshot fresco equivalente antes de reutilizarse;
 - framework temporal de input/readiness;
 - estrategia de farming, scheduler, grafo general de navegación o recuperación de conexión post-World Boss;
 - Tower y Arena.
@@ -98,6 +99,6 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-Clean Lobby/B2 queda cerrado en código y documentación. Quick Menu permanece cerrado: B2 sólo consume su handoff en el wait final. R2-C y selecciones que necesitan reconocer bases contradictorias siguen globales. La deuda de World Boss selector/Previous Rewards/Raid Complete permanece separada en [`ROADMAP.md`](ROADMAP.md); no iniciar ese frente como continuación de B2.
+World Boss correctness queda en checkpoint fail-closed: Raid Complete/Continue tienen contrato completo, pero Select Boss y Previous Rewards no poseen hoy una señal base independiente visible bajo sus overlays. El próximo paso requiere elegir con evidencia entre adquirir/calibrar esa señal o acordar un handoff causal acotado; no iniciar performance/scoping ni un HIL natural mientras la ruta no sea accionable.
 
 Un smoke HIL breve es opcional si se solicita evidencia temporal/física de R2-B o de un close concreto; no es requisito para el cambio resolver-equivalente 95→77. No recalibrar `screen.lobby` sin adquisición seasonal específica.
