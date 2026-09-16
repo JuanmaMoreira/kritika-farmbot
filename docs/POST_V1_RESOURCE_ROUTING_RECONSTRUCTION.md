@@ -186,3 +186,27 @@ Correcciones de dominio cerradas aplicadas sobre §§4, 6–8:
 - Límites: geometría de producción (pitch, filas, lane, top/bottom, tolerancia) sin calibrar — los tests usan geometría sintética; HIL pendiente en el frente C con el consumer real. Sin semántica de consumer dentro del helper (la prohibición de scroll en Keys vive en el futuro adapter, no aquí).
 - Trading sigue sin integrar; Craft/Treasure/Relief/MW sin cambios; runtime productivo intacto.
 - Tests: `tests/test_directed_list_scroll.py`, 35 dirigidos verdes con observer/gesto falsos; `git diff --check` limpio; sin full suite (módulo nuevo sin consumidores), sin evaluator/corpus (sin detectors/readers/assets), sin HIL.
+
+## 12. Frentes C1/C2 offline (HIL pendiente, sin calibración inventada)
+
+Tabla de reconstrucción (fact | evidencia actual | reutilizable | necesita HIL | propuesta):
+
+- Entrada Lobby→Trading | coords legacy `(0.2441,0.893)` + landmark runtime `lobby-trading-center-label` | coords NO, label SÍ | SÍ (tap + llegada) | C1: entry op tras HIL; offline sólo predicados
+- `screen.trading` base | Astra `landmark.relief_trading` (asset ausente en repo) | NO | SÍ (crop título) | `landmark.trading_center_title` (nombre; detector con HIL)
+- Tab General/Keys activas | templates legacy `*-tab-id.png` sin calibrar | sólo referencia visual | SÍ | `indicator.trading_general_active` / `trading_keys_active`
+- Contenido Keys/Materials listo | Astra `relief_keys_rows` + guard 30 frames (frames no versionados) | concepto SÍ, asset NO | SÍ | `indicator.trading_keys_rows` / `trading_material_rows` (readiness positiva estilo Daily)
+- Filas/títulos/pitch | Astra `TradeViewportRow` (OCR ≥.90, pitch, `.003`, color-check) + prefijos hero crafting | modelo SÍ, números NO ciegos | SÍ (pitch, títulos, orden) | C2: reader futuro → `ViewportReading`; catálogo ordenado sólo con GT
+- Bound scroll `.95·(n−1)·pitch`, x=.33, 900ms, settle .6s, ≤12 | bound SÍ (ya en B); lane/tiempos NO canónicos | SÍ (lane, pitch, settle) | `KnownListScrollProfile` calibrado con HIL
+- Keys sin scroll | Astra §8 + smoke 3 (Keys al comienzo, cero scroll) | diseño SÍ | parcial (confirmar UI actual) | policy en adapter Trading, no en B
+- Regresión readiness | `TRADING_LIVE_REGRESSIONS.md` §§1-9 (ACTIVE≠contenido; Pets→precondition_rejected) | diseño SÍ | SÍ (tabs iniciales reales) | readiness = tab exclusivo + rows + limpio
+- Scoped perception 14-detector | arquitectura Astra descartada | NO | — | correctness primero con mecanismo actual; scope sólo con vocabulario completo
+
+C1 offline DONE (predicados puros + 12 tests): `bot/trading_center_semantics.py` (nombres) + `bot/trading_center.py` (`is_trading_screen`, `clean_trading`, `trading_tab` GENERAL/KEYS/UNKNOWN/CONTRADICTORY, `is_keys/materials_content_ready` estilo Daily: chrome + rows + limpio, misma snapshot). Sin entry action (requiere coords HIL), sin detectores, sin registro en catálogo.
+
+C2 adapter offline DONE (16 tests), calibración pendiente: `bot/trading_materials_scroll.py` (`MaterialRow`/`MaterialViewport`, `viewport_to_reading` que excluye parciales, `locate_material_target` con gate `content_ready`, rechazo `keys_no_scroll` sin input, short-circuit parcial sin input, exit-confirm de READY contra fila completa fresca). Sin `MATERIAL_CATALOG` ni profile físico: orden/títulos/pitch/lane/settle/tolerancia requieren HIL; no se fijó ningún valor físico.
+
+B_FIT = GOOD: el adapter consume B directo (profile, reading, driver, outcomes) sin bypasses ni duplicación de dirección/progreso/budget; la única lógica propia es policy de dominio Trading (parciales, keys, readiness-gate) que pertenece al adapter. B sin cambios.
+
+HIL pendiente (usuario con Trading accesible, diferido a otra sesión): Q1 entrada+tab inicial; Q2 General/materials orden top→bottom, headers, pitch, filas visibles; Q3 Keys al comienzo sin scroll + títulos; Q4 readiness (spinner/tiempos/señal); Q5 safe lane (verificar x=.33); Q6 swipe settle/parciales/top-bottom; Q7 smoke forward/back/visible sin tocar target. Luego: curar→assets→specs→calibración→evaluator incremental→catálogo+profile→smoke→C1/C2 DONE.
+
+Validación offline: 63/63 (35 B + 12 C1 + 16 C2), `git diff --check` limpio; sin full suite (ningún archivo existente tocado), sin evaluator/corpus, sin HIL. Sin trades: el adapter nunca tapea (sólo emite `PlannedGesture`).
