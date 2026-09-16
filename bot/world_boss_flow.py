@@ -27,9 +27,11 @@ class WorldBossFlow:
     )
 
     def __init__(self, *args, **kwargs):
+        lobby_transition = kwargs.pop("lobby_transition", None)
         self.activity = WorldBossActivity(*args, **kwargs)
         self.zone = BattleModeZone(
             self.activity.observer, self.activity.verified_transition,
+            lobby_transition=lobby_transition,
             cancel_requested=self.activity.cancel_requested,
         )
         # Diagnostic observation, consumed once; never a running resource balance.

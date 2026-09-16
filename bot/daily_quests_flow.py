@@ -101,6 +101,7 @@ class DailyQuestsFlow:
         *,
         claim_observer: RuntimeObserver | None = None,
         open_observer: RuntimeObserver | None = None,
+        lobby_observer: RuntimeObserver | None = None,
         navigation_timeout: float = 6.0,
         claim_timeout: float = 8.0,
         navigation_stable_for: float = 0.25,
@@ -129,6 +130,12 @@ class DailyQuestsFlow:
             raise ValueError(
                 "open_observer must provide observe() and wait_until()"
             )
+        if lobby_observer is None:
+            lobby_observer = observer
+        if not callable(getattr(lobby_observer, "observe", None)) or not callable(
+            getattr(lobby_observer, "wait_until", None)
+        ):
+            raise ValueError("lobby_observer must provide observe() and wait_until()")
         if not callable(getattr(actions, "execute", None)):
             raise ValueError("actions must provide execute()")
         if not callable(getattr(events, "record", None)):
@@ -140,6 +147,7 @@ class DailyQuestsFlow:
         self.observer: _Observer = observer
         self.claim_observer: _Observer = claim_observer
         self.open_observer: _Observer = open_observer
+        self.lobby_observer: _Observer = lobby_observer
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -411,6 +419,7 @@ class DailyQuestsFlow:
                 abort_if=self._has_incompatible_close_state,
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
+                observer=self.lobby_observer,
             )
             assert self._is_clean_lobby(lobby)
             return DailyQuestsFlowResult(

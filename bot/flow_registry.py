@@ -252,6 +252,8 @@ def _open_transition_for(dependencies: FlowDependencies, main_transition):
 
 
 def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
+    from bot.perception import BLACK_MARKET_TO_LOBBY_SCOPE
+
     main_transition = _verified_transition_for(dependencies)
     return BlackMarketFlow(
         dependencies.observer,
@@ -263,6 +265,13 @@ def _build_black_market(dependencies: FlowDependencies) -> PerCharacterFlow:
             dependencies, main_transition
         ),
         open_transition=_open_transition_for(dependencies, main_transition),
+        close_transition=scoped_transition_for(
+            dependencies,
+            main_transition,
+            scope=BLACK_MARKET_TO_LOBBY_SCOPE,
+            active_event="black_market.lobby_return_scope_active",
+            unavailable_event="black_market.lobby_return_scope_unavailable",
+        ),
         confirmation_observer=_black_market_confirmation_observer_for(
             dependencies, dependencies.observer
         ),
@@ -295,6 +304,9 @@ def _black_market_confirmation_observer_for(
 
 
 def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
+    from bot.perception import QUICK_MENU_TO_LOBBY_SCOPE
+
+    main_transition = _verified_transition_for(dependencies)
     return WorldBossFlow(
         dependencies.observer,
         dependencies.actions,
@@ -304,17 +316,34 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
         socket_relief=dependencies.socket_relief,
         equipment_combine_relief=dependencies.equipment_combine_relief,
         cancel_requested=dependencies.cancel_requested,
-        verified_transition=_verified_transition_for(dependencies),
+        verified_transition=main_transition,
+        lobby_transition=scoped_transition_for(
+            dependencies,
+            main_transition,
+            scope=QUICK_MENU_TO_LOBBY_SCOPE,
+            active_event="battle_mode.lobby_return_scope_active",
+            unavailable_event="battle_mode.lobby_return_scope_unavailable",
+        ),
     )
 
 
 def _build_monster_wave(dependencies: FlowDependencies) -> PerCharacterFlow:
+    from bot.perception import QUICK_MENU_TO_LOBBY_SCOPE
+
+    main_transition = _verified_transition_for(dependencies)
     return MonsterWaveFlow(
         dependencies.observer, dependencies.actions, dependencies.events,
         config=getattr(getattr(dependencies, 'config', None), 'monster_wave', MonsterWaveConfig()),
         facts=dependencies.facts,
         cancel_requested=dependencies.cancel_requested,
-        verified_transition=_verified_transition_for(dependencies),
+        verified_transition=main_transition,
+        lobby_transition=scoped_transition_for(
+            dependencies,
+            main_transition,
+            scope=QUICK_MENU_TO_LOBBY_SCOPE,
+            active_event="battle_mode.lobby_return_scope_active",
+            unavailable_event="battle_mode.lobby_return_scope_unavailable",
+        ),
     )
 
 
@@ -360,6 +389,8 @@ def _daily_open_observer_for(dependencies: FlowDependencies, main_observer):
 
 
 def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
+    from bot.perception import DAILY_TO_LOBBY_SCOPE
+
     return DailyQuestsFlow(
         dependencies.observer,
         dependencies.actions,
@@ -369,6 +400,13 @@ def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
         ),
         open_observer=_daily_open_observer_for(
             dependencies, dependencies.observer
+        ),
+        lobby_observer=scoped_observer_for(
+            dependencies,
+            dependencies.observer,
+            scope=DAILY_TO_LOBBY_SCOPE,
+            active_event="daily_quests.lobby_return_scope_active",
+            unavailable_event="daily_quests.lobby_return_scope_unavailable",
         ),
         cancel_requested=dependencies.cancel_requested,
     )
@@ -422,8 +460,8 @@ def _send_stamina_completion_observer_for(dependencies: FlowDependencies, main_o
     narrows the observer rather than a transition. Same fallback contract
     as Daily/Mailbox/Guild: any wiring failure returns the main observer,
     preserving today's behavior exactly. The initial ``observe()``
-    (precondition/no-op check), navigation, close and Lobby latency stay
-    global on purpose.
+    (precondition/no-op check) and navigation stay global; the final Lobby
+    wait uses its separate resolver-complete scope.
     """
 
     from bot.perception import SEND_STAMINA_COMPLETION_SCOPE
@@ -438,12 +476,21 @@ def _send_stamina_completion_observer_for(dependencies: FlowDependencies, main_o
 
 
 def _build_send_stamina(dependencies: FlowDependencies) -> PerCharacterFlow:
+    from bot.perception import FRIENDS_TO_LOBBY_SCOPE
+
     return SendStaminaFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
         completion_observer=_send_stamina_completion_observer_for(
             dependencies, dependencies.observer
+        ),
+        lobby_observer=scoped_observer_for(
+            dependencies,
+            dependencies.observer,
+            scope=FRIENDS_TO_LOBBY_SCOPE,
+            active_event="send_stamina.lobby_return_scope_active",
+            unavailable_event="send_stamina.lobby_return_scope_unavailable",
         ),
         cancel_requested=dependencies.cancel_requested,
     )
@@ -471,12 +518,21 @@ def _mailbox_claim_observer_for(dependencies: FlowDependencies, main_observer):
 
 
 def _build_mailbox(dependencies: FlowDependencies) -> PerCharacterFlow:
+    from bot.perception import MAILBOX_TO_LOBBY_SCOPE
+
     return MailboxFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
         claim_observer=_mailbox_claim_observer_for(
             dependencies, dependencies.observer
+        ),
+        lobby_observer=scoped_observer_for(
+            dependencies,
+            dependencies.observer,
+            scope=MAILBOX_TO_LOBBY_SCOPE,
+            active_event="mailbox.lobby_return_scope_active",
+            unavailable_event="mailbox.lobby_return_scope_unavailable",
         ),
         cancel_requested=dependencies.cancel_requested,
     )

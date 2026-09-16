@@ -16,8 +16,10 @@ class MonsterWaveFlow:
                             (ComponentRequirement.exact_state(SCREEN_LOBBY),))
 
     def __init__(self, *args, **kwargs):
+        lobby_transition = kwargs.pop('lobby_transition', None)
         self.activity = MonsterWaveActivity(*args, **kwargs)
         self.zone = BattleModeZone(self.activity.observer, self.activity.verified_transition,
+                                   lobby_transition=lobby_transition,
                                    cancel_requested=self.activity.cancel_requested)
 
     def prepared(self, zone, *, daily=False):

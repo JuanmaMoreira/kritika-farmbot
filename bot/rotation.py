@@ -159,6 +159,7 @@ class StandardRotation:
         ),
         verified_transition: VerifiedTransition | None = None,
         selection_transition: VerifiedTransition | None = None,
+        confirmation_transition: VerifiedTransition | None = None,
         post_swipe_observer: RuntimeObserver | None = None,
         quick_menu_policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
         selection_detector: CharacterSelectionDetector = (
@@ -211,6 +212,10 @@ class StandardRotation:
             selection_transition = verified_transition
         if not callable(getattr(selection_transition, "execute", None)):
             raise ValueError("selection_transition must provide execute()")
+        if confirmation_transition is None:
+            confirmation_transition = verified_transition
+        if not callable(getattr(confirmation_transition, "execute", None)):
+            raise ValueError("confirmation_transition must provide execute()")
         if post_swipe_observer is None:
             post_swipe_observer = observer
         if not callable(getattr(post_swipe_observer, "wait_until", None)):
@@ -223,6 +228,7 @@ class StandardRotation:
         self.sentinel_detector = sentinel_detector
         self.verified_transition = verified_transition
         self.selection_transition = selection_transition
+        self.confirmation_transition = confirmation_transition
         self.quick_menu_policy = quick_menu_policy
         self.selection_detector = selection_detector
 
@@ -461,7 +467,7 @@ class StandardRotation:
             )
         selected = selection_result.final_snapshot
 
-        confirmation_result = self.verified_transition.execute(
+        confirmation_result = self.confirmation_transition.execute(
             "rotation.confirm_character_selection",
             ConfirmCharacterSelection(),
             selected,

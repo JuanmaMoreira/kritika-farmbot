@@ -83,6 +83,7 @@ class SendStaminaFlow:
         events: EventSink,
         *,
         completion_observer: RuntimeObserver | None = None,
+        lobby_observer: RuntimeObserver | None = None,
         navigation_timeout: float = 6.0,
         completion_timeout: float = 3.0,
         navigation_stable_for: float = 0.25,
@@ -101,6 +102,12 @@ class SendStaminaFlow:
             raise ValueError(
                 "completion_observer must provide observe() and wait_until()"
             )
+        if lobby_observer is None:
+            lobby_observer = observer
+        if not callable(getattr(lobby_observer, "observe", None)) or not callable(
+            getattr(lobby_observer, "wait_until", None)
+        ):
+            raise ValueError("lobby_observer must provide observe() and wait_until()")
         if not callable(getattr(actions, "execute", None)):
             raise ValueError("actions must provide execute()")
         if not callable(getattr(events, "record", None)):
@@ -109,6 +116,7 @@ class SendStaminaFlow:
             raise ValueError("cancel_requested must be callable")
         self.observer: _Observer = observer
         self.completion_observer: _Observer = completion_observer
+        self.lobby_observer: _Observer = lobby_observer
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -208,6 +216,7 @@ class SendStaminaFlow:
                 ),
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
+                observer=self.lobby_observer,
             )
             assert _is_clean_lobby(lobby)
             return SendStaminaFlowResult(

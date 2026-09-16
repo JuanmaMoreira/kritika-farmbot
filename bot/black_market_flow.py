@@ -104,6 +104,7 @@ class BlackMarketFlow:
         slot_transition: VerifiedTransition | None = None,
         purchase_transition: VerifiedTransition | None = None,
         open_transition: VerifiedTransition | None = None,
+        close_transition: VerifiedTransition | None = None,
         confirmation_observer: _Observer | None = None,
         cancel_requested: Callable[[], bool] = lambda: False,
     ) -> None:
@@ -181,6 +182,11 @@ class BlackMarketFlow:
         if not callable(getattr(open_transition, "execute", None)):
             raise ValueError("open_transition must provide execute()")
         self.open_transition = open_transition
+        if close_transition is None:
+            close_transition = verified_transition
+        if not callable(getattr(close_transition, "execute", None)):
+            raise ValueError("close_transition must provide execute()")
+        self.close_transition = close_transition
         if confirmation_observer is None:
             confirmation_observer = observer
         if not callable(
@@ -446,7 +452,7 @@ class BlackMarketFlow:
     ) -> BlackMarketFlowResult:
         """Close Black Market and require a fresh clean Lobby postcondition."""
 
-        closed = self.verified_transition.execute(
+        closed = self.close_transition.execute(
             "black_market.close",
             CloseBlackMarket(),
             market,

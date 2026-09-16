@@ -48,7 +48,10 @@ from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistr
 from bot.perception import (
     GUILD_NAVIGATE_SCOPE,
     PETS_MANAGE_NAVIGATE_SCOPE,
+    PETS_TO_LOBBY_SCOPE,
+    QUICK_MENU_TO_LOBBY_SCOPE,
     ROTATION_CHARACTER_SELECTION_SCOPE,
+    ROTATION_TO_LOBBY_SCOPE,
     WORLD_BOSS_ELIGIBILITY_SCOPE,
     build_default_perception,
 )
@@ -243,6 +246,13 @@ class ProductiveRuntime:
                 unavailable_event=(
                     "rotation.character_selection_scope_unavailable"
                 ),
+            ),
+            confirmation_transition=scoped_transition_for(
+                self,
+                main_transition,
+                scope=ROTATION_TO_LOBBY_SCOPE,
+                active_event="rotation.lobby_return_scope_active",
+                unavailable_event="rotation.lobby_return_scope_unavailable",
             ),
         )
 
@@ -514,7 +524,14 @@ class ProductiveRuntime:
             max_attempts=2,
         )
         if origin in {SCREEN_PETS_MANAGE, SCREEN_PET_SUMMON}:
-            lobby = transition.execute(
+            lobby_transition = scoped_transition_for(
+                self,
+                transition,
+                scope=PETS_TO_LOBBY_SCOPE,
+                active_event="precondition.pets_lobby_return_scope_active",
+                unavailable_event="precondition.pets_lobby_return_scope_unavailable",
+            )
+            lobby = lobby_transition.execute(
                 "precondition.close_pets",
                 ClosePets(),
                 initial,
@@ -566,7 +583,14 @@ class ProductiveRuntime:
                 opened, outcome=VerifiedTransitionOutcome.PRECONDITION_REJECTED,
                 error="quick_menu_origin_handoff_invalid",
             )
-        lobby = transition.execute(
+        lobby_transition = scoped_transition_for(
+            self,
+            transition,
+            scope=QUICK_MENU_TO_LOBBY_SCOPE,
+            active_event=f"{prefix}.lobby_return_scope_active",
+            unavailable_event=f"{prefix}.lobby_return_scope_unavailable",
+        )
+        lobby = lobby_transition.execute(
             f"{prefix}.select_lobby",
             SelectQuickMenuLobby(),
             opened.final_snapshot,

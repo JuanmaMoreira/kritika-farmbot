@@ -46,9 +46,17 @@ class BattleModeZone:
     entry_requirement = ComponentRequirement.exact_state(SCREEN_LOBBY)
     hub_requirement = ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT)
 
-    def __init__(self, observer, transition, *, cancel_requested=lambda: False):
+    def __init__(
+        self,
+        observer,
+        transition,
+        *,
+        lobby_transition=None,
+        cancel_requested=lambda: False,
+    ):
         self.observer = observer
         self.transition = transition
+        self.lobby_transition = transition if lobby_transition is None else lobby_transition
         self.cancel_requested = cancel_requested
 
     def enter(self):
@@ -110,7 +118,12 @@ class BattleModeZone:
                             )
                         ),
                     }
-                result = self.transition.execute(
+                executor = (
+                    self.lobby_transition
+                    if leaving and name == "select_lobby"
+                    else self.transition
+                )
+                result = executor.execute(
                     f"battle_mode.{name}", action, before,
                     expected=expected, precondition=guard, retryable_from=guard,
                     stable_for=0.25, policy=VerifiedTransitionPolicy(max_attempts=2),

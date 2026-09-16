@@ -606,6 +606,140 @@ SEND_STAMINA_COMPLETION_SCOPE = ScopeSpec(
     specialized_types=(),
 )
 
+# Strong Lobby completion vocabulary for known transitions only. The target
+# proof remains the current Trading Center landmark, while every dependency of
+# every catalog base and overlay rule is retained. A scoped resolver therefore
+# cannot turn an observed blocker into an empty overlay set or hide a foreign
+# base needed by ``abort_if``/AMBIGUOUS semantics. This is intentionally
+# explicit: catalog growth must fail a test until this contract is reviewed.
+# Discovery, recovery and session postconditions remain global.
+STRONG_LOBBY_COMPLETION_SPEC_NAMES = frozenset(
+    {
+        "landmark.lobby_trading_center_label",
+        "landmark.character_select_header",
+        "landmark.daily_quests_title",
+        "landmark.mailbox_title",
+        "landmark.monster_wave_title",
+        "landmark.pet_combine_evolve_prompt",
+        "landmark.pet_summon_result_banner",
+        "landmark.pet_summon_result_parchment",
+        "landmark.pets_manage_active",
+        "landmark.socket_tab",
+        "landmark.world_boss_battle_current_damage",
+        "landmark.world_boss_sapphires_used",
+        "landmark.daily_quests_tab_active",
+        "landmark.daily_quests_row_claim_button",
+        "landmark.friends_title",
+        "landmark.friends_all_button",
+        "indicator.friends_send_stamina_daily_active",
+        "landmark.guild_message_tab",
+        "indicator.guild_attendance_daily_active",
+        "landmark.mailbox_character_mail_active",
+        "landmark.mailbox_row_claim_button",
+        "landmark.mailbox_row_delete_button",
+        "landmark.battle_mode_select_header",
+        "indicator.world_boss_daily_active",
+        "landmark.black_market_title",
+        "landmark.insufficient_gold_prompt",
+        "landmark.inventory_full_ok_button",
+        "landmark.purchase_confirmation_prompt",
+        "landmark.quick_menu_lobby_tile",
+        "landmark.socket_enhance_all_title",
+        "landmark.socket_inventory_full_prompt",
+        "landmark.meteor_inventory_full_prompt",
+        "landmark.socket_no_material_prompt",
+        "landmark.socket_sell_bulk_button",
+        "landmark.world_boss_select_boss_header",
+        "landmark.world_boss_previous_rewards_notice",
+        "landmark.world_boss_raid_complete_title",
+        "landmark.equipment_inventory_full_prompt",
+        "landmark.combine_fuse_active",
+        "landmark.combine_transmute_active",
+        "indicator.combine_rows",
+        "indicator.combine_rows_upper",
+        "indicator.combine_row_bottom",
+        "landmark.combine_awakened_transmute_title",
+        "landmark.combine_ethereal_random_part_title",
+        "landmark.combine_all_title",
+        "landmark.combine_ethereal_mass_prompt",
+        "landmark.combine_ethereal_no_material_prompt",
+        "landmark.pets_shell_summon_package",
+        "landmark.pet_summon_active",
+        "landmark.pet_combine_active",
+        "landmark.pet_combine_all_confirm",
+        "landmark.pet_combine_no_material",
+        "landmark.pet_epic_runes_full",
+        "landmark.pet_mass_evolve_selection",
+        "indicator.pet_summon_daily_active",
+        "indicator.pet_premium_ticket",
+        "indicator.pet_premium_gold",
+        "landmark.pet_epic_selector",
+        "landmark.pet_premium_ticket_selector",
+        "landmark.pet_premium_gold_selector",
+        "landmark.pet_epic_insufficient_fragments",
+        "landmark.pet_inventory_full_prompt",
+        "landmark.monster_wave_weekly_results",
+        "landmark.monster_wave_usage_tooltip",
+        "landmark.monster_wave_ticket_purchase",
+        "landmark.monster_wave_insufficient_sapphires",
+        "landmark.monster_wave_inventory_board",
+        "landmark.monster_wave_clear",
+        "indicator.monster_wave_daily_active",
+        "landmark.monster_wave_new_ranking",
+    }
+)
+
+STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES = (
+    CombineContextDetector,
+    DailyQuestsProgressRewardDetector,
+    GuildAttendanceDetector,
+    PetEpicAvailabilityDetector,
+    PetCombineResultDetector,
+    PetMassEvolveConfirmationDetector,
+)
+
+FRIENDS_TO_LOBBY_SCOPE = ScopeSpec(
+    name="friends_to_lobby",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
+)
+
+MAILBOX_TO_LOBBY_SCOPE = ScopeSpec(
+    name="mailbox_to_lobby",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
+)
+
+DAILY_TO_LOBBY_SCOPE = ScopeSpec(
+    name="daily_to_lobby",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
+)
+
+BLACK_MARKET_TO_LOBBY_SCOPE = ScopeSpec(
+    name="black_market_to_lobby",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
+)
+
+PETS_TO_LOBBY_SCOPE = ScopeSpec(
+    name="pets_to_lobby",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
+)
+
+QUICK_MENU_TO_LOBBY_SCOPE = ScopeSpec(
+    name="quick_menu_to_lobby",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
+)
+
+ROTATION_TO_LOBBY_SCOPE = ScopeSpec(
+    name="rotation_to_lobby",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
+)
+
 
 def _select_scope_detectors(
     source: PerceptionEngine,
@@ -958,6 +1092,15 @@ __all__ = (
     "MAILBOX_TITLE_SPEC",
     "MailboxClaimProcessingDetector",
     "MailboxClaimProcessingReading",
+    "BLACK_MARKET_TO_LOBBY_SCOPE",
+    "DAILY_TO_LOBBY_SCOPE",
+    "FRIENDS_TO_LOBBY_SCOPE",
+    "MAILBOX_TO_LOBBY_SCOPE",
+    "PETS_TO_LOBBY_SCOPE",
+    "QUICK_MENU_TO_LOBBY_SCOPE",
+    "ROTATION_TO_LOBBY_SCOPE",
+    "STRONG_LOBBY_COMPLETION_SPEC_NAMES",
+    "STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES",
     "ScopeSpec",
     "LocalCvDetection",
     "LocalCvDetector",
