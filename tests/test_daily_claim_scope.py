@@ -1,12 +1,16 @@
-"""Experimental claim-scoped perception for the Daily Quests ``ClaimAll`` wait.
+"""Claim-scoped perception for the Daily Quests claim waits.
 
-Covers only the ClaimAll claim+settle wait: detector subset composition,
-resolution equivalence against the global engine on curated Daily frames,
-flow routing of exactly that wait through the scoped observer, the
+Covers the ``ClaimAll`` claim+settle wait and the independent
+progress-reward wait: detector subset composition, resolution
+equivalence against the global engine on curated Daily frames, flow
+routing of exactly those waits through the scoped observer, the
 ``RuntimeObserver.scoped`` seam and the registry wiring with its bounded
 fallback to the main observer.
 
-The independent progress-reward wait is intentionally out of scope.
+Both waits share one coherent detector set and one abort predicate:
+the progress expected (fully settled) only adds the absence of the
+progress-reward indicator the scope already carries for the follow-up
+decision.
 """
 
 from pathlib import Path
@@ -51,6 +55,7 @@ from bot.runtime_observer import (
 )
 from bot.semantic_actions import (
     ClaimAllDailyQuests,
+    ClaimDailyQuestsProgressReward,
     CloseDailyQuests,
     OpenQuests,
 )
@@ -474,6 +479,53 @@ def test_claim_wait_routes_through_claim_observer_only():
     # observer but still gates on content readiness; only the claim shot
     # runs scoped, with the same contract as the global wait (8 s timeout,
     # 0.5 s settle).
+    assert claim.calls == [(8.0, 0.5)]
+    assert main.calls == [(6.0, 0.25), (6.0, 0.25)]
+
+
+def test_progress_wait_routes_through_claim_observer_only():
+    lobby = _snapshot(1, 1.0, base=SCREEN_LOBBY)
+    open_a = _snapshot(
+        2,
+        2.0,
+        base=SCREEN_QUESTS,
+        overlays=(MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE),
+        observations=(_rows_observation(),),
+    )
+    open_b = _snapshot(
+        3,
+        2.3,
+        base=SCREEN_QUESTS,
+        overlays=(MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE),
+        observations=(_rows_observation(),),
+    )
+    settled_a = _snapshot(
+        4, 3.0, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,)
+    )
+    settled_b = _snapshot(
+        5, 3.6, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,)
+    )
+    closed_a = _snapshot(6, 4.0, base=SCREEN_LOBBY)
+    closed_b = _snapshot(7, 4.3, base=SCREEN_LOBBY)
+
+    main = RecordingObserver(lobby, [[open_a, open_b], [closed_a, closed_b]])
+    claim = RecordingObserver(lobby, [[settled_a, settled_b]])
+    flow = DailyQuestsFlow(
+        main, Actions(), Events(), claim_observer=claim
+    )
+    result = flow.run()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert not result.claim_all_executed
+    assert result.progress_reward_executed and result.progress_reward_completed
+    assert flow.actions.items == [
+        OpenQuests(),
+        ClaimDailyQuestsProgressReward(),
+        CloseDailyQuests(),
+    ]
+    # The progress-reward expected (fully settled) only adds the absence
+    # of the progress indicator the claim scope already carries, under
+    # the same abort predicate and contract (8 s timeout, 0.5 s settle).
     assert claim.calls == [(8.0, 0.5)]
     assert main.calls == [(6.0, 0.25), (6.0, 0.25)]
 

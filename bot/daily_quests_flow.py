@@ -402,6 +402,7 @@ class DailyQuestsFlow:
                     abort_if=self._has_incompatible_daily_state,
                     timeout=self.claim_timeout,
                     stable_for=self.claim_stable_for,
+                    observer=self.claim_observer,
                 )
                 progress_completed = True
                 self._append_event(

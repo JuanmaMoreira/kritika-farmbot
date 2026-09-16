@@ -368,7 +368,7 @@ class ProductiveRuntime:
             character_count=character_count,
             eligibility=tuple(
                 self.build_world_boss_daily_eligibility() if flow.name == "world_boss" else
-                MonsterWaveDailyEligibility(self.observer, cancel_requested=self.cancel_requested)
+                self.build_monster_wave_daily_eligibility()
                 if flow.name == 'monster_wave' else None
                 for flow in flows
             ),
@@ -411,6 +411,20 @@ class ProductiveRuntime:
             unavailable_event="world_boss.eligibility_scope_unavailable",
         )
         return WorldBossDailyEligibility(
+            observer,
+            cancel_requested=self.cancel_requested,
+        )
+
+    def build_monster_wave_daily_eligibility(self) -> MonsterWaveDailyEligibility:
+        """Only the daily session composition installs this check; same hub scope as WB."""
+
+        observer = scoped_observer_for(
+            self, self.observer,
+            scope=WORLD_BOSS_ELIGIBILITY_SCOPE,
+            active_event="monster_wave.eligibility_scope_active",
+            unavailable_event="monster_wave.eligibility_scope_unavailable",
+        )
+        return MonsterWaveDailyEligibility(
             observer,
             cancel_requested=self.cancel_requested,
         )

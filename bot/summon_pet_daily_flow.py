@@ -166,6 +166,23 @@ class SummonPetDailyFlow:
         )
 
     def run(self) -> "SummonPetDailyFlowResult":
+        return self._run(None)
+
+    def run_with_initial(
+        self, snapshot: RuntimeSnapshot | None
+    ) -> "SummonPetDailyFlowResult":
+        """Run on a freshly verified precondition snapshot when usable.
+
+        The seed must already show the clean Pets Manage state this flow
+        starts from; anything else falls back to a normal fresh
+        observation, preserving the baseline behavior exactly.
+        """
+
+        return self._run(snapshot)
+
+    def _run(
+        self, seed: RuntimeSnapshot | None
+    ) -> "SummonPetDailyFlowResult":
         events: list[FlowEvent] = []
         relief_attempted = False
         retry_attempted = False
@@ -173,7 +190,7 @@ class SummonPetDailyFlow:
         try:
             if self._cancelled():
                 raise RuntimeWaitCancelled("summon pet daily flow cancelled")
-            pets = self._initial_manage()
+            pets = self._initial_manage(seed)
             if STATUS_PET_SUMMON_DAILY_ACTIVE not in pets.state.overlays:
                 self._append_event(events, "summon_pet_daily.noop")
                 return SummonPetDailyFlowResult(
@@ -388,7 +405,9 @@ class SummonPetDailyFlow:
             stable_for=self.outcome_stable_for,
         )
 
-    def _initial_manage(self) -> RuntimeSnapshot:
+    def _initial_manage(self, seed: RuntimeSnapshot | None = None) -> RuntimeSnapshot:
+        if isinstance(seed, RuntimeSnapshot) and self._is_clean_manage(seed):
+            return seed
         initial = self.observer.observe()
         if self._is_clean_manage(initial):
             return initial

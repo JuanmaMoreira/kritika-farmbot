@@ -426,12 +426,12 @@ def test_ready_carries_progress_reward_through_the_open_snapshot():
         _snapshot(6, 4.0, base=SCREEN_LOBBY),
         _snapshot(7, 4.3, base=SCREEN_LOBBY),
     ]
-    # The progress-reward wait runs on the main observer today (only the
-    # ClaimAll wait is claim-scoped); the open snapshot only carries the
-    # progress decision into it.
-    main = RecordingObserver(lobby, [progressed, closed])
+    # Both the ClaimAll and the progress-reward waits run on the claim
+    # observer; the open snapshot only carries the progress decision
+    # into them.
+    main = RecordingObserver(lobby, [closed])
     open_observer = RecordingObserver(lobby, [open_script])
-    claim_observer = RecordingObserver(lobby, [])
+    claim_observer = RecordingObserver(lobby, [progressed])
     actions = Actions()
     flow = DailyQuestsFlow(
         main, actions, Events(), claim_observer=claim_observer,
@@ -442,7 +442,8 @@ def test_ready_carries_progress_reward_through_the_open_snapshot():
     assert result.status is FlowStatus.COMPLETED
     assert result.progress_reward_executed and result.progress_reward_completed
     assert ClaimDailyQuestsProgressReward() in actions.items
-    assert claim_observer.wait_calls == []
+    assert claim_observer.wait_calls == [(8.0, 0.5)]
+    assert main.wait_calls == [(6.0, 0.25)]
 
 
 def test_open_done_matrix():

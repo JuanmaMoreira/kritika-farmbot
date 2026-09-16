@@ -484,3 +484,37 @@ def test_hil_double_tap_then_real_wait_tolerates_selector_and_checks_clean_retur
         "OpenEpicPetSummon", ("settle", 0.25), "OpenSingleEpicPet",
     ]
     assert len(actions.calls) == 4
+
+
+def test_run_with_initial_reuses_clean_manage_seed():
+    # The seed carries daily-active Manage while the fresh observation
+    # would noop: reusing it must drive navigation instead of a noop.
+    flow, actions, _, _, _ = build([], initial=manage(1, False))
+
+    result_value = flow.run_with_initial(manage(2, True))
+
+    assert result_value.status == FlowStatus.FAILED
+    assert SUMMON_PET_DAILY_NOOP not in event_kinds(result_value)
+    assert any(isinstance(action, SelectPetSummon) for action in actions.calls)
+
+
+def test_run_with_initial_falls_back_on_unusable_seed():
+    flow, actions, _, _, _ = build([], initial=manage(1, False))
+
+    result_value = flow.run_with_initial(combine(9))
+
+    assert result_value.status == FlowStatus.COMPLETED
+    assert result_value.no_op
+    assert actions.calls == []
+
+
+def test_run_with_initial_accepts_optional_seed_dispatch():
+    from bot.flow_contracts import run_flow_with_optional_seed
+
+    flow, actions, _, _, _ = build([], initial=manage(1, True))
+
+    result_value = run_flow_with_optional_seed(flow, manage(2, False))
+
+    assert result_value.status == FlowStatus.COMPLETED
+    assert result_value.no_op
+    assert actions.calls == []
