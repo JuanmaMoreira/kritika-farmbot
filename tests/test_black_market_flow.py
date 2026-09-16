@@ -1136,3 +1136,155 @@ def test_slot_selection_uses_short_initial_wait_then_longer_grace():
     assert flow.slot_selection_policy.normal_timeout == 1.0
     assert flow.slot_selection_policy.grace_timeout == 2.0
     assert flow.slot_selection_policy.max_attempts == 2
+
+
+def _run_with_seed(seed, observes, waits, *, max_slots=None):
+    observer = ScriptedObserver(observes, waits)
+    actions = Actions()
+    events = Events()
+    result = BlackMarketFlow(observer, actions, events).run_with_initial(
+        seed, max_slot_attempts=max_slots
+    )
+    return result, actions.actions, events.events, observer
+
+
+def test_usable_seed_skips_initial_observe():
+    seed = _snapshot(100, base=SCREEN_LOBBY)
+    result, actions, events, observer = _run_with_seed(
+        seed,
+        [],
+        [
+            _snapshot(101, base=SCREEN_BLACK_MARKET),
+            RuntimeWaitTimeout(
+                after_sequence=101,
+                timeout=2.0,
+                last_snapshot=_snapshot(102, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(103, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert actions == [OpenBlackMarket(), CloseBlackMarket()]
+    assert events == ["black_market.no_gold"]
+    # No fresh observe() was consumed; the seed anchored the open wait.
+    assert observer.observes == []
+    assert observer.wait_calls == [(100, 0.75), (101, 0.0), (102, 0.25)]
+
+
+def test_none_seed_matches_baseline_run():
+    result, actions, events, observer = _run_with_seed(
+        None,
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET),
+            RuntimeWaitTimeout(
+                after_sequence=2,
+                timeout=2.0,
+                last_snapshot=_snapshot(3, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert actions == [OpenBlackMarket(), CloseBlackMarket()]
+    assert events == ["black_market.no_gold"]
+    assert observer.wait_calls == [(1, 0.75), (2, 0.0), (3, 0.25)]
+
+
+def test_wrong_screen_seed_falls_back_to_fresh_observe():
+    seed = _snapshot(50, base=SCREEN_BLACK_MARKET)
+    result, actions, events, observer = _run_with_seed(
+        seed,
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [
+            _snapshot(2, base=SCREEN_BLACK_MARKET),
+            RuntimeWaitTimeout(
+                after_sequence=2,
+                timeout=2.0,
+                last_snapshot=_snapshot(3, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert actions == [OpenBlackMarket(), CloseBlackMarket()]
+    # The open wait is anchored on the fresh observation, never the seed.
+    assert observer.wait_calls[0] == (1, 0.75)
+
+
+def test_contradictory_seed_never_authorizes_input():
+    seed = _snapshot(50, status=ResolutionStatus.AMBIGUOUS)
+    result, actions, events, _ = _run_with_seed(
+        seed, [_snapshot(1, base=SCREEN_BLACK_MARKET)], []
+    )
+
+    assert result.status is FlowStatus.FAILED
+    assert result.error == "precondition_lobby_failed"
+    assert actions == []
+
+
+def test_unusable_seed_keeps_transient_unknown_wait_path():
+    seed = _snapshot(50)
+    result, actions, events, observer = _run_with_seed(
+        seed,
+        [_snapshot(1)],
+        [
+            _snapshot(2, base=SCREEN_LOBBY),
+            _snapshot(3, base=SCREEN_BLACK_MARKET, gold={4}),
+            _snapshot(4, base=SCREEN_LOBBY),
+        ],
+        max_slots=0,
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.initial_gold_slots == (4,)
+    assert actions == [OpenBlackMarket(), CloseBlackMarket()]
+    assert observer.wait_calls == [(1, 0.25), (2, 0.75), (3, 0.25)]
+
+
+def test_seeded_run_honors_debug_slot_limit():
+    seed = _snapshot(100, base=SCREEN_LOBBY)
+    result, actions, events, _ = _run_with_seed(
+        seed,
+        [],
+        [
+            _snapshot(101, base=SCREEN_BLACK_MARKET),
+            _snapshot(102, base=SCREEN_BLACK_MARKET, gold={2, 3}),
+            _snapshot(103, base=SCREEN_LOBBY),
+        ],
+        max_slots=0,
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.initial_gold_slots == (2, 3)
+    assert result.attempted_slots == ()
+    assert actions == [OpenBlackMarket(), CloseBlackMarket()]
+    assert events == []
+
+
+def test_black_market_flow_opts_into_initial_snapshot_handoff():
+    from bot.flow_contracts import InitialSnapshotFlow, run_flow_with_optional_seed
+
+    observer = ScriptedObserver(
+        [],
+        [
+            _snapshot(101, base=SCREEN_BLACK_MARKET),
+            RuntimeWaitTimeout(
+                after_sequence=101,
+                timeout=2.0,
+                last_snapshot=_snapshot(102, base=SCREEN_BLACK_MARKET),
+            ),
+            _snapshot(103, base=SCREEN_LOBBY),
+        ],
+    )
+    flow = BlackMarketFlow(observer, Actions(), Events())
+
+    assert isinstance(flow, InitialSnapshotFlow)
+    result = run_flow_with_optional_seed(flow, _snapshot(100, base=SCREEN_LOBBY))
+
+    assert result.status is FlowStatus.COMPLETED
+    assert observer.observes == []
+    assert observer.wait_calls[0] == (100, 0.75)

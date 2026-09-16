@@ -205,9 +205,24 @@ class BlackMarketFlow:
         remains the unbounded ``None`` case.
         """
 
+        return self.run_with_initial(None, max_slot_attempts=max_slot_attempts)
+
+    def run_with_initial(
+        self,
+        snapshot: RuntimeSnapshot | None,
+        *,
+        max_slot_attempts: int | None = None,
+    ) -> BlackMarketFlowResult:
+        """Run on a freshly verified precondition snapshot when usable.
+
+        The seed must already show the clean Lobby this flow starts from;
+        anything else falls back to a normal fresh observation, preserving
+        the baseline behavior exactly.
+        """
+
         limit = _attempt_limit(max_slot_attempts)
         try:
-            return self._run(limit)
+            return self._run(limit, seed=snapshot)
         except (KeyboardInterrupt, SystemExit):
             raise
         except RuntimeWaitCancelled:
@@ -219,23 +234,27 @@ class BlackMarketFlow:
                 error=f"{type(error).__name__}: {error}",
             )
 
-    def _run(self, limit: int | None) -> BlackMarketFlowResult:
+    def _run(
+        self, limit: int | None, seed: RuntimeSnapshot | None = None
+    ) -> BlackMarketFlowResult:
         if self._cancelled():
             return BlackMarketFlowResult(status=FlowStatus.CANCELLED)
-        initial = self.observer.observe()
-        if not _is_clean_base(initial, SCREEN_LOBBY):
-            if not _can_wait_for_lobby_precondition(initial):
-                return self._abort("precondition_lobby_failed")
-            try:
-                initial = self.observer.wait_until(
-                    lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
-                    after_sequence=initial.sequence,
-                    timeout=self.timeout,
-                    abort_if=_has_incompatible_lobby_precondition,
-                    stable_for=self.lobby_precondition_settle_for,
-                )
-            except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
-                return self._abort(f"precondition_lobby_failed: {error}")
+        initial = self._initial_lobby(seed)
+        if initial is None:
+            initial = self.observer.observe()
+            if not _is_clean_base(initial, SCREEN_LOBBY):
+                if not _can_wait_for_lobby_precondition(initial):
+                    return self._abort("precondition_lobby_failed")
+                try:
+                    initial = self.observer.wait_until(
+                        lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
+                        after_sequence=initial.sequence,
+                        timeout=self.timeout,
+                        abort_if=_has_incompatible_lobby_precondition,
+                        stable_for=self.lobby_precondition_settle_for,
+                    )
+                except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
+                    return self._abort(f"precondition_lobby_failed: {error}")
 
         opened = self.open_transition.execute(
             "black_market.open",
@@ -439,6 +458,24 @@ class BlackMarketFlow:
             verified=verified,
             flow_events=flow_events,
         )
+
+    def _initial_lobby(
+        self, seed: RuntimeSnapshot | None = None
+    ) -> RuntimeSnapshot | None:
+        """Reuse a freshly verified clean-Lobby seed as the entry evidence.
+
+        Only a snapshot that already shows the clean Lobby this flow starts
+        from is reusable. Anything else (including no seed) returns None so
+        the caller follows the baseline observe-and-wait path unchanged.
+        A reused seed never authorizes input by itself: the open transition
+        re-checks its own clean-Lobby precondition before acting.
+        """
+
+        if isinstance(seed, RuntimeSnapshot) and _is_clean_base(
+            seed, SCREEN_LOBBY
+        ):
+            return seed
+        return None
 
     def _finish(
         self,
