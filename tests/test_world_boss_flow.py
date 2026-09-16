@@ -72,12 +72,14 @@ from bot.world_boss_flow import (
     WorldBossWaitPolicy,
 )
 from bot.world_boss_activity import (
+    _WorldBossEntryHandoff,
+    _WorldBossSelectorHandoff,
     _is_known_incompatible,
-    _is_previous_rewards,
+    _is_previous_rewards_visible,
     _is_raid_complete,
     _is_raid_complete_poll_contradiction,
     _is_raid_complete_visible,
-    _is_select_boss,
+    _is_select_boss_visible,
 )
 
 
@@ -347,13 +349,11 @@ def happy_inputs(*, previous=False):
     )
     selector = snapshot(
         4,
-        base=SCREEN_BATTLE_MODE_SELECT,
         overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
     )
     entered = (
         snapshot(
             5,
-            base=SCREEN_WORLD_BOSS,
             overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
         )
         if previous else snapshot(5, base=SCREEN_WORLD_BOSS)
@@ -437,6 +437,38 @@ def test_complete_flow_handles_optional_previous_rewards_and_finishes_world_boss
     assert result.auto_battle_taps == 1
     assert result.initial_timer == 20
     assert result.raid_complete_detected
+    selector_handoff = next(
+        fields
+        for name, fields in events.records
+        if name == "world_boss.selector_handoff"
+    )
+    entry_handoff = next(
+        fields
+        for name, fields in events.records
+        if name == "world_boss.entry_handoff"
+    )
+    assert selector_handoff == {
+        "action_source_sequence": 3,
+        "selector_sequence": 4,
+    }
+    assert entry_handoff == {
+        "action_source_sequence": 4,
+        "entry_sequence": 5,
+        "initial_branch": "previous_rewards" if previous else "world_boss",
+    }
+    ack_calls = [
+        call
+        for call in driver.calls
+        if call[0] == "world_boss.ack_previous_rewards"
+    ]
+    assert len(ack_calls) == int(previous)
+    if previous:
+        assert not ack_calls[0][3]["retryable_from"](
+            snapshot(
+                205,
+                overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
+            )
+        )
     assert driver.calls[-4][0] == "world_boss.continue_after_raid"
     assert [call[0] for call in driver.calls].count(
         "world_boss.continue_after_raid"
@@ -1502,33 +1534,263 @@ def test_unknown_is_not_a_retry_guard_for_any_world_boss_transition():
     assert not retryable(unknown)
 
 
-@pytest.mark.parametrize(
-    ("predicate", "valid_base", "overlay"),
-    (
-        (_is_select_boss, SCREEN_BATTLE_MODE_SELECT, OVERLAY_WORLD_BOSS_SELECT_BOSS),
-        (_is_previous_rewards, SCREEN_WORLD_BOSS, POPUP_WORLD_BOSS_PREVIOUS_REWARDS),
-        (_is_raid_complete, SCREEN_WORLD_BOSS_BATTLE, OVERLAY_WORLD_BOSS_RAID_COMPLETE),
-    ),
-)
-def test_world_boss_overlay_actions_require_exact_resolved_base(
-    predicate, valid_base, overlay
-):
-    valid = snapshot(20, base=valid_base, overlays=(overlay,))
-    unknown = snapshot(21, overlays=(overlay,))
+def test_raid_complete_action_requires_exact_resolved_base():
+    valid = snapshot(
+        20,
+        base=SCREEN_WORLD_BOSS_BATTLE,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    unknown = snapshot(21, overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
     ambiguous = snapshot(
         22,
-        overlays=(overlay,),
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
         status=ResolutionStatus.AMBIGUOUS,
     )
-    foreign = snapshot(23, base=SCREEN_LOBBY, overlays=(overlay,))
-    absent = snapshot(24, base=valid_base)
+    foreign = snapshot(
+        23,
+        base=SCREEN_LOBBY,
+        overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
+    )
+    absent = snapshot(24, base=SCREEN_WORLD_BOSS_BATTLE)
 
-    assert predicate(valid)
-    assert not predicate(unknown)
-    assert not predicate(ambiguous)
-    assert not predicate(foreign)
-    assert not predicate(absent)
-    assert _is_known_incompatible(foreign, predicate, predicate)
+    assert _is_raid_complete(valid)
+    assert not _is_raid_complete(unknown)
+    assert not _is_raid_complete(ambiguous)
+    assert not _is_raid_complete(foreign)
+    assert not _is_raid_complete(absent)
+    assert _is_known_incompatible(
+        foreign, _is_raid_complete, _is_raid_complete
+    )
+
+
+def _successful_transition(source, final, *, recovery_after_action=False):
+    return VerifiedTransitionResult(
+        "test.world_boss",
+        VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+        1,
+        0,
+        final,
+        action_source_snapshot=source,
+        recovery_after_action=recovery_after_action,
+    )
+
+
+def test_selector_handoff_authorizes_fresh_unknown_overlay_from_verified_open():
+    source = snapshot(30, base=SCREEN_BATTLE_MODE_SELECT)
+    selector = snapshot(31, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+
+    handoff = _WorldBossSelectorHandoff.from_open_result(
+        _successful_transition(source, selector)
+    )
+
+    assert handoff is not None
+    assert handoff.action_source_sequence == 30
+    assert handoff.selector_sequence == 31
+    assert _is_select_boss_visible(selector)
+    assert handoff.allows_select(selector)
+    assert handoff.allows_select(
+        snapshot(32, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+    )
+
+
+@pytest.mark.parametrize("base", (None, SCREEN_BATTLE_MODE_SELECT))
+def test_discovered_selector_overlay_without_input_lineage_is_not_actionable(base):
+    selector = snapshot(
+        31,
+        base=base,
+        overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+    )
+    discovered = VerifiedTransitionResult(
+        "test.no_input",
+        VerifiedTransitionOutcome.PRECONDITION_REJECTED,
+        0,
+        0,
+        selector,
+    )
+
+    assert _WorldBossSelectorHandoff.from_open_result(discovered) is None
+    assert _is_select_boss_visible(selector)
+
+
+@pytest.mark.parametrize(
+    "selector",
+    (
+        snapshot(
+            31,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+            status=ResolutionStatus.AMBIGUOUS,
+        ),
+        snapshot(
+            31,
+            base=SCREEN_LOBBY,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+        ),
+        snapshot(
+            31,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS, MENU_QUICK),
+        ),
+    ),
+)
+def test_selector_handoff_rejects_ambiguous_foreign_or_contradictory_overlay(
+    selector,
+):
+    source = snapshot(30, base=SCREEN_BATTLE_MODE_SELECT)
+
+    assert not _is_select_boss_visible(selector)
+    assert _WorldBossSelectorHandoff.from_open_result(
+        _successful_transition(source, selector)
+    ) is None
+
+
+def test_selector_handoff_recovery_or_contradiction_invalidates_retry_lineage():
+    source = snapshot(30, base=SCREEN_BATTLE_MODE_SELECT)
+    selector = snapshot(31, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+    assert _WorldBossSelectorHandoff.from_open_result(
+        _successful_transition(source, selector, recovery_after_action=True)
+    ) is None
+
+    handoff = _WorldBossSelectorHandoff.from_open_result(
+        _successful_transition(source, selector)
+    )
+    assert handoff is not None
+    fresh_selector = snapshot(32, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+    assert handoff.allows_select(fresh_selector)
+    assert handoff.observe(
+        snapshot(
+            33,
+            overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,),
+            status=ResolutionStatus.AMBIGUOUS,
+        )
+    )
+    assert not handoff.allows_select(
+        snapshot(34, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+    )
+
+
+def _selector_handoff_for_entry():
+    source = snapshot(40, base=SCREEN_BATTLE_MODE_SELECT)
+    selector = snapshot(41, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+    handoff = _WorldBossSelectorHandoff.from_open_result(
+        _successful_transition(source, selector)
+    )
+    assert handoff is not None
+    return handoff, selector
+
+
+def test_previous_rewards_handoff_authorizes_unknown_popup_from_select_action():
+    selector_handoff, selector = _selector_handoff_for_entry()
+    previous = snapshot(42, overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,))
+
+    handoff = _WorldBossEntryHandoff.from_select_result(
+        _successful_transition(selector, previous), selector_handoff
+    )
+
+    assert handoff is not None
+    assert handoff.action_source_sequence == 41
+    assert handoff.entry_sequence == 42
+    assert _is_previous_rewards_visible(previous)
+    assert handoff.allows_previous_rewards(previous)
+
+
+@pytest.mark.parametrize("base", (None, SCREEN_WORLD_BOSS))
+def test_previous_rewards_discovery_without_select_input_has_no_handoff(base):
+    selector_handoff, _ = _selector_handoff_for_entry()
+    previous = snapshot(
+        42,
+        base=base,
+        overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
+    )
+    discovered = VerifiedTransitionResult(
+        "test.no_select_input",
+        VerifiedTransitionOutcome.PRECONDITION_REJECTED,
+        0,
+        0,
+        previous,
+    )
+
+    assert _WorldBossEntryHandoff.from_select_result(
+        discovered, selector_handoff
+    ) is None
+    assert _is_previous_rewards_visible(previous)
+
+
+@pytest.mark.parametrize(
+    "entered",
+    (
+        snapshot(
+            42,
+            overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
+            status=ResolutionStatus.AMBIGUOUS,
+        ),
+        snapshot(
+            42,
+            base=SCREEN_LOBBY,
+            overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
+        ),
+    ),
+)
+def test_previous_rewards_handoff_rejects_ambiguous_or_foreign_branch(entered):
+    selector_handoff, selector = _selector_handoff_for_entry()
+
+    assert not _is_previous_rewards_visible(entered)
+    assert _WorldBossEntryHandoff.from_select_result(
+        _successful_transition(selector, entered), selector_handoff
+    ) is None
+
+
+def test_previous_rewards_handoff_recovery_invalidates_causal_branch():
+    selector_handoff, selector = _selector_handoff_for_entry()
+    previous = snapshot(42, overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,))
+    assert _WorldBossEntryHandoff.from_select_result(
+        _successful_transition(
+            selector, previous, recovery_after_action=True
+        ),
+        selector_handoff,
+    ) is None
+
+    handoff = _WorldBossEntryHandoff.from_select_result(
+        _successful_transition(selector, previous), selector_handoff
+    )
+    assert handoff is not None
+    assert handoff.observe(
+        snapshot(
+            43,
+            overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
+            status=ResolutionStatus.AMBIGUOUS,
+        )
+    )
+    assert not handoff.allows_previous_rewards(
+        snapshot(44, overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,))
+    )
+
+
+def test_direct_world_boss_branch_keeps_lineage_for_delayed_previous_rewards():
+    selector_handoff, selector = _selector_handoff_for_entry()
+    direct = snapshot(42, base=SCREEN_WORLD_BOSS)
+    handoff = _WorldBossEntryHandoff.from_select_result(
+        _successful_transition(selector, direct), selector_handoff
+    )
+
+    assert handoff is not None
+    assert not handoff.allows_previous_rewards(direct)
+    assert handoff.allows_previous_rewards(
+        snapshot(43, overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,))
+    )
+
+
+def test_post_select_unknown_loading_disables_retry_but_preserves_action_anchor():
+    selector_handoff, selector = _selector_handoff_for_entry()
+    assert not selector_handoff.observe(snapshot(42))
+    assert not selector_handoff.allows_select(
+        snapshot(43, overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,))
+    )
+
+    direct = snapshot(44, base=SCREEN_WORLD_BOSS)
+    entry_handoff = _WorldBossEntryHandoff.from_select_result(
+        _successful_transition(selector, direct), selector_handoff
+    )
+    assert entry_handoff is not None
+    assert entry_handoff.action_source_sequence == selector.sequence
 
 
 def test_raid_complete_visibility_does_not_grant_continue_authority():

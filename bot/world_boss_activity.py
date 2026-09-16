@@ -114,6 +114,126 @@ class WorldBossWaitPolicy:
         return self.completion_timeout
 
 
+@dataclass
+class _WorldBossSelectorHandoff:
+    """One verified open-selector lineage; never a discovered overlay token."""
+
+    action_source_sequence: int
+    selector_sequence: int
+    valid: bool = True
+
+    def __post_init__(self) -> None:
+        if self.selector_sequence <= self.action_source_sequence:
+            raise ValueError("world_boss_selector_sequence_not_fresh")
+
+    @classmethod
+    def from_open_result(
+        cls, result: VerifiedTransitionResult
+    ) -> _WorldBossSelectorHandoff | None:
+        source = result.action_source_snapshot
+        selector = result.final_snapshot
+        if (
+            not result.succeeded
+            or result.recovery_after_action
+            or source is None
+            or not _is_battle_mode_select(source)
+            or selector.sequence <= source.sequence
+            or not _is_select_boss_visible(selector)
+        ):
+            return None
+        return cls(source.sequence, selector.sequence)
+
+    def matches_selector(self, snapshot: RuntimeSnapshot) -> bool:
+        return (
+            snapshot.sequence >= self.selector_sequence
+            and _is_select_boss_visible(snapshot)
+        )
+
+    def allows_select(self, snapshot: RuntimeSnapshot) -> bool:
+        return self.valid and self.matches_selector(snapshot)
+
+    def observe(
+        self,
+        snapshot: RuntimeSnapshot,
+        destination: Callable[[RuntimeSnapshot], bool] | None = None,
+    ) -> bool:
+        if destination is not None and destination(snapshot):
+            return False
+        if self.allows_select(snapshot):
+            return False
+        self.invalidate()
+        state = snapshot.state
+        return (
+            state.status in {
+                ResolutionStatus.RESOLVED,
+                ResolutionStatus.AMBIGUOUS,
+            }
+            or bool(state.overlays)
+        )
+
+    def invalidate(self) -> None:
+        self.valid = False
+
+
+@dataclass
+class _WorldBossEntryHandoff:
+    """One verified boss-selection lineage into main or Previous Rewards."""
+
+    action_source_sequence: int
+    entry_sequence: int
+    valid: bool = True
+
+    def __post_init__(self) -> None:
+        if self.entry_sequence <= self.action_source_sequence:
+            raise ValueError("world_boss_entry_sequence_not_fresh")
+
+    @classmethod
+    def from_select_result(
+        cls,
+        result: VerifiedTransitionResult,
+        selector_handoff: _WorldBossSelectorHandoff,
+    ) -> _WorldBossEntryHandoff | None:
+        source = result.action_source_snapshot
+        entered = result.final_snapshot
+        if (
+            not result.succeeded
+            or result.recovery_after_action
+            or source is None
+            or not selector_handoff.matches_selector(source)
+            or entered.sequence <= source.sequence
+            or not _is_world_boss_entry_visible(entered)
+        ):
+            return None
+        return cls(source.sequence, entered.sequence)
+
+    def allows_previous_rewards(self, snapshot: RuntimeSnapshot) -> bool:
+        return (
+            self.valid
+            and snapshot.sequence >= self.entry_sequence
+            and _is_previous_rewards_visible(snapshot)
+        )
+
+    def observe(self, snapshot: RuntimeSnapshot) -> bool:
+        if self.allows_previous_rewards(snapshot) or _is_clean_base(
+            snapshot, SCREEN_WORLD_BOSS
+        ):
+            return False
+        state = snapshot.state
+        if state.status is ResolutionStatus.UNKNOWN and not state.overlays:
+            return False
+        self.invalidate()
+        return (
+            state.status in {
+                ResolutionStatus.RESOLVED,
+                ResolutionStatus.AMBIGUOUS,
+            }
+            or bool(state.overlays)
+        )
+
+    def invalidate(self) -> None:
+        self.valid = False
+
+
 @dataclass(frozen=True)
 class WorldBossFlowResult(FlowResult):
     sapphires: int | None = None
@@ -303,46 +423,80 @@ class WorldBossActivity:
             "world_boss.open_selector",
             OpenWorldBossSelector(),
             battle_modes,
-            expected=_is_select_boss,
+            expected=_is_select_boss_visible,
             precondition=_is_battle_mode_select,
             retryable_from=_is_battle_mode_select,
         )
         if selector is None:
             return self._transition_failure(transitions, sapphires)
+        selector_handoff = _WorldBossSelectorHandoff.from_open_result(
+            transitions[-1]
+        )
+        if selector_handoff is None:
+            return self._failed(
+                "world_boss.open_selector_provenance_invalid",
+                sapphires=sapphires,
+                transitions=transitions,
+            )
+        self._record_best_effort(
+            "world_boss.selector_handoff",
+            action_source_sequence=selector_handoff.action_source_sequence,
+            selector_sequence=selector_handoff.selector_sequence,
+        )
+
+        entry_expected = _is_world_boss_entry_visible
 
         entered = self._transition(
             transitions,
             "world_boss.select_available",
             SelectAvailableWorldBoss(),
             selector,
-            expected=lambda item: _is_previous_rewards(item)
-            or _is_clean_base(item, SCREEN_WORLD_BOSS),
-            precondition=_is_select_boss,
-            retryable_from=_is_select_boss,
+            expected=entry_expected,
+            precondition=selector_handoff.allows_select,
+            retryable_from=selector_handoff.allows_select,
+            abort_if=lambda item: selector_handoff.observe(
+                item, destination=entry_expected
+            ),
+            on_recovery=selector_handoff.invalidate,
         )
         if entered is None:
             return self._transition_failure(transitions, sapphires)
+        entry_handoff = _WorldBossEntryHandoff.from_select_result(
+            transitions[-1], selector_handoff
+        )
+        selector_handoff.invalidate()
+        if entry_handoff is None:
+            return self._failed(
+                "world_boss.select_available_provenance_invalid",
+                sapphires=sapphires,
+                transitions=transitions,
+            )
+        self._record_best_effort(
+            "world_boss.entry_handoff",
+            action_source_sequence=entry_handoff.action_source_sequence,
+            entry_sequence=entry_handoff.entry_sequence,
+            initial_branch=(
+                "previous_rewards"
+                if entry_handoff.allows_previous_rewards(entered)
+                else "world_boss"
+            ),
+        )
 
-        if not _is_previous_rewards(entered):
+        if not entry_handoff.allows_previous_rewards(entered):
             # The World Boss base can resolve briefly before Previous Rewards is
             # presented.  Treat both as outcomes of selecting the boss and wait
             # for that entry branch to settle before Start is eligible.
             entered = self.observer.wait_until(
-                lambda item: _is_previous_rewards(item)
+                lambda item: entry_handoff.allows_previous_rewards(item)
                 or _is_clean_base(item, SCREEN_WORLD_BOSS),
                 after_sequence=entered.sequence,
                 timeout=self.fact_timeout,
                 stable_for=self.entry_settle_for,
-                abort_if=lambda item: _is_known_incompatible(
-                    item,
-                    lambda candidate: _is_previous_rewards(candidate)
-                    or _is_clean_base(candidate, SCREEN_WORLD_BOSS),
-                    lambda _: False,
-                ),
+                abort_if=entry_handoff.observe,
                 cancel_requested=self.cancel_requested,
             )
 
-        previous_rewards = _is_previous_rewards(entered)
+        previous_rewards = entry_handoff.allows_previous_rewards(entered)
         if previous_rewards:
             event = FlowEvent(WORLD_BOSS_PREVIOUS_REWARDS)
             flow_events.append(event)
@@ -352,9 +506,13 @@ class WorldBossActivity:
                 AcknowledgeWorldBossPreviousRewards(),
                 entered,
                 expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
-                precondition=_is_previous_rewards,
-                retryable_from=_is_previous_rewards,
+                precondition=entry_handoff.allows_previous_rewards,
+                retryable_from=lambda _: False,
+                tolerated=entry_handoff.allows_previous_rewards,
+                abort_if=entry_handoff.observe,
+                on_recovery=entry_handoff.invalidate,
             )
+            entry_handoff.invalidate()
             if entered is None:
                 return self._transition_failure(
                     transitions, sapphires, flow_events, previous_rewards=True
@@ -832,7 +990,14 @@ class WorldBossActivity:
         precondition,
         retryable_from,
         tolerated=lambda _: False,
+        abort_if=None,
+        on_recovery=None,
     ) -> RuntimeSnapshot | None:
+        transition_abort = abort_if or (
+            lambda item: _is_known_incompatible(
+                item, expected, retryable_from, tolerated
+            )
+        )
         result = self.verified_transition.execute(
             name,
             action,
@@ -840,11 +1005,10 @@ class WorldBossActivity:
             expected=expected,
             precondition=precondition,
             retryable_from=retryable_from,
-            abort_if=lambda item: _is_known_incompatible(
-                item, expected, retryable_from, tolerated
-            ),
+            abort_if=transition_abort,
             stable_for=self.stable_for,
             policy=self.transition_policy,
+            on_recovery=on_recovery,
         )
         transitions.append(result)
         return result.final_snapshot if result.succeeded else None
@@ -1134,19 +1298,33 @@ def _has_only_overlay(snapshot: RuntimeSnapshot, overlay: str) -> bool:
     return set(snapshot.state.overlays) == {overlay}
 
 
-def _is_select_boss(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_BATTLE_MODE_SELECT
-        and _has_only_overlay(snapshot, OVERLAY_WORLD_BOSS_SELECT_BOSS)
+def _is_select_boss_visible(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return _has_only_overlay(snapshot, OVERLAY_WORLD_BOSS_SELECT_BOSS) and (
+        state.status is ResolutionStatus.UNKNOWN
+        or (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context == SCREEN_BATTLE_MODE_SELECT
+        )
     )
 
 
-def _is_previous_rewards(snapshot: RuntimeSnapshot) -> bool:
-    return (
-        snapshot.state.status is ResolutionStatus.RESOLVED
-        and snapshot.state.base_context == SCREEN_WORLD_BOSS
-        and _has_only_overlay(snapshot, POPUP_WORLD_BOSS_PREVIOUS_REWARDS)
+def _is_previous_rewards_visible(snapshot: RuntimeSnapshot) -> bool:
+    state = snapshot.state
+    return _has_only_overlay(
+        snapshot, POPUP_WORLD_BOSS_PREVIOUS_REWARDS
+    ) and (
+        state.status is ResolutionStatus.UNKNOWN
+        or (
+            state.status is ResolutionStatus.RESOLVED
+            and state.base_context == SCREEN_WORLD_BOSS
+        )
+    )
+
+
+def _is_world_boss_entry_visible(snapshot: RuntimeSnapshot) -> bool:
+    return _is_clean_base(snapshot, SCREEN_WORLD_BOSS) or _is_previous_rewards_visible(
+        snapshot
     )
 
 
