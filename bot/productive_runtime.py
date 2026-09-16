@@ -599,8 +599,11 @@ class ProductiveRuntime:
             retryable_from=handoff.allows,
             on_recovery=handoff.invalidate,
             abort_if=lambda snapshot: (
-                handoff.observe(
-                    snapshot, lambda item: _is_clean_base(item, SCREEN_LOBBY)
+                (
+                    not _is_clean_base(snapshot, origin)
+                    and handoff.observe(
+                        snapshot, lambda item: _is_clean_base(item, SCREEN_LOBBY)
+                    )
                 )
                 or _has_incompatible_destination_state(
                     snapshot, origin, SCREEN_LOBBY
