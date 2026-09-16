@@ -38,6 +38,14 @@ Los facts demand-driven pueden llegar directamente al consumidor cuando parten d
 
 `RuntimeObserver` crea snapshots coherentes de frame, observaciones, estado, facts y geometría. Las esperas exigen secuencias frescas, timeout, estabilidad cuando corresponde y cancelación explícita.
 
+`clean Lobby` significa `RESOLVED screen.lobby + overlays vacíos`. Discovery,
+recovery y postcondiciones de sesión observan globalmente. Una transición
+conocida a Lobby puede usar un observer resolver-complete: incluye todas las
+dependencias de bases y overlays del catálogo, por lo que conserva blockers,
+bases foreign y `AMBIGUOUS`, aunque omite readers que no alimentan resolución.
+Source, acción, freshness, retry y recovery siguen perteneciendo al caller. Ver
+[`docs/CLEAN_LOBBY_B2_DECISION.md`](docs/CLEAN_LOBBY_B2_DECISION.md).
+
 ### Intención y policy
 
 - **Flows:** contienen intención de negocio, gates, outcomes y orden de operaciones.
@@ -104,7 +112,7 @@ La persona usuaria es el planner: decide objetivo, orden de flows y configuraci�
 
 ### Percepción acotada incremental
 
-Los hot paths deberían evaluar sólo evidencia relevante para el estado y la operación actuales. Rotation R1 acota exclusivamente la verificación de `select_predecessor_character` con `ScopeSpec` y `scoped_transition_for`: el reader amarillo local sigue sobre el frame crudo. Rotation R2-A reutiliza ese subset de dos detectores mediante `scoped_observer_for` sólo en el wait post-swipe de Character Select; `stable_for=1.0`, sentinel posterior, frames, geometría y estrategia de scroll conservan sus contratos. Confirmación a Lobby y recovery permanecen globales. La percepción más amplia queda para descubrimiento, recovery y evaluación. La expansión será de un flow o hot path por vez, con benchmark y smoke antes de ampliar alcance.
+Los hot paths deberían evaluar sólo evidencia relevante para el estado y la operación actuales. Rotation R1 acota exclusivamente la verificación de `select_predecessor_character` con `ScopeSpec` y `scoped_transition_for`: el reader amarillo local sigue sobre el frame crudo. Rotation R2-A reutiliza ese subset de dos detectores mediante `scoped_observer_for` sólo en el wait post-swipe de Character Select; `stable_for=1.0`, sentinel posterior, frames, geometría y estrategia de scroll conservan sus contratos. B2 acota los retornos conocidos a Lobby de 95 a 77 detectores con vocabulario resolver-complete; no recorta bases u overlays sin evidencia física. Discovery, recovery y postcondiciones de sesión permanecen globales. La expansión será de un flow o hot path por vez, con benchmark y smoke antes de ampliar alcance.
 
 Esta dirección conserva el principio demostrado por el experimento, pero no adopta sus APIs, planes léxicos ni acoplamientos con Inventory Relief.
 

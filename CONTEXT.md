@@ -9,7 +9,7 @@ El código productivo vigente proviene del checkpoint estable:
 feat: add monster wave skip activity
 ```
 
-La rama `rebuild/stable-baseline` preserva ese origen y contiene Rotation R1/R2-A (`d7742fd`; `codex/rotation-r2` apunta al mismo checkpoint). R2-B (Select→Lobby) sigue global. No porta código de la línea experimental Inventory Relief. La evidencia Git prevalece sobre referencias históricas que describían Monster Wave como «sin commit» o «sin push».
+La rama `rebuild/stable-baseline` preserva ese origen y contiene Rotation R1/R2-A (`d7742fd`; `codex/rotation-r2` apunta al mismo checkpoint), Quick Menu verified-origin y Clean Lobby/B2. R2-B (Select→Lobby) usa el contrato B2 resolver-complete. No porta código de la línea experimental Inventory Relief. La evidencia Git prevalece sobre referencias históricas que describían Monster Wave como «sin commit» o «sin push».
 
 Kritika FarmBot automatiza tareas por personaje de **Kritika: The White Knights** sobre Android físico. GUI Tkinter y CLI son frontends del mismo composition root. Código y tests determinan lo implementado; [`ARCHITECTURE.md`](ARCHITECTURE.md) fija contratos, [`ROADMAP.md`](ROADMAP.md) ordena el trabajo y [`docs/HISTORY.md`](docs/HISTORY.md) conserva la evolución.
 
@@ -64,6 +64,7 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 - Rotation R2-A: **2151/2151 tests hardware-free**; smoke HIL natural **1/1**, wait post-swipe scoped 95→2 con `stable_for=1.0`, 1 swipe, tarjeta y Select en primer intento, Lobby confirmado visualmente por la persona usuaria. R2-B quedó global por cobertura insuficiente de overlays en un subset pequeño.
 - World Boss WB-1: **2152/2152 tests hardware-free**; `Run Session` natural **1/1** tras el cambio, con elegibilidad 95→5, wait estable 2,61→0,91 s, 0 retries/recoveries y World Boss completado. Detector/asset/ROI/OCR y semántica de batalla intactos; Start, boundaries de inventario y retorno siguen globales por contrato abierto de abort/overlays.
 - Quick Menu verified-origin handoff: **2231/2231 tests hardware-free**; action-source lineage y recovery invalidation explícitos; consumers principales migrados sin cambios de hitboxes/detectores. R2-C y waits con vocabulario de contradicción permanecen globales.
+- Clean Lobby/B2: **2364/2364 tests hardware-free** y **398/398 regresión dirigida**. CloseFriends, Mailbox, Daily, Black Market, ClosePets, `select_lobby`, BattleModeZone.leave y R2-B acotan sólo el wait final 95→77. Los scopes preservan todas las dependencias de las 17 bases y 57 overlays; benchmark sobre cinco frames reales: 657.53 ms/frame global frente a 411.73–423.54 ms/frame scoped. No cambió detector, ROI, asset ni calibración.
 - Evaluación semántica de Monster Wave: **510 frames**, sin resoluciones wrong/ambiguous.
 - Evidencia live histórica: Rotation 28/28 y sesiones combinadas 28/28 sin fallos técnicos; Monster Wave confirmó ACTIVE, MAX, Start y board negativo.
 
@@ -79,13 +80,15 @@ Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en
 - La persona usuaria sigue siendo el planner. El producto ejecuta una lista explícita de flows y policies acotadas; no existe un planner automático general.
 - El experimento Inventory Relief se preserva como evidencia y código archival, no como arquitectura aceptada.
 - Quick Menu usa verified-origin handoff local: overlay visible y origin autorizado son hechos distintos. Un UNKNOWN con menú descubierto no habilita tile input/retry; UNKNOWN post-open sólo lo hace con source de input verificado, menú fresco y sin contradicción. Recovery invalida el handoff antes de retry. Véase [`ARCHITECTURE.md`](ARCHITECTURE.md) y [`docs/QUICK_MENU_HANDOFF_DECISION.md`](docs/QUICK_MENU_HANDOFF_DECISION.md).
+- Clean Lobby separa uso, no significado: discovery/recovery/postchecks permanecen globales; transiciones conocidas usan observación resolver-complete 95→77 con source/action/freshness en el caller. `Trading Center` sigue siendo la única señal positiva y está clasificada seasonal-risk. Véase [`docs/CLEAN_LOBBY_B2_DECISION.md`](docs/CLEAN_LOBBY_B2_DECISION.md).
 
 ## Limitaciones conocidas
 
 No forman parte del runtime estable:
 
 - Inventory Relief Chain general, Trading, Craft, Treasure o Equipment Sell;
-- confirmación Select→Lobby y otros hot paths de Rotation aún no scopeados por R1/R2-A; R2-C (Quick Menu→Character Select) conserva observación global porque el subset actual de dos detectores no muestra bases contradictorias bajo el menú;
+- R2-C (Quick Menu→Character Select) conserva observación global porque el subset actual de dos detectores no muestra bases contradictorias bajo el menú;
+- no existe aún una señal positiva estructural y multitemporada de Lobby; scopes menores por consumer y reuse D quedan diferidos hasta obtener evidencia física o un carry explícito de snapshot;
 - World Boss: selector, Previous Rewards y Raid Complete conservan deuda semántica de autorización overlay-only sobre base UNKNOWN/AMBIGUOUS; Raid Complete debe decidir el terminal contradictorio y el poll debe revisar `after_sequence`/freshness. Los D locales requieren un snapshot fresco equivalente antes de reutilizarse;
 - framework temporal de input/readiness;
 - estrategia de farming, scheduler, grafo general de navegación o recuperación de conexión post-World Boss;
@@ -95,4 +98,6 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-Quick Menu tiene contrato de autorización normal-path local en código. Su percepción sigue global en R2-C y selecciones que necesitan reconocer bases contradictorias; el wait final a clean Lobby también permanece global por B2. Los demás candidatos locales siguen globales hasta conservar blockers, aborts y freshness; la deuda de World Boss selector/Previous Rewards/Raid Complete permanece separada en [`ROADMAP.md`](ROADMAP.md).
+Clean Lobby/B2 queda cerrado en código y documentación. Quick Menu permanece cerrado: B2 sólo consume su handoff en el wait final. R2-C y selecciones que necesitan reconocer bases contradictorias siguen globales. La deuda de World Boss selector/Previous Rewards/Raid Complete permanece separada en [`ROADMAP.md`](ROADMAP.md); no iniciar ese frente como continuación de B2.
+
+Un smoke HIL breve es opcional si se solicita evidencia temporal/física de R2-B o de un close concreto; no es requisito para el cambio resolver-equivalente 95→77. No recalibrar `screen.lobby` sin adquisición seasonal específica.
