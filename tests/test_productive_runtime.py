@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from unittest.mock import Mock
 from types import SimpleNamespace
+from dataclasses import dataclass
 
 import pytest
 
@@ -33,6 +34,7 @@ from bot.semantic_actions import (
     SelectQuickMenuLobby,
 )
 from bot.state import ResolutionStatus
+from bot.verified_transition import VerifiedTransitionOutcome
 
 
 @pytest.fixture(autouse=True)
@@ -393,7 +395,11 @@ def test_productive_precondition_normalizes_world_boss_to_lobby(monkeypatch):
             final = quick_menu if len(calls) == 1 else lobby
             assert kwargs["expected"](final)
             assert kwargs["precondition"](before)
-            return SimpleNamespace(succeeded=True, final_snapshot=final)
+            return SimpleNamespace(
+                succeeded=True, final_snapshot=final,
+                action_source_snapshot=before if len(calls) == 1 else None,
+                recovery_after_action=False,
+            )
 
     monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
 
@@ -432,7 +438,11 @@ def test_productive_precondition_navigates_world_boss_via_quick_menu_to_guild(mo
             assert kwargs["expected"](final)
             assert kwargs["precondition"](before)
             assert not kwargs["abort_if"](final)
-            return SimpleNamespace(succeeded=True, final_snapshot=final)
+            return SimpleNamespace(
+                succeeded=True, final_snapshot=final,
+                action_source_snapshot=before if len(calls) == 1 else None,
+                recovery_after_action=False,
+            )
 
     monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
 
@@ -491,7 +501,11 @@ def test_productive_precondition_navigates_pet_exit_directly_to_guild(
             final = quick_menu if len(calls) == 1 else guild
             assert kwargs["precondition"](before)
             assert kwargs["expected"](final)
-            return SimpleNamespace(succeeded=True, final_snapshot=final)
+            return SimpleNamespace(
+                succeeded=True, final_snapshot=final,
+                action_source_snapshot=before if len(calls) == 1 else None,
+                recovery_after_action=False,
+            )
 
     monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
 
@@ -627,3 +641,77 @@ def test_guild_navigation_rejects_unverified_destination(monkeypatch):
 
     assert not runtime._navigate_lobby_to_guild()
     assert calls == ["precondition.open_guild"]
+
+
+@pytest.mark.parametrize("route", ["_navigate_to_lobby", "_navigate_to_guild"])
+def test_productive_menu_discovery_without_action_anchor_never_selects_tile(
+    monkeypatch, route,
+):
+    source = _snapshot(
+        1, status=ResolutionStatus.RESOLVED, base=SCREEN_WORLD_BOSS,
+    )
+    menu = _snapshot(
+        2, status=ResolutionStatus.UNKNOWN, overlays={MENU_QUICK},
+    )
+    runtime = _runtime(Observer(source, source), Events())
+    calls = []
+
+    @dataclass(frozen=True)
+    class Result:
+        outcome: VerifiedTransitionOutcome
+        final_snapshot: object
+        action_source_snapshot: object = None
+        recovery_after_action: bool = False
+        error: str | None = None
+
+        @property
+        def succeeded(self):
+            return self.outcome is VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append(action)
+            assert isinstance(action, OpenQuickMenu)
+            return Result(VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, menu)
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    assert not getattr(runtime, route)()
+    assert calls == [OpenQuickMenu()]
+
+
+def test_productive_foreign_resolved_menu_aborts_before_lobby_tile(monkeypatch):
+    source = _snapshot(
+        1, status=ResolutionStatus.RESOLVED, base=SCREEN_WORLD_BOSS,
+    )
+    foreign = _snapshot(
+        2, status=ResolutionStatus.RESOLVED, base=SCREEN_GUILD,
+        overlays={MENU_QUICK},
+    )
+    runtime = _runtime(Observer(source, source), Events())
+    calls = []
+
+    @dataclass(frozen=True)
+    class Result:
+        outcome: VerifiedTransitionOutcome
+        final_snapshot: object
+        action_source_snapshot: object
+        recovery_after_action: bool = False
+        error: str | None = None
+
+        @property
+        def succeeded(self):
+            return self.outcome is VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT
+
+    class Transition:
+        def execute(self, name, action, before, **kwargs):
+            calls.append(action)
+            assert isinstance(action, OpenQuickMenu)
+            assert not kwargs["expected"](foreign)
+            assert kwargs["abort_if"](foreign)
+            return Result(
+                VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, foreign, source,
+            )
+
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    assert not runtime._navigate_to_lobby()
+    assert calls == [OpenQuickMenu()]

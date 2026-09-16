@@ -209,6 +209,7 @@ class Transitions:
         return VerifiedTransitionResult(
             name, outcome, 1, int(outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_GRACE),
             final, None if outcome.value.startswith("success") else "scripted failure",
+            action_source_snapshot=before,
         )
 
 

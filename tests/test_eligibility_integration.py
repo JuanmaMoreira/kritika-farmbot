@@ -86,7 +86,10 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
                                  if kind == "OpenWorldBossSelector" else ())
             final = observer.wait_until(kwargs["expected"], after_sequence=before.sequence,
                                         timeout=6, stable_for=kwargs.get("stable_for", 0))
-            return VerifiedTransitionResult(name, VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, 1, 0, final)
+            return VerifiedTransitionResult(
+                name, VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, 1, 0,
+                final, action_source_snapshot=before,
+            )
 
     monkeypatch.setattr(runtime, "build_verified_transition", lambda: Transition())
     def read_sapphires(**kwargs):

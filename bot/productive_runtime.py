@@ -54,7 +54,10 @@ from bot.perception import (
 )
 from bot.pet_summon_space_relief import PetSummonSpaceRelief
 from bot.preconditions import MinimalPreconditionEnsurer
-from bot.quick_menu import quick_menu_accessible, select_quick_menu_guild_action
+from bot.quick_menu import (
+    QuickMenuHandoff, quick_menu_accessible, quick_menu_matches_origin,
+    select_quick_menu_guild_action,
+)
 from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
 from bot.runtime_observer import RuntimeObserver, RuntimeSnapshot, RuntimeWaitCancelled, RuntimeWaitTimeout
@@ -69,7 +72,9 @@ from bot.session import CharacterContext, SessionPlan, SessionResult, SessionRun
 from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughAnimation
-from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
+from bot.verified_transition import (
+    VerifiedTransition, VerifiedTransitionOutcome, VerifiedTransitionPolicy,
+)
 from bot.world_boss_eligibility import WorldBossDailyEligibility
 from bot.world_boss_flow import WorldBossFlow
 from bot.monster_wave_flow import MonsterWaveFlow
@@ -539,7 +544,7 @@ class ProductiveRuntime:
             f"{prefix}.open_quick_menu",
             OpenQuickMenu(),
             initial,
-            expected=_has_quick_menu,
+            expected=lambda snapshot: quick_menu_matches_origin(snapshot, origin),
             precondition=lambda snapshot: _is_clean_base(
                 snapshot, origin
             ),
@@ -553,15 +558,29 @@ class ProductiveRuntime:
         )
         if not opened.succeeded or self.cancel_requested():
             return opened
+        handoff = QuickMenuHandoff.from_open_result(
+            opened, lambda snapshot: _is_clean_base(snapshot, origin),
+        )
+        if handoff is None:
+            return replace(
+                opened, outcome=VerifiedTransitionOutcome.PRECONDITION_REJECTED,
+                error="quick_menu_origin_handoff_invalid",
+            )
         lobby = transition.execute(
             f"{prefix}.select_lobby",
             SelectQuickMenuLobby(),
             opened.final_snapshot,
             expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
-            precondition=_has_quick_menu,
-            retryable_from=_has_quick_menu,
-            abort_if=lambda snapshot: _has_incompatible_destination_state(
-                snapshot, origin, SCREEN_LOBBY
+            precondition=handoff.allows,
+            retryable_from=handoff.allows,
+            on_recovery=handoff.invalidate,
+            abort_if=lambda snapshot: (
+                handoff.observe(
+                    snapshot, lambda item: _is_clean_base(item, SCREEN_LOBBY)
+                )
+                or _has_incompatible_destination_state(
+                    snapshot, origin, SCREEN_LOBBY
+                )
             ),
             stable_for=_CLEAN_CONTEXT_STABLE_FOR,
             policy=policy,
@@ -592,7 +611,7 @@ class ProductiveRuntime:
             "precondition.open_quick_menu",
             OpenQuickMenu(),
             initial,
-            expected=_has_quick_menu,
+            expected=lambda snapshot: quick_menu_matches_origin(snapshot, origin),
             precondition=lambda snapshot: _is_clean_base(snapshot, origin),
             retryable_from=lambda snapshot: _is_clean_base(snapshot, origin),
             abort_if=lambda snapshot: _has_incompatible_open_quick_menu_state(
@@ -602,15 +621,26 @@ class ProductiveRuntime:
         )
         if not opened.succeeded or self.cancel_requested():
             return False
+        handoff = QuickMenuHandoff.from_open_result(
+            opened, lambda snapshot: _is_clean_base(snapshot, origin),
+        )
+        if handoff is None:
+            return False
         guild = transition.execute(
             "precondition.select_guild",
-            select_quick_menu_guild_action(origin),
+            select_quick_menu_guild_action(handoff.origin),
             opened.final_snapshot,
             expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_GUILD),
-            precondition=_has_quick_menu,
-            retryable_from=_has_quick_menu,
-            abort_if=lambda snapshot: _has_incompatible_destination_state(
-                snapshot, origin, SCREEN_GUILD
+            precondition=handoff.allows,
+            retryable_from=handoff.allows,
+            on_recovery=handoff.invalidate,
+            abort_if=lambda snapshot: (
+                handoff.observe(
+                    snapshot, lambda item: _is_clean_base(item, SCREEN_GUILD)
+                )
+                or _has_incompatible_destination_state(
+                    snapshot, origin, SCREEN_GUILD
+                )
             ),
             stable_for=_CLEAN_CONTEXT_STABLE_FOR,
             policy=policy,
@@ -873,7 +903,7 @@ def _has_quick_menu(snapshot) -> bool:
 
 def _has_incompatible_open_quick_menu_state(snapshot, origin: str) -> bool:
     state = snapshot.state
-    if _has_quick_menu(snapshot) or _is_clean_base(snapshot, origin):
+    if quick_menu_matches_origin(snapshot, origin) or _is_clean_base(snapshot, origin):
         return False
     return (
         state.status is ResolutionStatus.AMBIGUOUS

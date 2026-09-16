@@ -53,6 +53,7 @@ from bot.quick_menu import (
     QuickMenuPolicy,
     open_character_select_action,
     quick_menu_accessible,
+    QuickMenuHandoff, quick_menu_matches_origin,
 )
 from bot.semantic_actions import (
     ConfirmCharacterSelection,
@@ -240,9 +241,6 @@ class StandardRotation:
         capable = lambda snapshot: _is_clean_quick_menu_capable(
             snapshot, self.quick_menu_policy
         )
-        has_quick_menu = lambda snapshot: _has_quick_menu(
-            snapshot, self.quick_menu_policy
-        )
         initial = self.observer.observe()
         if not capable(initial):
             if not _can_wait_for_quick_menu_precondition(initial):
@@ -264,14 +262,24 @@ class StandardRotation:
                     f"precondition_quick_menu_accessible_failed: {error}"
                 )
 
+        origin = initial.state.base_context
+        same_origin = lambda snapshot: (
+            snapshot.state.base_context == origin and capable(snapshot)
+        )
+        menu_from_origin = lambda snapshot: quick_menu_matches_origin(
+            snapshot, origin
+        )
         quick_menu_result = self.verified_transition.execute(
             "rotation.open_quick_menu",
             OpenQuickMenu(),
             initial,
-            expected=has_quick_menu,
-            precondition=capable,
-            retryable_from=capable,
-            abort_if=lambda snapshot: _has_unexpected_quick_menu_state(
+            expected=menu_from_origin,
+            precondition=same_origin,
+            retryable_from=same_origin,
+            abort_if=lambda snapshot: (
+                snapshot.state.status is ResolutionStatus.RESOLVED
+                and snapshot.state.base_context != origin
+            ) or _has_unexpected_quick_menu_state(
                 snapshot, self.quick_menu_policy
             ),
             policy=self.transition_policy,
@@ -284,20 +292,35 @@ class StandardRotation:
                 transitions=tuple(transitions),
             )
         quick_menu = quick_menu_result.final_snapshot
+        handoff = QuickMenuHandoff.from_open_result(
+            quick_menu_result, same_origin, policy=self.quick_menu_policy,
+        )
+        if handoff is None:
+            return self._abort(
+                "quick_menu_origin_handoff_invalid",
+                transitions=tuple(transitions),
+            )
         character_select_result = self.verified_transition.execute(
             "rotation.open_character_select",
             open_character_select_action(
-                initial.state.base_context,
-                policy=self.quick_menu_policy,
+                handoff.origin, policy=self.quick_menu_policy,
             ),
             quick_menu,
             expected=lambda snapshot: _is_clean_base(
                 snapshot, SCREEN_CHARACTER_SELECT
             ),
-            precondition=has_quick_menu,
-            retryable_from=has_quick_menu,
-            abort_if=lambda snapshot: _has_unexpected_character_select_transition(
-                snapshot, self.quick_menu_policy
+            precondition=handoff.allows,
+            retryable_from=handoff.allows,
+            on_recovery=handoff.invalidate,
+            abort_if=lambda snapshot: (
+                handoff.observe(
+                    snapshot, lambda item: _is_clean_base(
+                        item, SCREEN_CHARACTER_SELECT
+                    )
+                )
+                or _has_unexpected_character_select_transition(
+                    snapshot, self.quick_menu_policy
+                )
             ),
             stable_for=self.scroll_profile.settle_for,
             policy=self.transition_policy,

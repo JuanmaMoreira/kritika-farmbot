@@ -436,3 +436,138 @@ def test_verified_transition_has_no_direct_adb_dependency():
     assert ".swipe(" not in source
     assert "self.actions.execute(" in source
     assert "self.observer.wait_until(" in source
+
+
+def test_action_anchor_is_the_source_of_first_successful_input():
+    source = _snapshot(1, BEFORE)
+    observer = ScriptedObserver([_snapshot(2, EXPECTED)])
+    result = VerifiedTransition(observer, Actions()).execute(
+        "test.first_anchor", OpenQuickMenu(), source,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        policy=VerifiedTransitionPolicy(max_attempts=1),
+    )
+    assert result.succeeded
+    assert result.action_source_snapshot is source
+
+
+def test_action_anchor_moves_to_fresh_source_of_successful_retry():
+    source = _snapshot(1, BEFORE)
+    fresh_source = _snapshot(4, BEFORE)
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)),
+         _timeout(2, _snapshot(3, BEFORE), timeout=2.0),
+         _snapshot(5, EXPECTED)],
+        observes=[fresh_source],
+    )
+    actions = Actions()
+    result = VerifiedTransition(observer, actions).execute(
+        "test.retry_anchor", OpenQuickMenu(), source,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        retryable_from=lambda item: item.state.base_context == BEFORE,
+        policy=VerifiedTransitionPolicy(max_attempts=2),
+    )
+    assert result.outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
+    assert len(actions.calls) == 2
+    assert result.action_source_snapshot is fresh_source
+
+
+def test_precondition_recovery_anchor_is_post_recovery_source():
+    from types import SimpleNamespace
+
+    invalid = _snapshot(1, OTHER)
+    recovered = _snapshot(2, BEFORE)
+    recovery = SimpleNamespace(attempt=lambda snapshot, expected: recovered)
+    observer = ScriptedObserver([_snapshot(3, EXPECTED)])
+    result = VerifiedTransition(
+        observer, Actions(), obstruction_recovery=recovery,
+    ).execute(
+        "test.recovered_anchor", OpenQuickMenu(), invalid,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        precondition=lambda item: item.state.base_context == BEFORE,
+        policy=VerifiedTransitionPolicy(max_attempts=1),
+    )
+    assert result.succeeded
+    assert result.action_source_snapshot is recovered
+    assert result.action_source_snapshot is not invalid
+
+
+def test_recovery_invalidates_local_provenance_before_retry_guard():
+    from types import SimpleNamespace
+
+    source = _snapshot(1, BEFORE)
+    invalidated = False
+    recovery = SimpleNamespace(
+        attempt=lambda snapshot, expected: _snapshot(5, BEFORE)
+    )
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)),
+         _timeout(2, _snapshot(3, BEFORE), timeout=2.0)],
+        observes=[_snapshot(4, OTHER), _snapshot(6, BEFORE)],
+    )
+    actions = Actions()
+
+    def invalidate():
+        nonlocal invalidated
+        invalidated = True
+
+    result = VerifiedTransition(
+        observer, actions, obstruction_recovery=recovery,
+    ).execute(
+        "test.recovery_invalidates", OpenQuickMenu(), source,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        retryable_from=lambda item: not invalidated and item.state.base_context == BEFORE,
+        on_recovery=invalidate,
+        policy=VerifiedTransitionPolicy(max_attempts=2),
+    )
+    assert invalidated
+    assert result.outcome is VerifiedTransitionOutcome.RETRY_GUARD_REJECTED
+    assert len(actions.calls) == 1
+    assert result.action_source_snapshot is source
+
+
+def test_rejected_precondition_has_no_action_anchor():
+    source = _snapshot(1, OTHER)
+    actions = Actions()
+    result = VerifiedTransition(ScriptedObserver([]), actions).execute(
+        "test.no_anchor", OpenQuickMenu(), source,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        precondition=lambda item: item.state.base_context == BEFORE,
+        policy=VerifiedTransitionPolicy(max_attempts=1),
+    )
+    assert result.outcome is VerifiedTransitionOutcome.PRECONDITION_REJECTED
+    assert actions.calls == []
+    assert result.action_source_snapshot is None
+
+def test_failed_executor_call_does_not_publish_uncertain_action_anchor():
+    source = _snapshot(1, BEFORE)
+    result = VerifiedTransition(
+        ScriptedObserver([]), Actions(error=OSError("tap uncertain")),
+    ).execute(
+        "test.uncertain_input", OpenQuickMenu(), source,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        policy=VerifiedTransitionPolicy(max_attempts=1),
+    )
+    assert result.outcome is VerifiedTransitionOutcome.FAILED
+    assert result.action_source_snapshot is None
+
+
+def test_post_action_recovery_is_published_and_cannot_anchor_new_handoff():
+    source = _snapshot(1, BEFORE)
+    recovered_menu = _snapshot(5, EXPECTED)
+    from types import SimpleNamespace
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)),
+         _timeout(2, _snapshot(3, BEFORE), timeout=2.0)],
+        observes=[_snapshot(4, OTHER)],
+    )
+    recovery = SimpleNamespace(attempt=lambda snapshot, expected: recovered_menu)
+    result = VerifiedTransition(
+        observer, Actions(), obstruction_recovery=recovery,
+    ).execute(
+        "test.intervening_recovery", OpenQuickMenu(), source,
+        expected=lambda item: item.state.base_context == EXPECTED,
+        policy=VerifiedTransitionPolicy(max_attempts=1),
+    )
+    assert result.outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY
+    assert result.action_source_snapshot is source
+    assert result.recovery_after_action

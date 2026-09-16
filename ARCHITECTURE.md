@@ -62,6 +62,10 @@ Todo retry es:
 
 `UNKNOWN` y contradicciones fallan cerrados. Cuando no existe una señal robusta, la policy debe ser conservadora y quedar documentada.
 
+`VerifiedTransitionResult.action_source_snapshot` publica el snapshot que autorizó el último input cuyo executor terminó normalmente, incluyendo el source actualizado tras retry o recovery de precondition. Sin input, o si el executor falla de forma incierta, no publica anchor. `recovery_after_action` distingue cleanup ocurrido después del input y prohíbe convertir su éxito posterior en nuevo handoff. Un callback local `on_recovery` se ejecuta cuando recovery devuelve un snapshot fresco, antes de evaluar un retry; permite invalidar provenance de una operación sin estado global.
+
+Quick Menu separa visibilidad de autorización. Un tile sólo usa el handoff local `QuickMenuHandoff` creado con source del input `RESOLVED`, limpio y permitido para esa operación, menú posterior fresco y base no contradictorio. `UNKNOWN + menu.quick` puede observarse después de abrirlo: el input del tile se autoriza por ese lineage explícito y el overlay fresco, nunca por UNKNOWN aislado. `AMBIGUOUS`, base foreign, pérdida observada del menú o recovery invalidan el handoff y prohíben retry; una espera pasiva por el destino puede continuar. Layout proviene del source verificado y geometría del frame fresco. Discovery/recovery sin handoff permanece fail-closed; `ContextResolver` no conserva origen temporal.
+
 ### Ejecución física
 
 `ActionExecutor` traduce intents validados a taps, swipes o texto usando geometría derivada de `frame.shape`. No reconoce pantallas ni decide qué jugar, comprar o vender.

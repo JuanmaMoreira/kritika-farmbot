@@ -1165,7 +1165,7 @@ def test_unknown_startup_frame_waits_for_fresh_capable_context_before_input():
 
     assert result.outcome is RotationOutcome.ABORTED
     assert result.error.startswith("quick_menu_navigation_failed")
-    assert "retry_guard_rejected" in result.error
+    assert "unexpected_state" in result.error
     assert actions.actions == [OpenQuickMenu()]
     assert observer.wait_calls == [(1, 0.25), (2, 0.0), (3, 0.0)]
     assert events.events == ["rotation.standard.unexpected_state"]
@@ -1486,3 +1486,22 @@ def test_every_coarse_and_fine_swipe_wait_uses_scoped_observer():
     ]
     assert actions.actions.count(_expected_tap(SENTINEL_COL2)) == 1
     assert actions.actions.count(ConfirmCharacterSelection()) == 1
+
+def test_discovered_unknown_quick_menu_cannot_start_rotation_tile_input():
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, overlays={MENU_QUICK})], [],
+    )
+    result = rotation.advance()
+    assert result.outcome is RotationOutcome.ABORTED
+    assert actions.actions == []
+
+
+def test_foreign_resolved_menu_after_verified_lobby_aborts_before_tile_input():
+    rotation, actions, _, _ = _rotation(
+        [_snapshot(1, base=SCREEN_LOBBY)],
+        [_snapshot(2, base=SCREEN_GUILD, overlays={MENU_QUICK})],
+    )
+    result = rotation.advance()
+    assert result.outcome is RotationOutcome.ABORTED
+    assert actions.actions == [OpenQuickMenu()]
+    assert "unexpected_state" in result.error

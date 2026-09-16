@@ -81,6 +81,8 @@ class VerifiedTransitionResult:
     elapsed: float | None = field(default=None, kw_only=True)
     operation_id: str | None = field(default=None, kw_only=True)
     failure: FailureCause | None = field(default=None, kw_only=True)
+    action_source_snapshot: RuntimeSnapshot | None = field(default=None, kw_only=True)
+    recovery_after_action: bool = field(default=False, kw_only=True)
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
@@ -99,6 +101,10 @@ class VerifiedTransitionResult:
         )
         if not isinstance(self.final_snapshot, RuntimeSnapshot):
             raise ValueError("final_snapshot must be RuntimeSnapshot")
+        if self.action_source_snapshot is not None and not isinstance(
+            self.action_source_snapshot, RuntimeSnapshot
+        ):
+            raise ValueError("action_source_snapshot must be RuntimeSnapshot or None")
 
     @property
     def succeeded(self) -> bool:
@@ -187,6 +193,7 @@ class VerifiedTransition:
         retryable_from: Callable[[RuntimeSnapshot], bool] | None = None,
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
         stable_for: float = 0.0,
+        on_recovery: Callable[[], None] | None = None,
     ) -> VerifiedTransitionResult:
         with operation_scope(name) as context:
             started = self._metrics_now()
@@ -196,7 +203,7 @@ class VerifiedTransition:
                     name, action, before, expected=expected, policy=policy,
                     precondition=precondition, retryable_from=retryable_from,
                     abort_if=abort_if, stable_for=stable_for,
-                    _progress=progress,
+                    on_recovery=on_recovery, _progress=progress,
                 )
             except BaseException as error:
                 failure = getattr(error, "failure", None) or FailureCause.from_error(
@@ -237,6 +244,7 @@ class VerifiedTransition:
         retryable_from: Callable[[RuntimeSnapshot], bool] | None = None,
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
         stable_for: float = 0.0,
+        on_recovery: Callable[[], None] | None = None,
         _progress: dict,
     ) -> VerifiedTransitionResult:
         if not isinstance(name, str) or not name.strip():
@@ -255,6 +263,17 @@ class VerifiedTransition:
             if predicate is not None and not callable(predicate):
                 raise ValueError(f"{predicate_name} must be callable or None")
         stability = _non_negative_duration(stable_for, "stable_for")
+        if on_recovery is not None and not callable(on_recovery):
+            raise ValueError("on_recovery must be callable or None")
+
+        action_source_snapshot: RuntimeSnapshot | None = None
+        recovery_after_action = False
+
+        def finish(*args, **kwargs):
+            return self._result(
+                *args, action_source_snapshot=action_source_snapshot,
+                recovery_after_action=recovery_after_action, **kwargs
+            )
 
         def finish_late_success(outcome, attempt, grace_count, snapshot):
             # A single late observation (including cleanup/retry-guard output)
@@ -268,18 +287,18 @@ class VerifiedTransition:
                     stable_for=stability,
                 )
                 if isinstance(settled, RuntimeWaitAborted):
-                    return self._result(
+                    return finish(
                         name, VerifiedTransitionOutcome.UNEXPECTED_STATE,
                         attempt, grace_count, settled.snapshot, str(settled),
                     )
                 if isinstance(settled, RuntimeWaitTimeout):
-                    return self._result(
+                    return finish(
                         name, VerifiedTransitionOutcome.TIMEOUT,
                         attempt, grace_count, settled.last_snapshot or snapshot,
                         "late_expected_state_not_stable",
                     )
                 snapshot = settled
-            return self._result(name, outcome, attempt, grace_count, snapshot)
+            return finish(name, outcome, attempt, grace_count, snapshot)
 
         self._record(
             "transition.started",
@@ -290,7 +309,7 @@ class VerifiedTransition:
             max_attempts=policy.max_attempts,
         )
         if precondition is not None and not precondition(before):
-            recovered = self._try_recover(before, precondition, name)
+            recovered = self._try_recover(before, precondition, name, on_recovery)
             if recovered is not None and precondition(recovered):
                 self._record(
                     "transition.obstruction_recovered",
@@ -299,7 +318,7 @@ class VerifiedTransition:
                 )
                 current = recovered
             else:
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.PRECONDITION_REJECTED,
                     0,
@@ -315,10 +334,13 @@ class VerifiedTransition:
             _progress["attempt"] = attempt
             try:
                 self.actions.execute(action, current.geometry)
+                action_source_snapshot = current
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as error:
-                return self._result(
+                # A partly completed executor call cannot certify this input.
+                action_source_snapshot = None
+                return finish(
                     name,
                     VerifiedTransitionOutcome.FAILED,
                     attempt,
@@ -341,7 +363,7 @@ class VerifiedTransition:
                     if attempt == 1
                     else VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
                 )
-                return self._result(
+                return finish(
                     name,
                     outcome,
                     attempt,
@@ -349,7 +371,7 @@ class VerifiedTransition:
                     normal,
                 )
             if isinstance(normal, RuntimeWaitAborted):
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.UNEXPECTED_STATE,
                     attempt,
@@ -386,7 +408,7 @@ class VerifiedTransition:
                     if attempt == 1
                     else VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
                 )
-                return self._result(
+                return finish(
                     name,
                     outcome,
                     attempt,
@@ -394,7 +416,7 @@ class VerifiedTransition:
                     grace,
                 )
             if isinstance(grace, RuntimeWaitAborted):
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.UNEXPECTED_STATE,
                     attempt,
@@ -408,7 +430,7 @@ class VerifiedTransition:
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as error:
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.FAILED,
                     attempt,
@@ -419,7 +441,7 @@ class VerifiedTransition:
                 )
             latest_wait = grace.last_snapshot or grace_anchor
             if observed.sequence <= latest_wait.sequence:
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.TIMEOUT,
                     attempt,
@@ -435,7 +457,7 @@ class VerifiedTransition:
                 )
                 return finish_late_success(outcome, attempt, grace_wait_count, observed)
             if abort_if is not None and abort_if(observed):
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.UNEXPECTED_STATE,
                     attempt,
@@ -443,8 +465,9 @@ class VerifiedTransition:
                     observed,
                     "unexpected_state_after_grace",
                 )
-            recovered = self._try_recover(observed, expected, name)
+            recovered = self._try_recover(observed, expected, name, on_recovery)
             if recovered is not None:
+                recovery_after_action = True
                 if expected(recovered):
                     self._record(
                         "transition.obstruction_recovered",
@@ -459,7 +482,7 @@ class VerifiedTransition:
                     )
                 observed = recovered
                 if abort_if is not None and abort_if(observed):
-                    return self._result(
+                    return finish(
                         name,
                         VerifiedTransitionOutcome.UNEXPECTED_STATE,
                         attempt,
@@ -472,13 +495,13 @@ class VerifiedTransition:
                     # evidence after recovery, not its last pre-failure frame.
                     fresh = self.observer.observe()
                     if fresh.sequence <= observed.sequence:
-                        return self._result(
+                        return finish(
                             name, VerifiedTransitionOutcome.TIMEOUT, attempt,
                             grace_wait_count, fresh, "retry_state_not_fresh",
                         )
                     observed = fresh
                     if abort_if is not None and abort_if(observed):
-                        return self._result(
+                        return finish(
                             name, VerifiedTransitionOutcome.UNEXPECTED_STATE,
                             attempt, grace_wait_count, observed,
                             "unexpected_state_after_recovery",
@@ -489,7 +512,7 @@ class VerifiedTransition:
                             attempt, grace_wait_count, observed,
                         )
             if retryable_from is None:
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.TIMEOUT,
                     attempt,
@@ -499,7 +522,7 @@ class VerifiedTransition:
                 )
             if not retryable_from(observed):
                 if policy.retry_guard_timeout == 0:
-                    return self._result(
+                    return finish(
                         name,
                         VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
                         attempt,
@@ -526,7 +549,7 @@ class VerifiedTransition:
                         )
                         return finish_late_success(outcome, attempt, grace_wait_count, observed)
                 elif isinstance(guarded, RuntimeWaitAborted):
-                    return self._result(
+                    return finish(
                         name,
                         VerifiedTransitionOutcome.UNEXPECTED_STATE,
                         attempt,
@@ -535,7 +558,7 @@ class VerifiedTransition:
                         str(guarded),
                     )
                 else:
-                    return self._result(
+                    return finish(
                         name,
                         VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
                         attempt,
@@ -544,7 +567,7 @@ class VerifiedTransition:
                         "retry_guard_rejected",
                     )
             if attempt >= policy.max_attempts:
-                return self._result(
+                return finish(
                     name,
                     VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED,
                     attempt,
@@ -586,6 +609,7 @@ class VerifiedTransition:
         snapshot: RuntimeSnapshot,
         condition: Callable[[RuntimeSnapshot], bool],
         name: str,
+        on_recovery: Callable[[], None] | None = None,
     ) -> RuntimeSnapshot | None:
         recovery = self.obstruction_recovery
         if recovery is None:
@@ -616,6 +640,8 @@ class VerifiedTransition:
                 timeout=0.0,
                 last_snapshot=recovered,
             )
+        if recovered is not None and on_recovery is not None:
+            on_recovery()
         return recovered
 
     def _result(
@@ -628,6 +654,8 @@ class VerifiedTransition:
         error: str | None = None,
         *,
         failure: FailureCause | None = None,
+        action_source_snapshot: RuntimeSnapshot | None = None,
+        recovery_after_action: bool = False,
     ) -> VerifiedTransitionResult:
         result = VerifiedTransitionResult(
             name=name,
@@ -635,6 +663,8 @@ class VerifiedTransition:
             attempt_count=attempt_count,
             grace_wait_count=grace_wait_count,
             final_snapshot=final_snapshot,
+            action_source_snapshot=action_source_snapshot,
+            recovery_after_action=recovery_after_action,
             error=error,
             failure=failure or (
                 FailureCause.from_error(error, kind=outcome.value, step=name, sequence=final_snapshot.sequence)

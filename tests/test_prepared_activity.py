@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from bot.battle_mode_zone import is_battle_mode_select
-from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, SCREEN_WORLD_BOSS
+from bot.catalog import MENU_QUICK, SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, SCREEN_WORLD_BOSS
 from bot.eligibility import EligibilityResult, EligibilityStatus
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
@@ -175,3 +175,23 @@ def test_unverified_world_boss_back_preserves_failed_transition_and_no_cleanup(m
     assert result.raid_complete_detected
     assert result.transition_outcomes[-1] == ("world_boss.return_to_battle_mode", "attempts_exhausted")
     assert "OpenQuickMenu" not in trace
+
+
+def test_battle_mode_return_does_not_select_tile_without_action_anchor(monkeypatch):
+    from test_world_boss_flow import snapshot
+
+    runtime, wb, _, trace, _ = setup(monkeypatch)
+    assert wb.zone.enter().succeeded
+    def unanchored_open(name, action, before, **kwargs):
+        assert type(action).__name__ == "OpenQuickMenu"
+        menu = snapshot(before.sequence + 1, overlays=(MENU_QUICK,))
+        assert kwargs["expected"](menu)
+        return VerifiedTransitionResult(
+            name, VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
+            1, 0, menu,
+        )
+    monkeypatch.setattr(wb.zone.transition, "execute", unanchored_open)
+    result = wb.zone.leave()
+    assert result.status is FlowStatus.FAILED
+    assert result.error == "quick_menu_origin_handoff_invalid"
+    assert "SelectQuickMenuLobby" not in trace

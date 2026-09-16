@@ -10,6 +10,7 @@ from bot.flow_contracts import FlowResult, FlowStatus
 from bot.failure_cause import FailureCause
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.semantic_actions import OpenBattleModeSelect, OpenQuickMenu, SelectQuickMenuLobby
+from bot.quick_menu import QuickMenuHandoff, QuickMenuPolicy, quick_menu_matches_origin
 from bot.state import ResolutionStatus
 from bot.verified_transition import VerifiedTransitionPolicy
 from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
@@ -84,10 +85,36 @@ class BattleModeZone:
             for name, action, guard, expected in steps:
                 if self.cancel_requested():
                     return finish(FlowStatus.CANCELLED)
+                extra = {}
+                if leaving and name == "select_lobby":
+                    handoff = QuickMenuHandoff.from_open_result(
+                        transitions[-1], is_battle_mode_select,
+                        policy=QuickMenuPolicy(frozenset({SCREEN_BATTLE_MODE_SELECT})),
+                    )
+                    if handoff is None:
+                        return finish(
+                            FlowStatus.FAILED, error="quick_menu_origin_handoff_invalid"
+                        )
+                    guard = handoff.allows
+                    extra = {
+                        "on_recovery": handoff.invalidate,
+                        "abort_if": lambda item: handoff.observe(item, is_lobby),
+                    }
+                elif leaving and name == "open_quick_menu":
+                    extra = {
+                        "abort_if": lambda item: (
+                            item.state.status is ResolutionStatus.AMBIGUOUS
+                            or (
+                                item.state.status is ResolutionStatus.RESOLVED
+                                and item.state.base_context != SCREEN_BATTLE_MODE_SELECT
+                            )
+                        ),
+                    }
                 result = self.transition.execute(
                     f"battle_mode.{name}", action, before,
                     expected=expected, precondition=guard, retryable_from=guard,
                     stable_for=0.25, policy=VerifiedTransitionPolicy(max_attempts=2),
+                    **extra,
                 )
                 transitions.append(result)
                 if self.cancel_requested():

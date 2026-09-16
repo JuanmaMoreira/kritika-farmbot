@@ -1,6 +1,6 @@
 # Quick Menu: decisión de arquitectura para el normal path
 
-Baseline `rebuild/stable-baseline @ 4606bf3`; checkpoint recibido `2202/2202` hardware-free. **Decisión de modelo: B para el normal path; A queda como observación/cross-check en discovery y recovery. Implementación diferida por lineage de retry/recovery no expuesto todavía.** Esta decisión no cambia el runtime ni altera `ContextResolver`.
+Baseline `rebuild/stable-baseline @ 4606bf3`; checkpoint recibido `2202/2202` hardware-free. **Decisión de modelo: B para el normal path; A queda como observación/cross-check en discovery y recovery. Al momento de esta decisión, la implementación estaba diferida por lineage de retry/recovery no expuesto todavía.** La decisión documental original no cambió el runtime ni alteró `ContextResolver`; la implementación posterior conserva ese límite.
 
 ## Comparación
 
@@ -50,3 +50,10 @@ En selección, `VerifiedTransition` puede llamar al recovery compartido entre in
 Antes de code patch: tests de verifier deben demostrar fuente efectiva tras retry/precondition recovery y señal de cleanup antes de retry; tests de handoff deben usar los curados reales para `UNKNOWN + menu.quick` de Lobby/WB/Battle Mode y `RESOLVED Guild + menu.quick`, más contradicción/foreign/AMBIGUOUS sintéticos sólo como invariantes de seguridad, sin declararlos GT físico. Los taps/layout no cambian. HIL corto sólo si se modifica la secuencia física o si falta evidencia de un target en un origen; el manifest Battle Mode valida controles visuales con operación humana, no replay automático.
 
 Esta ventana no implementa Q1 separado de Q2: cerrar sólo los predicates `UNKNOWN` cortaría rutas reales. No se scopea R2-C ni otros consumers antes de resolver action anchor/recovery lineage y preservar el vocabulario de contradicción. Clean Lobby/B2 sigue separado. Ningún detector, ROI, asset o calibración cambió; evaluator/corpus y suite hardware-free vigente no se invalidan por esta decisión documental.
+
+
+## Estado posterior de implementación
+
+El runtime ahora publica `action_source_snapshot` en cada resultado de `VerifiedTransition`, correspondiente al último input cuyo executor terminó normalmente. `recovery_after_action` marca cleanup posterior al opener y bloquea la creación del handoff aun si después aparece el menú. `on_recovery` invalida un handoff local antes de consultar el retry guard. Rotation, ProductiveRuntime y BattleModeZone crean un `QuickMenuHandoff` desde el resultado de apertura y pasan sus guards explícitamente a la selección. Los retries de apertura conservan el mismo origin contractual; un base resuelto contradictorio aborta.
+
+R2-C conserva percepción global. Su ScopeSpec de dos detectores (`Character Select header` y tile Lobby del menú) oculta landmarks de bases foreign: `Guild + menu.quick` podría degradarse a `UNKNOWN + menu.quick` y, con lineage, autorizar erróneamente un retry. `select_lobby` conserva la verificación global de clean Lobby/B2. `select_guild`, BattleModeZone y openers permanecen globales hasta demostrar un subset con vocabulario de contradicción equivalente. No se tocaron hitboxes, detectores, ROI, assets, calibración ni `ContextResolver`.

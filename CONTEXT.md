@@ -63,6 +63,7 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 - Rotation R1: **2144/2144 tests hardware-free**; smoke HIL natural **1/1**, con tarjeta `SELECTED` estable, `Select` final y Lobby confirmado por la persona usuaria.
 - Rotation R2-A: **2151/2151 tests hardware-free**; smoke HIL natural **1/1**, wait post-swipe scoped 95→2 con `stable_for=1.0`, 1 swipe, tarjeta y Select en primer intento, Lobby confirmado visualmente por la persona usuaria. R2-B quedó global por cobertura insuficiente de overlays en un subset pequeño.
 - World Boss WB-1: **2152/2152 tests hardware-free**; `Run Session` natural **1/1** tras el cambio, con elegibilidad 95→5, wait estable 2,61→0,91 s, 0 retries/recoveries y World Boss completado. Detector/asset/ROI/OCR y semántica de batalla intactos; Start, boundaries de inventario y retorno siguen globales por contrato abierto de abort/overlays.
+- Quick Menu verified-origin handoff: **2231/2231 tests hardware-free**; action-source lineage y recovery invalidation explícitos; consumers principales migrados sin cambios de hitboxes/detectores. R2-C y waits con vocabulario de contradicción permanecen globales.
 - Evaluación semántica de Monster Wave: **510 frames**, sin resoluciones wrong/ambiguous.
 - Evidencia live histórica: Rotation 28/28 y sesiones combinadas 28/28 sin fallos técnicos; Monster Wave confirmó ACTIVE, MAX, Start y board negativo.
 
@@ -77,13 +78,14 @@ Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en
 - Geometría portable deriva del frame; no se fijan resoluciones ni device IDs.
 - La persona usuaria sigue siendo el planner. El producto ejecuta una lista explícita de flows y policies acotadas; no existe un planner automático general.
 - El experimento Inventory Relief se preserva como evidencia y código archival, no como arquitectura aceptada.
+- Quick Menu usa verified-origin handoff local: overlay visible y origin autorizado son hechos distintos. Un UNKNOWN con menú descubierto no habilita tile input/retry; UNKNOWN post-open sólo lo hace con source de input verificado, menú fresco y sin contradicción. Recovery invalida el handoff antes de retry. Véase [`ARCHITECTURE.md`](ARCHITECTURE.md) y [`docs/QUICK_MENU_HANDOFF_DECISION.md`](docs/QUICK_MENU_HANDOFF_DECISION.md).
 
 ## Limitaciones conocidas
 
 No forman parte del runtime estable:
 
 - Inventory Relief Chain general, Trading, Craft, Treasure o Equipment Sell;
-- confirmación Select→Lobby y otros hot paths de Rotation aún no scopeados por R1/R2-A;
+- confirmación Select→Lobby y otros hot paths de Rotation aún no scopeados por R1/R2-A; R2-C (Quick Menu→Character Select) conserva observación global porque el subset actual de dos detectores no muestra bases contradictorias bajo el menú;
 - World Boss: selector, Previous Rewards y Raid Complete conservan deuda semántica de autorización overlay-only sobre base UNKNOWN/AMBIGUOUS; Raid Complete debe decidir el terminal contradictorio y el poll debe revisar `after_sequence`/freshness. Los D locales requieren un snapshot fresco equivalente antes de reutilizarse;
 - framework temporal de input/readiness;
 - estrategia de farming, scheduler, grafo general de navegación o recuperación de conexión post-World Boss;
@@ -93,4 +95,4 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-World Boss quedó acotado en la elegibilidad diaria. Los demás candidatos locales siguen globales hasta que sus blockers, aborts y freshness puedan conservarse sin semántica nueva; los readers temporales y raw de batalla permanecen especializados. La deuda de selector/Previous Rewards/Raid Complete queda registrada en [`ROADMAP.md`](ROADMAP.md).
+Quick Menu tiene contrato de autorización normal-path local en código. Su percepción sigue global en R2-C y selecciones que necesitan reconocer bases contradictorias; el wait final a clean Lobby también permanece global por B2. Los demás candidatos locales siguen globales hasta conservar blockers, aborts y freshness; la deuda de World Boss selector/Previous Rewards/Raid Complete permanece separada en [`ROADMAP.md`](ROADMAP.md).
