@@ -85,13 +85,13 @@ Base: 16 landmarks `assets/ui/landmarks/monster-wave/*.png` + 5 legacy, `bot/mon
 
 1. **Board-first planning.** Trading Center nunca es etapa diagnóstica si el board snapshot ya decide qué falta. Flujo: `Monster Wave board → semantic board snapshot → resource needs → deterministic route plan → ejecutar sólo Craft/Trading/Treasure/Relief necesarios → continuar MW`. Snapshot describe; planner decide recorrido; executors ejecutan capacidades. Sin mezcla.
 2. **Snapshot descriptivo, planner aparte.** `MonsterWaveBoardSnapshot` candidato (nombres/campos no finales): resource counts/status observables, material-tier needs, target-tier capacity/fullness *si observable*, craft prerequisites, trading opportunities, battle eligibility/resources, evidence sequence/freshness. Prohibido `should_visit_trading`, `should_craft_first`, `route=[...]` dentro del snapshot.
-3. **Capacidades atómicas, no flow monolítico.** Trading/Craft/Treasure son executors de un plan ya decidido. Routing: sin necesidad de keys → no visitar Avatar & Keys; sin material trades → no scrollear a Crafting Materials; si se paga el viaje, agrupar operaciones útiles del mismo viaje; nunca tabs "por las dudas".
-4. **Inventory Relief transversal.** Contrato: `operación original → inventory-full → Equipment Combine Relief primero → reintentar original → si sigue lleno → Inventory Relief fallback → reintentar original`. El caller conserva causalidad. Prohibido relief específico por MW/Trading/Treasure. Combine-first preservado (`HISTORY.md:87`); venta sólo si sigue necesario, con guards de §2.
+3. **Capacidades atómicas, no flow monolítico.** Trading/Craft/Treasure son executors de un plan ya decidido. Routing: sin necesidad de keys → no visitar Avatar & Keys; sin material trades → no scrollear a Crafting Materials; si se paga el viaje, agrupar operaciones útiles del mismo viaje; nunca tabs "por las dudas". Craft: sin scroll; precondición de entrada ≥1 slot libre de Equipment Inventory al momento de entrar; sin modelar relief por craft individual.
+4. **Inventory Relief transversal.** Contrato: `operación original → inventory-full → Equipment Combine Relief primero → reintentar original → si sigue lleno → Inventory Relief fallback → reintentar original`. El caller conserva causalidad. Prohibido relief específico por MW/Trading/Treasure/Craft, y no es propiedad de ninguno de ellos: se invoca ante `equipment-full` del caller que lo requiera. Combine-first preservado (`HISTORY.md:87`); venta sólo si sigue necesario, con guards de §2.
 5. **Crafting Materials preventivo + fallback defensivo.** Si el snapshot demuestra tier destino completo o necesidad de consumir/craftear antes → Craft primero, Trading después sólo si sigue necesario; nunca viajar a Trading sólo para descubrir que el trade no entra. El executor sigue defensivo ante `inventory-full` por stale/race con la política transversal, pero como fallback, no como planificación normal.
-6. **Gold Keys — comportamiento exacto.** Trading Keys hace únicamente `Bronze→Silver` y `Silver→Gold` (orden por cantidades/necesidades). Capacidad Gold Keys **no observable** ni desde board ni desde Trading. `Silver→Gold` sin hueco intenta procesarse y levanta popup; ese popup **no** navega a Treasure: salir/navegar manual a Treasure, abrir Gold Keys, retomar causal y reintentar `Silver→Gold`. Chocar el popup no es mala planificación: es la primera evidencia de falta de capacidad. No inventar precondición observable inexistente.
-7. **Treasure↔Relief: Opción B (decisión).** Comparadas: A (relief reactivo diferido: menor acoplamiento, pero deja condición conocida sin resolver y el siguiente consumer paga el choque rompiendo causalidad Silver→Gold) vs B (relief causal durante la liberación de Gold Keys: Trading bloqueado → Treasure → abrir Gold Keys → si `equipment inventory-full`, consumir política transversal Combine→retry→Sell→retry → al lograr capacidad Gold, volver a Trading → retry Silver→Gold). Se elige **B**: preserva causalidad del objetivo original (completar el trade bloqueado), evita trabajo interrumpido a medias, mantiene ownership (Treasure es *consumer* de la política transversal, no su dueño), retry semantics claras (reintentos de la apertura, no del plan entero) y stage composition simple (un plan lineal con retorno). Costo aceptado: acoplamiento temporal Treasure→relief, acotado por ser consumo de la misma política transversal ya usada por todos.
-8. **Treasure independiente y bounded.** Abrir desde contexto soportado → entrar a Gold Keys → aperturas bounded hasta objetivo explícito (mínimo: "suficiente capacidad para el Silver→Gold pendiente"; nunca "vaciar todo" por defecto) → relief transversal si evidencia lo dispara → postcondición/verificación al caller → reanudar plan. Fail-closed ante Karats/otras monedas.
-9. **Directed known-list scrolling.** `catálogo conocido + landmark visible + target conocido → estimar desplazamiento → gesto acotado → reobservar → corrección bounded o stop`. Sin búsqueda ciega bidireccional por defecto ni navegador genérico. Contrato `024ff8e` + `ARCHITECTURE.md:121-133`: viewport con n filas/pitch, avance ≤(n−1)·pitch·.95, touchdown en zona no-interactiva, 1 gesto acotado, reobservar bajo mismos tab-guards, progreso→iterar (máx 12), sin progreso→stop, target visible→consenso de fila (2 acuerdos/≤4 muestras), viewport ilegible/tab perdido/familia ajena→stop sin input, Keys (Bronze/Silver) sin scroll (espera pasiva del landmark o fallo acotado).
+6. **Gold Keys — comportamiento exacto.** Trading Keys hace únicamente `Bronze→Silver` y `Silver→Gold` (orden por cantidades/necesidades). Capacidad Gold Keys **no observable** ni desde board ni desde Trading. `Silver→Gold` sin hueco intenta procesarse y levanta popup; ese popup **no** navega a Treasure: salir/navegar manual a Treasure, abrir Gold Keys, retomar causal y reintentar `Silver→Gold`. Chocar el popup no es mala planificación: es la primera evidencia de falta de capacidad. No inventar precondición observable inexistente. Abrir Gold Keys NO depende del estado de Equipment Inventory (puede hacerse incluso con Equipment Inventory lleno) y NO provoca ni dispara `equipment-full`.
+7. **Treasure/Gold Keys — independencia de Equipment Inventory (corrección: se elimina la Opción B).** La decisión anterior (Opción B: relief causal durante la liberación de Gold Keys, Treasure como consumer de la política transversal) queda eliminada: partía del supuesto falso de que abrir Gold Keys podía chocar con `equipment inventory-full`. Cadena correcta ante Gold capacity: `Trading Silver→Gold → popup Gold Keys full → navegación manual a Treasure → abrir suficientes Gold Keys → volver a Trading → retry Silver→Gold`, sin consumo de Inventory Relief en ningún paso de la apertura.
+8. **Treasure independiente y bounded.** Abrir desde contexto soportado → entrar a Gold Keys → aperturas bounded hasta objetivo explícito (mínimo: "suficiente capacidad para el Silver→Gold pendiente"; nunca "vaciar todo" por defecto) → postcondición/verificación al caller → reanudar plan. La apertura no consume Inventory Relief. Fail-closed ante Karats/otras monedas.
+9. **Directed known-list scrolling (primitive transversal, sin semántica de consumer).** `catálogo conocido + landmark visible + target conocido → estimar desplazamiento → gesto acotado → reobservar → corrección bounded o stop`. Sin búsqueda ciega bidireccional por defecto ni navegador genérico. Consumidor actual: Trading Center únicamente; Craft y Treasure NO lo consumen. Aun así se diseña reutilizable porque habrá consumidores futuros; el helper no incluye semántica de Trading (el caller decide qué targets existen y qué estrategias están prohibidas, p.ej. Keys sin scroll). Contrato geométrico `024ff8e` + `ARCHITECTURE.md:121-133`: viewport con n filas/pitch, avance ≤(n−1)·pitch·.95, touchdown en zona no-interactiva, 1 gesto acotado, reobservar bajo mismos guards, progreso→iterar (máx 12), sin progreso→stop, target visible→consenso de fila (2 acuerdos/≤4 muestras), viewport ilegible/guard perdido/familia ajena→stop sin input.
 10. **MW standalone/debuggable.** Niveles separables: acquire board → build snapshot → derive route plan → execute prerequisites → return/reorient → enter MW → battle/rewards → reliefs sólo por evidencia → postcondition/return. Permite debuggear sólo-adquisición, sólo-planning, full MW y prerequisite route sin implementar todavía.
 11. **Stage-ready boundary.** La frontera termina con contratos + plan + validación offline; HIL/opt-in y stages quedan para fases de implementación con su propia evidencia.
 
@@ -118,7 +118,7 @@ Función pura `plan(snapshot + non-board discoveries) → ResourceRoutePlan` (li
 
 - Caso 1 (sólo materials, tier con capacidad): `Trading(CraftingMaterials, trades=[…]) → salir`.
 - Caso 2 (craft-previo): `Craft(recipe, qty) → Trading(CraftingMaterials, trades=[…])`.
-- Caso 3 (sólo keys): `Trading(Avatar&Keys, trades=[Bronze→Silver?, Silver→Gold?])`, con rama `on GoldKeyFull: Treasure(open_until=enough_for_pending) → Trading(retry Silver→Gold)`.
+- Caso 3 (sólo keys): `Trading(Avatar&Keys, trades=[Bronze→Silver?, Silver→Gold?])`, con rama `on GoldKeyFull: Treasure(open_until=enough_for_pending, sin relief) → Trading(retry Silver→Gold)`.
 - Caso 4 (keys+materials): ordenar minimizando viajes/scrolls, sin tabs inútiles.
 - Caso 5 (sin necesidad): `[]` (no viajar).
 
@@ -127,35 +127,37 @@ Función pura `plan(snapshot + non-board discoveries) → ResourceRoutePlan` (li
 ```text
 A(recon+observ audit, esta tarea)
  └→ H(snapshot contract design, sin código) + I(planner model design, sin código)
-     └→ B(directed scroll primitive)
-         └→ F(transversal relief: contrato + Combine composer; Sell con cautela)
-             ├→ C(Trading primitives) ─┐
-             ├→ D(Craft primitives) ───┼→ E(Treasure/Gold Keys, consume F)
-             └→ G(MW board acquisition)┘
-                                        └→ I-impl(planner puro) → J(MW integration)
-                                            → K(standalone/debug) → L(stage-ready)
+     ├→ B(directed scroll primitive; único consumer: C)
+     │    └→ C(Trading primitives, consume B)
+     ├→ D(Craft primitives; precond ≥1 slot libre; sin scroll, sin relief propio)
+     ├→ E(Treasure/Gold Keys; independiente de B, de F y de Equipment Inventory)
+     ├→ F(transversal relief: contrato + Combine composer; Sell con cautela;
+     │     sin dueños; lo invoca el caller que choque con equipment-full)
+     └→ G(MW board acquisition)
+          └→ I-impl(planner puro) → J(MW integration)
+              → K(standalone/debug) → L(stage-ready)
 ```
 
-Orden final recomendado: **A → H/I-diseño → B → F → C → D → E → G → I-impl → J → K → L**.
+Orden final recomendado: **A → H/I-diseño → B → F → C → D → E → G → I-impl → J → K → L** (secuencia de implementación, no cadena de dependencias; sólo C depende de B).
 
 Razones y respuestas a dependencias:
 
 - **¿G/H antes de C/D/E?** Sí en diseño (contratos primero para saber qué APIs necesita el planner), no en adquisición física (G-física va después de tener executors que consumirían sus señales; evita adquirir señales sin consumidor, regla `AGENTS.md`).
-- **¿Relief (F) antes de Treasure (E)?** Sí: E con decisión B consume F; implementar E sin F dejaría la apertura Gold a medias ante el primer `inventory-full` conocido.
-- **¿Scrolling (B) antes de Trading/Craft?** Sí: ambas listas lo necesitan; B es offline y desbloquea C/D/E sin HIL.
-- **¿Qué offline antes de HIL?** B (mocks de observer), H (dataclass + tests puros), I (función pura + tabla casos 1-5), F-contrato y Combine-composer (tests con caller falso). HIL sólo para: pitch/settle/toque, currency Gold-vs-Karat, conteos board, capacidad Gold Keys, returns físicos.
+- **¿Relief (F) antes de Treasure (E)?** No hay dependencia: E no consume F (la apertura Gold Keys es independiente de Equipment Inventory). F vive como capacidad transversal que invoca el caller que choque con `equipment-full`.
+- **¿Scrolling (B) antes de Trading/Craft?** B sólo antes de Trading (su único consumer). Craft y Treasure no consumen B. B sigue siendo el próximo frente por ser offline, acotado y reutilizable por futuros consumidores.
+- **¿Qué offline antes de HIL?** B (mocks de observer), H (dataclass + tests puros), I (función pura + tabla casos 1-5), F-contrato y Combine-composer (tests con caller falso). HIL sólo para: pitch/settle/toque (C), currency Gold-vs-Karat, conteos board, capacidad Gold Keys, returns físicos.
 
 ## 8. Primer frente implementable (siguiente prompt, no empezado)
 
 | campo | contenido |
 |---|---|
-| goal | Primitive `directed known-list scroll` reutilizable (contrato `024ff8e` + `ARCHITECTURE.md:121-133`), sin gameplay, sin HIL |
-| scope | `catálogo+landmark+target → estimar → 1 gesto acotado → reobservar → bounded-correct/stop`; Keys prohibido scrollear; sólo filas completas accionables; budgets por caller; sin `ReliefRuntime`/`interaction_timing`/planes léxicos |
+| goal | Primitive `directed known-list scroll` transversal y reutilizable (contrato geométrico `024ff8e` + `ARCHITECTURE.md:121-133`); consumer actual Trading Center únicamente; sin gameplay, sin HIL |
+| scope | `catálogo+landmark+target → estimar → 1 gesto acotado → reobservar → bounded-correct/stop`; target totalmente visible/accionable para actuar; budgets por caller; sin semántica de Trading dentro del helper (p.ej. la prohibición de scrollear Keys vive en el caller Trading, no en el helper); sin `ReliefRuntime`/`interaction_timing`/planes léxicos |
 | evidence needed | `docs/TRADING_LIVE_REGRESSIONS.md §§7-9` en `024ff8e`, `bot/observed_scroll.py:37,159,200,256,278`, `bot/character_select_scroll.py:13` como referencia de perfil dirigido |
 | code areas | nuevo helper acotado (no framework) + tests dirigidos; no tocar `bot/` productivo salvo el helper nuevo ni `assets`/manifests |
-| tests | unitarios con observer falso: progreso→itera, sin-progreso→stop, target-visible→consenso, tab-perdido/viewport-ilegible→stop sin input, Keys→sin gesto; `git diff --check` |
-| HIL need | ninguno en este frente; pitch/settle/touchdown se calibran en C/D con HIL propio |
-| acceptance | helper bounded y puro en IO salvo gesto inyectado; todos los casos anteriores en verde; ningún tab "por las dudas"; documentado en el doc del frente, sin cambiar `ARCHITECTURE.md` |
+| tests | unitarios con observer falso: progreso→itera, sin-progreso→stop, target-visible→consenso, guard-perdido/viewport-ilegible→stop sin input; `git diff --check` |
+| HIL need | ninguno en este frente; pitch/settle/touchdown se calibran en C con HIL propio |
+| acceptance | helper bounded y puro en IO salvo gesto inyectado; todos los casos anteriores en verde; sin semántica de consumer dentro del helper; documentado en el doc del frente, sin cambiar `ARCHITECTURE.md` |
 
 ## 9. Cambios de esta tarea
 
@@ -164,3 +166,14 @@ Razones y respuestas a dependencias:
 - `CONTEXT.md`: **no** tocado (no cambió estado runtime; sólo planificación).
 - `ARCHITECTURE.md`: **no** tocado (sin inconsistencia factual extrema; §§ scroll/relief ya alineados).
 - Sin código/tests/assets/manifests, sin HIL/evaluator/corpus/suite, sin stages, sin push.
+- Corrección posterior: ver §10 (supuestos corregidos sin reescribir el análisis válido).
+
+## 10. Corrección de supuestos (tarea posterior, sin runtime)
+
+Correcciones de dominio cerradas aplicadas sobre §§4, 6–8:
+
+1. Treasure/Gold Keys: la apertura no depende de Equipment Inventory, puede hacerse con Equipment lleno y no provoca `equipment-full`. Decisión Treasure↔Relief Opción B eliminada; Treasure no consume Inventory Relief. Cadena: `Silver→Gold → popup Gold full → Treasure → abrir suficientes Gold Keys → Trading → retry`.
+2. Inventory Relief: transversal ante `equipment-full` del caller (Combine → retry → Sell → retry); no es propiedad de Treasure/Craft/Trading/MW.
+3. Craft: sin scroll; precondición de entrada ≥1 slot libre de Equipment Inventory; sin relief por craft individual.
+4. Directed scroll: consumer actual Trading Center únicamente (Craft y Treasure no lo consumen); primitive transversal sin semántica Trading dentro del helper.
+5. Dependency graph: B sólo alimenta a C; E independiente de B, de F y de Equipment Inventory; F transversal sin dueños. B sigue como próximo frente.
