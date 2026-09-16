@@ -106,7 +106,16 @@ class BattleModeZone:
                     guard = handoff.allows
                     extra = {
                         "on_recovery": handoff.invalidate,
-                        "abort_if": lambda item: handoff.observe(item, is_lobby),
+                        # The source hub may still be visible right after the
+                        # tile input while the transition is in flight. That
+                        # is tolerated while waiting: not success, not abort,
+                        # not a retry on its own. Skipping observe() here also
+                        # keeps the handoff valid so a later menu frame can
+                        # still authorize exactly one bounded retry.
+                        "abort_if": lambda item: (
+                            not is_battle_mode_select(item)
+                            and handoff.observe(item, is_lobby)
+                        ),
                     }
                 elif leaving and name == "open_quick_menu":
                     extra = {
