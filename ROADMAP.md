@@ -66,6 +66,14 @@ Cerrados: scoped perception refactor, Quick Menu provenance, Clean Lobby/B2, Wor
 
 Fuera de V1 (futuro, no blockers): validación runtime/performance de Monster Wave al reactivarse; hub scopes WB/MW (`NEEDS_EVIDENCE`); relief scopes; Lobby<77 / landmark estructural seasonal; carry FlowResult→SessionRunner; carry transversal `_navigate_to_guild`/navigation bool→snapshot; nuevos flows post-V1; storage cleanup pospuesto.
 
+### 11. Post-V1 — Resource Routing / Monster Wave Preparation — PLANNING ONLY
+
+Primera frontera post-V1. Esta tarea es sólo reconstrucción y diseño (`docs/POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md`); ningún runtime implementado, ningún DONE de implementación.
+
+Decisiones cerradas: board-first planning (Trading nunca como etapa diagnóstica si el board decide); snapshot descriptivo + deterministic route planner separados de executors; Trading/Craft/Treasure como capacidades atómicas independientes; Inventory Relief transversal con Combine Relief siempre primero y venta sólo si sigue necesario; Gold Key capacity no observable (board ni Trading) y popup Silver→Gold full exige navegación manual a Treasure + retorno causal; Treasure puede consumir relief transversal durante liberación de Gold Keys (Opción B elegida); Crafting Materials preventivo por board + fallback defensivo ante popup; directed known-list scrolling; MW standalone/debuggable; stage-ready boundary al final.
+
+Orden de fases recomendado: A recon+observ audit → H/I diseño snapshot/planner → B directed scroll → F transversal relief → C Trading → D Craft → E Treasure → G MW board acquisition → I-impl planner → J MW integration → K standalone/debug → L stage-ready. Primer frente propuesto: primitive directed known-list scroll (offline, bounded, desbloqueante; ver mini-brief en el documento).
+
 ## Criterios permanentes
 
 - Código y tests prevalecen sobre documentación histórica.
