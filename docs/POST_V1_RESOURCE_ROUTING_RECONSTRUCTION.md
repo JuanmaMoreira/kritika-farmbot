@@ -177,3 +177,12 @@ Correcciones de dominio cerradas aplicadas sobre §§4, 6–8:
 3. Craft: sin scroll; precondición de entrada ≥1 slot libre de Equipment Inventory; sin relief por craft individual.
 4. Directed scroll: consumer actual Trading Center únicamente (Craft y Treasure no lo consumen); primitive transversal sin semántica Trading dentro del helper.
 5. Dependency graph: B sólo alimenta a C; E independiente de B, de F y de Equipment Inventory; F transversal sin dueños. B sigue como próximo frente.
+
+## 11. Frente B implementado (sin consumer, sin HIL)
+
+- Módulo nuevo `bot/directed_list_scroll.py` (no se extendió `bot/observed_scroll.py`: ese helper mide movimiento ciego de píxeles hacia un borde y no conoce orden/catálogo; extenderlo habría contaminado su semántica).
+- API: `KnownListScrollProfile` (pitch, filas visibles, factor de overlap 0.95 por defecto, lane/touchdown y límites verticales del caller, tolerancia de fila, consenso 2 acuerdos/≤4 muestras) + `ViewportReading` (ids visibles top→bottom, row_y del target, secuencia, readable, guard_ok) + `plan_directed_gesture` (pura) + `advance_toward_target` (≤1 gesto) + `scroll_to_target` (driver bounded con `max_gestures` explícito, sin default).
+- Contrato: dirección por orden conocido (sin búsqueda ciega); desplazamiento proporcional con clamp a `(visible_rows−1)·pitch·0.95` y a la zona segura del profile; reobservación tras cada gesto; progreso por leading edge del catálogo (no por cambio de imagen); no-progress/movimiento contrario → stop; ilegible/guard perdido → stop sin más input; consenso de target consecutivo y bounded con evidencia `stable_row_y`/`stable_sequence`; freshness local por secuencias estrictamente crecientes (stale nunca prueba progreso/ready); budgets explícitos; la primitive nunca toca el target (sólo emite `PlannedGesture` por callback inyectado).
+- Límites: geometría de producción (pitch, filas, lane, top/bottom, tolerancia) sin calibrar — los tests usan geometría sintética; HIL pendiente en el frente C con el consumer real. Sin semántica de consumer dentro del helper (la prohibición de scroll en Keys vive en el futuro adapter, no aquí).
+- Trading sigue sin integrar; Craft/Treasure/Relief/MW sin cambios; runtime productivo intacto.
+- Tests: `tests/test_directed_list_scroll.py`, 35 dirigidos verdes con observer/gesto falsos; `git diff --check` limpio; sin full suite (módulo nuevo sin consumidores), sin evaluator/corpus (sin detectors/readers/assets), sin HIL.
