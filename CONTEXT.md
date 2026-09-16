@@ -11,6 +11,16 @@ feat: add monster wave skip activity
 
 La rama `rebuild/stable-baseline` preserva ese origen y contiene Rotation R1/R2-A (`d7742fd`; `codex/rotation-r2` apunta al mismo checkpoint), Quick Menu verified-origin y Clean Lobby/B2. R2-B (Select→Lobby) usa el contrato B2 resolver-complete. No porta código de la línea experimental Inventory Relief. La evidencia Git prevalece sobre referencias históricas que describían Monster Wave como «sin commit» o «sin push».
 
+### Checkpoint V1 (canónico vigente)
+
+- Rama `rebuild/stable-baseline` @ `04640c2`; último cambio productivo `6ba5c9b`.
+- `REFACTOR_COMPLETE = YES`: auditoría global final cerrada ([`docs/FINAL_GLOBAL_PERCEPTION_AUDIT.md`](docs/FINAL_GLOBAL_PERCEPTION_AUDIT.md)); 0 K, 0 D-local y 0 BUG abiertos.
+- Validación: **2459/2459 hardware-free**; **28/28 post-refactor PASS** ([`docs/POST_REFACTOR_28_28_BENCHMARK.md`](docs/POST_REFACTOR_28_28_BENCHMARK.md)): wall **76:59**, 196/196 flows, 768/768 transitions, 1 retry bounded, 0 recoveries, 0 failures.
+- Performance (sintético, comparación descriptiva vs sesión comparable 2026-09-08): perception CPU 4026.8 s → **2337.8 s (−42 %)**; analyzes global-like 5705 → 3016 (~−47 %); flows scoped principales −45–56 % wall. No todo el ahorro wall es atribuible al refactor (el workload difiere: reliefs, retries, batallas WB).
+- Caveats del benchmark: Monster Wave OFF (path omitido, no valida MW); 0 reliefs con trabajo (no valida reliefs); scopes nuevos de Daily-progress 95→4 y MW-eligibility 95→5 no ejercidos; World Boss ampliamente ejercido (28 flows / 26 batallas).
+- Veredictos: `PERFORMANCE_REGRESSION = NO`, `NEW_CORRECTNESS_BUG = NO`, `HIGH_VALUE_OPTIMIZATION_REMAINING = NO`.
+- `READY_FOR_V1_CHECKPOINT = YES`.
+
 Kritika FarmBot automatiza tareas por personaje de **Kritika: The White Knights** sobre Android físico. GUI Tkinter y CLI son frontends del mismo composition root. Código y tests determinan lo implementado; [`ARCHITECTURE.md`](ARCHITECTURE.md) fija contratos, [`ROADMAP.md`](ROADMAP.md) ordena el trabajo y [`docs/HISTORY.md`](docs/HISTORY.md) conserva la evolución.
 
 ## Runtime productivo
@@ -68,6 +78,8 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 - World Boss correctness: Select Boss y Previous Rewards usan handoffs locales derivados de `action_source_snapshot`; los overlays `UNKNOWN` sólo autorizan el siguiente input si son frescos y causados por el input verificado anterior. Discovery aislado, `AMBIGUOUS`, base foreign, overlay contradictorio y recovery no autorizan input; Ack y Continue son single-attempt. Raid Complete conserva base resuelta, anchor causal, stale rejection y terminal contradictorio. Regresión dirigida **282/282**, incluidas las 44 capturas curadas. HIL natural validó Select Boss, Previous Rewards, Ack, Start, Raid Complete y Continue en primer intento, con 0 retries/recoveries y GT humano sin taps incorrectos. El tap final llegó físicamente a Lobby, pero `BattleModeZone.leave` reportó `FAILED` al abortar sobre un frame transitorio del origin antes de observar el destino. Fix local posterior (`cf82d62` + `tolerate battle mode during lobby return`): el origin todavía visible post-`SelectQuickMenuLobby` se tolera mientras se espera (sin abort, sin retry, sin segundo tap); HIL natural 1/1 con `select_lobby` en primer intento y full hardware-free **2394/2394**, nuevo count autoritativo.
 - Evaluación semántica de Monster Wave: **510 frames**, sin resoluciones wrong/ambiguous.
 - Evidencia live histórica: Rotation 28/28 y sesiones combinadas 28/28 sin fallos técnicos; Monster Wave confirmó ACTIVE, MAX, Start y board negativo.
+- Cierre refactor + auditoría global final: **2459/2459 hardware-free** (`6ba5c9b`, `04640c2`; nuevo count autoritativo); `REFACTOR_COMPLETE = YES`, 0 K/D-local/BUG.
+- Post-refactor 28/28 PASS: wall 76:59, 196/196 flows, 768/768 transitions, 1 retry bounded, 0 recoveries/failures; percepción 2337.8 s (−42 % vs baseline comparable). Caveats: MW OFF, sin reliefs con trabajo, scopes nuevos de Daily-progress/MW no ejercidos. Detalle en [`docs/POST_REFACTOR_28_28_BENCHMARK.md`](docs/POST_REFACTOR_28_28_BENCHMARK.md).
 
 Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en tareas docs-only. Los detalles de adquisición y calibración viven en [`docs/HISTORY.md`](docs/HISTORY.md).
 
@@ -99,6 +111,4 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-World Boss correctness queda cerrado integralmente en código, HIL y full hardware-free (2394/2394). No iniciar performance/scoping.
-
-Un smoke HIL breve es opcional si se solicita evidencia temporal/física de R2-B o de un close concreto; no es requisito para el cambio resolver-equivalente 95→77. No recalibrar `screen.lobby` sin adquisición seasonal específica.
+Checkpoint V1 cerrado: refactor completo, 2459/2459 hardware-free y 28/28 PASS (76:59). El trabajo diferido vive fuera de V1 en [`ROADMAP.md`](ROADMAP.md): validación de Monster Wave al reactivarse, hub scopes WB/MW, relief scopes, Lobby<77, carries transversales y nuevos flows. No iniciarlos como parte de este checkpoint; cada uno exige su propia evidencia y validación mínima. No recalibrar `screen.lobby` sin adquisición seasonal específica.

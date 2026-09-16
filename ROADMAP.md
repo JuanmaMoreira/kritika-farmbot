@@ -38,6 +38,7 @@ Elegir un único hot path estable, medir baseline, limitar detectores relevantes
 - World Boss WB-1 (elegibilidad Daily) — DONE: scope 95→5 en snapshot inicial y wait estable; 2152/2152 hardware-free y `Run Session` natural 1/1, sin cambiar policy ni inputs. Correctness Select Boss/Previous Rewards/Raid Complete — CODE+HIL DONE: handoffs locales desde inputs efectivos y evidencia fresca; discovery/UNKNOWN aislado, `AMBIGUOUS`, foreign, contradicción y recovery no autorizan input. Ack y Continue son single-attempt; Raid Complete conserva base resuelta, freshness y terminal contradictorio. Regresión dirigida 282/282 con 44 frames curados; HIL natural incluyó Previous Rewards y llegó físicamente a Lobby, todo first-attempt y sin taps incorrectos. Cierre integral DONE: fix local en `BattleModeZone.leave` que tolera el origin transitorio post-`SelectQuickMenuLobby` sin abort/retry/segundo tap; HIL natural 1/1 hasta Lobby limpio y full hardware-free 2394/2394 (nuevo autoritativo). WB-2 (D locales) queda diferido. No iniciar scoping/performance en este checkpoint.
 - Quick Menu verified-origin handoff — DONE en correctness: el verificador expone action source y señal local de recovery; Rotation R2-C, select_lobby, select_guild y BattleModeZone.leave exigen provenance de apertura. R2-C sigue global: el scope de dos detectores pierde bases foreign que invalidan el token y las degrada a UNKNOWN + menu.quick, estado que con lineage podría permitir retry erróneo. B2 acota sólo el wait final de select_lobby/BattleModeZone.leave con vocabulario resolver-complete 95→77; opener y select_guild conservan global por vocabulario de bases/contradicciones no probado en scopes moderados. No adquirir landmarks bajo el panel para normal path.
 - Clean Lobby / B2 — DONE en código: discovery/recovery y postchecks de sesión permanecen globales; CloseFriends, Mailbox, Daily, Black Market, ClosePets, select_lobby, BattleModeZone.leave y R2-B usan scopes nombrados de 77 detectores que preservan las 17 bases y los 57 overlays del catálogo. El landmark positivo `Trading Center` sigue seasonal-risk; scopes menores y snapshot reuse quedan diferidos por evidencia/contrato. Ver [`docs/CLEAN_LOBBY_B2_DECISION.md`](docs/CLEAN_LOBBY_B2_DECISION.md).
+- Cierre refactor — DONE: scoping BM/Summon/Daily-progress/MW-eligibility, seed reuse BM/Summon (D_REUSE), return fixes productivos (`c449106`, `d1806d4`, `d61bf20`) y auditorías Daily tab-loop y R2-C (J con tests pin); full hardware-free 2459/2459. Auditoría global final — DONE ([`docs/FINAL_GLOBAL_PERCEPTION_AUDIT.md`](docs/FINAL_GLOBAL_PERCEPTION_AUDIT.md), `REFACTOR_COMPLETE=YES`, 0 K/D-local/BUG). Benchmark post-refactor 28/28 — DONE PASS 76:59 ([`docs/POST_REFACTOR_28_28_BENCHMARK.md`](docs/POST_REFACTOR_28_28_BENCHMARK.md)).
 
 ### 5. Estabilizar percepción acotada
 
@@ -58,6 +59,12 @@ Agregar capacidades de negocio una por vez, con contrato de entrada/salida, elig
 ### 9. Tower — hacia el final
 
 Adquirir evidencia propia y construir un vertical slice después de estabilizar los bloques anteriores. Arena y automatización más amplia permanecen posteriores y no están comprometidas.
+
+### 10. Checkpoint V1 — DONE
+
+Cerrados: scoped perception refactor, Quick Menu provenance, Clean Lobby/B2, World Boss correctness, Daily tab-loop audit, Rotation R2-C audit, productive QuickMenu return fixes, D_REUSE, final global perception audit, post-refactor 28/28 benchmark y checkpoint V1 (`04640c2`).
+
+Fuera de V1 (futuro, no blockers): validación runtime/performance de Monster Wave al reactivarse; hub scopes WB/MW (`NEEDS_EVIDENCE`); relief scopes; Lobby<77 / landmark estructural seasonal; carry FlowResult→SessionRunner; carry transversal `_navigate_to_guild`/navigation bool→snapshot; nuevos flows post-V1; storage cleanup pospuesto.
 
 ## Criterios permanentes
 
