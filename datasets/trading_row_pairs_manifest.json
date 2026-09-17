@@ -1,0 +1,236 @@
+{
+ "version": 1,
+ "curation": {
+  "source": [
+   "acquisition-trading-center-hil-c1c2"
+  ],
+  "labels": "Human HIL ground truth: row titles and have/need pairs transcribed per frame, top to bottom; player-state counts valid for these frames only",
+  "limitations": "Single device/resolution (2712x1220); no Bronze row observed in this account state; second costs and expiry windows out of scope"
+ },
+ "entries": [
+  {
+   "path": "screencaps/semantic/trading-center/general-top/01.png",
+   "section": "materials",
+   "rows": [
+    {
+     "item_id": "super_awakening_stone",
+     "have": 33,
+     "need": 30
+    },
+    {
+     "item_id": "mao_coins",
+     "have": 33,
+     "need": 8
+    },
+    {
+     "item_id": "light_essence",
+     "have": 99,
+     "need": 5
+    },
+    {
+     "item_id": "dark_essence",
+     "have": 99,
+     "need": 5
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "189f3ae5671f552e2e2962e6dd05a1ee4cd01224713b4f4f2102961a313c51d5"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/01.png",
+   "section": "materials",
+   "rows": [
+    {
+     "item_id": "nature_essence",
+     "have": 99,
+     "need": 5
+    },
+    {
+     "item_id": "lapiz_400",
+     "have": 3420525277,
+     "need": 30000000
+    },
+    {
+     "item_id": "stamina_100",
+     "have": 28879,
+     "need": 50
+    },
+    {
+     "item_id": "gold_pouch_10m",
+     "have": 3420525277,
+     "need": 10000000
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "c332c8339ac28c37fd0a2c0a90e651cf4815ca063d5d4c2dc9e0016d5e700574"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/02.png",
+   "section": "materials",
+   "rows": [
+    {
+     "item_id": "gold_10m",
+     "have": 0,
+     "need": 1
+    },
+    {
+     "item_id": "sapphire_5",
+     "have": 1410,
+     "need": 50
+    },
+    {
+     "item_id": "brawlers_badge",
+     "have": 44,
+     "need": 9
+    },
+    {
+     "item_id": "lapiz_5",
+     "have": 340,
+     "need": 100
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "1984a183e213280e67782952c6cc6b6b9f31cf2587d35cb91ca157b277a13b5d"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/03.png",
+   "section": "materials",
+   "rows": [
+    {
+     "item_id": "ring_enhance",
+     "have": 340,
+     "need": 3000
+    },
+    {
+     "item_id": "melee_badge",
+     "have": 212,
+     "need": 5
+    },
+    {
+     "item_id": "accessory_crafting_material",
+     "have": 212,
+     "need": 10
+    },
+    {
+     "item_id": "weapon_crafting_material",
+     "have": 31,
+     "need": 5
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "bebf5d1af32496f1107f25c31d702b092b5e08dc6c8ddd975b7c572e94213046"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/04.png",
+   "section": "materials",
+   "rows": [
+    {
+     "item_id": "hero_weapon_crafting_material",
+     "have": 265,
+     "need": 40
+    },
+    {
+     "item_id": "hero_armor_crafting_material",
+     "have": 39,
+     "need": 40
+    },
+    {
+     "item_id": "hero_accessory_crafting_material",
+     "have": 53,
+     "need": 40
+    },
+    {
+     "item_id": "r_ticket",
+     "have": 5439,
+     "need": 100
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "3cd15402ef4a43e454131b1351b0c678bf68ed023afcea99e967cd021ba79bd1"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/05.png",
+   "section": "materials",
+   "rows": [
+    {
+     "item_id": "hero_accessory_crafting_material",
+     "have": 53,
+     "need": 40
+    },
+    {
+     "item_id": "r_ticket",
+     "have": 5439,
+     "need": 100
+    },
+    {
+     "item_id": "k_coin",
+     "have": 0,
+     "need": 1
+    },
+    {
+     "item_id": "guild_commodity",
+     "have": 3420525277,
+     "need": 5000000
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "fd336bab03e60e11bc844009d29f44e5644824fd20dc7850c295c00452d5621e"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-bottom/01.png",
+   "section": "materials",
+   "rows": [
+    {
+     "item_id": "hero_accessory_crafting_material",
+     "have": 53,
+     "need": 40
+    },
+    {
+     "item_id": "r_ticket",
+     "have": 5439,
+     "need": 100
+    },
+    {
+     "item_id": "k_coin",
+     "have": 0,
+     "need": 1
+    },
+    {
+     "item_id": "guild_commodity",
+     "have": 3420525277,
+     "need": 5000000
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "21ed64597c47fa239f533c70a1fca95c4b7636cf3aa6aa00e67277a206aef2cc"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/keys-top/01.png",
+   "section": "keys",
+   "rows": [
+    {
+     "item_id": "silver_key",
+     "have": 5,
+     "need": 10
+    },
+    {
+     "item_id": "gold_key",
+     "have": 9,
+     "need": 10
+    },
+    {
+     "item_id": "silver_gem_key",
+     "have": 31,
+     "need": 10
+    },
+    {
+     "item_id": "gold_gem_chest_key",
+     "have": 8,
+     "need": 10
+    }
+   ],
+   "review_status": "confirmed",
+   "sha256": "5438ee3f2029c29f2946506cf44a16b2d5f571d36ef73affa521c2e735868e7f"
+  }
+ ]
+}

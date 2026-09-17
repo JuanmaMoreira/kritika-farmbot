@@ -247,6 +247,36 @@ def _divider_positions(frame: np.ndarray, region: RelativeRegion) -> list[float]
     return [top + peak / roi.shape[0] * span for peak in peaks]
 
 
+def _long_dividers(frame: np.ndarray) -> list[float]:
+    """Position-accurate dividers from long horizontal edges (HIL tuned)."""
+    height, width = frame.shape[:2]
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150)
+    lines = cv2.HoughLinesP(
+        edges,
+        1,
+        np.pi / 180,
+        threshold=int(width * 0.15),
+        minLineLength=int(width * 0.30),
+        maxLineGap=10,
+    )
+    found: list[float] = []
+    if lines is not None:
+        for x1, y1, x2, y2 in lines.reshape(-1, 4).tolist():
+            if (
+                abs(y2 - y1) < 5
+                and min(x1, x2) < width * 0.30
+                and max(x1, x2) > width * 0.60
+            ):
+                found.append((y1 + y2) / 2 / height)
+    found.sort()
+    clustered = list(found[:1])
+    for value in found[1:]:
+        if value - clustered[-1] > 0.012:
+            clustered.append(value)
+    return clustered
+
+
 def _divider_count(frame: np.ndarray, region: RelativeRegion) -> int:
     return len(_divider_positions(frame, region))
 
@@ -279,14 +309,23 @@ def row_bands(frame: np.ndarray) -> tuple[tuple[float, float, float, bool], ...]
     zone are partial; slivers below the visible threshold are dropped.
     """
     _validate_frame(frame)
-    raw = [
+    long_lines = [
         divider
-        for divider in _divider_positions(frame, TRADING_BANDS_REGION)
+        for divider in _long_dividers(frame)
         if TRADING_LIST_TOP - 0.03 <= divider <= TRADING_LIST_BOTTOM + 0.03
     ]
-    grid = _fit_grid(raw)
+    if len(long_lines) >= 2:
+        grid = _fit_grid(long_lines)
+    else:
+        grid = _fit_grid(
+            [
+                divider
+                for divider in _divider_positions(frame, TRADING_BANDS_REGION)
+                if TRADING_LIST_TOP - 0.03 <= divider <= TRADING_LIST_BOTTOM + 0.03
+            ]
+        )
     if grid is None:
-        return _raw_bands(raw)
+        return _raw_bands(sorted(long_lines))
     bands: list[tuple[float, float, float, bool]] = []
     line = grid
     while line < TRADING_LIST_BOTTOM - TRADING_VISIBLE_BAND_HEIGHT:

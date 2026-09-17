@@ -6,6 +6,12 @@ from pathlib import Path
 import cv2
 import pytest
 
+from bot.capture import FrameSnapshot
+from bot.perception import (
+    TRADING_SCOPE,
+    build_trading_perception,
+    select_detectors,
+)
 from bot.perception.local_cv import LocalCvDetector
 from bot.perception.trading_center import (
     TRADING_CENTER_TITLE_SPEC,
@@ -90,14 +96,14 @@ def test_trading_tab_orange_gap_separates_active_from_inactive():
 @pytest.mark.parametrize(
     "frame_path,full_bands,partial_bands",
     (
-        ("general-top/01.png", 4, 1),
+        ("general-top/01.png", 4, 0),
         ("general-mid/01.png", 4, 0),
         ("general-mid/02.png", 4, 0),
         ("general-mid/03.png", 4, 0),
-        ("general-mid/04.png", 4, 1),
+        ("general-mid/04.png", 4, 0),
         ("general-mid/05.png", 4, 0),
         ("general-bottom/01.png", 4, 0),
-        ("keys-top/01.png", 4, 1),
+        ("keys-top/01.png", 4, 0),
     ),
 )
 def test_row_bands_follow_pitch_grid(frame_path, full_bands, partial_bands):
@@ -110,3 +116,49 @@ def test_row_bands_follow_pitch_grid(frame_path, full_bands, partial_bands):
     centers = [band[2] for band in bands if band[3]]
     for first, second in zip(centers, centers[1:]):
         assert second - first == pytest.approx(0.1418, abs=0.005)
+
+
+def test_trading_scope_selects_standalone_detectors_in_order():
+    source = build_trading_perception(asset_root=ROOT)
+    assert len(source.detectors) == 3
+    scoped = select_detectors(source, TRADING_SCOPE)
+    assert tuple(scoped.detectors) == tuple(source.detectors)
+
+
+@pytest.mark.parametrize(
+    "frame_path,expected",
+    (
+        ("general-top/01.png", {
+            "landmark.trading_center_title",
+            "indicator.trading_general_active",
+            "indicator.trading_material_rows",
+        }),
+        ("keys-top/01.png", {
+            "landmark.trading_center_title",
+            "indicator.trading_keys_active",
+            "indicator.trading_keys_rows",
+        }),
+        ("lobby/01.png", set()),
+    ),
+)
+def test_trading_scope_resolves_expected_labels(frame_path, expected):
+    source = build_trading_perception(asset_root=ROOT)
+    scoped = select_detectors(source, TRADING_SCOPE)
+    frame = cv2.imread(
+        str(ROOT / "screencaps/semantic/trading-center" / frame_path)
+    )
+    batch = scoped.analyze(FrameSnapshot(frame, 1.0, 1))
+    assert {observation.name for observation in batch.observations} == expected
+
+
+def test_trading_title_stays_silent_off_trading():
+    detector = LocalCvDetector(TRADING_CENTER_TITLE_SPEC, asset_root=ROOT)
+    frames = sorted((ROOT / "screencaps/semantic/daily-quests-mailbox").rglob("*.png"))[:10]
+    frames += sorted((ROOT / "screencaps/semantic/monster-wave").rglob("*.png"))[:5]
+    assert len(frames) == 15
+    fired = []
+    for path in frames:
+        frame = cv2.imread(str(path))
+        if detector.detect(frame):
+            fired.append(str(path.relative_to(ROOT)))
+    assert fired == []
