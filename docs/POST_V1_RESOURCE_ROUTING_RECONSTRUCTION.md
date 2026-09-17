@@ -330,3 +330,23 @@ Validación: `py_compile` + `git diff --check` limpios; 36/36 Treasure; subset t
 HIL (canal chat+steer, raws locales `artifacts/hil_treasure_a/` no versionados, 1 tap agente total autorizado explícito): A PASS (entrada manual Lobby→Treasure, grilla tiers 188/104/Free/354/155 + Gem, Gold dorado 354/499 Needs:1 GT, cero Karats en grilla GT, salida manual a Lobby, cero aperturas, cero taps agente, 1 captura). B1 PASS (popup dorado: 1(Open)/10(Open) ambos icono Gold Key, cero Karats, Needs:1; cero gasto, cero taps agente, 1 captura + GT). B2 PASS (1 tap agente autorizado en 1(Open) interior (0.618,0.548)→(1677,669) 2712x1220; dorado 354→353, recompensa Laoku's Fatal Faulds GT, oro/Karats intactos, cero premium, sin retry; 1 captura resultado + GT; dismiss manual tap-fuera + Back a Lobby GT). C batch/repeat: `HIL_NOT_EXERCISED` (control 10(Open) existe en captura + batch EXACT 11 offline verde; gastar 10 keys requiere aprobación no pedida aquí). D boundary premium: `HIL_NOT_EXERCISED` honesto (353 restantes, sin low/no-keys natural; no se fabricó boundary gastando keys; cubierto offline + Astra `key==karat` fail-closed).
 
 E Treasure DONE (capability independiente, HIL open-once PASS). Resta C6: policy/orchestration Keys (orden/cantidades por necesidades) + consumer Gold-full (`OUTPUT_FULL` Silver→Gold → Treasure `UP_TO(n)` suficiente sin vaciar + retry causal + retorno verificado).
+
+## 18. C6a pure Keys promotion policy (DONE, sin runtime, sin Treasure)
+
+`bot/keys_promotion.py` (nuevo, sin cambios a compartidos): policy pura y stateless que decide UN próximo paso por llamada para C5. Sin UI, sin llamadas C5/C4, sin navegación, sin Treasure/Craft/Relief/MW/planner/stage (imports probados: sólo `KeyTradeOperation` + tipos C4/C3). Sin detectors/readers/assets; engine global intacto.
+
+Ordering rule (determinista, sólo inputs observables): Silver tradeable (`gold_key` have≥need) → `SILVER_TO_GOLD` primero, antes de producir más Silver; si no, Bronze tradeable (`silver_key` have≥need) → `BRONZE_TO_SILVER`; si ninguno → `NO_MORE_PROMOTIONS`. No orden fijo ciego: cada decisión re-evalúa desde estado fresco. Historia no aporta regla más precisa con facts hoy confiables (Astra ordenaba con aritmética de capacidad inferida sin GT de Gold capacity; descartada por diseño). No se afirma optimización de capacidad Silver: es la regla "consumir Silver disponible hacia Gold antes de producir más", sin arithmetic de output-cap.
+
+Quantity mode: todo `NEXT_OPERATION` lleva `MAX_ALLOWED` (C4 ya limita por `have//need` y cap observado del panel; la policy no calcula capacidad de output ni toca `>>`).
+
+Freshness: `decide_next_keys_operation(silver_fact, gold_fact, budget_remaining)` valida identidad/forma; `decide_after_trade(previous, result, budget_remaining, silver_fact?, gold_fact?)` exige, en paths que podrían autorizar otro trade (`SUCCESS`/`INSUFFICIENT_INPUT`/`NO_MORE_INPUT`), fact-set estrictamente más nuevo en AMBAS filas, y re-decide vía `decide_next` (nunca inventa una fila desde el `after_fact` de la otra). Reuso del snapshot pre-trade ⇒ `FAILED/stale_facts`. Paths terminales no requieren relectura.
+
+Gold-capacity boundary: `OUTPUT_FULL` de `SILVER_TO_GOLD` ⇒ `GOLD_CAPACITY_BLOCKED` con `PendingCausalOperation` preservada (operation, quantity original, before_fact ejecutado, boundary, reason, evidence, metadata de sequences). Sin Treasure: no calcula relief Gold, no abre Gold Keys, no arma segundo intento (C6b con Treasure runtime completo). `OUTPUT_FULL` de `BRONZE_TO_SILVER` ⇒ `FAILED/unexpected_output_full` fail-closed. `NO_EFFECT`/`FAILED`/`CANCELLED` ⇒ `FAILED` terminal sin segundo intento; `LIMIT_REACHED` ⇒ `FAILED`.
+
+Budget explícito sin default: `budget_remaining` requerido no-negativo; cero ⇒ `BUDGET_EXHAUSTED`. Cada operación ejecutada la descuenta el caller; la policy no tiene contadores ni loops (decisiones sin `while`/`for`).
+
+No-Treasure proof: cero imports treasure/craft/relief/MW/planner/stage; `GoldKeyOpenRequest`/`route_plan`/`should_`/`promote`/`_key_counts` inexistentes como código; `pending` expone exactamente `{operation, quantity, before_fact, boundary, reason, evidence}`; Gold capacity documentada `NOT OBSERVABLE`.
+
+Tests: `tests/test_keys_promotion.py`, 46 dirigidos verdes (orden 5, refresh 6, quantity 3, boundaries 11, budget 5, facts 4, separación 6 + tradeability). Validación: `py_compile` + `git diff --check` limpios; C6a 46/46; subset trading+treasure 148 passed (C5/C4/row-facts/Treasure, sin regresiones); sin full suite (ningún compartido tocado); sin evaluator/corpus/HIL (policy pura offline).
+
+C6a DONE. Siguiente: E2 Treasure runtime promotion + C6b orchestration (consumer Gold-full → Treasure acotado + retry causal + retorno verificado).
