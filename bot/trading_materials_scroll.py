@@ -39,6 +39,53 @@ KEYS_SECTION = "keys"
 MATERIALS_SECTION = "materials"
 
 
+# General-tab catalog top to bottom, HIL ground truth (single session,
+# 2712x1220, human-confirmed order). Ids name catalog ROWS (offer slots):
+# quantities fold into row identity where the UI lists one base item twice
+# (lapiz_400 vs lapiz_5). Counts and costs are future reader scope, not here.
+MATERIAL_CATALOG: tuple[str, ...] = (
+    "super_awakening_stone",
+    "mao_coins",
+    "light_essence",
+    "dark_essence",
+    "nature_essence",
+    "lapiz_400",
+    "stamina_100",
+    "gold_pouch_10m",
+    "gold_10m",
+    "sapphire_5",
+    "brawlers_badge",
+    "lapiz_5",
+    "ring_enhance",
+    "melee_badge",
+    "accessory_crafting_material",
+    "weapon_crafting_material",
+    "hero_weapon_crafting_material",
+    "hero_armor_crafting_material",
+    "hero_accessory_crafting_material",
+    "r_ticket",
+    "k_coin",
+    "guild_commodity",
+)
+
+
+# Calibrated General-list geometry (same HIL session): pitch 0.1418 stable
+# across 8 captures and both tabs; 4 complete rows; lane x=0.33 over static
+# item text (no controls/slots); gesture zone inside list bounds.
+# Tolerance covers divider-detection jitter at a fixed list position.
+TRADING_MATERIALS_SCROLL_PROFILE = KnownListScrollProfile(
+    row_pitch=0.1418,
+    visible_rows=4,
+    lane_x=0.33,
+    top_y=0.36,
+    bottom_y=0.94,
+    overlap_factor=0.95,
+    row_tolerance=0.015,
+    consensus_required=2,
+    consensus_max_samples=4,
+)
+
+
 @dataclass(frozen=True)
 class MaterialRow:
     """One observed material row, top to bottom as displayed by the caller."""
@@ -220,6 +267,8 @@ def _check_viewport(viewport: object) -> None:
 __all__ = (
     "KEYS_SECTION",
     "MATERIALS_SECTION",
+    "MATERIAL_CATALOG",
+    "TRADING_MATERIALS_SCROLL_PROFILE",
     "MaterialRow",
     "MaterialViewport",
     "locate_material_target",

@@ -10,6 +10,8 @@ from bot.directed_list_scroll import (
     PlannedGesture,
 )
 from bot.trading_materials_scroll import (
+    MATERIAL_CATALOG,
+    TRADING_MATERIALS_SCROLL_PROFILE,
     MaterialRow,
     MaterialViewport,
     locate_material_target,
@@ -290,3 +292,99 @@ def test_helper_module_has_no_trading_semantics():
     )
     for forbidden in ("trading", "material"):
         assert forbidden not in source, forbidden
+
+
+# Real-catalog offline simulations (HIL ground truth, synthetic geometry).
+
+
+def test_real_catalog_has_22_ordered_rows_with_materials_in_place():
+    assert len(MATERIAL_CATALOG) == 22
+    assert len(set(MATERIAL_CATALOG)) == 22
+    assert MATERIAL_CATALOG.index("accessory_crafting_material") == 14
+    assert MATERIAL_CATALOG.index("weapon_crafting_material") == 15
+    assert MATERIAL_CATALOG.index("hero_weapon_crafting_material") == 16
+    assert MATERIAL_CATALOG.index("hero_armor_crafting_material") == 17
+    assert MATERIAL_CATALOG.index("hero_accessory_crafting_material") == 18
+    assert MATERIAL_CATALOG[0] == "super_awakening_stone"
+    assert MATERIAL_CATALOG[-1] == "guild_commodity"
+
+
+def test_real_profile_pins_hil_geometry():
+    profile = TRADING_MATERIALS_SCROLL_PROFILE
+    assert profile.row_pitch == pytest.approx(0.1418)
+    assert profile.visible_rows == 4
+    assert profile.lane_x == pytest.approx(0.33)
+    assert profile.top_y == pytest.approx(0.36)
+    assert profile.bottom_y == pytest.approx(0.94)
+    assert profile.max_delta == pytest.approx(3 * 0.1418 * 0.95)
+    assert profile.row_tolerance == pytest.approx(0.015)
+
+
+def _real_rows(ids, first_center=0.4283, pitch=0.1418):
+    return [
+        MaterialRow(row_id=row_id, center_y=first_center + index * pitch)
+        for index, row_id in enumerate(ids)
+    ]
+
+
+def _real_locate(viewports, target, **kwargs):
+    params = {
+        "catalog": MATERIAL_CATALOG,
+        "target": target,
+        "profile": TRADING_MATERIALS_SCROLL_PROFILE,
+        "max_gestures": 6,
+        "content_ready": True,
+    }
+    params.update(kwargs)
+    emit = GestureRecorder()
+    result = locate_material_target(
+        observe_viewport=ScriptedRows(viewports), emit=emit, **params
+    )
+    return result, emit
+
+
+def test_real_forward_reaches_hero_armor():
+    target = "hero_armor_crafting_material"
+    viewports = [
+        _viewport(_real_rows(MATERIAL_CATALOG[11:15]), 1),
+        _viewport(_real_rows(MATERIAL_CATALOG[14:18]), 2),
+        _viewport(_real_rows(MATERIAL_CATALOG[14:18]), 3),
+        _viewport(_real_rows(MATERIAL_CATALOG[14:18]), 4),
+        _viewport(_real_rows(MATERIAL_CATALOG[14:18]), 5),
+    ]
+    result, emit = _real_locate(viewports, target)
+    assert result.outcome is DirectedScrollOutcome.TARGET_READY
+    assert len(emit.gestures) == 1
+    assert emit.gestures[0].direction.value == "forward"
+    assert emit.gestures[0].delta <= (
+        TRADING_MATERIALS_SCROLL_PROFILE.max_delta + 1e-9
+    )
+    assert result.stable_row_y == pytest.approx(0.4283 + 3 * 0.1418)
+
+
+def test_real_backward_reaches_weapon_material():
+    target = "weapon_crafting_material"
+    viewports = [
+        _viewport(_real_rows(MATERIAL_CATALOG[18:22]), 1),
+        _viewport(_real_rows(MATERIAL_CATALOG[15:19]), 2),
+        _viewport(_real_rows(MATERIAL_CATALOG[15:19]), 3),
+        _viewport(_real_rows(MATERIAL_CATALOG[15:19]), 4),
+        _viewport(_real_rows(MATERIAL_CATALOG[15:19]), 5),
+    ]
+    result, emit = _real_locate(viewports, target)
+    assert result.outcome is DirectedScrollOutcome.TARGET_READY
+    assert len(emit.gestures) == 1
+    assert emit.gestures[0].direction.value == "backward"
+    assert result.stable_row_y == pytest.approx(0.4283)
+
+
+def test_real_already_visible_needs_no_gesture():
+    target = "hero_armor_crafting_material"
+    viewports = [
+        _viewport(_real_rows(MATERIAL_CATALOG[14:18]), 1),
+        _viewport(_real_rows(MATERIAL_CATALOG[14:18]), 2),
+        _viewport(_real_rows(MATERIAL_CATALOG[14:18]), 3),
+    ]
+    result, emit = _real_locate(viewports, target)
+    assert result.outcome is DirectedScrollOutcome.TARGET_READY
+    assert emit.gestures == []
