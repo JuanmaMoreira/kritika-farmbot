@@ -242,3 +242,49 @@ Evaluador (`datasets/trading_row_pairs_manifest.json`, 32 rows GT): 21 facts, **
 Promoción: regla `screen.trading` en catálogo (19 reglas, 98 observaciones) + `landmark.trading_center_title` en STRONG completion (71→72, revisado) + detector título al engine global (+1: 95→96) + `TRADING_SCOPE` (base + tabs/rows especializados) + `build_trading_perception` standalone. Tabs/rows especializados NO entran al engine global (costo por frame sin consumer; C4 los promueve con su flow). To-lobby scopes absorben el título por diseño (counts 77→78 revisados).
 
 Validación: full hardware-free **2386 passed** (justificada: engine global + regla + vocabulario); 23 fallos iniciales todos mecánicos (counts 95→96/77→78/18→19/93→98, slice MW) + 1 NameError propio (import faltante) — cero divergencias semánticas; resto ERRORs ambientales tmp_path (WinError 5, preexistentes). Evaluator incremental trading verde (labels 9/9, gaps, bandas, 0 wrong reads, cross-screen title 15/15 silencio). `git diff --check` limpio. HIL nuevo: sólo Bronze-check (negativo por policy, sin scroll Keys). Cero taps, cero trades (módulo sin adb/tap; smoke tool intacto).
+
+## 15. C4 generic verified trade primitive (offline DONE, HIL pendiente)
+
+Executor, no planner: `bot/trading_operation.py` (nuevo, ~600 líneas con docstring de contrato) consume un `TradingRowFact` fresco y ejecuta UNA operación económica acotada. Sin routing, sin sinks externos, sin Treasure/Craft/Relief/MW/planner/stage (imports probados: sólo stdlib + `TradingRowFact`; cero `should_*`, cero `route_plan`).
+
+Astra evidence reused (read-only `024ff8e`, sin copiar coordenadas/ROIs/aritmética/retry): tap de fila en columna Trade (x del consumer); popup Item Trade con línea `Label (have/need)`, cantidad `n/20`, `>>`=TRADE_MAX, CONFIRM/NO, ACK de boundaries, overlay quantity-limit; `>>` no-idempotente (principio, no la excepción `20/20`-vs-`1/20`); popup-vs-row mismatch aborta confirm; éxito exige disminución reobservada; `have<need` pre-open ⇒ NO_MORE_INPUT sin input. Correcciones vs Astra: cap/denominador observados por panel (no `20` constante); second costs como dato/guard con allowlist explícita (Astra Trading no los modelaba); sin re-tap de `>>` sin prueba exacta (la excepción vieja exige HIL actual); sin aritmética `499-silver`/balances por cálculo.
+
+Panel/layout findings (UI actual 2712×1220, HIL C4 2026-09-17, `artifacts/hil_c4a/` + `hil_c4b/` raws locales): popup Item Trade x 0.275–0.724 / y 0.208–0.849; prompt "Would you like to proceed with the trade?"; cantidad `n/20` (inicial `1/20` exacto por OCR en ambas filas); botones y≈0.79: No izq. x≈0.29 (cancela), Trade medio x≈0.43 (acción de confirmar; Astra lo llamaba CONFIRM), `>>` x≈0.66–0.70 (chevrons; Astra 0.699/0.802 cercano pero X de No/Trade difieren: no hardcodear). Términos GT humano: 40 weapon → 10 hero weapon (fila 1), trade directo de accessory sin second cost (fila 3); sin línea de costo Gold/AD en las filas probadas. Fila = oferta de output (identidad output), panel muestra identidad del input + `(have/need)`: el futuro adapter mapea identidad de output, sin cambio al contrato genérico. `>>` con máximo ya seleccionado invoca el popup quantity-limit (GT usuario; la primitive omite `>>` si la selección fresca ya satisface la intención). Por eso C4 es layout-agnostic: `TradePanelFact` inyectado, `TradePanelTargets` sin defaults, tap_x del caller.
+
+API final: `TradeRequest(row_fact, quantity, allowed_cost_kinds, row_tap_x, expected_item_id?, max_fact_age=2)`; `TradeQuantity(EXACT|UP_TO|MAX_ALLOWED, amount?)`; `TradeCostFact(kind, amount?, sufficient?|None, evidence)`; `TradePanelFact(item_id?, input_have?, input_need?, quantity?, costs, sequence, panel_open, shows_insufficient/output_full/limit, evidence)`; `TradePreconditionContext(is_trading_screen, section, clean, unknown/ambiguous/contradictory, sequence)`; `TradeResult(outcome, before_fact, after_fact?, boundary?, reason?, inputs, evidence)`; outcomes `SUCCESS | INSUFFICIENT_INPUT | OUTPUT_FULL | LIMIT_REACHED | NO_MORE_INPUT | NO_EFFECT | FAILED | CANCELLED`.
+
+Precondition contract: Trading válido + sección correcta + fact fresco (`0 ≤ ctx.seq − fact.seq ≤ max_fact_age`) + `expected_item_id` + `need>0` + `have≥need` (si no, NO_MORE_INPUT cero input) + limpio + no UNKNOWN/AMBIGUOUS/contradicción. Todo fallo ⇒ cero input. Sin re-navegación dentro de C4.
+
+Row tap contract: un único tap en `(row_tap_x, stable_row_y)`; exige panel fresco (`panel.seq > fact.seq`); si no abre, no confirma; sin retry global (primer intento único).
+
+Panel-open verification: panel ausente/cerrado/stale ⇒ FAILED bounded, cero inputs más. Boundaries al abrir (insufficient/output_full/limit) se devuelven sin más input.
+
+Second-cost model: `TradeCostFact` como DATO/GUARD; allowlist explícita del caller; kind fuera ⇒ `unexpected_currency` + cancel, sin confirm; amount None ⇒ `unreadable_cost` + cancel; `sufficient=False` observable ⇒ INSUFFICIENT_INPUT. Nunca Karats por inferencia (el caller lista sólo lo permitido).
+
+Quantity modes: EXACT (selected debe igualar), UP_TO (`min(wanted, cap, affordable)`), MAX_ALLOWED (`min(cap, affordable)`); cap observada del panel + bound independiente `have//need`; imposible ⇒ fail closed + cancel, sin confirm.
+
+`>>` behavior: como máximo un tap causal; si la selección fresca ya satisface la intención se omite `>>` (HIL B GT: `>>` sobre máximo ya seleccionado invoca el popup quantity-limit en vez de seleccionar); si se tapea, efecto observado en panel fresco (`seq` estrictamente mayor); sin efecto ⇒ `max_no_effect` fail-closed + cancel; NUNCA segundo tap por timeout; sin excepción `20/20` rescatada.
+
+Confirm contract: como máximo un tap a confirm, sólo tras panel match + costs OK + cantidad satisfecha + no-cancel; re-chequeo de costs/match post-`>>`; sin doble confirm.
+
+Popup-vs-row validation: `panel.item_id == fact.item_id`, `panel.input_need == fact.need`, `panel.input_have == fact.have`; mismatch ⇒ cancel (si hay punto) + FAILED, sin confirm. Sin identidad por posición de popup.
+
+SUCCESS postcondition: `after.have < before.have` con fact fresco (`after.seq > filled.seq`) e identidad conservada; sin aritmética exacta. Unchanged fresco ⇒ NO_EFFECT; stale ⇒ FAILED (`stale_after_fact`), nunca SUCCESS. Popup tras confirm con signals ⇒ boundary correspondiente.
+
+Boundaries: INSUFFICIENT_INPUT / OUTPUT_FULL / LIMIT_REACHED se devuelven con `boundary` explícito; ACK/dismiss posterior es responsabilidad del caller (consumidor C5/C6); cero navegación externa en C4. Para Silver→Gold, OUTPUT_FULL será la señal que el consumer traduzca a Treasure→retry (NO implementado aquí).
+
+Cancel path: mismatch/currency/ilegible/cantidad-imposible/max-sin-efecto/cancel-usuario ⇒ un tap a cancel si el caller dio punto, si no retorno sin más input (cero gasto en ambos casos). Retorno a Trading estable lo verifica el caller.
+
+Promoted semantics/detectors: NINGUNO en esta tarea (panel vía readers inyectados, no detectores). Scope final: `TRADING_SCOPE` existente reutilizado para gates de contexto (1 spec + 2 especializados); engine global intacto en 96 detectores; to-lobby counts intactos.
+
+Manifests/evaluator: no aplica (sin detectors/readers/assets nuevos); evaluator trading previo sigue vigente sin invalidación.
+
+Tests: `tests/test_trading_operation.py`, 41 dirigidos verdes (precond incl. stale/wrong-section/row-mismatch/UNKNOWN/AMBIGUOUS/contradicción; panel open/lost/stale; costs allowed/unexpected/unreadable/insufficient/change-after-max; qty exact/up-to/max/impossible/sin-aritmética-oculta; `>>` single-tap/no-retry; confirm-only-after-guards/cancel/no-double; postcond have↓/unchanged/stale/identity; boundaries open/after-max/on-confirm; separation sin imports ni routing). Regresión: C3+C1/C2+percepción+B intactos, 153 passed total dirigido; `git diff --check` limpio. Sin full suite (ningún archivo compartido tocado; justificado en §19) y sin full corpus (sin cambios de percepción).
+
+HIL A result: PASS (2026-09-17, fila 1 hero weapon 265/40): fact fresco consenso 2/2 + contexto General verificado; 1 tap autorizado en (0.75, 0.4357)→(2034, 531) abrió el panel correcto; controles/costs leídos (sin second cost, GT humano); Cancel manual del usuario; retorno estable (gates 1.00, bandas idénticas) + `have` intacto 265/40 = cero gasto. Taps agente: 1.
+
+HIL B result: NO_EFFECT, no SUCCESS (fila 3 hero accessory 53/40, EXACT 1): fact fresco + panel correcto (1/20 OCR exacto, trade directo GT); `>>` omitido por regla HIL (máximo ya seleccionado); 1 tap CONFIRM autorizado en botón "Trade" (0.43, 0.79)→(1166, 963), centro medido a 3px; panel sin cambios (53/40 GT + OCR) tras ~1 min y reobservación: sin éxito ni boundary. Sin retry (económico a ciegas prohibido). Cancel manual + retorno estable + 53/40 intacto = gasto cero. Hipótesis abiertas (no GT): miss de hitbox del botón "Trade" (mapeo touch probado en HIL A) vs tap tragado por timing/estado; resolver con calibración de hitboxes de panel en C5, no con heurísticas. Taps agente: 2. HIL B NO bloquea el contrato genérico (fail-closed demostrado), pero SÍ bloquea C4 DONE (falta SUCCESS).
+
+HIL C/boundaries: quantity-limit por `>>`-en-máximo confirmado sólo como GT/mecanismo (no ejercido como outcome C4); OUTPUT_FULL/INSUFFICIENT/LIMIT como outcomes: HIL_NOT_EXERCISED; cubiertos offline + evidencia Astra. Sin SUCCESS HIL no hay C4 DONE.
+
+Límites: sin routing externo; sin Bronze→Silver/Silver→Gold policy; sin Treasure/retorno/retry post-Treasure (C5/C6).
