@@ -74,7 +74,7 @@ Decisiones cerradas: board-first planning (Trading nunca como etapa diagnóstica
 
 Orden de fases recomendado (secuencia, no cadena de dependencias; sólo C depende de B): A recon+observ audit → H/I diseño snapshot/planner → B directed scroll → F transversal relief → C Trading → D Craft → E Treasure → G MW board acquisition → I-impl planner → J MW integration → K standalone/debug → L stage-ready. Primer frente propuesto: primitive directed known-list scroll (offline, bounded, desbloqueante; ver mini-brief en el documento).
 
-Estado frentes post-V1: B directed known-list scroll primitive → DONE (`bot/directed_list_scroll.py`, 35 tests dirigidos, sin consumer integrado, sin HIL). C1 Trading readiness offline → DONE parcial (semántica + predicados puros + 12 tests; sin detectores/entry, HIL pendiente). C2 materials adapter offline → DONE parcial (adapter + 16 tests; sin catálogo/profile físico, HIL pendiente). C Trading completo (C3+) sigue pendiente; Craft y Treasure no consumen scroll.
+Estado frentes post-V1: B directed known-list scroll primitive → DONE (`bot/directed_list_scroll.py`, 35 tests dirigidos, sin consumer integrado, sin HIL). C1 Trading readiness → DONE (semántica + predicados + 5 detectores HIL-calibrados + evaluator incremental verde + 12 tests). C2 materials adapter → DONE (catálogo real 22 filas + profile calibrado + adapter + smokes forward/backward/visible PASS con TARGET_READY y cero taps/trades). Siguiente frente: C3 trade execution (tap target, have/need, confirmación). Craft y Treasure no consumen scroll.
 
 ## Criterios permanentes
 

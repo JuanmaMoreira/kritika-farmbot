@@ -210,3 +210,21 @@ B_FIT = GOOD: el adapter consume B directo (profile, reading, driver, outcomes) 
 HIL pendiente (usuario con Trading accesible, diferido a otra sesión): Q1 entrada+tab inicial; Q2 General/materials orden top→bottom, headers, pitch, filas visibles; Q3 Keys al comienzo sin scroll + títulos; Q4 readiness (spinner/tiempos/señal); Q5 safe lane (verificar x=.33); Q6 swipe settle/parciales/top-bottom; Q7 smoke forward/back/visible sin tocar target. Luego: curar→assets→specs→calibración→evaluator incremental→catálogo+profile→smoke→C1/C2 DONE.
 
 Validación offline: 63/63 (35 B + 12 C1 + 16 C2), `git diff --check` limpio; sin full suite (ningún archivo existente tocado), sin evaluator/corpus, sin HIL. Sin trades: el adapter nunca tapea (sólo emite `PlannedGesture`).
+
+## 13. C1/C2 DONE con HIL (calibración física cerrada)
+
+Dispositivo `2311DRK48G` (2712×1220, serial configurado), ADB repo-local con `-s`. Captura: shell screencap + pull (exec-out directo se corrompe en PowerShell).
+
+Q1 readiness: Trading abre en Avatars & Keys (GT humano); General con bienes temporarios. Positivo = título + tab exclusivo + filas completas con contadores. Sin spinner observado (loading-state sin GT: rows-ausentes ⇒ no-ready por defecto).
+
+Q2 catálogo General (22 filas, GT humano + capturas, orden top→bottom): super_awakening_stone, mao_coins, light_essence, dark_essence, nature_essence, lapiz_400, stamina_100, gold_pouch_10m, gold_10m, sapphire_5, brawlers_badge, lapiz_5, ring_enhance, melee_badge, accessory_crafting_material, weapon_crafting_material, hero_weapon_crafting_material, hero_armor_crafting_material, hero_accessory_crafting_material, r_ticket, k_coin, guild_commodity. Ids nombran ROWS (lapiz_400 vs lapiz_5; gold_pouch_10m vs gold_10m). Sin headers ni duplicados base. Tabs reales: General/Pets/Avatars & Keys/Currency/Special Currency.
+
+Q3 parciales: slivers en bordes en ~30% de posiciones manuales; regla: parcial nunca accionable, excluido de ids (posición vía índices de completas). Q4 geometría: pitch 0.1418 estable en 8 capturas y ambos tabs; 4 completas; centros de referencia 0.4283/0.5701/0.7119/0.8537; zona gestos y∈[0.36,0.94]. Q5 lane: x=0.33 sobre texto estático (sin controles/slots; Trade en x≈0.75), humano-confirmada ×2, cero mis-taps. Q6 settle: burst +0.4/+0.9/+1.5 idénticos a 4 decimales (asentada a 0.4s; harness usa 1.5s conservador), sin momentum. Q7: 4 consensus físicos (2+1 bonus+1), y estable a 4 decimales; tolerancia 0.015 conservadora y validada.
+
+Detectores (`bot/perception/trading_center.py`, standalone, fuera del engine global): título (template; 1.00 vs 0.52 lobby), tabs por orange-fill (general 0.528 vs 0.130/0; keys 0.395 vs 0.120/0; text-template 0.93 vs 1.00 insuficiente → color), rows estructural por proyección (8/8 frames =5, lobby 0; Hough descartado por misses 30%). Grid-fit de bandas a pitch (un miss no corre índices; fallback raw). Evaluator incremental verde: labels exactos 9/9, gaps título/tabs, bandas en pitch-grid. Corpus `screencaps/semantic/trading-center/` (local, ignorado) + manifest versionado. Sin registro en catálogo/resolver ni wiring global (C3 lo promueve; cero tests de conteo afectados).
+
+Adapter final: `MATERIAL_CATALOG` + `TRADING_MATERIALS_SCROLL_PROFILE` (pitch 0.1418, 4 filas, lane 0.33, top 0.36, bottom 0.94, tol 0.015, consenso 2/4; max_delta 0.4041). Tests reales offline (forward/back/visible) verdes.
+
+Smokes (`tools/smoke_trading_scroll.py`, por pasos, sin tap path, títulos por sidecar con epoch anti-stale): A forward 1 gesto [11,14]→[14,17] READY y=0.8213; B backward 1 gesto [18,21]→[15,18] READY y=0.4597 (+bonus READY y=0.5377); C visible 0 gestos READY y=0.6975. Cero taps, cero trades, gates sostenidos.
+
+B_FIT final = GOOD: B sin cambios (adapter consume profile/reading/driver directo; única lógica propia = policy Trading). Tests: 79/79 (35 B + 12 C1 + 21 C2 + 11 percepción). Sin full suite (ningún archivo compartido tocado), sin full corpus (sólo vocabulario nuevo), `git diff --check` limpio.
