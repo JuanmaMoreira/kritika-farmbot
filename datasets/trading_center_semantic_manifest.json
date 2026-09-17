@@ -1,0 +1,125 @@
+{
+ "version": 1,
+ "curation": {
+  "source": [
+   "acquisition-trading-center-hil-c1c2"
+  ],
+  "labels": "Human HIL ground truth: active tab per frame, 22-row General catalog order registered separately; no inferred counts",
+  "limitations": "Single device/resolution (2712x1220); no loading-state evidence; no Currency/Pets/Special tab content frames"
+ },
+ "entries": [
+  {
+   "path": "screencaps/semantic/trading-center/general-top/01.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat0.png",
+   "sha256": "189f3ae5671f552e2e2962e6dd05a1ee4cd01224713b4f4f2102961a313c51d5"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/01.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat1.png",
+   "sha256": "c332c8339ac28c37fd0a2c0a90e651cf4815ca063d5d4c2dc9e0016d5e700574"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/02.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat2.png",
+   "sha256": "1984a183e213280e67782952c6cc6b6b9f31cf2587d35cb91ca157b277a13b5d"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/03.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat3.png",
+   "sha256": "bebf5d1af32496f1107f25c31d702b092b5e08dc6c8ddd975b7c572e94213046"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/04.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat4.png",
+   "sha256": "3cd15402ef4a43e454131b1351b0c678bf68ed023afcea99e967cd021ba79bd1"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-mid/05.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat5.png",
+   "sha256": "fd336bab03e60e11bc844009d29f44e5644824fd20dc7850c295c00452d5621e"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-bottom/01.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat6.png",
+   "sha256": "21ed64597c47fa239f533c70a1fca95c4b7636cf3aa6aa00e67277a206aef2cc"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/keys-top/01.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_keys_active",
+    "indicator.trading_keys_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_q1_trading.png",
+   "sha256": "5438ee3f2029c29f2946506cf44a16b2d5f571d36ef73affa521c2e735868e7f"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/lobby/01.png",
+   "base_context": "screen.lobby",
+   "overlays": [],
+   "observations": [],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_c1_probe.png",
+   "sha256": "dcf8aac3a575eadfd7777be9b8746e3bdad429ed68a2f6fa3a849d7a3565a97c"
+  }
+ ]
+}
