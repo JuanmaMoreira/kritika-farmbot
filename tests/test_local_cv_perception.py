@@ -300,6 +300,7 @@ def test_perception_module_import_does_not_load_assets(tmp_path):
 
 def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     from bot.perception.monster_wave import MONSTER_WAVE_SPECS
+    from bot.perception.trading_center import TRADING_CENTER_SPECS
     created = []
 
     class StubDetector:
@@ -338,8 +339,11 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     assert isinstance(
         engine.detectors[-1], PetMassEvolveConfirmationDetector
     )
-    assert tuple(detector.spec for detector in engine.detectors[len(DEFAULT_LOCAL_CV_SPECS):-14]) == MONSTER_WAVE_SPECS
-    assert len(created) == 2 * (len(DEFAULT_LOCAL_CV_SPECS) + len(MONSTER_WAVE_SPECS))
+    assert tuple(detector.spec for detector in engine.detectors[len(DEFAULT_LOCAL_CV_SPECS):-14]) == (
+        *MONSTER_WAVE_SPECS,
+        *TRADING_CENTER_SPECS,
+    )
+    assert len(created) == 2 * (len(DEFAULT_LOCAL_CV_SPECS) + len(MONSTER_WAVE_SPECS) + len(TRADING_CENTER_SPECS))
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,
         LANDMARK_CHARACTER_SELECT_HEADER,

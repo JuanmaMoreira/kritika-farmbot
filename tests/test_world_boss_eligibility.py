@@ -144,7 +144,7 @@ def test_scoped_daily_decision_matches_global_on_curated_hub_and_foreign_frames(
     global_engine = build_default_perception(root)
     scoped_engine = select_detectors(global_engine, WORLD_BOSS_ELIGIBILITY_SCOPE)
     resolver = build_default_resolver()
-    assert len(global_engine.detectors) == 95
+    assert len(global_engine.detectors) == 96
     assert len(scoped_engine.detectors) == 5
 
     daily = [entry for entry in load_manifest(root / "datasets/daily_activity_semantic_manifest.json")

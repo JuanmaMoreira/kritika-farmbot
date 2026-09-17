@@ -182,6 +182,12 @@ from .specs import (
 
 
 from .monster_wave import MONSTER_WAVE_SPECS
+from .trading_center import (
+    TRADING_CENTER_SPECS,
+    TRADING_CENTER_TITLE_SPEC,
+    TradingRowsDetector,
+    TradingTabsDetector,
+)
 from .scope import ScopeSpec, select_detectors
 from bot.monster_wave_semantics import MW_DAILY
 
@@ -200,7 +206,8 @@ def build_default_perception(
         detectors=(
             *(
                 LocalCvDetector(spec, asset_root=root)
-                for spec in (*DEFAULT_LOCAL_CV_SPECS, *MONSTER_WAVE_SPECS)
+                for spec in (*DEFAULT_LOCAL_CV_SPECS, *MONSTER_WAVE_SPECS,
+                             *TRADING_CENTER_SPECS)
             ),
             BlackMarketGoldDetector(asset_root=root),
             BlackMarketPurchasedDetector(asset_root=root),
@@ -606,6 +613,52 @@ SEND_STAMINA_COMPLETION_SCOPE = ScopeSpec(
     specialized_types=(),
 )
 
+
+# Trading Center observation vocabulary for navigation waits and row
+# reads: the base landmark plus the tab-active indicators and the
+# tab-specific rows labels. Only the base landmark has a spec-named
+# detector; the tab and rows signals arrive through the specialized
+# detectors below (same split as the Daily open scope). Tab exclusivity,
+# overlays and foreign bases stay with the caller predicates; the scope
+# never narrows them away. The base detector is wired into the default
+# engine (to-lobby scopes spread the strong completion vocabulary); the
+# specialized detectors join standalone here and promote with a consumer
+# flow in C4.
+TRADING_SCOPE_SPEC_NAMES = frozenset(
+    {
+        TRADING_CENTER_TITLE_SPEC.name,
+    }
+)
+
+
+TRADING_SCOPE = ScopeSpec(
+    name="trading",
+    spec_names=TRADING_SCOPE_SPEC_NAMES,
+    specialized_types=(
+        TradingTabsDetector,
+        TradingRowsDetector,
+    ),
+)
+
+
+def build_trading_perception(
+    asset_root: str | Path | None = None,
+) -> PerceptionEngine:
+    """Build a standalone engine with only the Trading detectors."""
+
+    root = (
+        Path(asset_root)
+        if asset_root is not None
+        else Path(__file__).resolve().parents[2]
+    )
+    return PerceptionEngine(
+        detectors=(
+            LocalCvDetector(TRADING_CENTER_TITLE_SPEC, asset_root=root),
+            TradingTabsDetector(asset_root=root),
+            TradingRowsDetector(asset_root=root),
+        )
+    )
+
 # Strong Lobby completion vocabulary for known transitions only. The target
 # proof remains the current Trading Center landmark, while every dependency of
 # every catalog base and overlay rule is retained. A scoped resolver therefore
@@ -686,6 +739,7 @@ STRONG_LOBBY_COMPLETION_SPEC_NAMES = frozenset(
         "landmark.monster_wave_clear",
         "indicator.monster_wave_daily_active",
         "landmark.monster_wave_new_ranking",
+        "landmark.trading_center_title",
     }
 )
 
@@ -1065,6 +1119,14 @@ __all__ = (
     "SOCKET_TAB_SPEC",
     "SEND_STAMINA_COMPLETION_SCOPE",
     "SEND_STAMINA_COMPLETION_SCOPE_SPEC_NAMES",
+    "TRADING_CENTER_TITLE_SPEC",
+    "TRADING_SCOPE",
+    "TRADING_SCOPE_SPEC_NAMES",
+    "TradingRowsDetector",
+    "TradingRowsReading",
+    "TradingTabsDetector",
+    "TradingTabsReading",
+    "build_trading_perception",
     "SocketEnhanceAnimationDetector",
     "SocketEnhanceAnimationReading",
     "SocketIncompatibleOpalDetector",

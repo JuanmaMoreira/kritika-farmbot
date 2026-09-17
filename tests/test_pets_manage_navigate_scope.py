@@ -171,7 +171,7 @@ def test_pets_manage_navigate_scope_selects_exactly_five_detectors():
 
 def test_pets_manage_navigate_scope_fails_fast():
     source = build_default_perception(ROOT)
-    assert len(source.detectors) == 95
+    assert len(source.detectors) == 96
     with pytest.raises(ValueError):
         select_detectors(PerceptionEngine(detectors=()),
                          PETS_MANAGE_NAVIGATE_SCOPE)
