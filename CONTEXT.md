@@ -100,7 +100,7 @@ Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en
 No forman parte del runtime estable:
 
 - Inventory Relief Chain general, Trading, Craft, Treasure o Equipment Sell;
-- Trading Center: foundation C1/C2 calibrada (semántica, detectores HIL, adapter + catálogo 22 + smokes PASS) y C3 row facts (TradingRowFact + readers + scope, promoción global mínima), todo sin wiring de trades a runtime productivo; C4 pendiente;
+- Trading Center: foundation C1/C2 calibrada (semántica, detectores HIL, adapter + catálogo 22 + smokes PASS) y C3 row facts (TradingRowFact + readers + scope, promoción global mínima), todo sin wiring de trades a runtime productivo; C4 DONE (trade verificado + panel HIL-calibrado + SUCCESS 265→225);
 - R2-C (Quick Menu→Character Select) conserva observación global porque el subset actual de dos detectores no muestra bases contradictorias bajo el menú;
 - no existe aún una señal positiva estructural y multitemporada de Lobby; scopes menores por consumer y reuse D quedan diferidos hasta obtener evidencia física o un carry explícito de snapshot;
 - World Boss: el handoff causal restauró y validó físicamente Select Boss y Previous Rewards sin autorización overlay-only. El falso abort downstream de `BattleModeZone.leave` quedó corregido con un predicate local que tolera el origin transitorio post-`SelectQuickMenuLobby`; foreign, `UNKNOWN`/`AMBIGUOUS` y clean Lobby intactos. Los D locales requieren un snapshot fresco equivalente antes de reutilizarse;
