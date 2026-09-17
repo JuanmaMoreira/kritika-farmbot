@@ -290,3 +290,27 @@ HIL C/boundaries: quantity-limit por `>>`-en-máximo confirmado sólo como GT/me
 HIL C5 calibration + SUCCESS (2026-09-17, fila 1 hero weapon 265/40, `artifacts/hil_c5/`): panel reabierto 1/20 sin second cost; No 2/2 PASS en (0.3555, 0.7806) (cierre a Trading estable, 265 intacto); `>>` PASS en (0.699, 0.802): 1/20→6/20 causal (output 10→60, input 265/40→265/240), luego cancel con No sin gasto; SUCCESS EXACT 1 en (0.4934, 0.7819): tap fila (0.75, 0.4357) + un único Trade, sin `>>`, allowlist {gold}; panel 265/40 1/20 → retorno Trading 225/40 fresco (225 < 265), cero retry, cero boundary, sin premium. Taps agente C5: No + (>> + cancel) + (fila + Trade) = 6, cada uno autorizado. C4 DONE.
 
 Límites: sin routing externo; sin Bronze→Silver/Silver→Gold policy; sin Treasure/retorno/retry post-Treasure (C5/C6).
+
+## 16. C5 Avatar & Keys primitives (executor DONE, sin policy, cero trades)
+
+`bot/trading_keys.py` (nuevo, sin cambios a compartidos): capability independiente de Trading Center que confirma Avatar & Keys, verifica readiness C1 positiva y delega UNA operación pedida por el caller a C4. Cero scroll: sin imports de `directed_list_scroll`/`trading_materials_scroll`/swipes/gestos, sin fallback; rows no-ready o tab perdido = fail closed con cero input (el caller espera bounded sin swipe fuera de C5).
+
+Modelo de operaciones (enum mínimo, el caller elige una; C5 nunca ordena ni cuantifica globalmente):
+
+- `BRONZE_TO_SILVER` → fila causal `silver_key` ("Silver Key 2", output Silver; `have`/`need` = Bronze, HIL 5/10). No existe fila output `bronze_key` en catálogo ni HIL: Bronze es sólo input aquí, observado vía la fila Silver.
+- `SILVER_TO_GOLD` → fila causal `gold_key` ("Gold Key 2", output Gold; `have`/`need` = Silver, HIL 9/10).
+- Sin `Gold→X`: no existe en la UI. Filas Gem (`silver_gem_key`, `gold_gem_chest_key`) visibles pero fuera de alcance: sin operaciones definidas.
+
+Readiness: `check_keys_ready`/`is_keys_ready` reusan C1 (`is_trading_screen` + `trading_tab==KEYS` exclusivo + `clean_trading` + `is_keys_content_ready`) con razones explícitas (`unknown_state`/`ambiguous_state`/`not_trading`/`tab_not_keys`/`contradictory_state`/`overlays_present`/`rows_not_ready`). `build_keys_context` traduce el snapshot a `TradePreconditionContext(section="keys")` sin autorizar input por sí mismo.
+
+Adapter: `execute_key_trade(operation, snapshot, row_fact, quantity, targets, tap, read_panel, read_row, ...)` valida enum + mapping (`row_operation_mismatch` con cero input si la fila no es la causal) + readiness (cero input), construye `TradeRequest(row_fact, quantity, allowed={"gold"}, row_tap_x=ROW_TAP_X=0.75, expected_item_id, max_fact_age)` y delega una vez a `execute_verified_trade`. El `TradeResult` vuelve con la misma semántica C4 más `evidence += operation:<valor>`; `OUTPUT_FULL` en Silver→Gold se retorna tal cual (C6 lo consumirá hacia Treasure+retry; C5 nunca navega). Quantity `EXACT`/`UP_TO`/`MAX_ALLOWED` pasan del caller; sin aritmética `_key_counts`, sin inferencia de capacidad Gold (sigue `NOT OBSERVABLE`, sin 499/cálculos), sin retries, sin Treasure/Craft/Relief/MW/planner/stage (imports probados).
+
+Percepción/scope: se reusa `TRADING_SCOPE` existente; cero detectores/readers/assets nuevos; engine global intacto en 96; counts to-lobby intactos.
+
+Tests: `tests/test_trading_keys.py`, 40 dirigidos verdes (readiness ready/no-activo/sin-rows/overlays/contradictorio/foreign/UNKNOWN/AMBIGUOUS; no-scroll por imports+firma+vocabulario de taps; mapping Bronze=silver_key/Silver=gold_key/rechazos/gemas/materiales/operación desconocida; delegación EXACT/UP_TO/MAX_ALLOWED + `ROW_TAP_X` + guards gold/karats/ilegible + `NO_MORE_INPUT` sin tap; passthrough SUCCESS/INSUFFICIENT/OUTPUT_FULL/NO_EFFECT + independencia de orden + sin routing; separación sin imports externos ni `_key_counts`/`promote`/`should_`/`route_plan` + `NOT OBSERVABLE` presente).
+
+Validación: `py_compile` + `git diff --check` limpios; C5 40/40; subset trading 127 passed (C4/panel/C1/row-facts/materials/percepción, sin regresiones); sin full suite (ningún compartido tocado, baseline vigente no invalidado); sin evaluator incremental (sin detectors/readers); sin corpus nuevo.
+
+HIL: mappings sostenidos por evidencia HIL previa (keys-top/01.png + manifest `keys-top` 4/4 + C1/C2 Q3 sin-scroll + C3 evaluator keys 4/4, `need=10` constante observada, pitch 0.1418 ambos tabs). HIL A (Bronze fact vía `silver_key` 5/10) y HIL B (Silver fact vía `gold_key` 9/10): cubiertos por esa evidencia, cero trade. HIL C (Bronze→Silver SUCCESS) y HIL D (Silver→Gold SUCCESS): `HIL_NOT_EXERCISED` (requieren gasto/uso con aprobación del usuario; no se provoca Gold-full artificialmente). Cero taps live en C5.
+
+C5 DONE. Siguiente: C6 Keys policy + Gold-full consumer (orden Bronze→Silver/Silver→Gold por cantidades/necesidades, consumo de `OUTPUT_FULL` vía Treasure + retry causal).
