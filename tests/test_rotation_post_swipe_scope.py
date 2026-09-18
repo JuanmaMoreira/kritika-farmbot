@@ -45,7 +45,7 @@ def test_post_swipe_subset_is_exact_source_instances_in_order_and_fails_fast():
         if getattr(getattr(item, "spec", None), "name", None)
         in ROTATION_CHARACTER_SELECTION_SCOPE_SPEC_NAMES
     )
-    assert len(source.detectors) == 96
+    assert len(source.detectors) == 97
     assert len(scoped.detectors) == 2
     assert tuple(scoped.detectors) == expected
     assert all(actual is wanted for actual, wanted in zip(scoped.detectors, expected))
@@ -123,7 +123,7 @@ def test_productive_rotation_scopes_only_post_swipe_and_r1_card_selection():
     assert rotation.selection_transition.obstruction_recovery is recovery
     # ConfirmCharacterSelection remains on this global transition (R2-B).
     assert rotation.verified_transition is main
-    assert len(rotation.verified_transition.observer.perception.detectors) == 96
+    assert len(rotation.verified_transition.observer.perception.detectors) == 97
     assert rotation.scroll_profile.settle_for == 1.0
     assert ("rotation.post_swipe_scope_active", {"detector_count": 2}) in events.records
     assert ("rotation.character_selection_scope_active", {"detector_count": 2}) in events.records

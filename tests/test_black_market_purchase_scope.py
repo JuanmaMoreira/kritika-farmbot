@@ -189,11 +189,20 @@ def test_unknown_frame_never_fabricates_purchase_success():
     resolver = build_default_resolver()
     path = "screencaps/batch/20260402_171606_055486.png"
 
-    for engine in (full, scoped):
-        snapshot = _wrap(path, engine, resolver, sequence=1)
-        assert snapshot.state.status is ResolutionStatus.UNKNOWN
-        assert not _is_verified_purchase(snapshot, 0)
-        assert not _is_purchase_confirmation(snapshot)
+    # E2 Treasure promotion: this archival April frame IS a Treasure
+    # selector popup (Bronze chest), so the global engine now resolves
+    # it correctly instead of leaving it UNKNOWN. The purchase scope
+    # (without the Treasure title) still cannot see it.
+    snapshot = _wrap(path, full, resolver, sequence=1)
+    assert snapshot.state.status is ResolutionStatus.RESOLVED
+    assert snapshot.state.base_context == "screen.treasure"
+    assert not _is_verified_purchase(snapshot, 0)
+    assert not _is_purchase_confirmation(snapshot)
+
+    snapshot = _wrap(path, scoped, resolver, sequence=1)
+    assert snapshot.state.status is ResolutionStatus.UNKNOWN
+    assert not _is_verified_purchase(snapshot, 0)
+    assert not _is_purchase_confirmation(snapshot)
 
 
 class ScriptedObserver:

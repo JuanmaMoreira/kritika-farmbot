@@ -76,7 +76,7 @@ def test_rotation_scope_selects_exactly_two_existing_detectors_in_source_order()
     source = build_default_perception(ROOT)
     scoped = _scoped(source)
 
-    assert len(source.detectors) == 96
+    assert len(source.detectors) == 97
     assert len(scoped.detectors) == 2
     assert {
         detector.spec.name for detector in scoped.detectors

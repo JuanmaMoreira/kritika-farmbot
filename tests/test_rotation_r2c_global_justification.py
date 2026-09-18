@@ -72,7 +72,7 @@ def _frame(path):
 
 def _engines():
     perception = build_default_perception(ROOT)
-    assert len(perception.detectors) == 96
+    assert len(perception.detectors) == 97
     scoped = select_detectors(perception, ROTATION_CHARACTER_SELECTION_SCOPE)
     assert len(scoped.detectors) == 2
     return perception, scoped

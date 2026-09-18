@@ -21,6 +21,8 @@ from bot.treasure_center_semantics import (
     INDICATOR_TREASURE_GOLD_KEY_SELECTOR,
     INDICATOR_TREASURE_KARAT_BASE,
     INDICATOR_TREASURE_KARAT_REPEAT,
+    INDICATOR_TREASURE_RESULT,
+    INDICATOR_TREASURE_SELECTOR_POPUP,
     SCREEN_TREASURE,
 )
 
@@ -74,11 +76,27 @@ def is_gold_keys_content_ready(snapshot) -> bool:
     )
 
 
+def has_selector_popup(snapshot) -> bool:
+    """Center ``1(Open)``/``10(Open)`` popup present on Treasure."""
+    return is_treasure_screen(snapshot) and has(
+        snapshot, INDICATOR_TREASURE_SELECTOR_POPUP
+    )
+
+
+def has_result(snapshot) -> bool:
+    """Opened-chest result state present on Treasure."""
+    return is_treasure_screen(snapshot) and has(
+        snapshot, INDICATOR_TREASURE_RESULT
+    )
+
+
 __all__ = (
     "clean_treasure",
     "has",
     "has_gold_signal",
     "has_karat_signal",
+    "has_result",
+    "has_selector_popup",
     "is_gold_keys_content_ready",
     "is_treasure_screen",
 )

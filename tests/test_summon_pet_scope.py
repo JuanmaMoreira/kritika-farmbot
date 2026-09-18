@@ -229,7 +229,7 @@ def test_pet_summon_scope_selects_exactly_seventeen_detectors():
 
     assert isinstance(scoped, PerceptionEngine)
     assert len(scoped.detectors) == 17
-    assert len(source.detectors) == 96
+    assert len(source.detectors) == 97
     local_names = [
         detector.spec.name for detector in scoped.detectors
         if isinstance(detector, LocalCvDetector)

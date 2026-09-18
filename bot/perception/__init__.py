@@ -188,6 +188,11 @@ from .trading_center import (
     TradingRowsDetector,
     TradingTabsDetector,
 )
+from .treasure_center import (
+    TREASURE_CENTER_SPECS,
+    TREASURE_TITLE_SPEC,
+    TreasureContentDetector,
+)
 from .scope import ScopeSpec, select_detectors
 from bot.monster_wave_semantics import MW_DAILY
 
@@ -207,7 +212,7 @@ def build_default_perception(
             *(
                 LocalCvDetector(spec, asset_root=root)
                 for spec in (*DEFAULT_LOCAL_CV_SPECS, *MONSTER_WAVE_SPECS,
-                             *TRADING_CENTER_SPECS)
+                             *TRADING_CENTER_SPECS, *TREASURE_CENTER_SPECS)
             ),
             BlackMarketGoldDetector(asset_root=root),
             BlackMarketPurchasedDetector(asset_root=root),
@@ -659,6 +664,47 @@ def build_trading_perception(
         )
     )
 
+
+# Treasure Center observation vocabulary for E2 entry/open/leave waits:
+# the base landmark (promoted to the default engine, same split as the
+# Trading title) plus the selector popup, result state and Gold/Karat
+# currency signals through one title-gated content detector. Tab
+# exclusivity has no equivalent here; Gold-vs-Karat contradiction and
+# foreign bases stay with the caller predicates, the scope never
+# narrows them away.
+TREASURE_SCOPE_SPEC_NAMES = frozenset(
+    {
+        TREASURE_TITLE_SPEC.name,
+    }
+)
+
+
+TREASURE_SCOPE = ScopeSpec(
+    name="treasure",
+    spec_names=TREASURE_SCOPE_SPEC_NAMES,
+    specialized_types=(
+        TreasureContentDetector,
+    ),
+)
+
+
+def build_treasure_perception(
+    asset_root: str | Path | None = None,
+) -> PerceptionEngine:
+    """Build a standalone engine with only the Treasure detectors."""
+
+    root = (
+        Path(asset_root)
+        if asset_root is not None
+        else Path(__file__).resolve().parents[2]
+    )
+    return PerceptionEngine(
+        detectors=(
+            LocalCvDetector(TREASURE_TITLE_SPEC, asset_root=root),
+            TreasureContentDetector(asset_root=root),
+        )
+    )
+
 # Strong Lobby completion vocabulary for known transitions only. The target
 # proof remains the current Trading Center landmark, while every dependency of
 # every catalog base and overlay rule is retained. A scoped resolver therefore
@@ -740,6 +786,7 @@ STRONG_LOBBY_COMPLETION_SPEC_NAMES = frozenset(
         "indicator.monster_wave_daily_active",
         "landmark.monster_wave_new_ranking",
         "landmark.trading_center_title",
+        "landmark.treasure_title",
     }
 )
 
@@ -1122,11 +1169,18 @@ __all__ = (
     "TRADING_CENTER_TITLE_SPEC",
     "TRADING_SCOPE",
     "TRADING_SCOPE_SPEC_NAMES",
+    "TREASURE_CENTER_SPECS",
+    "TREASURE_TITLE_SPEC",
+    "TREASURE_SCOPE",
+    "TREASURE_SCOPE_SPEC_NAMES",
+    "TreasureContentDetector",
+    "TreasureContentReading",
     "TradingRowsDetector",
     "TradingRowsReading",
     "TradingTabsDetector",
     "TradingTabsReading",
     "build_trading_perception",
+    "build_treasure_perception",
     "SocketEnhanceAnimationDetector",
     "SocketEnhanceAnimationReading",
     "SocketIncompatibleOpalDetector",

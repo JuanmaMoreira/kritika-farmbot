@@ -136,7 +136,7 @@ def test_strong_lobby_completion_scope_covers_every_catalog_context_dependency()
         STRONG_LOBBY_COMPLETION_SPEC_NAMES | specialized_outputs
     )
     assert context_requirements & local_names <= STRONG_LOBBY_COMPLETION_SPEC_NAMES
-    assert len(STRONG_LOBBY_COMPLETION_SPEC_NAMES) == 72
+    assert len(STRONG_LOBBY_COMPLETION_SPEC_NAMES) == 73
     assert len(STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES) == 6
 
 
@@ -181,8 +181,8 @@ def test_lobby_return_scopes_reuse_exact_source_instances_and_order(scope):
 
     assert scoped.detectors == expected
     assert all(actual is original for actual, original in zip(scoped.detectors, expected))
-    assert len(scoped.detectors) == 78
-    assert len(scoped.detectors) < len(source.detectors) == 96
+    assert len(scoped.detectors) == 79
+    assert len(scoped.detectors) < len(source.detectors) == 97
 
 
 @pytest.mark.parametrize("scope", SCOPES, ids=lambda scope: scope.name)
@@ -259,7 +259,7 @@ def test_productive_registry_routes_direct_lobby_returns_to_scoped_observation()
         market.close_transition.observer,
     ):
         assert scoped is not observer
-        assert len(scoped.perception.detectors) == 78
+        assert len(scoped.perception.detectors) == 79
         assert scoped.source is observer.source
         assert scoped.resolver is observer.resolver
     assert market.verified_transition is main
@@ -293,6 +293,6 @@ def test_productive_rotation_routes_only_confirmation_to_lobby_scope():
 
     assert rotation.verified_transition is main
     assert rotation.confirmation_transition is not main
-    assert len(rotation.confirmation_transition.observer.perception.detectors) == 78
+    assert len(rotation.confirmation_transition.observer.perception.detectors) == 79
     assert rotation.confirmation_transition.observer.source is observer.source
     assert rotation.confirmation_transition.observer.resolver is observer.resolver

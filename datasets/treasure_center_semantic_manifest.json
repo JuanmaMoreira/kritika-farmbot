@@ -1,0 +1,109 @@
+{
+ "version": 1,
+ "curation": {
+  "source": [
+   "hil_treasure_a (2026-09-17, chat+steer, DRAKEN=BB, 2712x1220)",
+   "screencaps/batch Treasure grid (2026-04-02)"
+  ],
+  "labels": "Human HIL ground truth: Treasure grid/popup/result Gold states; cross-screen silence (lobby/trading/combine); no inferred counts",
+  "limitations": "Single device/resolution for Gold states (2712x1220); karat live positive HIL_NOT_EXERCISED (archival K used only for color-threshold reference, banner fully covered so no title); gem-row results and archival fully-occluded banners stay below title anchor by design"
+ },
+ "entries": [
+  {
+   "path": "screencaps/semantic/treasure/grid-gold/01.png",
+   "base_context": "screen.treasure",
+   "overlays": [],
+   "observations": [
+    "landmark.treasure_title",
+    "indicator.treasure_gold_key_selector"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_treasure_a/20260917T133857Z.png",
+   "sha256": "2274f1f469f393d854a2439d2da1d30ee633030569ab988972958fd5f00e5a81"
+  },
+  {
+   "path": "screencaps/semantic/treasure/grid-gold/02.png",
+   "base_context": "screen.treasure",
+   "overlays": [],
+   "observations": [
+    "landmark.treasure_title",
+    "indicator.treasure_gold_key_selector"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "screencaps/batch/20260402_171604_544423.png",
+   "sha256": "c21c36d8d8f4418a63c70588c3f3c61245b0aad84c38f80fe99376898cc3016d"
+  },
+  {
+   "path": "screencaps/semantic/treasure/popup-gold/01.png",
+   "base_context": "screen.treasure",
+   "overlays": [],
+   "observations": [
+    "landmark.treasure_title",
+    "indicator.treasure_selector_popup",
+    "indicator.treasure_gold_key_selector",
+    "indicator.treasure_gold_key_repeat"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_treasure_a/20260917T141612Z_b1.png",
+   "sha256": "05756040e5f9aa7dab5186ea917f80cf2fb65499e5f7d5c220588a6dde124a90"
+  },
+  {
+   "path": "screencaps/semantic/treasure/result-gold/01.png",
+   "base_context": "screen.treasure",
+   "overlays": [],
+   "observations": [
+    "landmark.treasure_title",
+    "indicator.treasure_result",
+    "indicator.treasure_gold_key_selector",
+    "indicator.treasure_gold_key_repeat"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_treasure_a/20260917T142015Z_b2.png",
+   "sha256": "b094eab7205a210e448aff97de5c83aaf3b277a69eb140d0d6ac9a34eee36156"
+  },
+  {
+   "path": "screencaps/semantic/treasure/lobby/01.png",
+   "base_context": "screen.lobby",
+   "overlays": [],
+   "observations": [],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/action-targets/lobby.png",
+   "sha256": "8c96483e1bbdc64682e964e82024f457fcbcdf3d439d8d909cebad56719ef161"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/general-top/01.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_general_active",
+    "indicator.trading_material_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_cat0.png",
+   "sha256": "189f3ae5671f552e2e2962e6dd05a1ee4cd01224713b4f4f2102961a313c51d5"
+  },
+  {
+   "path": "screencaps/semantic/trading-center/keys-top/01.png",
+   "base_context": "screen.trading",
+   "overlays": [],
+   "observations": [
+    "landmark.trading_center_title",
+    "indicator.trading_keys_active",
+    "indicator.trading_keys_rows"
+   ],
+   "review_status": "confirmed",
+   "raw_source": "artifacts/hil_q1_trading.png",
+   "sha256": "5438ee3f2029c29f2946506cf44a16b2d5f571d36ef73affa521c2e735868e7f"
+  },
+  {
+   "path": "screencaps/semantic/treasure/combine/01.png",
+   "base_context": "screen.combine",
+   "overlays": [],
+   "observations": [],
+   "review_status": "confirmed",
+   "raw_source": "screencaps/batch/20260402_172034_493450.png",
+   "sha256": "51ed0dcfaad9bc92de8b624437c92cbb2aec3bbebe5dfe94820b666307420453"
+  }
+ ]
+}

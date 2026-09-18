@@ -163,7 +163,7 @@ def test_confirmation_reuses_open_scope_detectors():
     scoped = select_detectors(source, BLACK_MARKET_OPEN_SCOPE)
 
     assert len(scoped.detectors) == 7
-    assert len(source.detectors) == 96
+    assert len(source.detectors) == 97
     local_names = [
         detector.spec.name for detector in scoped.detectors
         if isinstance(detector, LocalCvDetector)
