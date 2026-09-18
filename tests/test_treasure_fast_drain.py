@@ -30,6 +30,7 @@ from bot.treasure_center_semantics import (
 )
 from bot.treasure_fast_drain import (
     BAR_REPEAT_POINT,
+    DISMISS_POINT,
     SELECTOR_REPEAT_POINT,
     GoldKeyDrainConfig,
     GoldKeyDrainOutcome,
@@ -121,6 +122,31 @@ def _karat(sequence, timestamp=None):
             _observation(INDICATOR_TREASURE_SELECTOR_POPUP),
             _observation(INDICATOR_TREASURE_KARAT_REPEAT),
         ],
+        timestamp=timestamp,
+    )
+
+
+def _karat_result(sequence, timestamp=None):
+    # Live boundary shape: Karat backing under the reward overlay.
+    return _snapshot(
+        sequence,
+        base=SCREEN_TREASURE,
+        observations=[
+            _observation(LANDMARK_TREASURE_TITLE),
+            _observation(INDICATOR_TREASURE_RESULT),
+            _observation(INDICATOR_TREASURE_KARAT_BASE),
+            _observation(INDICATOR_TREASURE_KARAT_REPEAT),
+        ],
+        timestamp=timestamp,
+    )
+
+
+def _clean_grid(sequence, timestamp=None):
+    # Treasure stable without any overlay: finalize postcondition.
+    return _snapshot(
+        sequence,
+        base=SCREEN_TREASURE,
+        observations=[_observation(LANDMARK_TREASURE_TITLE)],
         timestamp=timestamp,
     )
 
@@ -738,19 +764,40 @@ def test_reward_transient_disabled_restores_strict_behavior():
 
 
 def test_module_has_no_dismiss_or_outside_button_vocabulary():
-    # Prose may name the forbidden behavior to forbid it; code must not
-    # be able to express it: no dismiss/outside call identifiers.
+    # Identifier-level check (prose/docstrings excluded via ast): only
+    # the allowlisted finalize identifiers may carry the dismiss stem,
+    # and no outside-tap/point identifier may exist anywhere in code.
+    import ast
+
     source = (Path(__file__).resolve().parent.parent
               / "bot" / "treasure_fast_drain.py").read_text(encoding="utf-8")
-    import_lines = {line for line in source.splitlines()
-                    if line.strip().startswith(("import ", "from "))}
-    code = "\n".join(
-        line for line in source.splitlines() if line not in import_lines
-    )
-    lowered = code.casefold()
-    for forbidden in ("dismiss(", "DismissTreasure", "tap_outside",
-                      "outside_tap", "outside_point", "dismiss_tap"):
-        assert forbidden.casefold() not in lowered, forbidden
+    tree = ast.parse(source)
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            names.add(node.id.casefold())
+        elif isinstance(node, ast.Attribute):
+            names.add(node.attr.casefold())
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                               ast.ClassDef)):
+            names.add(node.name.casefold())
+        elif isinstance(node, ast.arg):
+            names.add(node.arg.casefold())
+    allowed = {
+        "dismiss_point",
+        "max_dismiss_taps",
+        "dismiss_inputs",
+        "dismiss_timeout_s",
+        "dismiss_no_effect",
+        "final_dismiss",
+        "dismisses",
+    }
+    for name in sorted(names):
+        if "dismiss" in name:
+            assert name in allowed, name
+        if "outside" in name:
+            assert False, name
+    assert "dismiss_point" in names
 
 
 def test_every_tap_lands_on_a_right_button_point():
@@ -923,3 +970,201 @@ def test_entry_from_transient_refused_without_measure_or_verify():
     )
     assert denied.outcome is GoldKeyDrainOutcome.FAILED
     assert denied.reason == "entry_not_verified"
+
+
+# Post-Karat finalize: one safe outside dismiss, verified close.
+
+
+def test_gold_present_means_no_outside_tap():
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _popup(12, timestamp=12.0),
+        _karat_result(13, timestamp=13.0),
+        _karat_result(14, timestamp=14.0),
+        _karat_result(15, timestamp=15.0),
+        _clean_grid(16, timestamp=16.0),
+    ])
+    result, _ = _drain(script, _popup(10, timestamp=10.0))
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 2
+    assert result.dismiss_inputs == 1
+    assert script.taps == [SELECTOR_REPEAT_POINT] * 2 + [DISMISS_POINT]
+
+
+def test_karat_single_final_dismiss_then_exhausted():
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _karat_result(12, timestamp=12.0),
+        _karat_result(13, timestamp=13.0),
+        _karat_result(14, timestamp=14.0),
+        _clean_grid(15, timestamp=15.0),
+    ])
+    result, _ = _drain(script, _popup(10, timestamp=10.0))
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.reason == "karat_boundary"
+    assert result.inputs_emitted == 1
+    assert result.dismiss_inputs == 1
+    assert result.karat_boundary_seen is True
+    assert script.taps == [SELECTOR_REPEAT_POINT, DISMISS_POINT]
+    assert DISMISS_POINT != SELECTOR_REPEAT_POINT
+    assert DISMISS_POINT != BAR_REPEAT_POINT
+
+
+def test_dismiss_no_effect_bounded_retry_then_fail_closed():
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _karat_result(12, timestamp=12.0),
+        _karat_result(13, timestamp=13.0),
+        _karat_result(14, timestamp=14.0),
+        _karat_result(15, timestamp=15.0),
+        _karat_result(16, timestamp=16.0),
+        _karat_result(17, timestamp=17.0),
+    ])
+    config = GoldKeyDrainConfig(
+        dismiss_timeout_s=0.3, max_dismiss_taps=2, tap_interval_s=0.05
+    )
+    result, _ = _drain(script, _popup(10, timestamp=10.0), config=config)
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert result.reason == "dismiss_no_effect"
+    assert result.inputs_emitted == 1
+    assert result.dismiss_inputs == 2
+    assert result.dismiss_inputs <= config.max_dismiss_taps
+
+
+def test_never_outside_tap_between_batches():
+    measure = _measure_script(
+        [_reading(bar_gold=1.0), _reading(popup_gold=1.0)]
+    )
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _unknown(12),
+        _unknown(13),
+        _karat(14, timestamp=14.0),
+    ])
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.dismiss_inputs == 0
+    assert set(script.taps) <= {SELECTOR_REPEAT_POINT, BAR_REPEAT_POINT}
+    assert DISMISS_POINT not in script.taps
+
+
+def test_telemetry_splits_right_button_from_finalize():
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _karat_result(12, timestamp=12.0),
+        _karat_result(13, timestamp=13.0),
+        _karat_result(14, timestamp=14.0),
+        _clean_grid(15, timestamp=15.0),
+    ])
+    result, _ = _drain(script, _popup(10, timestamp=10.0))
+    assert result.inputs_emitted == 1
+    assert result.dismiss_inputs == 1
+    assert len(script.taps) == (
+        result.inputs_emitted + result.dismiss_inputs
+    )
+    assert "final_dismiss:1" in result.evidence
+    assert "finalize:overlay_closed" in result.evidence
+
+
+def test_gold_returned_during_finalize_resumes_drain():
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _karat_result(12, timestamp=12.0),
+        _karat_result(13, timestamp=13.0),
+        _popup(14, timestamp=14.0),
+        _popup(15, timestamp=15.0),
+        _karat_result(16, timestamp=16.0),
+        _karat_result(17, timestamp=17.0),
+        _karat_result(18, timestamp=18.0),
+        _clean_grid(19, timestamp=19.0),
+    ])
+    result, _ = _drain(script, _popup(10, timestamp=10.0))
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 2
+    assert result.dismiss_inputs == 1
+    assert "finalize:gold_returned" in result.evidence
+
+
+def test_finalize_config_validation():
+    with pytest.raises(ValueError):
+        GoldKeyDrainConfig(dismiss_timeout_s=-1.0)
+    with pytest.raises(ValueError):
+        GoldKeyDrainConfig(max_dismiss_taps=0)
+
+
+def test_finalize_waits_for_consecutive_overlay_frames():
+    # A single overlay frame between transitions never spends the
+    # dismiss attempt; two consecutive ones do.
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _karat_result(12, timestamp=12.0),
+        _karat_result(13, timestamp=13.0),
+        _unknown(14),
+        _karat_result(15, timestamp=15.0),
+        _karat_result(16, timestamp=16.0),
+        _clean_grid(17, timestamp=17.0),
+    ])
+    result, _ = _drain(script, _popup(10, timestamp=10.0))
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 1
+    assert result.dismiss_inputs == 1
+    assert script.taps == [SELECTOR_REPEAT_POINT, DISMISS_POINT]
+
+
+def test_karat_entry_runs_only_the_finalize():
+    script = _Script([
+        _karat_result(13, timestamp=13.0),
+        _karat_result(14, timestamp=14.0),
+        _clean_grid(15, timestamp=15.0),
+    ])
+    clock = _Clock()
+    result = drain_gold_keys_fast(
+        initial_snapshot=_karat_result(12, timestamp=12.0),
+        observe=script.observe,
+        tap=script.tap,
+        config=GoldKeyDrainConfig(),
+        initial_open_verified=True,
+        clock=clock.now,
+        sleeper=clock.sleep,
+        fingerprint=lambda snap: ('seq', snap.sequence),
+        allow_karat_entry=True,
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 0
+    assert result.dismiss_inputs == 1
+    assert script.taps == [DISMISS_POINT]
+    assert 'entry:karat_boundary' in result.evidence
+
+
+def test_karat_entry_refused_without_flag_or_lineage():
+    script = _Script([_clean_grid(13, timestamp=13.0)])
+    clock = _Clock()
+    refused = drain_gold_keys_fast(
+        initial_snapshot=_karat_result(12, timestamp=12.0),
+        observe=script.observe,
+        tap=script.tap,
+        config=GoldKeyDrainConfig(),
+        initial_open_verified=True,
+        clock=clock.now,
+        sleeper=clock.sleep,
+        fingerprint=lambda snap: ('seq', snap.sequence),
+    )
+    assert refused.outcome is GoldKeyDrainOutcome.FAILED
+    assert refused.reason == 'already_karat_boundary'
+    assert script.taps == []
+    denied = drain_gold_keys_fast(
+        initial_snapshot=_karat_result(12, timestamp=12.0),
+        observe=script.observe,
+        tap=script.tap,
+        config=GoldKeyDrainConfig(),
+        initial_open_verified=False,
+        clock=clock.now,
+        sleeper=clock.sleep,
+        fingerprint=lambda snap: ('seq', snap.sequence),
+        allow_karat_entry=True,
+    )
+    assert denied.outcome is GoldKeyDrainOutcome.FAILED
+    assert denied.reason == 'entry_not_verified'
+    assert script.taps == []

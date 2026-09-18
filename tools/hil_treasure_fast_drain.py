@@ -84,6 +84,12 @@ def parse_args(argv=None):
         help="disable the local reward-grid contract (strict observed-only)",
     )
     parser.add_argument(
+        "--allow-karat-entry", action="store_true",
+        help="start directly at an observed Karat boundary with --gt "
+        "lineage, running only the finalize (retry of a still-open "
+        "boundary overlay)",
+    )
+    parser.add_argument(
         "--skip-entry", action="store_true",
         help="Skip the E2 OPEN_ONCE entry and start the fast drain from the "
         "live repeat state. Use only when the initial causal open is "
@@ -236,6 +242,7 @@ def main(argv=None) -> int:
             entry_reason = check_fast_drain_entry(
                 initial, initial_open_verified=True
             )
+            karat_entry = False
             if entry_reason is not None and args.skip_entry:
                 # Reward-transient entry: same local contract as the
                 # loop (verified open is the --gt lineage); the module
@@ -249,6 +256,12 @@ def main(argv=None) -> int:
                 if side is not None:
                     print(f"[burst] transient entry: local_gold:{side}")
                     entry_reason = None
+            if entry_reason == "already_karat_boundary" and (
+                args.skip_entry or args.allow_karat_entry
+            ):
+                print("[burst] karat-boundary entry: finalize only")
+                entry_reason = None
+                karat_entry = True
             print(
                 f"[burst] fast entry: {_describe(initial)} "
                 f"refusal={entry_reason}"
@@ -313,10 +326,12 @@ def main(argv=None) -> int:
                 clock=time.monotonic,
                 sleeper=time.sleep,
                 measure_local=content.measure,
+                allow_karat_entry=karat_entry,
             )
             report["result"] = {
                 "outcome": result.outcome.value,
                 "inputs_emitted": result.inputs_emitted,
+                "dismiss_inputs": result.dismiss_inputs,
                 "watchdogs_run": result.watchdogs_run,
                 "gold_button_observations": result.gold_button_observations,
                 "karat_boundary_seen": result.karat_boundary_seen,

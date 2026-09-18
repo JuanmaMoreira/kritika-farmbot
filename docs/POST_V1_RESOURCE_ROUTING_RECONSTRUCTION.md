@@ -588,3 +588,34 @@ scope Treasure de 2 detectores por ciclo; watchdog/exit mismo scope.
 Estado E2.2: DONE (implementacion + cadence 0.15 caracterizada +
 full-drain PASS hasta Karat con cero premium + docs corregidas).
 C6b next (desbloqueado por E2.2 DONE).
+
+## 23-addendum. Finalize post-Karat HIL: punto GT + efecto probado (2026-09-18)
+
+Recuento honesto de la prueba del dismiss:
+
+- Short drain DRAKEN-BK (221 keys): E2 entry SUCCESS + 60 taps sanos
+  (0.15s, 6 watchdogs, 0 premium) hasta fuse, sin Karat todavia; el
+  contrato prohibe el tap externo con Gold, asi que el intento de
+  finalize (0.9, 0.64) corrio en el drain anterior y fallo cerrado
+  (`dismiss_no_effect`, 1 tap, 0 premium): el punto Astra cae ~220px
+  del habitual y lo traga un tile.
+- GT usuario para el punto: matriz 5x10, celda (3,9) -> (0.85, 0.50),
+  "a la derecha donde debajo del overlay no hay nada interactuable".
+  `DISMISS_POINT` actualizado a (0.85, 0.50) sin tocar
+  `TREASURE_PROFILE.dismiss_point` (leave E2 probado, intacto).
+- El usuario pidio cerrar la animacion con Gold todavia presente; se
+  rechazo el tap externo (contrato) y, con aprobacion explicita, se
+  emitio UN tap derecho (dual role: abrio un batch nuevo, sin
+  cortar): evidencia de que el boton derecho gasta mientras hay Gold.
+- Con autorizacion explicita renovada, UN tap fuera en (0.85, 0.50):
+  overlay cerrado INMEDIATAMENTE a grid limpia, cofre 0/499 con
+  Needs 80 karats, karats intactos (28,963), cero gasto, cero efectos
+  laterales. Efecto del punto GT probado en vivo.
+- BK tambien dreno a Karat (221->0): segundo full drain implicito con
+  la misma protection (0 premium en ambos personajes, ~550 keys
+  totales drenadas en la sesion).
+
+Finalize queda: logica probada offline (62 tests) + Karat detectado en
+vivo x2 + dismiss con efecto probado en vivo + postcondition (grid
+limpia) verificada + telemetria separada (inputs vs dismiss_inputs).
+Back/exit cubierto por regression E2 leave (Smoke A/B 3/3).
