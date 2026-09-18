@@ -23,13 +23,17 @@ Currency mapping per control:
   authorizes input.
 
 ``None`` (not a fact) only for structural unusability: foreign
-base, UNKNOWN/AMBIGUOUS status. ``"empty"`` (positively observed
+base, UNKNOWN/AMBIGUOUS status, or a snapshot without capture
+metadata. ``"empty"`` (positively observed
 no-keys) and ``count`` have no reliable signal in E2 v1 (tile
 counts need an OCR campaign, explicitly not forced): depleted gold
 presents as missing Gold (``gold_not_ready``, fail closed) or as a
 Karat boundary when the premium UI appears. Overlay is
 ``"selector"`` for popup state, ``"result"`` for result state
 (result wins when both somehow present), else None.
+``observed_at`` is copied from the snapshot capture timestamp, never
+stamped at build time: building the fact later does not make it
+fresher.
 """
 
 from __future__ import annotations
@@ -72,17 +76,22 @@ def _currency(snapshot, gold_name: str) -> str:
     return "unknown"
 
 
-def fact_for_single(snapshot, *, sequence=None, evidence=()):
+def fact_for_single(snapshot, *, sequence=None, observed_at=None,
+                    evidence=()):
     """Build the ``1(Open)`` fact from a fresh Treasure snapshot."""
-    return _fact(snapshot, _SELECTOR, 1, sequence=sequence, evidence=evidence)
+    return _fact(snapshot, _SELECTOR, 1, sequence=sequence,
+                 observed_at=observed_at, evidence=evidence)
 
 
-def fact_for_repeat(snapshot, *, sequence=None, evidence=()):
+def fact_for_repeat(snapshot, *, sequence=None, observed_at=None,
+                    evidence=()):
     """Build the ``10(Open)`` fact from a fresh Treasure snapshot."""
-    return _fact(snapshot, _REPEAT, 10, sequence=sequence, evidence=evidence)
+    return _fact(snapshot, _REPEAT, 10, sequence=sequence,
+                 observed_at=observed_at, evidence=evidence)
 
 
-def _fact(snapshot, gold_name: str, amount: int, *, sequence, evidence):
+def _fact(snapshot, gold_name: str, amount: int, *, sequence, observed_at,
+          evidence):
     if not _usable(snapshot):
         return None
     if sequence is None:
@@ -96,6 +105,11 @@ def _fact(snapshot, gold_name: str, amount: int, *, sequence, evidence):
         return None
     if isinstance(sequence, bool):
         return None
+    if observed_at is None:
+        try:
+            observed_at = float(snapshot.timestamp)
+        except (AttributeError, TypeError, ValueError):
+            return None
     currency = _currency(snapshot, gold_name)
     if currency == "gold_key":
         amount_offered: int | None = amount
@@ -107,6 +121,7 @@ def _fact(snapshot, gold_name: str, amount: int, *, sequence, evidence):
         count=None,
         overlay=_overlay(snapshot),
         sequence=sequence,
+        observed_at=observed_at,
         evidence=tuple(evidence),
     )
 

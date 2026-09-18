@@ -18,7 +18,7 @@ Astra reconstruction (read-only ``024ff8e``, no wholesale copy):
 | selector/open controls | ``GOLD_CHEST`` + ``OpenGoldTreasure(amount, repeat)`` en 4 puntos segun amount/repeat | patron SI, puntos NO | SI | ``TreasureOpenTargets`` caller-supplied (single/repeat), sin hardcode; UNCALIBRATED hasta HIL |
 | open_gold_once | guard selector+key+no-karat, departure de la tira + resultado estable exclusivo | SI | SI (animacion/tap-through) | postcondicion fresca por accion: count disminuye preferido, sino result exclusivo minimo demostrado; animacion sola nunca SUCCESS |
 | repeat/batch | ``TreasureSink`` loop con ``repeat`` flag y deadline 900s sin contar aperturas | bound SI, 900s NO | parcial (x10 existe?) | loop acotado por ``quantity`` + ``max_actions`` explicitos; 1/10 por evidencia fresca, sin asumir x10 siempre |
-| currency freshness | ``rt.fresh`` + ``sequence`` estrictamente creciente, stale raise | SI | NO (mecanismo) | ``sequence`` en facts + ``max_fact_age`` para el gate inicial; stale nunca SUCCESS |
+| currency freshness | ``rt.fresh`` + ``sequence`` estrictamente creciente, stale raise | NO (sequence es contador-decoder a video-rate, no edad) | NO (mecanismo) | ``observed_at`` (capture monotonic) + barrier causal del snapshot autorizador + ``max_fact_age_s``; stale nunca SUCCESS; sequence queda sólo para orden lógico/dedup |
 | Gold-vs-Karat | oferta Karats rechazada, Karat corta sin tocar premium | SI | SI (senales actuales) | allowlist exacta ``{"gold_key"}``; otro premium => PREMIUM_CURRENCY_BOUNDARY cero confirm |
 | budget temporal | deadline 900s acota repeticion | concepto SI | NO | ``max_actions`` requerido + ``cancel_requested``; sin loops ocultos |
 | postcondition consumo | departure + resultado estable exclusivo (sin counts) | parcial | SI (counts observables?) | count disminuye preferido; fallback result exclusivo minimo; unchanged fresco => NO_EFFECT sin retry |
@@ -55,6 +55,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+import math
 from numbers import Integral, Real
 
 
@@ -132,7 +133,14 @@ class TreasureCurrencyFact:
     illegible (never zero by default). ``overlay`` names the observed
     surface (``"selector"``/``"result"`` expected) or None when
     unreadable. ``sequence`` shares the capture-sequence domain with
-    the authorizing snapshot and must strictly increase per read.
+    the authorizing snapshot and must strictly increase per read
+    (logical ordering/dedup only, never physical age: the decode
+    counter advances at video rate while reads sample at analyze
+    cadence). ``observed_at`` is the monotonic capture timestamp of
+    the frame this fact was read from (``time.monotonic`` domain from
+    Capture through Observation into the snapshot; builders copy it,
+    readers must never stamp it with "now"). A fact without a valid
+    ``observed_at`` never authorizes input (fail-closed).
     """
 
     currency: str
@@ -140,6 +148,7 @@ class TreasureCurrencyFact:
     count: int | None
     overlay: str | None
     sequence: int
+    observed_at: float | None = None
     evidence: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -171,6 +180,15 @@ class TreasureCurrencyFact:
         ):
             raise ValueError("sequence must be an integer")
         object.__setattr__(self, "sequence", int(self.sequence))
+        if self.observed_at is not None:
+            if isinstance(self.observed_at, bool) or not isinstance(
+                self.observed_at, Real
+            ):
+                raise ValueError("observed_at must be a real number or None")
+            observed = float(self.observed_at)
+            if not math.isfinite(observed) or observed < 0.0:
+                raise ValueError("observed_at must be a non-negative finite time")
+            object.__setattr__(self, "observed_at", observed)
         object.__setattr__(self, "evidence", tuple(self.evidence))
         for item in self.evidence:
             if not isinstance(item, str):
@@ -209,9 +227,10 @@ class GoldKeyOpenRequest:
 
     ``allowed_currency_kinds`` is fixed to exactly ``{"gold_key"}``:
     any premium must never be added by inference. ``max_actions``
-    bounds taps (no hidden loop). ``max_fact_age`` bounds the first
-    currency read against the authorizing snapshot
-    (``0 <= curr.seq - snap.seq <= max_fact_age``). ``source`` /
+    bounds taps (no hidden loop). ``max_fact_age_s`` bounds the first
+    currency read against the authorizing snapshot in seconds of frame
+    capture time (``barrier_ts < fact.observed_at <= barrier_ts +
+    max_fact_age_s``), never in decode-counter sequences. ``source`` /
     ``return_to`` are descriptive contracts only (this module never
     navigates): entry must have ended in Treasure ready and return is
     verified externally from ``GoldKeyOpenResult.after``.
@@ -221,7 +240,7 @@ class GoldKeyOpenRequest:
     allowed_currency_kinds: frozenset[str]
     targets: TreasureOpenTargets
     max_actions: int = 10
-    max_fact_age: int = 2
+    max_fact_age_s: float = 2.0
     source: str = "lobby"
     return_to: str | None = "lobby"
 
@@ -247,12 +266,13 @@ class GoldKeyOpenRequest:
             raise ValueError("max_actions must be a positive integer")
         object.__setattr__(self, "max_actions", int(self.max_actions))
         if (
-            isinstance(self.max_fact_age, bool)
-            or not isinstance(self.max_fact_age, Integral)
-            or int(self.max_fact_age) < 0
+            isinstance(self.max_fact_age_s, bool)
+            or not isinstance(self.max_fact_age_s, Real)
+            or not math.isfinite(float(self.max_fact_age_s))
+            or float(self.max_fact_age_s) < 0.0
         ):
-            raise ValueError("max_fact_age must be a non-negative integer")
-        object.__setattr__(self, "max_fact_age", int(self.max_fact_age))
+            raise ValueError("max_fact_age_s must be a non-negative duration")
+        object.__setattr__(self, "max_fact_age_s", float(self.max_fact_age_s))
         if not isinstance(self.source, str) or not self.source.strip():
             raise ValueError("source must be a non-empty string")
         object.__setattr__(self, "source", self.source.strip())
@@ -369,6 +389,53 @@ def check_currency(
     return None
 
 
+def check_fact_fresh(
+    fact: TreasureCurrencyFact | None,
+    barrier_ts: float,
+    max_age_s: float,
+) -> str | None:
+    """Return None when the fact is physically fresh, else ``"stale_fact"``.
+
+    Pure physical-freshness gate over frame capture timestamps
+    (``time.monotonic`` domain from Capture; no reader clock involved,
+    so a reader can never manufacture freshness): the fact must carry
+    a valid ``observed_at`` strictly newer than the causal ``barrier_ts``
+    (the authorizing transition's snapshot timestamp) and within
+    ``max_age_s`` seconds after it. Sequence is deliberately not
+    consulted here: the decode counter advances at video rate while
+    reads sample at analyze cadence, so a sequence gap measures
+    pipeline latency, not content age (HIL 2026-09-18 Smoke B).
+    """
+    if (
+        isinstance(barrier_ts, bool)
+        or not isinstance(barrier_ts, Real)
+        or not math.isfinite(float(barrier_ts))
+        or float(barrier_ts) < 0.0
+    ):
+        raise ValueError("barrier_ts must be a non-negative finite time")
+    if (
+        isinstance(max_age_s, bool)
+        or not isinstance(max_age_s, Real)
+        or not math.isfinite(float(max_age_s))
+        or float(max_age_s) < 0.0
+    ):
+        raise ValueError("max_age_s must be a non-negative finite duration")
+    if fact is None or not isinstance(fact, TreasureCurrencyFact):
+        return "stale_fact"
+    observed = fact.observed_at
+    if (
+        observed is None
+        or isinstance(observed, bool)
+        or not isinstance(observed, Real)
+    ):
+        return "stale_fact"
+    if float(observed) <= float(barrier_ts):
+        return "stale_fact"
+    if float(observed) - float(barrier_ts) > float(max_age_s):
+        return "stale_fact"
+    return None
+
+
 def execute_gold_key_open(
     *,
     snapshot,
@@ -395,9 +462,11 @@ def execute_gold_key_open(
     if not callable(cancel_requested):
         raise ValueError("cancel_requested must be callable")
     try:
-        snap_seq = int(snapshot.sequence)  # type: ignore[attr-defined]
+        barrier_ts = float(snapshot.timestamp)  # type: ignore[attr-defined]
     except (AttributeError, TypeError, ValueError) as error:
-        raise ValueError("snapshot must expose an integer sequence") from error
+        raise ValueError(
+            "snapshot must expose a numeric capture timestamp"
+        ) from error
 
     def _cancelled() -> bool:
         try:
@@ -489,8 +558,12 @@ def execute_gold_key_open(
             )
         if before_first is None:
             before_first = before
-            age = before.sequence - snap_seq
-            if age < 0 or age > request.max_fact_age:
+            if (
+                check_fact_fresh(
+                    before, barrier_ts, request.max_fact_age_s
+                )
+                is not None
+            ):
                 return GoldKeyOpenResult(
                     outcome=TreasureOutcome.FAILED,
                     before=before_first,
@@ -832,6 +905,7 @@ __all__ = (
     "TreasureOpenTargets",
     "TreasureOutcome",
     "check_currency",
+    "check_fact_fresh",
     "check_gold_ready",
     "execute_gold_key_open",
     "is_gold_ready",

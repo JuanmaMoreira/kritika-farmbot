@@ -391,3 +391,11 @@ Validación: `py_compile` + `git diff --check` limpios; E2 38 tests (percepción
 HIL (canal chat+steer, UNA condición por vez): Q1 lobby-tile, Q2 grid Gold, Q3 popup/result single, Q4 Karat (sólo si mostrable SIN gastar premium), Q5 control 10(Open), Q6 dismiss/Back. Smokes A (entry/exit, 0 opens), B (single, 1 key con aprobación), C (batch 10, sólo con aprobación; si no, HIL_NOT_EXERCISED y C6b usa singles).
 
 E2 DONE sólo con HIL A+B PASS + docs + suite verde + diff limpio. STOP después de E2 (C6b siguiente, Craft/Relief/MW fuera).
+
+## 20. E2 DONE: HIL A+B PASS con freshness por timestamp (2026-09-18)
+
+Smoke A PASS con código `f1d387c` (Lobby→Treasure→Lobby, 2 taps causales, Gold readiness positiva, cero opens). Smoke B bloqueó dos veces en `stale_fact` con cero gasto: `sequence` es contador del decoder (~30fps) y el snapshot autorizador envejece ~0.3s durante el analyze, así que el gap medía latencia del pipeline, no edad del contenido (un bump `max_fact_age` 2→8 falló live y se revirtió).
+
+Fix (`fix: use observation time for treasure freshness`): `TreasureCurrencyFact.observed_at` copiado del capture timestamp monotónico (Capture→Observation→snapshot→fact; builders jamás estampan now), barrera causal (`observed_at` > timestamp del snapshot selector) + `max_fact_age_s=2.0s` (renombrado con unidades; sequence queda sólo para orden/dedup). Tests 86 (runtime 33 + keys 47 + percepción 6, incl. regresión Smoke B con gap 60 seqs/skew 0.3s).
+
+Smoke B PASS con el fix: gate timestamp OK live, 1 tap selector + 1 tap single causal (cero retry, cero premium), after a 0.86s aún con popup (`NO_EFFECT` fail-closed correcto), resultado tardío (~2s+) observado y normalizado por el leave (dismiss verificado) + retorno a Lobby limpio 3/3. Consumo verificado por GT humano: contador cofre Gold 353 (foto) → 352 con exactamente 1 tap. Límite conocido: el after inmediato puede ser prematuro con animaciones lentas; el leave normaliza el result tardío. Batch 10 y Karat live: HIL_NOT_EXERCISED. E2 DONE; C6b next, no iniciado.

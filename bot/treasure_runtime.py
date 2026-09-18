@@ -317,12 +317,20 @@ class TreasureRuntime:
                 raise ValueError("transition must expose actions.adb.tap")
             adb.tap(*pixel)
 
+        # Freshness is physical, not sequential: the authorizing selector
+        # snapshot carries the popup frame capture time as the causal
+        # barrier, and the first currency read must come from a strictly
+        # newer frame within max_fact_age_s seconds. The decode counter
+        # advances at video rate while reads sample at analyze cadence,
+        # so a sequence gap measures pipeline latency, not content age
+        # (HIL 2026-09-18 Smoke B stale_fact with a genuinely live popup).
+        # The popup+Gold/no-Karat content gate stays the primary guard.
         request = GoldKeyOpenRequest(
             quantity=quantity,
             allowed_currency_kinds=frozenset(GOLD_ALLOWED_CURRENCY_KINDS),
             targets=open_targets(self.profile),
             max_actions=max_actions,
-            max_fact_age=2,
+            max_fact_age_s=2.0,
             source="lobby",
             return_to="lobby",
         )

@@ -54,17 +54,19 @@ def _observation(name, confidence=0.95):
 
 
 def _snapshot(sequence, *, base, observations=(), overlays=(), status=None,
-              candidates=()):
+              candidates=(), timestamp=None):
     if status is None:
         status = ResolutionStatus.RESOLVED if base else ResolutionStatus.UNKNOWN
+    if timestamp is None:
+        timestamp = float(sequence)
     image = np.zeros((1220, 2712, 3), dtype=np.uint8)
     return RuntimeSnapshot(
-        FrameSnapshot(image, float(sequence), sequence),
-        ObservationBatch(sequence, float(sequence), tuple(observations)),
+        FrameSnapshot(image, timestamp, sequence),
+        ObservationBatch(sequence, timestamp, tuple(observations)),
         ResolvedState(
             status,
             sequence,
-            float(sequence),
+            timestamp,
             base_context=base,
             overlays=tuple(overlays),
             base_candidates=tuple(candidates),
@@ -93,7 +95,7 @@ def _treasure_grid(sequence=2):
     )
 
 
-def _treasure_popup(sequence=3):
+def _treasure_popup(sequence=3, timestamp=None):
     return _snapshot(
         sequence,
         base=SCREEN_TREASURE,
@@ -103,10 +105,11 @@ def _treasure_popup(sequence=3):
             _observation(INDICATOR_TREASURE_GOLD_KEY_SELECTOR),
             _observation(INDICATOR_TREASURE_GOLD_KEY_REPEAT),
         ],
+        timestamp=timestamp,
     )
 
 
-def _treasure_result(sequence=4):
+def _treasure_result(sequence=4, timestamp=None):
     return _snapshot(
         sequence,
         base=SCREEN_TREASURE,
@@ -116,6 +119,7 @@ def _treasure_result(sequence=4):
             _observation(INDICATOR_TREASURE_GOLD_KEY_SELECTOR),
             _observation(INDICATOR_TREASURE_GOLD_KEY_REPEAT),
         ],
+        timestamp=timestamp,
     )
 
 
@@ -372,10 +376,12 @@ def test_execute_karat_first_fact_stops_before_confirm():
 
 
 def _open_session_snaps():
+    # Reads sample strictly newer frames than the authorizing snapshots
+    # (same decode counter is fine: freshness is capture time).
     return [
         _treasure_grid(2),
-        _treasure_popup(3),
-        _treasure_result(4),
+        _treasure_popup(3, timestamp=3.4),
+        _treasure_result(4, timestamp=3.8),
     ]
 
 
@@ -395,6 +401,28 @@ def test_execute_single_open_taps_single_point_once_with_success():
     assert adb.taps.count(single_pixel) == 1
 
 
+def test_execute_smoke_b_sequence_gap_with_fresh_frame_authorizes():
+    # HIL 2026-09-18 Smoke B: the decode counter advanced ~60 frames
+    # during analyze latency while the popup frame stayed 0.3s fresh.
+    # Freshness is capture time behind the selector barrier, never the
+    # counter gap (old contract failed this closed with zero spend).
+    runtime, adb = _runtime(
+        [
+            _treasure_grid(2),
+            _treasure_popup(70, timestamp=10.3),
+            _treasure_result(71, timestamp=10.6),
+        ],
+        [_treasure_popup(10, timestamp=10.0)],
+    )
+    result = runtime.execute_gold_key_open(_open_once())
+    assert result.outcome is TreasureOutcome.SUCCESS
+    assert result.opened == 1
+    assert result.inputs == ("tap_open_single",)
+    assert result.before is not None
+    assert result.before.sequence == 70
+    assert result.before.observed_at == 10.3
+
+
 def test_execute_selector_failure_does_no_capability_taps():
     runtime, adb = _runtime([_treasure_grid(2)], [_treasure_grid(3)])
     result = runtime.execute_gold_key_open(_open_once())
@@ -406,8 +434,8 @@ def test_execute_selector_failure_does_no_capability_taps():
 def test_execute_unchanged_postcondition_is_no_effect_without_retry():
     reads = [
         _treasure_grid(2),
-        _treasure_popup(3),
-        _treasure_popup(4),
+        _treasure_popup(3, timestamp=3.4),
+        _treasure_popup(4, timestamp=3.8),
     ]
     runtime, adb = _runtime(reads, [_treasure_popup(3)])
     result = runtime.execute_gold_key_open(_open_once())
@@ -419,8 +447,8 @@ def test_execute_unchanged_postcondition_is_no_effect_without_retry():
 def test_execute_stale_postcondition_is_not_success():
     reads = [
         _treasure_grid(2),
-        _treasure_popup(3),
-        _treasure_popup(3),
+        _treasure_popup(3, timestamp=3.4),
+        _treasure_popup(3, timestamp=3.6),
     ]
     runtime, adb = _runtime(reads, [_treasure_popup(3)])
     result = runtime.execute_gold_key_open(_open_once())
@@ -613,8 +641,8 @@ def test_session_completes_enter_open_leave():
         [
             _lobby(1),
             _treasure_grid(2),
-            _treasure_popup(3),
-            _treasure_result(4),
+            _treasure_popup(3, timestamp=3.4),
+            _treasure_result(4, timestamp=3.8),
             _treasure_grid(5),
         ],
         [_treasure_grid(2), _treasure_popup(3), _lobby(6)],
