@@ -2,6 +2,7 @@
 
 import inspect
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -34,6 +35,8 @@ from bot.treasure_fast_drain import (
     GoldKeyDrainOutcome,
     check_fast_drain_entry,
     drain_gold_keys_fast,
+    local_karat_boundary,
+    local_reward_side,
     resolve_right_button_target,
 )
 
@@ -199,6 +202,34 @@ def _drain(script, initial, *, config=None, clock=None, **kwargs):
     return result, clock
 
 
+def _reading(*, popup_gold=0.0, popup_karat=0.0, bar_gold=0.0, bar_karat=0.0):
+    """Title-independent content double with detector-like attributes."""
+    return SimpleNamespace(
+        single_gold_confidence=popup_gold,
+        repeat_gold_confidence=popup_gold,
+        single_karat_confidence=popup_karat,
+        repeat_karat_confidence=popup_karat,
+        bar_single_gold_confidence=bar_gold,
+        bar_repeat_gold_confidence=bar_gold,
+        bar_single_karat_confidence=bar_karat,
+        bar_repeat_karat_confidence=bar_karat,
+    )
+
+
+def _measure_script(readings):
+    """Measure double replaying one reading per fresh frame."""
+    state = {"calls": 0, "readings": list(readings)}
+
+    def measure(_image):
+        state["calls"] += 1
+        if len(state["readings"]) > 1:
+            return state["readings"].pop(0)
+        return state["readings"][0]
+
+    measure.state = state
+    return measure
+
+
 # Right-button semantics.
 
 
@@ -341,6 +372,31 @@ def test_watchdog_visual_stall_stops_with_zero_further_input():
     assert len(script.taps) == 2
 
 
+def test_watchdog_state_churn_is_progress_not_stall():
+    # Round A lesson: the chest ROI can look static while taps cycle
+    # observed<->transient states. Same ROI mark but changing
+    # observations must sustain the drain, never stall it.
+    measure = _measure_script([_reading(bar_gold=1.0)] * 8)
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _unknown(12),
+        _popup(13, timestamp=13.0),
+        _unknown(14),
+        _karat(15, timestamp=15.0),
+    ])
+    config = GoldKeyDrainConfig(watchdog_every=2)
+    result, _ = _drain(
+        script,
+        _popup(10, timestamp=10.0),
+        config=config,
+        measure_local=measure,
+        fingerprint=lambda snap: "static-roi",
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 4
+    assert result.watchdogs_run == 2
+
+
 def test_watchdog_context_lost_stops():
     script = _Script([_popup(11, timestamp=11.0), _foreign(12)])
     result, _ = _drain(script, _popup(10, timestamp=10.0))
@@ -355,7 +411,6 @@ def test_unknown_authorizes_zero_further_input():
     result, clock = _drain(script, _popup(10, timestamp=10.0))
     assert result.outcome is GoldKeyDrainOutcome.FAILED
     assert result.reason == "unknown_state_timeout"
-    assert result.inputs_emitted == 0
     assert script.taps == []
     assert clock.sleeps, "transient wait must poll, never spin"
 
@@ -592,3 +647,279 @@ def test_runtime_module_untouched_by_drain_imports():
     for forbidden in ("trading", "craft", "relief", "planner", "stage",
                       "capacity", "silver", "output_full"):
         assert forbidden not in params, forbidden
+
+
+# Reward transient: title hidden, right Gold stays actionable locally.
+
+
+def test_local_reward_side_requires_pair_gold_without_karat():
+    assert local_reward_side(_reading(bar_gold=1.0)) == "bar"
+    assert local_reward_side(_reading(popup_gold=1.0)) == "popup"
+    # Lone icon without its pair never authorizes.
+    lone = _reading()
+    lone.bar_repeat_gold_confidence = 1.0
+    assert local_reward_side(lone) is None
+    # Any Karat vetoes, even with Gold present.
+    assert local_reward_side(_reading(bar_gold=1.0, bar_karat=1.0)) is None
+    assert local_reward_side(_reading(popup_gold=1.0, popup_karat=1.0)) is None
+    assert local_reward_side(_reading()) is None
+    assert local_reward_side(object()) is None
+
+
+def test_local_karat_boundary_needs_premium_without_gold():
+    assert local_karat_boundary(_reading(bar_karat=1.0)) is True
+    assert local_karat_boundary(_reading(popup_karat=1.0)) is True
+    assert local_karat_boundary(_reading(bar_gold=1.0)) is False
+    assert local_karat_boundary(_reading(bar_gold=1.0, bar_karat=1.0)) is False
+    assert local_karat_boundary(_reading()) is False
+
+
+def test_reward_grid_unknown_with_local_gold_stays_actionable():
+    measure = _measure_script([_reading(bar_gold=1.0)] * 4)
+    script = _Script([
+        _unknown(11),
+        _unknown(12),
+        _unknown(13),
+        _karat(14, timestamp=14.0),
+    ])
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 3
+    assert script.taps == [BAR_REPEAT_POINT] * 3
+    assert SINGLE_POINT not in script.taps
+
+
+def test_reward_grid_unknown_without_local_gold_is_zero_input():
+    measure = _measure_script([_reading()])
+    script = _Script([_unknown(11)])
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert result.inputs_emitted == 0
+    assert script.taps == []
+
+
+def test_strong_foreign_never_consults_local_measure():
+    calls = []
+
+    def measure(_image):
+        calls.append(1)
+        return _reading(bar_gold=1.0)
+
+    script = _Script([_foreign(11)])
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert result.outcome is GoldKeyDrainOutcome.CONTEXT_LOST
+    assert result.inputs_emitted == 0
+    assert script.taps == []
+    assert calls == []
+
+
+def test_reward_transient_disabled_restores_strict_behavior():
+    measure = _measure_script([_reading(bar_gold=1.0)])
+    script = _Script([_unknown(11)])
+    config = GoldKeyDrainConfig(reward_transient=False)
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0),
+        config=config, measure_local=measure,
+    )
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert result.reason == "unknown_state_timeout"
+    assert script.taps == []
+    with pytest.raises(ValueError):
+        GoldKeyDrainConfig(reward_transient="yes")
+
+
+# No-dismiss invariant: the only input is the right-button point.
+
+
+def test_module_has_no_dismiss_or_outside_button_vocabulary():
+    # Prose may name the forbidden behavior to forbid it; code must not
+    # be able to express it: no dismiss/outside call identifiers.
+    source = (Path(__file__).resolve().parent.parent
+              / "bot" / "treasure_fast_drain.py").read_text(encoding="utf-8")
+    import_lines = {line for line in source.splitlines()
+                    if line.strip().startswith(("import ", "from "))}
+    code = "\n".join(
+        line for line in source.splitlines() if line not in import_lines
+    )
+    lowered = code.casefold()
+    for forbidden in ("dismiss(", "DismissTreasure", "tap_outside",
+                      "outside_tap", "outside_point", "dismiss_tap"):
+        assert forbidden.casefold() not in lowered, forbidden
+
+
+def test_every_tap_lands_on_a_right_button_point():
+    measure = _measure_script(
+        [_reading(bar_gold=1.0), _reading(popup_gold=1.0)]
+    )
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _unknown(12),
+        _unknown(13),
+        _karat(14, timestamp=14.0),
+    ])
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert result.inputs_emitted == 3
+    assert script.taps[0] == SELECTOR_REPEAT_POINT
+    assert set(script.taps) <= {SELECTOR_REPEAT_POINT, BAR_REPEAT_POINT}
+
+
+# Dual-role taps: cut animation or start next batch, never counted.
+
+
+def test_repeated_local_taps_allowed_on_fresh_frames():
+    measure = _measure_script([_reading(bar_gold=1.0)] * 6)
+    script = _Script(
+        [_unknown(seq) for seq in range(11, 15)]
+        + [_karat(15, timestamp=15.0)]
+    )
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 4
+
+
+def test_taps_are_never_reported_as_batches():
+    measure = _measure_script([_reading(bar_gold=1.0)] * 3)
+    script = _Script([_unknown(11), _karat(12, timestamp=12.0)])
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert not hasattr(result, "opened")
+    joined = " ".join(result.evidence)
+    assert "consumed" not in joined
+    assert "opened:" not in joined
+    assert "batch" not in joined
+
+
+# Corrected watchdog: reward transient is healthy, title never stalls.
+
+
+def test_watchdog_accepts_reward_transient_as_healthy():
+    measure = _measure_script([_reading(bar_gold=1.0)] * 8)
+    script = _Script(
+        [_unknown(seq) for seq in range(11, 15)]
+        + [_karat(15, timestamp=15.0)]
+    )
+    config = GoldKeyDrainConfig(watchdog_every=2)
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0),
+        config=config, measure_local=measure,
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 4
+    assert result.watchdogs_run == 2
+
+
+def test_watchdog_stalls_on_frozen_reward_grid():
+    measure = _measure_script([_reading(bar_gold=1.0)] * 8)
+    script = _Script([_unknown(seq) for seq in range(11, 30)])
+    config = GoldKeyDrainConfig(watchdog_every=2)
+    result, _ = _drain(
+        script,
+        _popup(10, timestamp=10.0),
+        config=config,
+        measure_local=measure,
+        fingerprint=lambda snap: "frozen-grid",
+    )
+    assert result.outcome is GoldKeyDrainOutcome.STALL_SUSPECTED
+    assert result.inputs_emitted == 2
+    assert len(script.taps) == 2
+
+
+# Termination through the local path.
+
+
+def test_local_karat_terminates_without_premium_tap():
+    measure = _measure_script([_reading(bar_karat=1.0)] * 6)
+    script = _Script([
+        _unknown(11),
+        _unknown(12),
+        _karat(13, timestamp=13.0),
+    ])
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0), measure_local=measure
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 0
+    assert script.taps == []
+    assert result.karat_boundary_seen is True
+
+
+def test_local_karat_without_confirmation_fails_closed():
+    measure = _measure_script([_reading(bar_karat=1.0)] * 200)
+    script = _Script([_unknown(11)])
+    config = GoldKeyDrainConfig(transient_wait_s=0.2)
+    result, _ = _drain(
+        script, _popup(10, timestamp=10.0),
+        config=config, measure_local=measure,
+    )
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert result.inputs_emitted == 0
+    assert script.taps == []
+
+
+# Reward-transient entry: verified open + local pair Gold suffices.
+
+
+def test_entry_from_reward_transient_with_verified_open():
+    measure = _measure_script([_reading(bar_gold=1.0)] * 4)
+    script = _Script([
+        _unknown(12),
+        _karat(13, timestamp=13.0),
+    ])
+    clock = _Clock()
+    result = drain_gold_keys_fast(
+        initial_snapshot=_unknown(11),
+        observe=script.observe,
+        tap=script.tap,
+        config=GoldKeyDrainConfig(),
+        initial_open_verified=True,
+        clock=clock.now,
+        sleeper=clock.sleep,
+        fingerprint=lambda snap: ("seq", snap.sequence),
+        measure_local=measure,
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 1
+    assert script.taps == [BAR_REPEAT_POINT]
+    assert "entry:reward_transient_local" in result.evidence
+
+
+def test_entry_from_transient_refused_without_measure_or_verify():
+    script = _Script([_karat(12, timestamp=12.0)])
+    clock = _Clock()
+    result = drain_gold_keys_fast(
+        initial_snapshot=_unknown(11),
+        observe=script.observe,
+        tap=script.tap,
+        config=GoldKeyDrainConfig(),
+        initial_open_verified=True,
+        clock=clock.now,
+        sleeper=clock.sleep,
+        fingerprint=lambda snap: ("seq", snap.sequence),
+    )
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert result.reason == "unknown_state"
+    assert script.taps == []
+    denied = drain_gold_keys_fast(
+        initial_snapshot=_unknown(11),
+        observe=script.observe,
+        tap=script.tap,
+        config=GoldKeyDrainConfig(),
+        initial_open_verified=False,
+        clock=clock.now,
+        sleeper=clock.sleep,
+        fingerprint=lambda snap: ("seq", snap.sequence),
+        measure_local=_measure_script([_reading(bar_gold=1.0)]),
+    )
+    assert denied.outcome is GoldKeyDrainOutcome.FAILED
+    assert denied.reason == "entry_not_verified"

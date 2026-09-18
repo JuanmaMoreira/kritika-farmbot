@@ -13,7 +13,12 @@ device before and after):
 - ``burst``: E2 single-open entry (``TreasureRuntime``,
   ``OPEN_ONCE``, 1 key, fully verified) then ``drain_gold_keys_fast``
   with the requested cadence and caps. Stops on Karat boundary,
-  contradiction, stall, context loss, cancel or deadline.
+  contradiction, stall, context loss, cancel or deadline. The fast
+  drain taps ONLY the Gold-backed right button (observed or local
+  reward-transient pair Gold); it never taps outside buttons to
+  dismiss, never the left button. The batch-10 reward grid that covers
+  the title is a known transient: the loop keeps tapping the same
+  right button through it (dual role: cut animation or next batch).
 
 Evidence lands under ``artifacts/hil_e2_fastdrain/<stamp>/`` (raws, not
 versioned): ``frame_*.png`` per fast-loop observation plus
@@ -41,6 +46,7 @@ from bot.action_executor import ActionExecutor  # noqa: E402
 from bot.catalog import build_default_resolver  # noqa: E402
 from bot.config import RuntimeConfig  # noqa: E402
 from bot.perception import build_treasure_perception  # noqa: E402
+from bot.perception.treasure_center import TreasureContentDetector  # noqa: E402
 from bot.runtime import build_adb_client, build_frame_source  # noqa: E402
 from bot.runtime_observer import RuntimeObserver  # noqa: E402
 from bot.treasure_center import (  # noqa: E402
@@ -73,6 +79,10 @@ def parse_args(argv=None):
     parser.add_argument("--watchdog-every", type=int, default=10)
     parser.add_argument("--deadline", type=float, default=60.0)
     parser.add_argument("--dry-run-seconds", type=float, default=4.0)
+    parser.add_argument(
+        "--no-reward-transient", action="store_true",
+        help="disable the local reward-grid contract (strict observed-only)",
+    )
     parser.add_argument(
         "--skip-entry", action="store_true",
         help="Skip the E2 OPEN_ONCE entry and start the fast drain from the "
@@ -151,6 +161,7 @@ def main(argv=None) -> int:
             runtime = TreasureRuntime(
                 observer, transition, cancel_requested=cancel_requested
             )
+            content = TreasureContentDetector()
             latest = {"snapshot": None}
 
             def observe():
@@ -225,6 +236,19 @@ def main(argv=None) -> int:
             entry_reason = check_fast_drain_entry(
                 initial, initial_open_verified=True
             )
+            if entry_reason is not None and args.skip_entry:
+                # Reward-transient entry: same local contract as the
+                # loop (verified open is the --gt lineage); the module
+                # re-validates it before the first tap.
+                from bot.treasure_fast_drain import local_reward_side
+
+                try:
+                    side = local_reward_side(content.measure(initial.frame.image))
+                except Exception:
+                    side = None
+                if side is not None:
+                    print(f"[burst] transient entry: local_gold:{side}")
+                    entry_reason = None
             print(
                 f"[burst] fast entry: {_describe(initial)} "
                 f"refusal={entry_reason}"
@@ -238,6 +262,7 @@ def main(argv=None) -> int:
                 watchdog_every=args.watchdog_every,
                 safety_deadline_s=args.deadline,
                 max_inputs=args.max_inputs,
+                reward_transient=not args.no_reward_transient,
             )
 
             def tap(point) -> None:
@@ -287,6 +312,7 @@ def main(argv=None) -> int:
                 cancel_requested=cancel_requested,
                 clock=time.monotonic,
                 sleeper=time.sleep,
+                measure_local=content.measure,
             )
             report["result"] = {
                 "outcome": result.outcome.value,

@@ -2,8 +2,8 @@
 
 Treasure-specific rapid drain over an already-opened repeat state. The
 caller owns entry (Lobby -> Treasure -> first verified open via the E2
-path) and return (dismiss/leave); this module only taps the RIGHT Gold
-button fast while it stays Gold-backed, then classifies the boundary.
+path) and return; this module only taps the RIGHT Gold button fast
+while it stays Gold-backed, then classifies the boundary.
 
 Semantics (amount-agnostic, no OCR of the number):
 
@@ -14,41 +14,76 @@ Semantics (amount-agnostic, no OCR of the number):
   role backed by Karats/premium. Normal termination, zero taps.
 - Gold+Karat together: contradiction, zero input, fail closed.
 - The LEFT ``1(Open)`` control is never a drain target.
+- No dismiss/outside-button tap exists anywhere in this module: the
+  only input is the calibrated right-button point.
 
-UI audit (E/E2/E2.1 raws, 2026-09-17/18):
+Reward transient (``TREASURE_GOLD_REWARD_ACTIVE``, local only):
+
+- HIL Round A proved the right button stays actionable through the
+  reward animation/grid: one tap on ``10(Open)`` consumed a batch of 10
+  (318->308) while the 10-reward grid covered the Treasure title, so
+  the snapshot resolves UNKNOWN and the title-gated detector emits
+  nothing. The bar pills stay Gold-backed in pixels
+  (``bar_repeat_gold == bar_single_gold == 1.0``, every karat ``0.0``).
+- The grid is therefore a KNOWN post-open transient of the same
+  operation, never context loss and never a dismiss request. While it
+  lasts, the same right button is the only correct target: a tap may
+  cut/accelerate the animation or start the next batch (dual role, no
+  a-priori labeling, never counted as opened batches).
+- Local source contract (deliberately local, never globalized): after
+  the verified entry, any fresh frame is drain-actionable when the
+  title-independent local reading shows pair Gold (popup single+repeat
+  or bar single+repeat icon gold) with zero Karat anywhere, no strong
+  foreign base, and a timestamp newer than the previous input's frame.
+  Sensing reuses ``TreasureContentDetector.measure`` ROIs/thresholds
+  exactly (no new detector, no manifest, no evaluator); the caller
+  injects it as ``measure_local`` (``None`` disables the transient
+  path). Causal lineage (verified entry, no boundary seen) replaces the
+  title gate; the watchdog's visual-progress bound caps residual
+  foreign-pixel risk to ``watchdog_every`` inputs.
+
+UI audit (E/E2/E2.1 raws, 2026-09-17/18 + Round A HIL):
 
 - selector popup (initial): center overlay, right button bbox approx
   x 0.650-0.730 / y 0.395-0.565, point (0.693, 0.540) geometrically
   calibrated from the B1 popup (``TREASURE_PROFILE.repeat_point``).
-  Repeat tap itself HIL_NOT_EXERCISED.
+  Repeat tap itself HIL_NOT_EXERCISED (bar tap exercised instead).
 - result overlay (repeat): bottom bar, right icon ROI x 0.305-0.365 /
   y 0.78-0.86, centroid (0.335, 0.82). Different position from the
-  selector popup: the target is resolved per snapshot
-  (result -> bar, else selector). Bar repeat tap HIL_NOT_EXERCISED.
+  selector popup: the target is resolved per snapshot/reading
+  (result/bar-side -> bar, else selector). Bar tap HIL PASS (1 tap =
+  1 batch-10, 318->308, cero premium).
 - detector split: popup repeat needs the ``10(Open)`` label yellow +
   icon gold; bar repeat needs only the icon gold under a result gate.
-  ``1..9`` right-button popup variants are therefore HIL_PENDING: if a
-  small-number right button ever stops emitting the repeat signal, the
-  detector needs the minimal icon-over-label relaxation (this module
-  does not change detection, it only refuses to read the number).
+  ``1..9`` right-button popup variants are therefore HIL_PENDING: the
+  local pair-Gold reading already ignores the number, live 7/1 variants
+  still pending.
+- batch-10 reward grid: title occluded (UNKNOWN), bar pills Gold 1.0,
+  karats 0.0, persistent without taps. Known transient, not loss.
 
 Loop (fast path, no result wait per tap, no full scope per cycle):
 
 - one fresh observation per tap decision (``observed_at`` strictly
   newer than the observation used for the previous input; resamples
   are skipped with zero input, never a second tap on one frame);
-- ``tap_interval_s`` (default 0.20) cadence slots via injected
+- ``tap_interval_s`` (default 0.15, HIL-stable) cadence slots via injected
   clock/sleeper (no busy loop);
-- full watchdog every ``watchdog_every`` inputs (default 10): Treasure
-  context, open/result compatibility, Gold/Karat coherence, no
-  foreign, no UNKNOWN/AMBIGUOUS, plus a cheap visual-progress
-  fingerprint over the animation/result ROI (default: downsampled
-  result-region hash; identical button + identical ROI across a
-  watchdog window -> STALL_SUSPECTED, stop touching);
-- gold gone -> stop inputs immediately -> full classify:
-  RIGHT_KARAT_OPEN (no Gold anywhere) -> GOLD_KEYS_EXHAUSTED with zero
-  premium taps; transient Gold still visible -> bounded wait for
-  reappearance; UNKNOWN/AMBIGUOUS/foreign/contradiction -> fail closed.
+- full watchdog every ``watchdog_every`` inputs (default 10): healthy
+  states are (A) title Treasure + observed Gold, (B) known reward grid
+  + local pair Gold, (C) known repeat overlay + observed Gold; any of
+  them sustains the drain. Hidden title alone never stalls and never
+  loses context. Verified: coherent right-button semantics, Gold/Karat
+  split, fresh observations, no strong foreign, plus per-tap change
+  marks (ROI fingerprint + observation names over the animation/result
+  area): STALL_SUSPECTED only when no tap of the window changed
+  anything observable, then stop touching. State churn between
+  observed and transient frames is progress, so one static ROI alone
+  never stalls a working loop;
+- right Gold gone (observed and local) -> stop inputs immediately ->
+  bounded classify: RIGHT_KARAT_OPEN (no Gold anywhere) ->
+  GOLD_KEYS_EXHAUSTED with zero premium taps; otherwise bounded
+  reobserve, fail closed on timeout. UNKNOWN without any positive
+  right-button signal: zero input.
 
 Safety is a fuse, never policy: ``safety_deadline_s`` (default 300s)
 plus a very high ``max_inputs`` technical fuse (default 10000). Tap
@@ -96,6 +131,17 @@ RESULT_FINGERPRINT_REGION: tuple[float, float, float, float] = (
     0.80,
 )
 
+#: Local pair-Gold confidence threshold for the reward-transient path.
+#: Same contract as the detector's composite gate
+#: (``TREASURE_CONTENT_CONFIDENCE_THRESHOLD`` in
+#: ``bot.perception.treasure_center``); kept as a literal with provenance
+#: so this module never imports the perception engine.
+REWARD_TRANSIENT_GOLD_THRESHOLD: float = 0.50
+
+#: Local sides for the dual-role right-button tap.
+LOCAL_SIDE_POPUP: str = "popup"
+LOCAL_SIDE_BAR: str = "bar"
+
 
 class GoldKeyDrainOutcome(str, Enum):
     """Terminal taxonomy for one fast-drain visit (no routing meaning)."""
@@ -112,20 +158,26 @@ class GoldKeyDrainOutcome(str, Enum):
 class GoldKeyDrainConfig:
     """Explicit fast-loop tuning; no hidden policy.
 
-    ``tap_interval_s`` is the minimum spacing between inputs (initial
-    0.20 from the E2.2 brief; HIL characterizes the stable minimum).
+    ``tap_interval_s`` is the minimum spacing between inputs (0.15:
+    HIL Round B measured stable with zero loss/mis-taps; 0.20 Round A
+    equivalent, both floor-bound by ~0.22s analyze+tap overhead, so
+    0.10 adds queue risk for no gain).
     ``watchdog_every`` counts inputs between full watchdogs.
     ``safety_deadline_s`` is a generous fuse, not success criteria.
     ``max_inputs`` is a very high technical fuse, never a batch plan.
     ``transient_wait_s`` bounds the reappearance wait after the Gold
     button disappears while other Gold is still visible.
+    ``reward_transient`` enables the local reward-grid contract (taps on
+    title-independent pair-Gold frames after the verified entry);
+    ``False`` restores the strict observed-only behavior.
     """
 
-    tap_interval_s: float = 0.20
+    tap_interval_s: float = 0.15
     watchdog_every: int = 10
     safety_deadline_s: float = 300.0
     max_inputs: int = 10000
     transient_wait_s: float = 5.0
+    reward_transient: bool = True
 
     def __post_init__(self) -> None:
         if (
@@ -165,6 +217,9 @@ class GoldKeyDrainConfig:
         ):
             raise ValueError("transient_wait_s must be a duration in [0, 120]")
         object.__setattr__(self, "transient_wait_s", float(self.transient_wait_s))
+        if self.reward_transient not in (True, False):
+            raise ValueError("reward_transient must be a boolean")
+        object.__setattr__(self, "reward_transient", bool(self.reward_transient))
 
 
 @dataclass(frozen=True)
@@ -267,6 +322,72 @@ def resolve_right_button_target(
     return (float(repeat_point[0]), float(repeat_point[1]))
 
 
+def local_reward_side(reading) -> str | None:
+    """Return the drainable side from a title-independent reading, else None.
+
+    ``TREASURE_GOLD_REWARD_ACTIVE`` in one check: pair Gold on one
+    surface (popup single+repeat or bar single+repeat icon gold, same
+    0.50 contract as the detector) with zero Karat on every icon ROI.
+    False negatives only delay (bounded wait, fail closed); a lone icon
+    without its pair never authorizes. ``reading`` is the
+    ``TreasureContentDetector.measure`` value (or a test double with
+    the same confidence attributes); the title confidence is
+    deliberately ignored here because lineage replaces the gate.
+    """
+    try:
+        threshold = float(REWARD_TRANSIENT_GOLD_THRESHOLD)
+        popup_single = float(reading.single_gold_confidence)  # type: ignore[attr-defined]
+        popup_repeat = float(reading.repeat_gold_confidence)  # type: ignore[attr-defined]
+        bar_single = float(reading.bar_single_gold_confidence)  # type: ignore[attr-defined]
+        bar_repeat = float(reading.bar_repeat_gold_confidence)  # type: ignore[attr-defined]
+        karats = (
+            float(reading.single_karat_confidence),  # type: ignore[attr-defined]
+            float(reading.repeat_karat_confidence),  # type: ignore[attr-defined]
+            float(reading.bar_single_karat_confidence),  # type: ignore[attr-defined]
+            float(reading.bar_repeat_karat_confidence),  # type: ignore[attr-defined]
+        )
+    except (AttributeError, TypeError, ValueError):
+        return None
+    if any(karat >= threshold for karat in karats):
+        return None
+    bar_pair = bar_single >= threshold and bar_repeat >= threshold
+    popup_pair = popup_single >= threshold and popup_repeat >= threshold
+    if bar_pair:
+        return LOCAL_SIDE_BAR
+    if popup_pair:
+        return LOCAL_SIDE_POPUP
+    return None
+
+
+def local_karat_boundary(reading) -> bool:
+    """Return True when the local reading shows premium backing, no Gold.
+
+    Mirrors ``RIGHT_KARAT_OPEN`` without the title: repeat-side Karat
+    (popup or bar) with no drainable Gold side and no Gold anywhere
+    (any Gold+Karat mix is a contradiction, never a boundary).
+    Authorizes zero taps; the caller confirms through resolvable
+    observations before reporting exhaustion, and times out fail-closed
+    otherwise.
+    """
+    if local_reward_side(reading) is not None:
+        return False
+    try:
+        threshold = float(REWARD_TRANSIENT_GOLD_THRESHOLD)
+        golds = (
+            float(reading.single_gold_confidence),  # type: ignore[attr-defined]
+            float(reading.repeat_gold_confidence),  # type: ignore[attr-defined]
+            float(reading.bar_single_gold_confidence),  # type: ignore[attr-defined]
+            float(reading.bar_repeat_gold_confidence),  # type: ignore[attr-defined]
+        )
+        repeat_karat = float(reading.repeat_karat_confidence)  # type: ignore[attr-defined]
+        bar_repeat_karat = float(reading.bar_repeat_karat_confidence)  # type: ignore[attr-defined]
+    except (AttributeError, TypeError, ValueError):
+        return False
+    if any(gold >= threshold for gold in golds):
+        return False
+    return repeat_karat >= threshold or bar_repeat_karat >= threshold
+
+
 def default_progress_fingerprint(snapshot) -> tuple:
     """Cheap visual-progress hash over the animation/result ROI.
 
@@ -325,14 +446,20 @@ def drain_gold_keys_fast(
     clock=None,
     sleeper=None,
     fingerprint=None,
+    measure_local=None,
 ) -> GoldKeyDrainResult:
     """Drain Gold Keys through the right button until the Karat boundary.
 
     Injected I/O only: ``observe`` returns a fresh classified snapshot
-    per call, ``tap`` performs one normalized tap at the given point.
-    Exactly one tap per fresh RIGHT_GOLD_OPEN_MAX observation, watchdog
-    every ``watchdog_every`` inputs, Karat boundary as the only normal
-    end. Zero premium taps, zero left-button taps, zero tap-count
+    per call, ``tap`` performs one normalized tap at the given point,
+    ``measure_local`` (optional) returns a title-independent content
+    reading for ``snapshot.frame.image`` (``TreasureContentDetector``
+    ``.measure`` in production, a double in tests). Exactly one tap per
+    fresh RIGHT_GOLD_OPEN_MAX observation -- observed or local reward
+    transient -- with dual role (cut animation or start next batch,
+    never labeled, never counted). Watchdog every ``watchdog_every``
+    inputs, Karat boundary as the only normal end. Zero premium taps,
+    zero left-button taps, zero outside-button taps, zero tap-count
     termination. ``clock``/``sleeper`` make cadence injectable for
     tests; ``fingerprint`` makes the visual-progress check injectable.
     """
@@ -344,6 +471,8 @@ def drain_gold_keys_fast(
         raise ValueError("observe and tap must be callable")
     if not callable(cancel_requested):
         raise ValueError("cancel_requested must be callable")
+    if measure_local is not None and not callable(measure_local):
+        raise ValueError("measure_local must be callable or None")
     now = clock if clock is not None else time.monotonic
     if not callable(now):
         raise ValueError("clock must be callable or None")
@@ -397,6 +526,30 @@ def drain_gold_keys_fast(
     entry_reason = check_fast_drain_entry(
         initial_snapshot, initial_open_verified=initial_open_verified
     )
+    if entry_reason is not None and (
+        initial_open_verified is True
+        and config.reward_transient
+        and measure_local is not None
+        and entry_reason
+        in (
+            "unknown_state",
+            "ambiguous_state",
+            "right_gold_absent",
+            "no_repeat_state",
+        )
+    ):
+        # Reward-transient entry: the verified open is caller-attested
+        # lineage; the first frame only needs local pair Gold (same
+        # contract as the loop). Karat/contradiction still refuse.
+        try:
+            entry_reading = measure_local(initial_snapshot.frame.image)  # type: ignore[attr-defined]
+        except Exception:
+            entry_reading = None
+        if entry_reading is not None and (
+            local_reward_side(entry_reading) is not None
+        ):
+            entry_reason = None
+            evidence.append("entry:reward_transient_local")
     if entry_reason is not None:
         return _finish(
             GoldKeyDrainOutcome.FAILED,
@@ -417,6 +570,26 @@ def drain_gold_keys_fast(
     except Exception:
         watchdog_fp = None
     transient_deadline: float | None = None
+    last_reading = None
+    last_tap_mark = None
+    progressed_since_watchdog = False
+
+    def _tap_mark(snapshot):
+        """Cheap per-tap change mark: ROI fingerprint + observation names."""
+        try:
+            mark_fp = fingerprint_of(snapshot)
+        except Exception:
+            mark_fp = None
+        try:
+            names = tuple(
+                sorted(
+                    observation.name
+                    for observation in snapshot.observations.observations  # type: ignore[attr-defined]
+                )
+            )
+        except Exception:
+            names = ()
+        return (mark_fp, names)
 
     def _point_for(snapshot) -> tuple[float, float]:
         if target is not None:
@@ -426,6 +599,114 @@ def drain_gold_keys_fast(
         return resolve_right_button_target(
             snapshot, repeat_point=repeat_point, bar_repeat_point=bar_repeat_point
         )
+
+    def _local_point(side: str) -> tuple[float, float]:
+        if target is not None:
+            return target
+        if side == LOCAL_SIDE_BAR:
+            return _require_point(bar_repeat_point, "bar_repeat_point")
+        return _require_point(repeat_point, "repeat_point")
+
+    def _do_tap(point, tag: str):
+        """Emit one right-button tap; return a terminal result or None."""
+        nonlocal inputs, last_ts, transient_deadline, last_reading
+        nonlocal last_tap_mark, progressed_since_watchdog
+        try:
+            tap(point)
+        except Exception as error:
+            return _finish(
+                GoldKeyDrainOutcome.FAILED,
+                reason=f"tap_failed:{type(error).__name__}",
+                extra=("tap_failed",),
+            )
+        inputs += 1
+        last_ts = observed_ts
+        transient_deadline = None
+        if tag.startswith("local-"):
+            last_reading = pending_reading
+        else:
+            last_reading = None
+        mark = _tap_mark(snapshot)
+        if last_tap_mark is not None and mark != last_tap_mark:
+            progressed_since_watchdog = True
+        last_tap_mark = mark
+        evidence.append(f"tap_right:{inputs}:{tag}")
+        sleep(config.tap_interval_s)
+        return None
+
+    def _do_watchdog(snapshot):
+        """Corrected watchdog: A/B/C healthy, hidden title never stalls."""
+        nonlocal watchdogs, watchdog_fp, karat_seen
+        nonlocal last_tap_mark, progressed_since_watchdog
+        watchdogs += 1
+        if not is_treasure_screen(snapshot) and getattr(
+            getattr(snapshot, "state", None), "status", None
+        ) not in (ResolutionStatus.UNKNOWN, ResolutionStatus.AMBIGUOUS):
+            return _finish(
+                GoldKeyDrainOutcome.CONTEXT_LOST,
+                reason="context_lost",
+                extra=("watchdog:context_lost",),
+            )
+        if has_gold_signal(snapshot) and has_karat_signal(snapshot):
+            return _finish(
+                GoldKeyDrainOutcome.FAILED,
+                reason="contradictory_state",
+                extra=("watchdog:contradictory_state",),
+            )
+        healthy = has_right_gold_open_max(snapshot)
+        if has_right_karat_open(snapshot) and not has_gold_signal(snapshot):
+            karat_seen = True
+            return _finish(
+                GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED,
+                reason="karat_boundary",
+                extra=(f"watchdog:{watchdogs}", "boundary:karat"),
+            )
+        if not healthy and (
+            last_reading is not None
+            and local_reward_side(last_reading) is not None
+        ):
+            healthy = True
+            evidence.append(f"watchdog:{watchdogs}:reward_transient")
+        if not healthy:
+            return _finish(
+                GoldKeyDrainOutcome.FAILED,
+                reason="unexpected_state",
+                extra=("watchdog:unexpected_state",),
+            )
+        try:
+            current_fp = fingerprint_of(snapshot)
+        except Exception:
+            current_fp = None
+        # STALL only when fresh taps changed nothing observable: same
+        # ROI fingerprint AND same observation names on every tap of the
+        # window. State churn (observed<->transient cycling) is progress,
+        # so a static chest ROI alone never stalls a working loop.
+        if not progressed_since_watchdog:
+            return _finish(
+                GoldKeyDrainOutcome.STALL_SUSPECTED,
+                reason="visual_stall",
+                extra=(f"watchdog:{watchdogs}", "visual_stall"),
+            )
+        watchdog_fp = current_fp
+        last_tap_mark = _tap_mark(snapshot)
+        progressed_since_watchdog = False
+        evidence.append(f"watchdog:{watchdogs}")
+        return None
+
+    def _wait_bounded(label: str):
+        """Bounded no-input wait; return a terminal result or None."""
+        nonlocal transient_deadline
+        if transient_deadline is None:
+            transient_deadline = now() + config.transient_wait_s
+            evidence.append(f"transient_wait_start:{label}")
+        if now() >= transient_deadline:
+            return _finish(
+                GoldKeyDrainOutcome.FAILED,
+                reason=f"{label}_timeout",
+                extra=(f"{label}_timeout",),
+            )
+        sleep(min(0.05, config.tap_interval_s))
+        return None
 
     while True:
         if _cancelled():
@@ -455,29 +736,11 @@ def drain_gold_keys_fast(
                 extra=("observe_failed",),
             )
         status = getattr(getattr(snapshot, "state", None), "status", None)
-        if status is ResolutionStatus.UNKNOWN or (
-            status is ResolutionStatus.AMBIGUOUS
+        if status is ResolutionStatus.RESOLVED and not is_treasure_screen(
+            snapshot
         ):
-            # Animation frames lose the title anchor (known detector
-            # limit): stop inputs, wait bounded for the repeat state to
-            # come back, fail closed on timeout. Never a tap here.
-            label = (
-                "unknown_state"
-                if status is ResolutionStatus.UNKNOWN
-                else "ambiguous_state"
-            )
-            if transient_deadline is None:
-                transient_deadline = now() + config.transient_wait_s
-                evidence.append(f"transient_wait_start:{label}")
-            if now() >= transient_deadline:
-                return _finish(
-                    GoldKeyDrainOutcome.FAILED,
-                    reason=f"{label}_timeout",
-                    extra=(f"{label}_timeout",),
-                )
-            sleep(min(0.05, config.tap_interval_s))
-            continue
-        if not is_treasure_screen(snapshot):
+            # Strong foreign context: positively resolved elsewhere.
+            # Reward-grid UNKNOWN/AMBIGUOUS never reaches here.
             return _finish(
                 GoldKeyDrainOutcome.CONTEXT_LOST,
                 reason="context_lost",
@@ -497,6 +760,7 @@ def drain_gold_keys_fast(
                 reason="unreadable_timestamp",
                 extra=("unreadable_timestamp",),
             )
+        pending_reading = None
 
         if has_right_gold_open_max(snapshot):
             transient_deadline = None
@@ -513,87 +777,79 @@ def drain_gold_keys_fast(
                     reason=f"target_failed:{type(error).__name__}",
                     extra=("target_failed",),
                 )
-            try:
-                tap(point)
-            except Exception as error:
-                return _finish(
-                    GoldKeyDrainOutcome.FAILED,
-                    reason=f"tap_failed:{type(error).__name__}",
-                    extra=("tap_failed",),
-                )
-            inputs += 1
-            last_ts = observed_ts
-            evidence.append(f"tap_right:{inputs}")
-            sleep(config.tap_interval_s)
+            side = "bar" if has_result(snapshot) else "popup"
+            terminal = _do_tap(point, f"observed-{side}")
+            if terminal is not None:
+                return terminal
             if inputs % config.watchdog_every == 0:
-                watchdogs += 1
-                if not is_treasure_screen(snapshot):
-                    return _finish(
-                        GoldKeyDrainOutcome.CONTEXT_LOST,
-                        reason="context_lost",
-                        extra=("watchdog:context_lost",),
-                    )
-                if not (
-                    has_selector_popup(snapshot) or has_result(snapshot)
-                ):
-                    return _finish(
-                        GoldKeyDrainOutcome.FAILED,
-                        reason="unexpected_state",
-                        extra=("watchdog:unexpected_state",),
-                    )
-                try:
-                    current_fp = fingerprint_of(snapshot)
-                except Exception:
-                    current_fp = None
-                if (
-                    current_fp is not None
-                    and watchdog_fp is not None
-                    and current_fp == watchdog_fp
-                ):
-                    return _finish(
-                        GoldKeyDrainOutcome.STALL_SUSPECTED,
-                        reason="visual_stall",
-                        extra=(
-                            f"watchdog:{watchdogs}",
-                            "visual_stall",
-                        ),
-                    )
-                watchdog_fp = current_fp
-                evidence.append(f"watchdog:{watchdogs}")
+                terminal = _do_watchdog(snapshot)
+                if terminal is not None:
+                    return terminal
             continue
 
-        # Right Gold absent: stop inputs immediately, classify fully.
-        if has_right_karat_open(snapshot):
+        # Observed Karat boundary with no observed Gold: normal end.
+        if has_right_karat_open(snapshot) and not has_gold_signal(snapshot):
             karat_seen = True
             return _finish(
                 GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED,
                 reason="karat_boundary",
                 extra=("boundary:karat",),
             )
-        if has_gold_signal(snapshot):
-            # Transient (animation/single-gold) with Gold still around:
-            # bounded wait for RIGHT_GOLD_OPEN_MAX to reappear.
-            if transient_deadline is None:
-                transient_deadline = now() + config.transient_wait_s
-                evidence.append("transient_wait_start")
-            if now() >= transient_deadline:
-                return _finish(
-                    GoldKeyDrainOutcome.FAILED,
-                    reason="transient_timeout",
-                    extra=("transient_timeout",),
-                )
-            sleep(min(0.05, config.tap_interval_s))
-            continue
-        if transient_deadline is None:
-            transient_deadline = now() + config.transient_wait_s
-            evidence.append("transient_wait_start")
-        if now() >= transient_deadline:
-            return _finish(
-                GoldKeyDrainOutcome.FAILED,
-                reason="right_gold_absent",
-                extra=("right_gold_absent",),
+
+        # Local reward-transient path: title-independent pair Gold on a
+        # fresh frame under verified lineage. Dual-role tap (cuts the
+        # animation or starts the next batch); never a dismiss, never
+        # the left button, never counted as a batch.
+        if (
+            config.reward_transient
+            and measure_local is not None
+            and observed_ts > last_ts
+        ):
+            try:
+                pending_reading = measure_local(snapshot.frame.image)  # type: ignore[attr-defined]
+            except Exception:
+                pending_reading = None
+            side = (
+                local_reward_side(pending_reading)
+                if pending_reading is not None
+                else None
             )
-        sleep(min(0.05, config.tap_interval_s))
+            if side is not None:
+                gold_observations += 1
+                evidence.append(f"local_gold:{side}")
+                terminal = _do_tap(_local_point(side), f"local-{side}")
+                if terminal is not None:
+                    return terminal
+                if inputs % config.watchdog_every == 0:
+                    terminal = _do_watchdog(snapshot)
+                    if terminal is not None:
+                        return terminal
+                continue
+            if pending_reading is not None and local_karat_boundary(
+                pending_reading
+            ):
+                # Premium backing seen locally: zero taps; confirm
+                # through resolvable observations or time out closed.
+                evidence.append("local_karat_seen")
+                terminal = _wait_bounded("local_karat")
+                if terminal is not None:
+                    return terminal
+                continue
+
+        # Bounded no-input wait: UNKNOWN/AMBIGUOUS animation frames,
+        # transient Gold without the right button, or an empty repeat
+        # state. Hidden title alone never taps, never loses context.
+        if status is ResolutionStatus.UNKNOWN:
+            label = "unknown_state"
+        elif status is ResolutionStatus.AMBIGUOUS:
+            label = "ambiguous_state"
+        elif has_gold_signal(snapshot):
+            label = "transient"
+        else:
+            label = "right_gold_absent"
+        terminal = _wait_bounded(label)
+        if terminal is not None:
+            return terminal
 
 
 def _require_point(value: object, name: str) -> tuple[float, float]:
@@ -611,7 +867,10 @@ def _require_point(value: object, name: str) -> tuple[float, float]:
 
 __all__ = (
     "BAR_REPEAT_POINT",
+    "LOCAL_SIDE_BAR",
+    "LOCAL_SIDE_POPUP",
     "RESULT_FINGERPRINT_REGION",
+    "REWARD_TRANSIENT_GOLD_THRESHOLD",
     "SELECTOR_REPEAT_POINT",
     "GoldKeyDrainConfig",
     "GoldKeyDrainOutcome",
@@ -619,5 +878,7 @@ __all__ = (
     "check_fast_drain_entry",
     "default_progress_fingerprint",
     "drain_gold_keys_fast",
+    "local_karat_boundary",
+    "local_reward_side",
     "resolve_right_button_target",
 )

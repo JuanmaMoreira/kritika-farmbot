@@ -428,7 +428,7 @@ Auditoria UI (raws E/E2/E2.1):
 | grid limpia | N/A (sin boton) | grid gold tile | N/A | N/A | PASS (Smoke A + E2.2 dry) |
 | selector popup inicial | x 0.650-0.730 / y 0.395-0.565, punto (0.693, 0.540) | Gold (repeat) | 10(Open); variantes 1..9 HIL_PENDING | NO (persiste ~0.9s post-tap) | PASS B1 (cero taps) |
 | overlay/result repeat | barra inferior icono x 0.305-0.365 / y 0.78-0.86, punto (0.335, 0.82) | Gold (bar icon, sin label) | 10(Open); 1..9 HIL_PENDING | NO (batch-10 tapa el titulo) | PASS E2.2 (1 tap = 1 batch-10) |
-| batch-10 reward grid | N/A (titulo ocluido -> UNKNOWN) | N/A (no resuelve) | N/A | persistente (requiere dismiss) | PASS E2.2 (fail-closed correcto) |
+| batch-10 reward grid | barra inferior 1/10 Gold visible (bar pair 1.0, karat 0.0) | Gold (bar pills) | 10(Open) Gold | NO (transient conocido, titulo oculto) | PASS E2.2-correccion (right button sigue accionable, cero dismiss) |
 | Karat boundary | mismo rol, backing premium | Karat | N/A | N/A | HIL_NOT_EXERCISED (offline verde) |
 
 Target inicial y repeat overlay NO son el mismo: el drenaje resuelve por
@@ -491,11 +491,13 @@ HIL (canal chat+steer, `tools/hil_treasure_fast_drain.py`, raws
 - Hallazgo HIL mayor: el tap #1 en 10(Open) consumio UN batch de 10
   (GT usuario: 318->308 + grilla persistente de 10 recompensas). La
   grilla batch tapa el banner del titulo -> UNKNOWN persistente (~40s,
-  no auto-dismiss). El drain no puede auto-sostenerse entre batches sin
-  un paso de dismiss (propiedad del futuro integrador/C6b, fuera de
-  alcance E2.2). Multi-tap cadence tuning (0.20 vs 0.15 vs 0.10-0.12) y
-  full-drain HIL quedan pendientes de tuning asistido con dismiss;
-  el usuario cerro HIL aqui.
+  no auto-dismiss). SUPERSEDED por correccion E2.2 (seccion 23): la
+  inferencia de que el drain necesita dismiss fuera de botones era
+  conceptualmente incorrecta. Ground truth del usuario: el boton
+  derecho Gold-backed permanece accionable durante animacion/reward
+  (dual role: corta la animacion o inicia el siguiente batch) y es el
+  unico target correcto. La grilla es transient conocido, no loss.
+  Cadence multi-tap + full-drain se cerraron en la seccion 23.
 - Live probado: hit del target de barra, 1 tap = 1 batch-10, cero taps
   premium (11 keys gastadas, 0 premium), cero mis-taps, fail-closed ante
   UNKNOWN correcto, `bar_repeat_gold` ejercitado en vivo. Cadence
@@ -509,6 +511,80 @@ Captures/s del decoder ~100+/s (sequence a video-rate). Sin percepcion
 global por ciclo (solo scope Treasure); watchdog/exit usan el mismo
 scope barato.
 
-Estado E2.2: implementacion DONE + HIL PARTIAL (single-tap PASS +
-boundary batch-grid documentado). NO es DONE completo: falta cadence
-multi-tap + full-drain con dismiss asistido. C6b sigue NO iniciado.
+Estado E2.2 al cierre de seccion 22: implementacion DONE + HIL PARTIAL
+(single-tap PASS + boundary batch-grid documentado, con inferencia de
+dismiss pendiente de correccion). Ver seccion 23 para el cierre.
+
+## 23. E2.2 correccion: causal loop a traves del reward + full-drain PASS (2026-09-18)
+
+Causa del error conceptual anterior: ante el UNKNOWN persistente de la
+grilla batch-10 se infirio que el drain necesitaba dismiss fuera de
+botones (propiedad del integrador). Ground truth del usuario lo refuta:
+el boton derecho Gold-backed sigue disponible durante animacion/reward,
+cada tap tiene dual role (corta animacion o inicia batch, sin etiqueta
+a priori) y es el unico target correcto. Tocar fuera para avanzar era
+incorrecto; la grilla es transient conocido, no context loss.
+
+Contrato corregido (solo `bot/treasure_fast_drain.py` + tests, sin
+cambios de detectores/percepcion global):
+
+- `TREASURE_GOLD_REWARD_ACTIVE` (local, no globalizado): post-open con
+  lineage verificada + pair Gold title-independent (popup single+repeat
+  o barra single+repeat, contrato 0.50 identico al detector) + cero
+  Karat + frame fresco. Reutiliza `TreasureContentDetector.measure`
+  (mismos ROIs/thresholds; medido en raw Round A: barra 1.0/1.0,
+  karats 0.0, titulo 0.0; negativos: Lobby 0.0 en todo, grid limpia
+  popup 1.0/barra 0.0). Sin detector nuevo, sin manifest, sin evaluator.
+- Loop: observed-RIGHT_GOLD o local-GOLD -> un tap al mismo boton
+  derecho (lado por snapshot/lectura); Karat observado o local sin Gold
+  -> cero taps + confirmacion bounded; resto -> espera bounded. Entrada
+  acepta frame transient con lineage (`entry:reward_transient_local`).
+- Watchdog corregido: saludables A (titulo+Gold), B (reward+local
+  Gold), C (repeat+Gold). STALL solo si ningun tap de la ventana cambio
+  nada observable (fingerprint ROI + nombres de observaciones);
+  churn observed<->transient es progreso (falso STALL de Round A
+  corregido con test dedicado).
+- No-dismiss invariante testeado (sin identificadores dismiss/outside
+  en codigo; todo tap cae en punto derecho) + left-button nunca usado.
+- Cadence default 0.15 (medida estable, ver HIL).
+
+Tests: 52 dirigidos verdes (35 previos + transient/reward 6,
+no-dismiss 2, dual-role 2, watchdog corregido 3, terminacion local 2,
+entrada transient 2, flag 1). Regression: keys+runtime+percepcion
+intactos (143 totales con fast-drain). `py_compile` + `git diff
+--check` limpios; sin full suite (cambios acotados a fast-drain,
+predicados aditivos previos intactos); sin evaluator (sin cambios de
+deteccion).
+
+HIL (misma herramienta `tools/hil_treasure_fast_drain.py` + medida
+local cableada, raws `artifacts/hil_e2_fastdrain/`):
+
+- Round A retry (0.20s, max 20, aprobado): E2 entry SUCCESS (opened=1,
+  primer string SUCCESS del runtime con `consumed:1`); 10/10 taps en
+  ~4s (7 observed-bar + 3 local-bar), watchdog sano; real ~0.40s/tap
+  (overhead ~0.20s analyze+ADB). Falso STALL inicial -> fix watchdog
+  (offline verde) antes de seguir.
+- Round B (0.15s, max 20, aprobado): un flake de entrada E2
+  (`selector_failed`, cero gasto) + retry SUCCESS inmediato; 20/20 taps
+  en 7.5s (13 observed + 7 local), 2 watchdogs sanos, cero premium,
+  cero contradiction, cero context loss, cero stalls, cero mis-taps.
+  Real ~0.375s/tap: 0.15 gana ~6% sobre 0.20 (floor ~0.22s overhead);
+  0.10 no aportaria (STOP de tuning por regla). Cadence final 0.15.
+- Full drain (aprobado, DRAKEN=BB, ~255 keys): E2 entry SUCCESS +
+  48 inputs en 16.7s hasta `GOLD_KEYS_EXHAUSTED` (`karat_boundary`,
+  4 watchdogs sanos, 49 gold observations). Frontera observada:
+  gold-repeat -> vacio -> `karat_base+karat_repeat` 1.00 (primer
+  ejercicio live del detector Karat). Frame final: cofre 0/499,
+  Needs 80 karats, barra 1(Open)=80 + 10(Open)=800 en magenta.
+  Remanente 1..9 atravesado automaticamente por el boton derecho.
+  Cero taps premium, cero fuera/izquierdo, cero contradiction/loss.
+- Contabilidad live: 319->318 (E2) ->308 (batch-10) ->298 (manual
+  usuario) ->257 (Round A + manual) ->255 ->~0 (full drain 48 inputs
+  mixtos). Nunca `inputs == batches`.
+
+Performance live: ~2.5-2.7 taps/s sostenidos (floor analyze+ADB);
+scope Treasure de 2 detectores por ciclo; watchdog/exit mismo scope.
+
+Estado E2.2: DONE (implementacion + cadence 0.15 caracterizada +
+full-drain PASS hasta Karat con cero premium + docs corregidas).
+C6b next (desbloqueado por E2.2 DONE).
