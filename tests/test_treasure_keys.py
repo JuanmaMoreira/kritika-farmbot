@@ -89,7 +89,8 @@ def _targets():
     )
 
 
-def _request(quantity=None, max_actions=10, max_fact_age_s=2.0):
+def _request(quantity=None, max_actions=10, max_fact_age_s=2.0,
+             post_action_timeout_s=4.0, post_action_max_polls=48):
     if quantity is None:
         quantity = GoldKeyQuantity(mode=GoldKeyQuantityMode.OPEN_ONCE)
     return GoldKeyOpenRequest(
@@ -98,6 +99,8 @@ def _request(quantity=None, max_actions=10, max_fact_age_s=2.0):
         targets=_targets(),
         max_actions=max_actions,
         max_fact_age_s=max_fact_age_s,
+        post_action_timeout_s=post_action_timeout_s,
+        post_action_max_polls=post_action_max_polls,
         source="lobby",
         return_to="lobby",
     )
@@ -345,6 +348,20 @@ def test_check_fact_fresh_rejects_invalid_contract():
             targets=_targets(),
             max_fact_age_s=-0.5,
         )
+    with pytest.raises(ValueError):
+        GoldKeyOpenRequest(
+            quantity=GoldKeyQuantity(mode=GoldKeyQuantityMode.OPEN_ONCE),
+            allowed_currency_kinds=frozenset({"gold_key"}),
+            targets=_targets(),
+            post_action_timeout_s=-1.0,
+        )
+    with pytest.raises(ValueError):
+        GoldKeyOpenRequest(
+            quantity=GoldKeyQuantity(mode=GoldKeyQuantityMode.OPEN_ONCE),
+            allowed_currency_kinds=frozenset({"gold_key"}),
+            targets=_targets(),
+            post_action_max_polls=0,
+        )
 
 
 def test_same_sequence_posterior_frame_authorizes_open():
@@ -444,45 +461,161 @@ def test_batch_exact_eleven_uses_repeat_then_single():
     assert result.opened == 11
     assert script.taps == [(0.4, 0.8), (0.5, 0.5)]
 
-
 def test_no_effect_on_unchanged_count_stops_without_retry():
+    request = _request(post_action_max_polls=3)
+    states = [
+        _fact(amount=1, count=10, overlay="selector", sequence=10,
+              observed_at=10.5),
+        _fact(amount=1, count=10, overlay="result", sequence=11),
+        _fact(amount=1, count=10, overlay="result", sequence=12),
+        _fact(amount=1, count=10, overlay="result", sequence=13),
+    ]
+    result, script = _execute(request=request, script=_Script(states))
+    assert result.outcome is TreasureOutcome.NO_EFFECT
+    assert result.reason == "no_evidence"
+    assert result.opened == 0
+    assert len(script.taps) == 1
+    assert script.reads == 4
+
+def test_no_effect_on_unchanged_state_without_counts():
+    states = [
+        _fact(amount=1, count=None, overlay="selector", sequence=10,
+              observed_at=10.5),
+        _fact(amount=1, count=None, overlay="selector", sequence=11),
+    ]
+    result, script = _execute(request=_request(post_action_max_polls=3),
+                              script=_Script(states))
+    assert result.outcome is TreasureOutcome.NO_EFFECT
+    assert result.reason == "state_unchanged"
+    assert len(script.taps) == 1
+
+
+def test_resampled_after_waits_for_evidence_then_no_effect():
+    # Same decode counter as the authorizing read is a resample, not a
+    # failure: the window waits for a strictly newer frame, then closes
+    # as NO_EFFECT without a second tap.
     states = [
         _fact(amount=1, count=10, overlay="selector", sequence=10, observed_at=10.5),
-        _fact(amount=1, count=10, overlay="result", sequence=11),
+        _fact(amount=1, count=10, overlay="selector", sequence=10, observed_at=10.8),
+        _fact(amount=1, count=10, overlay="selector", sequence=10, observed_at=11.0),
     ]
-    result, script = _execute(script=_Script(states))
+    result, script = _execute(request=_request(post_action_max_polls=2),
+                              script=_Script(states))
+    assert result.outcome is TreasureOutcome.NO_EFFECT
+    assert result.reason == "no_evidence"
+    assert result.opened == 0
+    assert len(script.taps) == 1
+    assert script.reads == 3
+
+
+def test_unreadable_after_waits_then_no_effect():
+    states = [
+        _fact(amount=1, count=10, overlay="selector", sequence=10, observed_at=10.5),
+        None,
+        None,
+    ]
+    result, script = _execute(request=_request(post_action_max_polls=2),
+                              script=_Script(states))
+    assert result.outcome is TreasureOutcome.NO_EFFECT
+    assert result.reason == "no_evidence"
+    assert result.opened == 0
+    assert len(script.taps) == 1
+    assert script.reads == 3
+
+
+def test_late_result_after_unchanged_polls_is_success():
+    # Exact HIL E2.1 shape: first polls still show the popup, the
+    # result arrives later inside the bounded window. One tap total.
+    states = [
+        _fact(amount=1, count=None, overlay="selector", sequence=10,
+              observed_at=10.5),
+        _fact(amount=1, count=None, overlay="selector", sequence=11,
+              observed_at=10.8),
+        _fact(amount=1, count=None, overlay="selector", sequence=12,
+              observed_at=11.0),
+        _fact(amount=1, count=None, overlay="result", sequence=13,
+              observed_at=11.5),
+    ]
+    result, script = _execute(request=_request(post_action_max_polls=4),
+                              script=_Script(states))
+    assert result.outcome is TreasureOutcome.SUCCESS
+    assert result.opened == 1
+    assert result.inputs == ("tap_open_single",)
+    assert len(script.taps) == 1
+    assert script.reads == 4
+
+
+def test_post_action_deadline_expiry_is_no_effect():
+    # The deadline governs even with polls remaining: a fake clock jumps
+    # past it after the first unchanged poll.
+    times = iter([100.0, 100.1, 200.0])
+    states = [
+        _fact(amount=1, count=None, overlay="selector", sequence=10,
+              observed_at=10.5),
+        _fact(amount=1, count=None, overlay="selector", sequence=11,
+              observed_at=10.8),
+    ]
+    result, script = _execute(
+        request=_request(post_action_max_polls=48),
+        script=_Script(states),
+        clock=lambda: next(times),
+    )
     assert result.outcome is TreasureOutcome.NO_EFFECT
     assert result.opened == 0
     assert len(script.taps) == 1
     assert script.reads == 2
 
 
-def test_no_effect_on_unchanged_state_without_counts():
+def test_stale_result_after_tap_is_not_success():
+    # A result frame older than the tap barrier never proves this open,
+    # even with a newer decode counter.
     states = [
-        _fact(amount=1, count=None, overlay="selector", sequence=10, observed_at=10.5),
-        _fact(amount=1, count=None, overlay="selector", sequence=11),
+        _fact(amount=1, count=None, overlay="selector", sequence=10,
+              observed_at=10.5),
+        _fact(amount=1, count=None, overlay="result", sequence=60,
+              observed_at=9.0),
+        _fact(amount=1, count=None, overlay="selector", sequence=61,
+              observed_at=10.8),
     ]
-    result, script = _execute(script=_Script(states))
+    result, script = _execute(request=_request(post_action_max_polls=2),
+                              script=_Script(states))
     assert result.outcome is TreasureOutcome.NO_EFFECT
+    assert result.opened == 0
     assert len(script.taps) == 1
 
 
-def test_stale_after_fact_is_not_success():
+def test_premium_after_tap_keeps_existing_boundary_contract():
+    # The tap already happened: a premium surface is reported as a
+    # boundary on the proven open, with zero further taps.
     states = [
-        _fact(amount=1, count=10, overlay="selector", sequence=10, observed_at=10.5),
-        _fact(amount=1, count=9, overlay="result", sequence=10),
+        _fact(amount=1, count=None, overlay="selector", sequence=10,
+              observed_at=10.5),
+        _fact(currency="karat", amount=None, count=None,
+              overlay="selector", sequence=11, observed_at=10.8),
     ]
-    result, script = _execute(script=_Script(states))
-    assert result.outcome is TreasureOutcome.FAILED
-    assert result.reason == "stale_after_fact"
+    result, script = _execute(request=_request(post_action_max_polls=2),
+                              script=_Script(states))
+    assert result.outcome is TreasureOutcome.SUCCESS
+    assert result.boundary == "premium_currency"
+    assert len(script.taps) == 1
+
+
+def test_cancel_during_post_action_window_exits_without_retry():
+    states = [
+        _fact(amount=1, count=None, overlay="selector", sequence=10,
+              observed_at=10.5),
+        _fact(amount=1, count=None, overlay="selector", sequence=11,
+              observed_at=10.8),
+        _fact(amount=1, count=None, overlay="selector", sequence=12,
+              observed_at=11.0),
+    ]
+    script = _Script(states)
+    result, _ = _execute(request=_request(post_action_max_polls=5),
+                         script=script,
+                         cancel_requested=lambda: script.reads >= 2)
+    assert result.outcome is TreasureOutcome.CANCELLED
     assert result.opened == 0
-
-
-def test_after_unreadable_is_not_success():
-    states = [_fact(sequence=10, observed_at=10.5), None]
-    result, script = _execute(script=_Script(states))
-    assert result.outcome is TreasureOutcome.FAILED
-    assert result.reason == "after_fact_unreadable"
+    assert len(script.taps) == 1
 
 
 def test_exact_overshoot_offer_fails_closed_without_tap():

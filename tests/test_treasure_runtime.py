@@ -130,11 +130,18 @@ class _Timeout(Exception):
 class FakeObserver:
     def __init__(self, snapshots):
         self._snapshots = list(snapshots)
+        self._last = self._snapshots[-1] if self._snapshots else None
 
     def observe(self):
+        # A drained camera keeps delivering its last frame (resample),
+        # never an error: the post-action window polls until evidence
+        # or its bound, it must not fail on a frozen UI.
         if not self._snapshots:
-            raise _Timeout("no more snapshots")
-        return self._snapshots.pop(0)
+            if self._last is None:
+                raise _Timeout("no more snapshots")
+            return self._last
+        self._last = self._snapshots.pop(0)
+        return self._last
 
     def wait_until(
         self,
@@ -444,7 +451,9 @@ def test_execute_unchanged_postcondition_is_no_effect_without_retry():
     assert len([tap for tap in adb.taps]) == 2
 
 
-def test_execute_stale_postcondition_is_not_success():
+def test_execute_resampled_postcondition_waits_then_no_effect():
+    # Same-frame resamples after the tap are no evidence, never a
+    # failure: the window exhausts its bound with a single open tap.
     reads = [
         _treasure_grid(2),
         _treasure_popup(3, timestamp=3.4),
@@ -452,8 +461,10 @@ def test_execute_stale_postcondition_is_not_success():
     ]
     runtime, adb = _runtime(reads, [_treasure_popup(3)])
     result = runtime.execute_gold_key_open(_open_once())
-    assert result.outcome is TreasureOutcome.FAILED
-    assert result.reason == "stale_after_fact"
+    assert result.outcome is TreasureOutcome.NO_EFFECT
+    assert result.reason == "no_evidence"
+    assert result.opened == 0
+    assert len(adb.taps) == 2
 
 
 # Lifecycle is covered by the capability contract: departure plus a

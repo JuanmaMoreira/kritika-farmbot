@@ -56,6 +56,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 import math
+import time
 from numbers import Integral, Real
 
 
@@ -227,10 +228,24 @@ class GoldKeyOpenRequest:
 
     ``allowed_currency_kinds`` is fixed to exactly ``{"gold_key"}``:
     any premium must never be added by inference. ``max_actions``
-    bounds taps (no hidden loop). ``max_fact_age_s`` bounds the first
+    bounds taps (no hidden loop).     ``max_fact_age_s`` bounds the first
     currency read against the authorizing snapshot in seconds of frame
     capture time (``barrier_ts < fact.observed_at <= barrier_ts +
-    max_fact_age_s``), never in decode-counter sequences. ``source`` /
+    max_fact_age_s``), never in decode-counter sequences.
+    ``post_action_timeout_s`` bounds the observation window after each
+    single tap: the game animation outlives one poll (HIL E2.1 showed
+    the selector popup still up ~0.9s after the tap and the result at
+    ~3-3.5s on two nights), so fresh reads are polled until
+    consumption/result evidence, a boundary, cancellation, or this
+    deadline. 5.0s covers ~1.4x the observed latency with a small
+    margin for device load; far below any blind-retry scale.
+    ``post_action_max_polls`` is a pure safety net against a broken
+    clock and must never bind in practice: live polls run ~50ms
+    (measured 2026-09-18: 48 polls in ~2.5s truncated the window
+    before the ~3.5s result), so the count sits at 1000 and the
+    deadline always governs. The economic input is emitted exactly
+    once per iteration either way: the window only observes.
+    ``source`` /
     ``return_to`` are descriptive contracts only (this module never
     navigates): entry must have ended in Treasure ready and return is
     verified externally from ``GoldKeyOpenResult.after``.
@@ -241,6 +256,8 @@ class GoldKeyOpenRequest:
     targets: TreasureOpenTargets
     max_actions: int = 10
     max_fact_age_s: float = 2.0
+    post_action_timeout_s: float = 5.0
+    post_action_max_polls: int = 1000
     source: str = "lobby"
     return_to: str | None = "lobby"
 
@@ -273,6 +290,27 @@ class GoldKeyOpenRequest:
         ):
             raise ValueError("max_fact_age_s must be a non-negative duration")
         object.__setattr__(self, "max_fact_age_s", float(self.max_fact_age_s))
+        if (
+            isinstance(self.post_action_timeout_s, bool)
+            or not isinstance(self.post_action_timeout_s, Real)
+            or not math.isfinite(float(self.post_action_timeout_s))
+            or float(self.post_action_timeout_s) < 0.0
+        ):
+            raise ValueError(
+                "post_action_timeout_s must be a non-negative duration"
+            )
+        object.__setattr__(
+            self, "post_action_timeout_s", float(self.post_action_timeout_s)
+        )
+        if (
+            isinstance(self.post_action_max_polls, bool)
+            or not isinstance(self.post_action_max_polls, Integral)
+            or int(self.post_action_max_polls) < 1
+        ):
+            raise ValueError("post_action_max_polls must be a positive integer")
+        object.__setattr__(
+            self, "post_action_max_polls", int(self.post_action_max_polls)
+        )
         if not isinstance(self.source, str) or not self.source.strip():
             raise ValueError("source must be a non-empty string")
         object.__setattr__(self, "source", self.source.strip())
@@ -443,6 +481,7 @@ def execute_gold_key_open(
     tap: Callable[[tuple[float, float]], None],
     read_state: Callable[[], TreasureCurrencyFact | None],
     cancel_requested: Callable[[], bool] = lambda: False,
+    clock: Callable[[], float] | None = None,
 ) -> GoldKeyOpenResult:
     """Execute one bounded Gold Keys opening; single causal tap per open.
 
@@ -450,10 +489,13 @@ def execute_gold_key_open(
     ``read_state`` returns a fresh ``TreasureCurrencyFact`` or None. No
     navigation, no retry, no double inputs: each iteration reads fresh
     currency, taps at most once (single for 1, repeat for 10), then
-    proves consumption with a strictly fresher read. Any abort before
-    a tap performs zero further input (still zero spend). Premium
-    currency stops before confirm with zero additional taps. Equipment
-    state is never consulted; Trading is never touched.
+    observes the bounded post-action window for consumption evidence.
+    Any abort before a tap performs zero further input (still zero
+    spend). Premium currency stops before confirm with zero additional
+    taps. Equipment state is never consulted; Trading is never touched.
+    ``clock`` (monotonic, ``time.monotonic`` by default) bounds the
+    post-action window only; freshness itself comes from frame capture
+    timestamps, never from this clock.
     """
     if not isinstance(request, GoldKeyOpenRequest):
         raise ValueError("request must be GoldKeyOpenRequest")
@@ -461,6 +503,9 @@ def execute_gold_key_open(
         raise ValueError("tap and read_state must be callable")
     if not callable(cancel_requested):
         raise ValueError("cancel_requested must be callable")
+    if clock is not None and not callable(clock):
+        raise ValueError("clock must be callable or None")
+    now = clock if clock is not None else time.monotonic
     try:
         barrier_ts = float(snapshot.timestamp)  # type: ignore[attr-defined]
     except (AttributeError, TypeError, ValueError) as error:
@@ -711,110 +756,139 @@ def execute_gold_key_open(
         )
         actions += 1
 
-        try:
-            after = read_state()
-        except Exception:
+        # Bounded post-action window (HIL E2.1 2026-09-18): the game
+        # animation outlives a single poll (selector popup still up
+        # ~0.9s after the tap, result only later), so fresh reads are
+        # polled until consumption/result evidence, a boundary, user
+        # cancel, or the deadline/poll bound. The economic input above
+        # is never repeated here: exactly one tap per iteration.
+        tap_barrier = before.observed_at  # valid: first-fact gate
+        if (
+            tap_barrier is None
+            or isinstance(tap_barrier, bool)
+            or not isinstance(tap_barrier, Real)
+        ):
             return GoldKeyOpenResult(
                 outcome=TreasureOutcome.FAILED,
                 before=before_first,
                 after=after_last,
                 opened=opened,
-                reason="read_failed_after",
+                reason="stale_fact",
                 inputs=tuple(inputs),
-                evidence=tuple([*evidence, "read_failed_after"]),
+                evidence=tuple([*evidence, "stale_fact"]),
             )
-        if after is None or not isinstance(after, TreasureCurrencyFact):
-            return GoldKeyOpenResult(
-                outcome=TreasureOutcome.FAILED,
-                before=before_first,
-                after=after_last,
-                opened=opened,
-                reason="after_fact_unreadable",
-                inputs=tuple(inputs),
-                evidence=tuple([*evidence, "after_fact_unreadable"]),
-            )
-        if after.sequence <= before.sequence:
-            return GoldKeyOpenResult(
-                outcome=TreasureOutcome.FAILED,
-                before=before_first,
-                after=after,
-                opened=opened,
-                reason="stale_after_fact",
-                inputs=tuple(inputs),
-                evidence=tuple([*evidence, "stale_after_fact"]),
-            )
-        after_last = after
-
-        consumed: int | None = None
-        if before.count is not None and after.count is not None:
-            if after.count < before.count:
-                consumed = int(before.count) - int(after.count)
-            elif after.count == before.count:
+        tap_barrier = float(tap_barrier)
+        deadline = now() + request.post_action_timeout_s
+        polls = 0
+        after: TreasureCurrencyFact | None = None
+        last_usable: TreasureCurrencyFact | None = None
+        while True:
+            if _cancelled():
                 return GoldKeyOpenResult(
-                    outcome=TreasureOutcome.NO_EFFECT,
+                    outcome=TreasureOutcome.CANCELLED,
                     before=before_first,
-                    after=after,
+                    after=after_last,
                     opened=opened,
-                    reason="have_unchanged",
+                    reason="user_cancelled",
                     inputs=tuple(inputs),
-                    evidence=tuple(
-                        [*evidence, f"after_count:{after.count}"]
-                    ),
+                    evidence=tuple([*evidence, "user_cancelled"]),
                 )
-            else:
+            if polls >= request.post_action_max_polls or now() > deadline:
+                break
+            polls += 1
+            try:
+                candidate = read_state()
+            except Exception:
                 return GoldKeyOpenResult(
                     outcome=TreasureOutcome.FAILED,
                     before=before_first,
-                    after=after,
+                    after=after_last,
+                    opened=opened,
+                    reason="read_failed_after",
+                    inputs=tuple(inputs),
+                    evidence=tuple([*evidence, "read_failed_after"]),
+                )
+            if candidate is None or not isinstance(
+                candidate, TreasureCurrencyFact
+            ):
+                continue
+            observed = candidate.observed_at
+            if (
+                observed is None
+                or isinstance(observed, bool)
+                or not isinstance(observed, Real)
+                or float(observed) <= tap_barrier
+                or candidate.sequence <= before.sequence
+            ):
+                # Pre-tap, resampled, or unreadable frame: no evidence
+                # yet, never a failure and never a new tap.
+                continue
+            last_usable = candidate
+            if before.count is not None and candidate.count is not None:
+                if candidate.count < before.count:
+                    after = candidate
+                    break
+                if candidate.count == before.count:
+                    continue
+                return GoldKeyOpenResult(
+                    outcome=TreasureOutcome.FAILED,
+                    before=before_first,
+                    after=candidate,
                     opened=opened,
                     reason="incoherent_count",
                     inputs=tuple(inputs),
                     evidence=tuple([*evidence, "incoherent_count"]),
                 )
-        else:
-            if after.currency == "unknown" or after.overlay is None:
-                return GoldKeyOpenResult(
-                    outcome=TreasureOutcome.FAILED,
-                    before=before_first,
-                    after=after,
-                    opened=opened,
-                    reason="after_fact_unreadable",
-                    inputs=tuple(inputs),
-                    evidence=tuple([*evidence, "after_fact_unreadable"]),
-                )
             if (
-                after.overlay == before.overlay
-                and after.currency == before.currency
+                candidate.currency == "unknown"
+                or candidate.overlay is None
             ):
-                return GoldKeyOpenResult(
-                    outcome=TreasureOutcome.NO_EFFECT,
-                    before=before_first,
-                    after=after,
-                    opened=opened,
-                    reason="state_unchanged",
-                    inputs=tuple(inputs),
-                    evidence=tuple([*evidence, "state_unchanged"]),
-                )
-            if after.overlay == "result" and after.currency in (
+                continue
+            if (
+                candidate.overlay == before.overlay
+                and candidate.currency == before.currency
+            ):
+                continue
+            if candidate.overlay == "result" and candidate.currency in (
                 "gold_key",
                 "empty",
                 "karat",
             ):
-                consumed = offered
-            elif after.currency in ("empty", "karat") and (
-                after.currency != before.currency
+                after = candidate
+                break
+            if candidate.currency in ("empty", "karat") and (
+                candidate.currency != before.currency
             ):
-                consumed = offered
+                after = candidate
+                break
+            continue
+
+        if after is None:
+            if (
+                last_usable is not None
+                and last_usable.overlay == before.overlay
+                and last_usable.currency == before.currency
+            ):
+                reason = "state_unchanged"
             else:
-                return GoldKeyOpenResult(
-                    outcome=TreasureOutcome.NO_EFFECT,
-                    before=before_first,
-                    after=after,
-                    opened=opened,
-                    reason="state_unchanged",
-                    inputs=tuple(inputs),
-                    evidence=tuple([*evidence, "state_unchanged"]),
-                )
+                reason = "no_evidence"
+            return GoldKeyOpenResult(
+                outcome=TreasureOutcome.NO_EFFECT,
+                before=before_first,
+                after=last_usable if last_usable is not None else after_last,
+                opened=opened,
+                reason=reason,
+                inputs=tuple(inputs),
+                evidence=tuple([*evidence, reason]),
+            )
+        after_last = after
+
+        consumed: int | None = None
+        if before.count is not None and after.count is not None:
+            consumed = int(before.count) - int(after.count)
+            assert consumed >= 1
+        else:
+            consumed = offered
 
         assert consumed is not None and consumed >= 1
         opened += int(consumed)
