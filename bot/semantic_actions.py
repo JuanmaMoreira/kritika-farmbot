@@ -511,6 +511,36 @@ class DismissPortalNotification:
 
 
 @dataclass(frozen=True)
+class OpenTreasure:
+    """Request the direct Lobby -> Treasure tile action."""
+
+
+@dataclass(frozen=True)
+class SelectGoldChest:
+    """Request the Gold chest tile from an already-confirmed Treasure grid."""
+
+
+@dataclass(frozen=True)
+class ConfirmSingleGoldOpen:
+    """Request exactly 1 (Open) from the Gold selector popup."""
+
+
+@dataclass(frozen=True)
+class ConfirmRepeatGoldOpen:
+    """Request exactly one 10 (Open) batch from the Gold popup."""
+
+
+@dataclass(frozen=True)
+class DismissTreasureResult:
+    """Dismiss one already-confirmed stable Treasure result."""
+
+
+@dataclass(frozen=True)
+class ExitTreasure:
+    """Request Back from Treasure to Lobby."""
+
+
+@dataclass(frozen=True)
 class DismissWorldBossBagFull:
     """Request Close on the World Boss Start bag-full guard."""
 
@@ -603,6 +633,12 @@ SemanticAction = (
     | ExitCombine
     | DismissWorldBossBagFull
     | DismissPortalNotification
+    | OpenTreasure
+    | SelectGoldChest
+    | ConfirmSingleGoldOpen
+    | ConfirmRepeatGoldOpen
+    | DismissTreasureResult
+    | ExitTreasure
 )
 
 
@@ -652,6 +688,12 @@ __all__ = (
     "OpenPetCombineAll",
     "OpenPetMassEvolve",
     "OpenBattleModeSelect",
+    "OpenTreasure",
+    "SelectGoldChest",
+    "ConfirmSingleGoldOpen",
+    "ConfirmRepeatGoldOpen",
+    "DismissTreasureResult",
+    "ExitTreasure",
     "OpenCharacterSelect",
     "OpenQuickMenu",
     "OpenSocketEnhanceAll",

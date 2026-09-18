@@ -350,3 +350,44 @@ No-Treasure proof: cero imports treasure/craft/relief/MW/planner/stage; `GoldKey
 Tests: `tests/test_keys_promotion.py`, 46 dirigidos verdes (orden 5, refresh 6, quantity 3, boundaries 11, budget 5, facts 4, separación 6 + tradeability). Validación: `py_compile` + `git diff --check` limpios; C6a 46/46; subset trading+treasure 148 passed (C5/C4/row-facts/Treasure, sin regresiones); sin full suite (ningún compartido tocado); sin evaluator/corpus/HIL (policy pura offline).
 
 C6a DONE. Siguiente: E2 Treasure runtime promotion + C6b orchestration (consumer Gold-full → Treasure acotado + retry causal + retorno verificado).
+
+## 19. E2 Treasure runtime promotion (perception + runtime autónomo, HIL smokes pendientes)
+
+E2 promueve Treasure desde capability lógica caller-driven (E) a capacidad autónoma usable por runtime normal, sin decidir por qué se abre y sin conocer GOLD_CAPACITY_BLOCKED, SILVER_TO_GOLD, Keys policy, Trading route ni relief. Frontera: clean Lobby → enter Treasure → screen.treasure + Gold readiness positiva → facts frescos → targets calibrados → GoldKeyOpenRequest existente → consumo verificado → retorno a clean Lobby.
+
+Tabla runtime need (auditoría E2):
+
+| runtime need | hoy existe? | evidencia | promotion needed | HIL needed |
+|---|---|---|---|---|
+| screen.treasure resoluble | NO (sólo nombres E, sin detectores ni regla) | `treasure_center_semantics.py` + Astra `screen.treasure`/`relief_treasure` | SÍ: title spec + regla resolver + motor global | NO (offline + evaluator) |
+| Gold readiness positiva | parcial (predicados sobre snapshots sintéticos) | `treasure_center.py`, E 36 tests | SÍ: detectores Gold con gate de título | SÍ parcial (Smoke A/B) |
+| Gold-vs-Karat fail-closed | parcial (allowlist + facts caller) | E `check_currency`, Astra `key==karat`, frame Karat archival | SÍ: detectores Karat + facts runtime de percepción real | Q4 en vivo si mostrable sin costo; si no, HIL_NOT_EXERCISED + ausencia-Gold bloquea |
+| entry Lobby→Treasure | NO (doc describe tile legacy) | `constants.py treasure ~(0.722,0.9167)`, Astra OPEN_TREASURE (0.720,0.915), `lobby.png` | SÍ: entry target remedido (0.721,0.892) + op enter | SÍ (Smoke A) |
+| selector (Gold chest→popup) | NO (E asume popup; tap manual en HIL B) | Astra GOLD_CHEST + B1 popup | SÍ: gold-chest target + transición verificada | SÍ (Smoke B) |
+| 1(Open) productivo | parcial (punto HIL sin profile) | E HIL B2 (0.618,0.548)→(1677,669) 2712x1220 | SÍ: profile + wiring a capability | SÍ (Smoke B, 1 key con aprobación) |
+| 10(Open) productivo | NO (control existe, tap no ejercido) | B1/B2 muestran ambos controles Gold | geometría calibrada (0.693,0.540); tap HIL_NOT_EXERCISED salvo aprobación | SÍ sólo con aprobación (Smoke C) |
+| result/postcondition | parcial (semántica E sin señal) | B2 resultado + archival karat-cutoff | SÍ: detector result + facts overlay | SÍ (Smoke B) |
+| dismiss + Back→Lobby | NO (manual en E) | Astra TREASURE_DISMISS/BACK + GT manual | SÍ: op leave con postcondition fresca | SÍ (Smoke A/B) |
+| count Gold Keys | NO (OCR nuevo, campaña grande) | counts visibles 354→353 pero sin reader | NO: count=None; postcondition por transición exclusiva | NO |
+
+Percepción (`bot/perception/treasure_center.py`, nuevo; `TREASURE_SCOPE` 1 spec + 1 detector especializado):
+
+- `TREASURE_TITLE_SPEC`: 3 variantes del banner (Sept brillante, dimmed single-result, April grid) en `assets/ui/landmarks/treasure/`, región top-center, cal (0.52,0.90). Positivos 1.00 (grid/popup/result actuales, grid April, resultado April con filas); banners mismo-plate (Combine/Guild) ≤0.49, Lobby/Trading ≤0.23. Promovido al motor global (96→97) y a `STRONG_LOBBY_COMPLETION` (72→73) como base foreign.
+- `TreasureContentDetector` (standalone, todo gateado en título>0): popup por label `1(Open)` (T1 0.207 vs 0.000, cal 0.05/0.12); repeat-label `10(Open)` (0.197 vs spillover grid 0.092, cal 0.12/0.16, +gate popup); iconos Gold vs Karat magenta (Gold T1 0.090/T2-barra 0.133, Karat archival-K 0.122-0.172, púrpura 0.000 en todo Gold; cal Gold 0.05/0.08, Karat 0.03/0.09); grid-gold Needs row (0.110-0.118 vs dimmed 0.000-0.002, cal 0.02/0.08); result cofre abierto (T2 0.390/K 0.426 vs ≤0.029 con título, cal 0.08/0.25).
+- Emite: `landmark.treasure_title` (global) + en scope `indicator.treasure_selector_popup`, `indicator.treasure_result`, `gold_key_selector/repeat`, `karat_base/repeat`. Sin título: cero emisiones (silencio cross-screen verificado en lobby/trading/combine/guild).
+- Límites: Karat center-popup sin positivo vivo (HIL_NOT_EXERCISED; misma ROI que barra, y ausencia-Gold ya bloquea); resultados gem-row y banner archival totalmente cubierto (K) bajo anchor por diseño; `empty`/count sin señal (no-Keys natural nunca fabricado).
+
+Catálogo/resolver: `SCREEN_TREASURE` + 7 observaciones (`+2` popup/result nuevas), regla base por título; `is_gold_keys_content_ready` intacto (E verde).
+
+Runtime (`bot/treasure_profile.py` + `bot/treasure_facts.py` + `bot/treasure_runtime.py`, nuevos; 6 acciones + `TreasureActionTargets` en executor):
+
+- Profile: entry (0.721,0.892) remedido lobby; gold-chest (0.636,0.380) T0+Astra; single (0.618,0.548) HIL B2 PASS; repeat (0.693,0.540) centroide label B1 (tap HIL_NOT_EXERCISED); dismiss (0.9,0.64) Astra+T2; back (0.802,0.073) Astra+glyph T0. Puntos interiores con margen, bboxes popup disjuntas.
+- Facts: `fact_for_single/repeat` puros desde snapshot fresco (control-selectivo veraz: el monto codificado SÍ está ofrecido con icono Gold y sin Karat). Karat anywhere→fact karat (contradicción fail-closed); sin Gold ni Karat→unknown (nunca autoriza); count=None; overlay selector/result (result gana); None sólo en foreign/UNKNOWN/AMBIGUOUS. `empty` no observable en E2 v1: depleción = fail-closed sin boundary verificado (límite para C6b).
+- Operaciones single-attempt (`max_attempts=1`), sin retry ciego: enter (Lobby limpio→OpenTreasure→screen.treasure), execute (readiness→SelectGoldChest→popup→capability E con plan greedy 10s+1s y read_state fresco por snapshot→consumo verificado), leave (dismiss si result→Back→Lobby limpio verificado), wrapper enter→execute→leave restaurando Lobby siempre (hasta en FAILED/CANCELLED).
+- Separación testeada: cero imports Trading/C6a/scroll/Craft/Relief/Equipment/MW/planner/stage; sin GOLD_CAPACITY_BLOCKED; sin combine/inventory en firmas; taps sólo por ADB.
+
+Validación: `py_compile` + `git diff --check` limpios; E2 38 tests (percepción 6 con manifiesto exacto 0 wrong + runtime 32) + E 36 intactos; pines globales actualizados tras revisión (97 detectores, 20 reglas, 105 observaciones, strong-lobby 73, scopes 79); 1 regresión real convertida en evidencia (frame April `171606` Bronze-popup ahora resuelve screen.treasure correctamente); full hardware-free 2786 passed + 1 pin corregido (suite 2787, verde salvo error ambiental tmp_path resuelto con basetemp local).
+
+HIL (canal chat+steer, UNA condición por vez): Q1 lobby-tile, Q2 grid Gold, Q3 popup/result single, Q4 Karat (sólo si mostrable SIN gastar premium), Q5 control 10(Open), Q6 dismiss/Back. Smokes A (entry/exit, 0 opens), B (single, 1 key con aprobación), C (batch 10, sólo con aprobación; si no, HIL_NOT_EXERCISED y C6b usa singles).
+
+E2 DONE sólo con HIL A+B PASS + docs + suite verde + diff limpio. STOP después de E2 (C6b siguiente, Craft/Relief/MW fuera).

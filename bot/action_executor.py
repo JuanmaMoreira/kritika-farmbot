@@ -102,6 +102,12 @@ from bot.semantic_actions import (
     CancelPetMassEvolveSelection,
     NextPetCombinePage,
     StartWorldBossBattle,
+    OpenTreasure,
+    SelectGoldChest,
+    ConfirmSingleGoldOpen,
+    ConfirmRepeatGoldOpen,
+    DismissTreasureResult,
+    ExitTreasure,
 )
 
 
@@ -481,6 +487,38 @@ DEFAULT_PORTAL_ACTION_TARGETS = PortalActionTargets()
 
 
 @dataclass(frozen=True)
+class TreasureActionTargets:
+    """Normalized targets measured for the Treasure Gold layout.
+
+    Every value mirrors ``bot.treasure_profile.TREASURE_PROFILE``
+    (the measured source of truth); this class only carries the
+    executor's injectable copy so tests can override geometry
+    without touching runtime logic.
+    """
+
+    open_treasure: RelativePoint = (0.721, 0.892)
+    select_gold_chest: RelativePoint = (0.636, 0.380)
+    confirm_single_gold_open: RelativePoint = (0.618, 0.548)
+    confirm_repeat_gold_open: RelativePoint = (0.693, 0.540)
+    dismiss_treasure_result: RelativePoint = (0.9, 0.64)
+    exit_treasure: RelativePoint = (0.802, 0.073)
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.open_treasure,
+            self.select_gold_chest,
+            self.confirm_single_gold_open,
+            self.confirm_repeat_gold_open,
+            self.dismiss_treasure_result,
+            self.exit_treasure,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_TREASURE_ACTION_TARGETS = TreasureActionTargets()
+
+
+@dataclass(frozen=True)
 class ActionExecution:
     """Diagnostic receipt for one physical action already sent to ADB."""
 
@@ -521,6 +559,7 @@ class ActionExecutor:
         socket_targets: SocketActionTargets = DEFAULT_SOCKET_ACTION_TARGETS,
         equipment_targets: EquipmentActionTargets = DEFAULT_EQUIPMENT_ACTION_TARGETS,
         portal_targets: PortalActionTargets = DEFAULT_PORTAL_ACTION_TARGETS,
+        treasure_targets: TreasureActionTargets = DEFAULT_TREASURE_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
             raise ValueError("adb must provide tap(x, y)")
@@ -546,6 +585,8 @@ class ActionExecutor:
             raise ValueError("equipment_targets must be EquipmentActionTargets")
         if not isinstance(portal_targets, PortalActionTargets):
             raise ValueError("portal_targets must be PortalActionTargets")
+        if not isinstance(treasure_targets, TreasureActionTargets):
+            raise ValueError("treasure_targets must be TreasureActionTargets")
         self.adb = adb
         self.targets = targets
         self.daily_quests_targets = daily_quests_targets
@@ -558,6 +599,7 @@ class ActionExecutor:
         self.socket_targets = socket_targets
         self.equipment_targets = equipment_targets
         self.portal_targets = portal_targets
+        self.treasure_targets = treasure_targets
 
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
@@ -763,6 +805,18 @@ class ActionExecutor:
             return self.battle_targets.dismiss_world_boss_bag_full
         if isinstance(action, DismissPortalNotification):
             return self.portal_targets.dismiss_portal_notification
+        if isinstance(action, OpenTreasure):
+            return self.treasure_targets.open_treasure
+        if isinstance(action, SelectGoldChest):
+            return self.treasure_targets.select_gold_chest
+        if isinstance(action, ConfirmSingleGoldOpen):
+            return self.treasure_targets.confirm_single_gold_open
+        if isinstance(action, ConfirmRepeatGoldOpen):
+            return self.treasure_targets.confirm_repeat_gold_open
+        if isinstance(action, DismissTreasureResult):
+            return self.treasure_targets.dismiss_treasure_result
+        if isinstance(action, ExitTreasure):
+            return self.treasure_targets.exit_treasure
         raise ValueError("unsupported semantic action")
 
     def _execute_swipe(
@@ -805,6 +859,7 @@ __all__ = (
     "DEFAULT_PORTAL_ACTION_TARGETS",
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
+    "DEFAULT_TREASURE_ACTION_TARGETS",
     "FrameGeometry",
     "FriendsActionTargets",
     "GuildActionTargets",
@@ -815,5 +870,6 @@ __all__ = (
     "PetActionTargets",
     "PortalActionTargets",
     "SocketActionTargets",
+    "TreasureActionTargets",
     "SwipeExecution",
 )
