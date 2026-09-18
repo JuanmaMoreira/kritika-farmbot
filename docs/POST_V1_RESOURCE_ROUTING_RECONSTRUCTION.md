@@ -407,3 +407,108 @@ Divergencia: con frescura resuelta, el capability hacía UN solo `read_state` po
 Fix (`fix: wait for treasure open postcondition`): tras el tap único (nunca repetido), ventana bounded que polea reads frescos hasta evidencia de consumo/result, boundary, cancel o deadline. `post_action_timeout_s=5.0` (~1.4x la latencia observada + margen de carga); `post_action_max_polls=1000` red pura anti-clock-roto que jamás debe mandar (HIL: 48 polls a ~50ms truncaron la ventana a ~2.5s antes del result de ~3.5s). Resample/ilegible = sin evidencia (esperar, jamás failure ni tap). Result con `observed_at` ≤ barrera del tap jamás es SUCCESS. `NO_EFFECT` ahora exige ventana agotada (`state_unchanged` si lo último visto es estable, `no_evidence` si no); reasons `stale_after_fact`/`after_fact_unreadable`/`have_unchanged` eliminados. Tests 91 (runtime 33 + keys 52 + percepción 6).
 
 HIL B2 segunda noche con la ventana (timeout 4.0s/polls 48 iniciales): gate OK, 1+1 taps, `NO_EFFECT` a ~2.5s por el bound de polls, pero SUCCESS físico: frame con cofre abierto + "Laoku's Fatal Helmet" + contador 352→351 (foto) + result normalizado por el leave + Lobby 3/3. Cero premium, cero retry. E2.1 validado por evidencia física en dos noches; el string SUCCESS del runtime se confirma en el próximo open (el fail-mode residual es fail-closed seguro). C6b desbloqueado.
+
+## 22. E2.2: fast gold key drain primitive + cadence HIL (2026-09-18, PARTIAL)
+
+Semantica nueva (amount-agnostic, sin OCR del numero):
+
+- `RIGHT_GOLD_OPEN_MAX` (`bot/treasure_center.py::has_right_gold_open_max`):
+  boton derecho accionable respaldado por Gold Keys, abre el maximo que la
+  UI ofrezca (1..10). Solo senal repeat Gold sin contradiccion Karat.
+- `RIGHT_KARAT_OPEN` (`has_right_karat_open`): mismo rol respaldado por
+  Karats/premium. Terminacion normal, cero taps.
+- Gold+Karat simultaneo: contradiccion, cero input
+  (`has_right_button_contradiction`).
+- Boton izquierdo `1(Open)` nunca es target de drain (sin referencias en codigo).
+
+Auditoria UI (raws E/E2/E2.1):
+
+| state | right-button bbox | currency backing | amount text | stable during animation? | HIL status |
+|---|---|---|---|---|---|
+| grid limpia | N/A (sin boton) | grid gold tile | N/A | N/A | PASS (Smoke A + E2.2 dry) |
+| selector popup inicial | x 0.650-0.730 / y 0.395-0.565, punto (0.693, 0.540) | Gold (repeat) | 10(Open); variantes 1..9 HIL_PENDING | NO (persiste ~0.9s post-tap) | PASS B1 (cero taps) |
+| overlay/result repeat | barra inferior icono x 0.305-0.365 / y 0.78-0.86, punto (0.335, 0.82) | Gold (bar icon, sin label) | 10(Open); 1..9 HIL_PENDING | NO (batch-10 tapa el titulo) | PASS E2.2 (1 tap = 1 batch-10) |
+| batch-10 reward grid | N/A (titulo ocluido -> UNKNOWN) | N/A (no resuelve) | N/A | persistente (requiere dismiss) | PASS E2.2 (fail-closed correcto) |
+| Karat boundary | mismo rol, backing premium | Karat | N/A | N/A | HIL_NOT_EXERCISED (offline verde) |
+
+Target inicial y repeat overlay NO son el mismo: el drenaje resuelve por
+snapshot (`resolve_right_button_target`: result -> barra, sino selector).
+Detector actual distingue Gold vs Karat en ambos (popup: label+icono;
+barra: icono bajo gate de result). No se cambio ningun detector/ROI/
+threshold: la semantica ignora el numero por construccion.
+
+Primitiva (`bot/treasure_fast_drain.py`, Treasure-only, sin
+Trading/C6a/C6b/Craft/Relief/MW/planner/stage/scroll/ADB):
+
+- `drain_gold_keys_fast(...) -> GoldKeyDrainResult` con
+  `GoldKeyDrainConfig(tap_interval_s=0.20, watchdog_every=10,
+  safety_deadline_s=300.0, max_inputs=10000, transient_wait_s=5.0)`.
+- Entrada solo con `initial_open_verified=True` + repeat state + fresh.
+- Un tap por observacion fresca (`observed_at` estrictamente mayor;
+  resample se salta sin tap). Sin sleeps de animacion, sin result
+  completo por tap, sin scope completo por ciclo.
+- Watchdog cada N inputs: contexto Treasure, compatibilidad
+  popup/result, coherencia Gold/Karat, no foreign, no UNKNOWN/AMBIGUOUS
+  accionable, mas fingerprint visual barato del ROI de animacion/result
+  (default: hash 4x4 downsampleado de `TREASURE_RESULT_REGION`, numpy
+  puro, inyectable). Boton identico + ROI sin variacion ->
+  STALL_SUSPECTED, cero taps mas.
+- UNKNOWN/AMBIGUOUS post-tap (animacion tapa el landmark): espera
+  bounded sin taps, retoma si vuelve RIGHT_GOLD, Karat -> EXHAUSTED,
+  timeout -> FAILED fail-closed.
+- Terminacion normal solo por RIGHT_KARAT_OPEN sin Gold en ningun lado
+  (GOLD_KEYS_EXHAUSTED, cero premium). Remanente 1..9 por boton derecho.
+  Sin terminacion por conteo de taps; sin `opened` reportado
+  (`inputs_emitted` nunca es batches).
+- Outcomes: GOLD_KEYS_EXHAUSTED | STALL_SUSPECTED | CONTEXT_LOST |
+  FAILED | CANCELLED | SAFETY_DEADLINE. Telemetria separada:
+  inputs_emitted, watchdogs_run, gold_button_observations,
+  karat_boundary_seen.
+
+Tests: `tests/test_treasure_fast_drain.py`, 35 dirigidos verdes
+(semantica 7, loop 4, watchdog 7, cadence 2, safety 4, terminacion 4,
+separacion 4). Validacion: `py_compile` + `git diff --check` limpios;
+E2.2 35/35 + E/E2 91 intactos (keys+runtime+percepcion); sin full suite
+(solo predicados puros aditivos en `treasure_center.py`, sin cambios de
+detectores ni comportamiento existente); sin evaluator (sin cambios de
+deteccion); `test_local_cv_perception` 17/17 con basetemp local
+(el error tmp_path del sistema es ambiental, no relacionado).
+
+HIL (canal chat+steer, `tools/hil_treasure_fast_drain.py`, raws
+`artifacts/hil_e2_fastdrain/` no versionados, aprobacion por rafaga):
+
+- Dry-run: grid limpia Treasure + `gold_key_selector` 1.00, cero Karats,
+  cero taps. GT: cofre dorado 319/499.
+- Entry E2 OPEN_ONCE: runtime `NO_EFFECT`/`no_evidence` (fail-mode
+  residual E2.1, tercera ocurrencia), pero GT fisico prueba 1 open real:
+  319->318 + result "Boots (Enhance)" + barra 1/10 Gold (8/8 dry frames
+  `right_gold=True` estable).
+- Round A (0.20s, max 15, aprobado): fast entry OK sobre GT fisico;
+  tap #1 en barra (0.335, 0.82) limpio en su slot; siguiente frame
+  UNKNOWN (animacion) -> fail-closed correcto, 1 input, 0.56s.
+  Fix aplicado: UNKNOWN/AMBIGUOUS con espera bounded en vez de fallo
+  inmediato (offline + test de recuperacion verdes).
+- Hallazgo HIL mayor: el tap #1 en 10(Open) consumio UN batch de 10
+  (GT usuario: 318->308 + grilla persistente de 10 recompensas). La
+  grilla batch tapa el banner del titulo -> UNKNOWN persistente (~40s,
+  no auto-dismiss). El drain no puede auto-sostenerse entre batches sin
+  un paso de dismiss (propiedad del futuro integrador/C6b, fuera de
+  alcance E2.2). Multi-tap cadence tuning (0.20 vs 0.15 vs 0.10-0.12) y
+  full-drain HIL quedan pendientes de tuning asistido con dismiss;
+  el usuario cerro HIL aqui.
+- Live probado: hit del target de barra, 1 tap = 1 batch-10, cero taps
+  premium (11 keys gastadas, 0 premium), cero mis-taps, fail-closed ante
+  UNKNOWN correcto, `bar_repeat_gold` ejercitado en vivo. Cadence
+  default queda en 0.20s inicial sin refutar (un tap limpio).
+- HIL_NOT_EXERCISED honesto: watchdog live, stall visual live, Karat
+  boundary live, remanente 1..9 live, 0.15s/0.10s, full drain.
+
+Performance aproximada live: ~5 analyzes/s con scope Treasure standalone
+(2 detectores) en el burst; dry-run ~2.5-3/s con sleeps de 0.25s.
+Captures/s del decoder ~100+/s (sequence a video-rate). Sin percepcion
+global por ciclo (solo scope Treasure); watchdog/exit usan el mismo
+scope barato.
+
+Estado E2.2: implementacion DONE + HIL PARTIAL (single-tap PASS +
+boundary batch-grid documentado). NO es DONE completo: falta cadence
+multi-tap + full-drain con dismiss asistido. C6b sigue NO iniciado.

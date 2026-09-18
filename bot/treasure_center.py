@@ -90,12 +90,55 @@ def has_result(snapshot) -> bool:
     )
 
 
+def has_right_gold_open_max(snapshot) -> bool:
+    """Right button Gold-backed, amount-agnostic (E2.2 ``RIGHT_GOLD_OPEN_MAX``).
+
+    Means: the right-hand open control is currently actionable and backed
+    by Gold Keys, opening whatever maximum the UI offers (1..10). Decided
+    purely by the repeat Gold signal without Karat contradiction; the
+    ``10``/``7``/``1`` number shown is deliberately NOT inspected (no OCR
+    of the amount). The detector's repeat label was calibrated on
+    ``10(Open)`` so ``1..9`` right-button variants are HIL_PENDING: if a
+    small-number right button ever stops emitting the repeat signal, the
+    detector (not this predicate) needs the minimal icon-over-label
+    relaxation. The left ``1(Open)`` control never satisfies this.
+    """
+    return (
+        is_treasure_screen(snapshot)
+        and has(snapshot, INDICATOR_TREASURE_GOLD_KEY_REPEAT)
+        and not has_karat_signal(snapshot)
+    )
+
+
+def has_right_karat_open(snapshot) -> bool:
+    """Right button premium-backed termination boundary (``RIGHT_KARAT_OPEN``).
+
+    Same place/role as the right Gold button but backed by Karats: the
+    normal end of a drain. Zero taps authorized here. Gold+Karat together
+    is a contradiction (see ``has_right_button_contradiction``), not gold.
+    """
+    return is_treasure_screen(snapshot) and has(
+        snapshot, INDICATOR_TREASURE_KARAT_REPEAT
+    )
+
+
+def has_right_button_contradiction(snapshot) -> bool:
+    """Gold+Karat on the right button simultaneously: fail-closed, zero input."""
+    return is_treasure_screen(snapshot) and (
+        has(snapshot, INDICATOR_TREASURE_GOLD_KEY_REPEAT)
+        and has(snapshot, INDICATOR_TREASURE_KARAT_REPEAT)
+    )
+
+
 __all__ = (
     "clean_treasure",
     "has",
     "has_gold_signal",
     "has_karat_signal",
     "has_result",
+    "has_right_button_contradiction",
+    "has_right_gold_open_max",
+    "has_right_karat_open",
     "has_selector_popup",
     "is_gold_keys_content_ready",
     "is_treasure_screen",
