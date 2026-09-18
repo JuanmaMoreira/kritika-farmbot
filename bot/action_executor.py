@@ -109,6 +109,7 @@ from bot.semantic_actions import (
     DismissTreasureResult,
     ExitTreasure,
 )
+from bot.treasure_profile import TREASURE_PROFILE
 
 
 @dataclass(frozen=True)
@@ -496,12 +497,12 @@ class TreasureActionTargets:
     without touching runtime logic.
     """
 
-    open_treasure: RelativePoint = (0.721, 0.892)
-    select_gold_chest: RelativePoint = (0.636, 0.380)
-    confirm_single_gold_open: RelativePoint = (0.618, 0.548)
-    confirm_repeat_gold_open: RelativePoint = (0.693, 0.540)
-    dismiss_treasure_result: RelativePoint = (0.9, 0.64)
-    exit_treasure: RelativePoint = (0.802, 0.073)
+    open_treasure: RelativePoint = TREASURE_PROFILE.entry_point
+    select_gold_chest: RelativePoint = TREASURE_PROFILE.gold_chest_point
+    confirm_single_gold_open: RelativePoint = TREASURE_PROFILE.single_point
+    confirm_repeat_gold_open: RelativePoint = TREASURE_PROFILE.repeat_point
+    dismiss_treasure_result: RelativePoint = TREASURE_PROFILE.dismiss_point
+    exit_treasure: RelativePoint = TREASURE_PROFILE.back_point
 
     def __post_init__(self) -> None:
         for point in (

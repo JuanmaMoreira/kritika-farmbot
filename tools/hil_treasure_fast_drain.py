@@ -2,7 +2,8 @@
 
 One condition per run, chat+steer channel: the user holds the device in
 Treasure with the Gold-backed right button visible and approves every
-burst explicitly (interval + max inputs announced before each run).
+burst explicitly (interval + total economic-input cap announced before
+each run). Final tap-through inputs are counted separately.
 
 Modes (no navigation, no Trading/C6b, no leave: the user owns the
 device before and after):
@@ -15,15 +16,16 @@ device before and after):
   with the requested cadence and caps. Stops on Karat boundary,
   contradiction, stall, context loss, cancel or deadline. The fast
   drain taps ONLY the Gold-backed right button (observed or local
-  reward-transient pair Gold); it never taps outside buttons to
-  dismiss, never the left button. The batch-10 reward grid that covers
-  the title is a known transient: the loop keeps tapping the same
-  right button through it (dual role: cut animation or next batch).
+  reward-transient pair Gold); while Gold exists it never taps outside
+  or left. The batch-10 reward grid that covers the title is a known
+  transient: the loop keeps tapping the same right button through it
+  (dual role: cut animation or next batch). Only after fresh Karat may
+  the shared tap-through finalizer use the profile-owned safe point.
 
 Evidence lands under ``artifacts/hil_e2_fastdrain/<stamp>/`` (raws, not
 versioned): ``frame_*.png`` per fast-loop observation plus
-``report.json`` with telemetry, per-tap observations and the human GT
-line the operator confirms in chat.
+``report.json`` with split economic/finalize telemetry, economic
+per-tap observations and the human GT line the operator confirms in chat.
 
 Importing this module is inert; processes and device IO start in main.
 """
@@ -49,6 +51,7 @@ from bot.perception import build_treasure_perception  # noqa: E402
 from bot.perception.treasure_center import TreasureContentDetector  # noqa: E402
 from bot.runtime import build_adb_client, build_frame_source  # noqa: E402
 from bot.runtime_observer import RuntimeObserver  # noqa: E402
+from bot.tap_through_animation import TapThroughAnimation  # noqa: E402
 from bot.treasure_center import (  # noqa: E402
     has_right_button_contradiction,
     has_right_gold_open_max,
@@ -68,6 +71,39 @@ from bot.verified_transition import VerifiedTransition  # noqa: E402
 ARTIFACT_ROOT = PROJECT_ROOT / "artifacts" / "hil_e2_fastdrain"
 
 
+class EconomicInputCap:
+    """Hard cap around right-button input; final dismiss bypasses it."""
+
+    def __init__(self, maximum: int, emit) -> None:
+        if isinstance(maximum, bool) or not isinstance(maximum, int) or maximum < 0:
+            raise ValueError("maximum must be a non-negative integer")
+        if not callable(emit):
+            raise ValueError("emit must be callable")
+        self.maximum = maximum
+        self.emit = emit
+        self.emitted = 0
+
+    def __call__(self, point) -> None:
+        if self.emitted >= self.maximum:
+            raise RuntimeError("approved economic input cap exhausted")
+        self.emit(point)
+        self.emitted += 1
+
+
+def remaining_economic_inputs(approved: int, already_emitted: int) -> int:
+    """Return the right-button budget left after the verified E2 entry."""
+
+    for name, value in (
+        ("approved", approved),
+        ("already_emitted", already_emitted),
+    ):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer")
+    if already_emitted > approved:
+        raise ValueError("entry exceeded the approved economic input cap")
+    return approved - already_emitted
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -75,7 +111,12 @@ def parse_args(argv=None):
         help="dry-run observes only; burst taps with approval",
     )
     parser.add_argument("--interval", type=float, default=0.20)
-    parser.add_argument("--max-inputs", type=int, default=15)
+    parser.add_argument(
+        "--approved-economic-inputs",
+        type=int,
+        default=None,
+        help="required in burst mode; hard total cap including E2 entry",
+    )
     parser.add_argument("--watchdog-every", type=int, default=10)
     parser.add_argument("--deadline", type=float, default=60.0)
     parser.add_argument("--dry-run-seconds", type=float, default=4.0)
@@ -137,6 +178,15 @@ def _describe(snapshot) -> dict:
 
 def main(argv=None) -> int:
     args = parse_args(argv)
+    if args.mode == "burst" and (
+        args.approved_economic_inputs is None
+        or args.approved_economic_inputs <= 0
+    ):
+        print(
+            "[burst] --approved-economic-inputs N (>0) is required; "
+            "zero device input emitted."
+        )
+        return 2
     save_dir = args.save_dir or (ARTIFACT_ROOT / _stamp())
     save_dir.mkdir(parents=True, exist_ok=True)
     config = RuntimeConfig.from_env(dotenv_path=args.dotenv)
@@ -152,7 +202,7 @@ def main(argv=None) -> int:
     report: dict = {
         "mode": args.mode,
         "interval_s": args.interval,
-        "max_inputs": args.max_inputs,
+        "approved_economic_inputs": args.approved_economic_inputs,
         "watchdog_every": args.watchdog_every,
         "deadline_s": args.deadline,
         "human_gt": None,
@@ -218,6 +268,7 @@ def main(argv=None) -> int:
                 }
                 report["human_gt"] = args.gt
                 print(f"[burst] entry skipped by GT: {args.gt}")
+                entry_economic_inputs = 0
             else:
                 print("[burst] entry: E2 OPEN_ONCE via TreasureRuntime ...")
                 opened = runtime.execute_gold_key_open(
@@ -238,6 +289,7 @@ def main(argv=None) -> int:
                 if str(opened.outcome.value) != "success":
                     print("[burst] entry refused: zero fast inputs, stopping.")
                     return 2
+                entry_economic_inputs = len(opened.inputs)
             initial = observe()
             entry_reason = check_fast_drain_entry(
                 initial, initial_open_verified=True
@@ -270,15 +322,28 @@ def main(argv=None) -> int:
                 print("[burst] fast entry refused: zero fast inputs.")
                 return 2
 
+            right_input_budget = remaining_economic_inputs(
+                args.approved_economic_inputs,
+                entry_economic_inputs,
+            )
+            report["entry_economic_inputs"] = entry_economic_inputs
+            report["right_input_budget"] = right_input_budget
+            if right_input_budget == 0 and not karat_entry:
+                print(
+                    "[burst] approved economic cap consumed by E2 entry; "
+                    "zero right-button inputs emitted."
+                )
+                return 3
+
             drain_config = GoldKeyDrainConfig(
                 tap_interval_s=args.interval,
                 watchdog_every=args.watchdog_every,
                 safety_deadline_s=args.deadline,
-                max_inputs=args.max_inputs,
+                max_inputs=max(1, right_input_budget),
                 reward_transient=not args.no_reward_transient,
             )
 
-            def tap(point) -> None:
+            def emit_economic_tap(point) -> None:
                 snapshot = latest["snapshot"]
                 geometry = snapshot.geometry
                 pixel = (
@@ -289,14 +354,20 @@ def main(argv=None) -> int:
                 info = _describe(snapshot)
                 info["tap_point"] = list(point)
                 info["tap_pixel"] = list(pixel)
+                info["input_kind"] = "economic_right"
                 report["taps"].append(info)
                 print(
                     f"[burst] tap #{len(report['taps'])} point={point} "
                     f"seq={info['sequence']} obs={info['observations']}"
                 )
 
-            def counting_observe():
-                snapshot = observe()
+            economic_tap = EconomicInputCap(
+                right_input_budget,
+                emit_economic_tap,
+            )
+
+            def record_drain_snapshot(snapshot):
+                latest["snapshot"] = snapshot
                 index = len(report["frames"])
                 report["frames"].append(_describe(snapshot))
                 try:
@@ -310,27 +381,42 @@ def main(argv=None) -> int:
                     pass
                 return snapshot
 
+            def counting_observe():
+                return record_drain_snapshot(observe())
+
+            tap_through = TapThroughAnimation(
+                observer,
+                actions,
+                clock=time.monotonic,
+                sleeper=time.sleep,
+            )
+
             target_point = resolve_right_button_target(initial)
             print(
-                f"[burst] interval={args.interval}s max_inputs={args.max_inputs} "
+                f"[burst] interval={args.interval}s "
+                f"approved_economic_inputs={args.approved_economic_inputs} "
+                f"entry_economic_inputs={entry_economic_inputs} "
+                f"max_right_inputs={right_input_budget} "
                 f"watchdog_every={args.watchdog_every} "
                 f"initial_target={target_point}"
             )
             result = drain_gold_keys_fast(
                 initial_snapshot=initial,
                 observe=counting_observe,
-                tap=tap,
+                tap=economic_tap,
                 config=drain_config,
                 initial_open_verified=True,
                 cancel_requested=cancel_requested,
                 clock=time.monotonic,
                 sleeper=time.sleep,
                 measure_local=content.measure,
+                tap_through=tap_through,
                 allow_karat_entry=karat_entry,
             )
             report["result"] = {
                 "outcome": result.outcome.value,
-                "inputs_emitted": result.inputs_emitted,
+                "right_button_inputs": result.inputs_emitted,
+                "economic_inputs": entry_economic_inputs + result.inputs_emitted,
                 "dismiss_inputs": result.dismiss_inputs,
                 "watchdogs_run": result.watchdogs_run,
                 "gold_button_observations": result.gold_button_observations,

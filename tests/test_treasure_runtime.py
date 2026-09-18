@@ -597,6 +597,7 @@ def test_fact_none_on_foreign_or_unresolved():
 def test_profile_points_are_hil_single_and_inside_bboxes():
     profile = TREASURE_PROFILE
     assert profile.single_point == (0.618, 0.548)
+    assert profile.dismiss_point == (0.85, 0.50)
     assert profile.single_exercised is True
     assert profile.repeat_exercised is False
     for point_name, bbox_name in (

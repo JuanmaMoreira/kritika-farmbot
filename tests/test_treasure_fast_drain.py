@@ -11,8 +11,15 @@ from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.catalog import SCREEN_LOBBY
 from bot.observations import Observation, ObservationBatch, ObservationSource
-from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
+from bot.runtime_observer import (
+    RuntimeFacts,
+    RuntimeSnapshot,
+    RuntimeWaitCancelled,
+    RuntimeWaitTimeout,
+)
+from bot.semantic_actions import DismissTreasureResult
 from bot.state import ResolutionStatus, ResolvedState
+from bot.tap_through_animation import TapThroughAnimation
 from bot.treasure_center import (
     has_right_button_contradiction,
     has_right_gold_open_max,
@@ -211,10 +218,48 @@ class _Script:
     def tap(self, point):
         self.taps.append(tuple(point))
 
+    def wait_until(
+        self,
+        condition,
+        *,
+        after_sequence,
+        timeout,
+        cancel_requested=None,
+        **_kwargs,
+    ):
+        if cancel_requested is not None and cancel_requested():
+            raise RuntimeWaitCancelled("cancelled")
+        snapshot = self.observe()
+        if snapshot.sequence <= after_sequence or not condition(snapshot):
+            raise RuntimeWaitTimeout(
+                after_sequence=after_sequence,
+                timeout=timeout,
+                last_snapshot=snapshot,
+            )
+        return snapshot
+
+
+class _FinalActions:
+    def __init__(self, script):
+        self.script = script
+
+    def execute(self, action, _geometry):
+        assert isinstance(action, DismissTreasureResult)
+        self.script.tap(DISMISS_POINT)
+
 
 def _drain(script, initial, *, config=None, clock=None, **kwargs):
     clock = clock or _Clock()
     kwargs.setdefault("fingerprint", lambda snap: ("seq", snap.sequence))
+    kwargs.setdefault(
+        "tap_through",
+        TapThroughAnimation(
+            script,
+            _FinalActions(script),
+            clock=clock.now,
+            sleeper=clock.sleep,
+        ),
+    )
     result = drain_gold_keys_fast(
         initial_snapshot=initial,
         observe=script.observe,
@@ -760,44 +805,23 @@ def test_reward_transient_disabled_restores_strict_behavior():
         GoldKeyDrainConfig(reward_transient="yes")
 
 
-# No-dismiss invariant: the only input is the right-button point.
+# Gold-loop separation: direct taps are right-button only.
 
 
-def test_module_has_no_dismiss_or_outside_button_vocabulary():
-    # Identifier-level check (prose/docstrings excluded via ast): only
-    # the allowlisted finalize identifiers may carry the dismiss stem,
-    # and no outside-tap/point identifier may exist anywhere in code.
+def test_direct_tap_is_confined_to_the_gold_loop():
     import ast
 
-    source = (Path(__file__).resolve().parent.parent
-              / "bot" / "treasure_fast_drain.py").read_text(encoding="utf-8")
+    source = inspect.getsource(drain_gold_keys_fast)
     tree = ast.parse(source)
-    names = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name):
-            names.add(node.id.casefold())
-        elif isinstance(node, ast.Attribute):
-            names.add(node.attr.casefold())
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
-                               ast.ClassDef)):
-            names.add(node.name.casefold())
-        elif isinstance(node, ast.arg):
-            names.add(node.arg.casefold())
-    allowed = {
-        "dismiss_point",
-        "max_dismiss_taps",
-        "dismiss_inputs",
-        "dismiss_timeout_s",
-        "dismiss_no_effect",
-        "final_dismiss",
-        "dismisses",
-    }
-    for name in sorted(names):
-        if "dismiss" in name:
-            assert name in allowed, name
-        if "outside" in name:
-            assert False, name
-    assert "dismiss_point" in names
+    direct_taps = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "tap"
+    ]
+    assert len(direct_taps) == 1
+    assert "tap_through.run(" in source
+    assert "action=DismissTreasureResult()" in source
 
 
 def test_every_tap_lands_on_a_right_button_point():
@@ -980,9 +1004,7 @@ def test_gold_present_means_no_outside_tap():
         _popup(11, timestamp=11.0),
         _popup(12, timestamp=12.0),
         _karat_result(13, timestamp=13.0),
-        _karat_result(14, timestamp=14.0),
-        _karat_result(15, timestamp=15.0),
-        _clean_grid(16, timestamp=16.0),
+        _clean_grid(14, timestamp=14.0),
     ])
     result, _ = _drain(script, _popup(10, timestamp=10.0))
     assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
@@ -995,9 +1017,7 @@ def test_karat_single_final_dismiss_then_exhausted():
     script = _Script([
         _popup(11, timestamp=11.0),
         _karat_result(12, timestamp=12.0),
-        _karat_result(13, timestamp=13.0),
-        _karat_result(14, timestamp=14.0),
-        _clean_grid(15, timestamp=15.0),
+        _clean_grid(13, timestamp=13.0),
     ])
     result, _ = _drain(script, _popup(10, timestamp=10.0))
     assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
@@ -1008,6 +1028,7 @@ def test_karat_single_final_dismiss_then_exhausted():
     assert script.taps == [SELECTOR_REPEAT_POINT, DISMISS_POINT]
     assert DISMISS_POINT != SELECTOR_REPEAT_POINT
     assert DISMISS_POINT != BAR_REPEAT_POINT
+    assert DISMISS_POINT == (0.85, 0.50)
 
 
 def test_dismiss_no_effect_bounded_retry_then_fail_closed():
@@ -1054,9 +1075,7 @@ def test_telemetry_splits_right_button_from_finalize():
     script = _Script([
         _popup(11, timestamp=11.0),
         _karat_result(12, timestamp=12.0),
-        _karat_result(13, timestamp=13.0),
-        _karat_result(14, timestamp=14.0),
-        _clean_grid(15, timestamp=15.0),
+        _clean_grid(13, timestamp=13.0),
     ])
     result, _ = _drain(script, _popup(10, timestamp=10.0))
     assert result.inputs_emitted == 1
@@ -1064,27 +1083,23 @@ def test_telemetry_splits_right_button_from_finalize():
     assert len(script.taps) == (
         result.inputs_emitted + result.dismiss_inputs
     )
-    assert "final_dismiss:1" in result.evidence
+    assert "final_tap_through:1" in result.evidence
     assert "finalize:overlay_closed" in result.evidence
 
 
-def test_gold_returned_during_finalize_resumes_drain():
+def test_gold_returned_during_finalize_blocks_any_second_outside_tap():
     script = _Script([
         _popup(11, timestamp=11.0),
         _karat_result(12, timestamp=12.0),
-        _karat_result(13, timestamp=13.0),
-        _popup(14, timestamp=14.0),
-        _popup(15, timestamp=15.0),
-        _karat_result(16, timestamp=16.0),
-        _karat_result(17, timestamp=17.0),
-        _karat_result(18, timestamp=18.0),
-        _clean_grid(19, timestamp=19.0),
+        _popup(13, timestamp=13.0),
     ])
     result, _ = _drain(script, _popup(10, timestamp=10.0))
-    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
-    assert result.inputs_emitted == 2
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert result.reason == "dismiss_no_effect"
+    assert result.inputs_emitted == 1
     assert result.dismiss_inputs == 1
-    assert "finalize:gold_returned" in result.evidence
+    assert script.taps == [SELECTOR_REPEAT_POINT, DISMISS_POINT]
+    assert "finalize:incompatible_state" in result.evidence
 
 
 def test_finalize_config_validation():
@@ -1094,17 +1109,12 @@ def test_finalize_config_validation():
         GoldKeyDrainConfig(max_dismiss_taps=0)
 
 
-def test_finalize_waits_for_consecutive_overlay_frames():
-    # A single overlay frame between transitions never spends the
-    # dismiss attempt; two consecutive ones do.
+def test_finalize_waits_without_input_through_unknown_transition():
     script = _Script([
         _popup(11, timestamp=11.0),
         _karat_result(12, timestamp=12.0),
-        _karat_result(13, timestamp=13.0),
-        _unknown(14),
-        _karat_result(15, timestamp=15.0),
-        _karat_result(16, timestamp=16.0),
-        _clean_grid(17, timestamp=17.0),
+        _unknown(13),
+        _clean_grid(14, timestamp=14.0),
     ])
     result, _ = _drain(script, _popup(10, timestamp=10.0))
     assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
@@ -1114,21 +1124,10 @@ def test_finalize_waits_for_consecutive_overlay_frames():
 
 
 def test_karat_entry_runs_only_the_finalize():
-    script = _Script([
-        _karat_result(13, timestamp=13.0),
-        _karat_result(14, timestamp=14.0),
-        _clean_grid(15, timestamp=15.0),
-    ])
-    clock = _Clock()
-    result = drain_gold_keys_fast(
-        initial_snapshot=_karat_result(12, timestamp=12.0),
-        observe=script.observe,
-        tap=script.tap,
-        config=GoldKeyDrainConfig(),
-        initial_open_verified=True,
-        clock=clock.now,
-        sleeper=clock.sleep,
-        fingerprint=lambda snap: ('seq', snap.sequence),
+    script = _Script([_clean_grid(13, timestamp=13.0)])
+    result, _ = _drain(
+        script,
+        _karat_result(12, timestamp=12.0),
         allow_karat_entry=True,
     )
     assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
@@ -1136,6 +1135,30 @@ def test_karat_entry_runs_only_the_finalize():
     assert result.dismiss_inputs == 1
     assert script.taps == [DISMISS_POINT]
     assert 'entry:karat_boundary' in result.evidence
+
+
+def test_stale_karat_reward_never_authorizes_finalize():
+    script = _Script([
+        _karat_result(11, timestamp=10.0),
+        _karat(12, timestamp=12.0),
+    ])
+    result, _ = _drain(script, _popup(10, timestamp=10.0))
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.dismiss_inputs == 0
+    assert script.taps == []
+
+
+def test_finalize_cancellation_is_bounded_after_one_tap():
+    script = _Script([_karat_result(13, timestamp=13.0)])
+    result, _ = _drain(
+        script,
+        _karat_result(12, timestamp=12.0),
+        allow_karat_entry=True,
+        cancel_requested=lambda: bool(script.taps),
+    )
+    assert result.outcome is GoldKeyDrainOutcome.CANCELLED
+    assert result.dismiss_inputs == 1
+    assert script.taps == [DISMISS_POINT]
 
 
 def test_karat_entry_refused_without_flag_or_lineage():

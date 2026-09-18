@@ -381,7 +381,7 @@ Catálogo/resolver: `SCREEN_TREASURE` + 7 observaciones (`+2` popup/result nueva
 
 Runtime (`bot/treasure_profile.py` + `bot/treasure_facts.py` + `bot/treasure_runtime.py`, nuevos; 6 acciones + `TreasureActionTargets` en executor):
 
-- Profile: entry (0.721,0.892) remedido lobby; gold-chest (0.636,0.380) T0+Astra; single (0.618,0.548) HIL B2 PASS; repeat (0.693,0.540) centroide label B1 (tap HIL_NOT_EXERCISED); dismiss (0.9,0.64) Astra+T2; back (0.802,0.073) Astra+glyph T0. Puntos interiores con margen, bboxes popup disjuntas.
+- Profile: entry (0.721,0.892) remedido lobby; gold-chest (0.636,0.380) T0+Astra; single (0.618,0.548) HIL B2 PASS; repeat (0.693,0.540) centroide label B1 (tap HIL_NOT_EXERCISED); dismiss seguro (0.85,0.50) GT usuario + efecto manual HIL, productive-path HIL pendiente; back (0.802,0.073) Astra+glyph T0. Puntos interiores con margen, bboxes popup disjuntas.
 - Facts: `fact_for_single/repeat` puros desde snapshot fresco (control-selectivo veraz: el monto codificado SÍ está ofrecido con icono Gold y sin Karat). Karat anywhere→fact karat (contradicción fail-closed); sin Gold ni Karat→unknown (nunca autoriza); count=None; overlay selector/result (result gana); None sólo en foreign/UNKNOWN/AMBIGUOUS. `empty` no observable en E2 v1: depleción = fail-closed sin boundary verificado (límite para C6b).
 - Operaciones single-attempt (`max_attempts=1`), sin retry ciego: enter (Lobby limpio→OpenTreasure→screen.treasure), execute (readiness→SelectGoldChest→popup→capability E con plan greedy 10s+1s y read_state fresco por snapshot→consumo verificado), leave (dismiss si result→Back→Lobby limpio verificado), wrapper enter→execute→leave restaurando Lobby siempre (hasta en FAILED/CANCELLED).
 - Separación testeada: cero imports Trading/C6a/scroll/Craft/Relief/Equipment/MW/planner/stage; sin GOLD_CAPACITY_BLOCKED; sin combine/inventory en firmas; taps sólo por ADB.
@@ -601,8 +601,9 @@ Recuento honesto de la prueba del dismiss:
   del habitual y lo traga un tile.
 - GT usuario para el punto: matriz 5x10, celda (3,9) -> (0.85, 0.50),
   "a la derecha donde debajo del overlay no hay nada interactuable".
-  `DISMISS_POINT` actualizado a (0.85, 0.50) sin tocar
-  `TREASURE_PROFILE.dismiss_point` (leave E2 probado, intacto).
+  El punto queda normalizado y poseido por
+  `TREASURE_PROFILE.dismiss_point`; `ActionExecutor` y fast-drain lo
+  consumen sin literales duplicados.
 - El usuario pidio cerrar la animacion con Gold todavia presente; se
   rechazo el tap externo (contrato) y, con aprobacion explicita, se
   emitio UN tap derecho (dual role: abrio un batch nuevo, sin
@@ -615,7 +616,25 @@ Recuento honesto de la prueba del dismiss:
   la misma protection (0 premium en ambos personajes, ~550 keys
   totales drenadas en la sesion).
 
-Finalize queda: logica probada offline (62 tests) + Karat detectado en
-vivo x2 + dismiss con efecto probado en vivo + postcondition (grid
-limpia) verificada + telemetria separada (inputs vs dismiss_inputs).
-Back/exit cubierto por regression E2 leave (Smoke A/B 3/3).
+Auditoria senior posterior: el unico finalize productivo registrado
+(`20260918T021909`) uso el punto viejo y fallo
+`dismiss_no_effect`. El tap exitoso (0.85,0.50) fue manual/ad-hoc:
+demuestra la geometria fisica, no la ruta productiva. Por eso el
+productive-path HIL queda explicitamente PENDING.
+
+La implementacion final reutiliza `TapThroughAnimation` sin cambiar su
+contrato: precondicion fresca result+RIGHT_KARAT_OPEN+no Gold por tap,
+timeout/max-taps/cancel bounded, y SUCCESS solo tras snapshot posterior
+Treasure sin result ni Gold. La primitiva solo posee el post-Karat;
+nunca interviene entre batches Gold.
+
+El incidente de cupo 40->60 tampoco fue overflow del loop: el artifact
+`20260918T024337` registra `max_inputs: 60` y 60 taps exactos. La
+divergencia fue entre el cupo anunciado y el argumento ejecutado,
+agravada porque la entrada E2 no compartia ese contador. La herramienta
+ahora exige `--approved-economic-inputs`, resta la entrada E2 del mismo
+presupuesto, instala un hard guard independiente en cada tap derecho y
+cuenta final tap-through por separado.
+
+Back/exit sigue cubierto por regression E2 leave (Smoke A/B 3/3), pero
+el cierre productivo nuevo requiere un smoke final corto antes del push.

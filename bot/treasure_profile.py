@@ -16,8 +16,10 @@ Fresh HIL E 2026-09-17, 2712x1220 (``artifacts/hil_treasure_a/``):
   popup (n=1607 yellow-mask px). Geometrically calibrated from the
   same popup as the validated single control; the tap itself is
   HIL_NOT_EXERCISED (gastar 10 keys requiere aprobacion no pedida).
-- dismiss: (0.9, 0.64) Astra ``TREASURE_DISMISS``; T2 right strip is
-  visually button-free. HIL-verify in Smoke B.
+- dismiss: (0.85, 0.50), user-GT safe point outside both economic
+  controls. Manual HIL closed the final Karat reward overlay with zero
+  premium spend; productive-path HIL remains pending. The earlier
+  (0.9, 0.64) had no effect and is not executable.
 - back: (0.802, 0.073) Astra ``BACK``; teal glyph bbox
   x 0.780-0.829 / y 0.040-0.104 measured on T0, plate to ~0.872.
   HIL-verify in Smoke A.
@@ -146,7 +148,7 @@ TREASURE_PROFILE = TreasureProfile(
     gold_chest_point=(0.636, 0.380),
     single_point=(0.618, 0.548),
     repeat_point=(0.693, 0.540),
-    dismiss_point=(0.9, 0.64),
+    dismiss_point=(0.85, 0.50),
     back_point=(0.802, 0.073),
     entry_bbox=(0.685, 0.84, 0.755, 0.965),
     gold_chest_bbox=(0.574, 0.27, 0.698, 0.54),
