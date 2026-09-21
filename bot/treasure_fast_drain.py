@@ -89,16 +89,32 @@ Loop (fast path, no result wait per tap, no full scope per cycle):
 
 Post-Karat finalize (never while Gold remains, never between batches):
 
-- on fresh RIGHT_KARAT_OPEN: zero Karat taps and leave the fast loop.
-  The existing ``TapThroughAnimation`` primitive then owns the final
-  reward animation only: ``DismissTreasureResult`` resolves the
-  profile-owned safe outside point, and Treasure predicates authorize
-  each bounded tap only while result+Karat remain and Gold is absent.
-- ``GOLD_KEYS_EXHAUSTED`` requires the dismiss postcondition; no effect
-  within the window fails closed (``dismiss_no_effect``), never silent
-  SUCCESS. A posterior fresh snapshot must show Treasure stable, no
-  reward result and no Gold. If that state is already present at the
-  Karat boundary, the postcondition holds with zero dismiss taps.
+- on fresh RIGHT_KARAT_OPEN: latch ``gold_exhausted`` irreversibly,
+  permanently blocking every right-button input of this drain, with
+  zero Karat taps, and leave the fast loop. Stale Gold sightings
+  after the latch never reactivate the loop; watchdogs and resumes
+  cannot touch the right button either. The existing
+  ``TapThroughAnimation`` primitive then owns the final reward
+  animation only: ``DismissTreasureResult`` resolves the
+  profile-owned safe lateral point, and each bounded tap is
+  authorized under the latched lineage by the reward signal
+  itself -- a fresh semantic result, or a positive
+  title-independent local reward reading (``local_reward_present``:
+  the glowing chest stays pixel-visible while the overlay covers
+  the title, so base UNKNOWN never blocks a tap while reward is
+  locally positive). Karat armed the latch and need not stay
+  visible per tap; the title need not be visible either.
+  ``TapThroughAnimation`` runs with its normal policy repeating
+  lateral taps until the overlay is gone;
+  ``dismiss_no_effect`` still fails closed, never silent SUCCESS.
+- ``GOLD_KEYS_EXHAUSTED`` requires the dismiss postcondition: a
+  posterior fresh snapshot must show Treasure stable, no reward
+  result and no RIGHT_GOLD_OPEN_MAX. An isolated selector signal does
+  not mean that the right economic control returned. If this stable
+  state is already present at the Karat boundary, the postcondition
+  holds with zero dismiss taps. RIGHT_GOLD_OPEN_MAX reappearing
+  mid-finalize resolves INCOMPATIBLE_STATE: stop at once, no second
+  outside tap.
 - telemetry split: ``inputs_emitted`` (right button only) vs
   ``dismiss_inputs`` (finalize only).
 
@@ -123,8 +139,10 @@ from bot.semantic_actions import DismissTreasureResult
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughOutcome, TapThroughPolicy
 from bot.treasure_center import (
+    clean_treasure,
     has_gold_signal,
     has_karat_signal,
+    has_local_reward_transient,
     has_result,
     has_right_button_contradiction,
     has_right_gold_open_max,
@@ -151,10 +169,14 @@ RESULT_FINGERPRINT_REGION: tuple[float, float, float, float] = (
     0.80,
 )
 
-#: Compatibility alias for the profile-owned final animation point.
-#: User GT + manual HIL effect: one tap at (0.85, 0.50) closed the
-#: Karat reward grid to a clean grid with zero spend. Productive-path
-#: HIL remains pending. NEVER used while RIGHT_GOLD_OPEN_MAX exists.
+#: Compatibility alias for the profile-owned safe lateral dismiss point.
+#: Recalibrated 2026-09-18 from the live Karat reward overlay
+#: (``artifacts/hil_e2_fastdrain/20260918T204217/dry_000.png``):
+#: (0.08, 0.65) sits in the left dark corridor, outside the bottom
+#: bar (x 0.148-0.568 / y 0.700-0.933), the reward grid and every
+#: button bbox. The earlier user-approximated point lay inside the
+#: reward grid and proved ``dismiss_no_effect`` on the productive path.
+#: NEVER used while RIGHT_GOLD_OPEN_MAX exists.
 DISMISS_POINT: tuple[float, float] = TREASURE_PROFILE.dismiss_point
 
 #: Local pair-Gold confidence threshold for the reward-transient path.
@@ -196,9 +218,7 @@ class GoldKeyDrainConfig:
     ``reward_transient`` enables the local reward-grid contract (taps on
     title-independent pair-Gold frames after the verified entry);
     ``False`` restores the strict observed-only behavior.
-    ``dismiss_timeout_s`` bounds the post-Karat finalize window;
-    ``max_dismiss_taps`` bounds the safe finalize taps (1 + bounded
-    retry, never economic retries).
+    The post-Karat finalize uses ``TapThroughAnimation`` normal bounds.
     """
 
     tap_interval_s: float = 0.15
@@ -207,8 +227,6 @@ class GoldKeyDrainConfig:
     max_inputs: int = 10000
     transient_wait_s: float = 5.0
     reward_transient: bool = True
-    dismiss_timeout_s: float = 5.0
-    max_dismiss_taps: int = 2
 
     def __post_init__(self) -> None:
         if (
@@ -251,20 +269,6 @@ class GoldKeyDrainConfig:
         if self.reward_transient not in (True, False):
             raise ValueError("reward_transient must be a boolean")
         object.__setattr__(self, "reward_transient", bool(self.reward_transient))
-        if (
-            isinstance(self.dismiss_timeout_s, bool)
-            or not isinstance(self.dismiss_timeout_s, Real)
-            or not 0.0 < float(self.dismiss_timeout_s) <= 120.0
-        ):
-            raise ValueError("dismiss_timeout_s must be a duration in (0, 120]")
-        object.__setattr__(self, "dismiss_timeout_s", float(self.dismiss_timeout_s))
-        if (
-            isinstance(self.max_dismiss_taps, bool)
-            or not isinstance(self.max_dismiss_taps, int)
-            or int(self.max_dismiss_taps) < 1
-        ):
-            raise ValueError("max_dismiss_taps must be a positive integer")
-        object.__setattr__(self, "max_dismiss_taps", int(self.max_dismiss_taps))
 
 
 @dataclass(frozen=True)
@@ -406,6 +410,32 @@ def local_reward_side(reading) -> str | None:
     if popup_pair:
         return LOCAL_SIDE_POPUP
     return None
+
+
+def local_reward_present(reading) -> bool:
+    """Title-independent open-reward signal for the finalize taps.
+
+    The glowing open chest (``TREASURE_RESULT_REGION`` provenance)
+    stays pixel-visible while the reward overlay covers the title:
+    HIL 20260918 measured ``result_confidence`` 1.00 with title 0.00
+    on the Karat overlay and 0.00 on the clean grid. Any local Gold
+    alongside it is a contradiction here, never a dismiss
+    authorization. Same 0.50 contract as the detector composite
+    gate; never imports the perception engine.
+    """
+    try:
+        threshold = float(REWARD_TRANSIENT_GOLD_THRESHOLD)
+        if float(reading.result_confidence) < threshold:  # type: ignore[attr-defined]
+            return False
+        golds = (
+            float(reading.single_gold_confidence),  # type: ignore[attr-defined]
+            float(reading.repeat_gold_confidence),  # type: ignore[attr-defined]
+            float(reading.bar_single_gold_confidence),  # type: ignore[attr-defined]
+            float(reading.bar_repeat_gold_confidence),  # type: ignore[attr-defined]
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
+    return not any(gold >= threshold for gold in golds)
 
 
 def local_karat_boundary(reading) -> bool:
@@ -565,6 +595,16 @@ def drain_gold_keys_fast(
     watchdogs = 0
     gold_observations = 0
     karat_seen = False
+    # Irreversible Gold-exhaustion latch: once a fresh Karat boundary
+    # is seen, no right-button input of this drain may ever fire
+    # again, whatever later frames claim.
+    gold_exhausted = False
+
+    def _latch_gold_exhausted(origin: str) -> None:
+        nonlocal gold_exhausted
+        if not gold_exhausted:
+            gold_exhausted = True
+            evidence.append(f"latch:gold_exhausted:{origin}")
 
     def _finish(outcome, *, reason=None, extra=()) -> GoldKeyDrainResult:
         return GoldKeyDrainResult(
@@ -588,6 +628,7 @@ def drain_gold_keys_fast(
     entry_reason = check_fast_drain_entry(
         initial_snapshot, initial_open_verified=initial_open_verified
     )
+    karat_entry_pending = False
     if entry_reason is not None and (
         initial_open_verified is True
         and config.reward_transient
@@ -612,6 +653,14 @@ def drain_gold_keys_fast(
         ):
             entry_reason = None
             evidence.append("entry:reward_transient_local")
+        elif (
+            allow_karat_entry
+            and entry_reading is not None
+            and local_karat_boundary(entry_reading)
+        ):
+            entry_reason = None
+            karat_entry_pending = True
+            evidence.append("entry:karat_boundary_local")
     if entry_reason is not None:
         if (
             entry_reason == "already_karat_boundary"
@@ -630,8 +679,6 @@ def drain_gold_keys_fast(
                 reason=entry_reason,
                 extra=(f"entry:{entry_reason}",),
             )
-    else:
-        karat_entry_pending = False
     try:
         last_ts = float(initial_snapshot.timestamp)  # type: ignore[attr-defined]
     except (AttributeError, TypeError, ValueError):
@@ -684,9 +731,20 @@ def drain_gold_keys_fast(
         return _require_point(repeat_point, "repeat_point")
 
     def _do_tap(point, tag: str):
-        """Emit one right-button tap; return a terminal result or None."""
+        """Emit one right-button tap; return a terminal result or None.
+
+        The Gold-exhaustion latch permanently forbids right-button
+        input: any tap request after the latch fails closed instead
+        of touching Karat-backed chrome.
+        """
         nonlocal inputs, last_ts, transient_deadline, last_reading
         nonlocal last_tap_mark, progressed_since_watchdog
+        if gold_exhausted:
+            return _finish(
+                GoldKeyDrainOutcome.FAILED,
+                reason="economic_after_latch",
+                extra=("refused:latched",),
+            )
         try:
             tap(point)
         except Exception as error:
@@ -786,7 +844,36 @@ def drain_gold_keys_fast(
         """Run the shared tap-through primitive only after fresh Karat."""
         nonlocal karat_seen, dismisses
         karat_seen = True
+        _latch_gold_exhausted("karat_boundary")
         evidence.append("boundary:karat")
+
+        def _final_tappable(snapshot) -> bool:
+            """Lateral tap authorization under the latched lineage.
+
+            Karat armed the latch; afterwards only the reward signal
+            matters, never the title, never per-frame Karat. A fresh
+            semantic result authorizes at once; otherwise a positive
+            title-independent local reward reading on the fresh frame
+            authorizes. A fresh RIGHT_GOLD_OPEN_MAX refuses the tap so
+            the caller fails closed instead of a second outside tap.
+            """
+            if not gold_exhausted:
+                return False
+            if has_right_gold_open_max(snapshot):
+                return False
+            if has_local_reward_transient(snapshot):
+                return True
+            if measure_local is None:
+                return False
+            try:
+                image = snapshot.frame.image  # type: ignore[attr-defined]
+            except Exception:
+                return False
+            try:
+                reading = measure_local(image)
+            except Exception:
+                return False
+            return local_reward_present(reading)
         if _final_reward_cleared(trigger):
             return _finish(
                 GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED,
@@ -799,7 +886,8 @@ def drain_gold_keys_fast(
                 reason="finalizer_unavailable",
                 extra=("finalize:unavailable",),
             )
-        remaining = min(config.dismiss_timeout_s, deadline - now())
+        normal_policy = TapThroughPolicy()
+        remaining = min(normal_policy.timeout, deadline - now())
         if remaining <= 0:
             return _finish(
                 GoldKeyDrainOutcome.SAFETY_DEADLINE,
@@ -810,13 +898,13 @@ def drain_gold_keys_fast(
             trigger,
             action=DismissTreasureResult(),
             expected=_final_reward_cleared,
-            tappable=_final_reward_tappable,
+            tappable=_final_tappable,
             transient=_final_reward_transient,
             cancel_requested=cancel_requested,
-            policy=TapThroughPolicy(
-                tap_interval=config.tap_interval_s,
-                timeout=remaining,
-                max_taps=config.max_dismiss_taps,
+            policy=(
+                normal_policy
+                if remaining == normal_policy.timeout
+                else TapThroughPolicy(timeout=remaining)
             ),
         )
         dismisses += tapped.tap_count
@@ -912,6 +1000,15 @@ def drain_gold_keys_fast(
                 evidence.append("resample_skipped")
                 sleep(config.tap_interval_s)
                 continue
+            if gold_exhausted:
+                # Stale Gold sighting after the Karat latch: never
+                # reactivate the fast loop. Bounded wait for the
+                # resolvable boundary instead of any right-button tap.
+                evidence.append("stale_gold_ignored")
+                terminal = _wait_bounded("stale_gold")
+                if terminal is not None:
+                    return terminal
+                continue
             try:
                 point = _point_for(snapshot)
             except Exception as error:
@@ -961,6 +1058,12 @@ def drain_gold_keys_fast(
                 else None
             )
             if side is not None:
+                if gold_exhausted:
+                    evidence.append("stale_gold_ignored")
+                    terminal = _wait_bounded("stale_gold")
+                    if terminal is not None:
+                        return terminal
+                    continue
                 gold_observations += 1
                 evidence.append(f"local_gold:{side}")
                 terminal = _do_tap(_local_point(side), f"local-{side}")
@@ -974,8 +1077,10 @@ def drain_gold_keys_fast(
             if pending_reading is not None and local_karat_boundary(
                 pending_reading
             ):
-                # Premium backing seen locally: zero taps; confirm
-                # through resolvable observations or time out closed.
+                # Premium backing seen locally: latch Gold exhaustion
+                # at once, zero taps; confirm through resolvable
+                # observations or time out closed.
+                _latch_gold_exhausted("local_karat")
                 evidence.append("local_karat_seen")
                 terminal = _wait_bounded("local_karat")
                 if terminal is not None:
@@ -999,23 +1104,12 @@ def drain_gold_keys_fast(
 
 
 def _final_reward_cleared(snapshot) -> bool:
-    """Treasure is usable again and the reward/result overlay is gone."""
+    """Treasure is usable, reward is gone, and right Gold stayed absent."""
 
     return (
-        is_treasure_screen(snapshot)
+        clean_treasure(snapshot)
         and not has_result(snapshot)
-        and not has_gold_signal(snapshot)
-    )
-
-
-def _final_reward_tappable(snapshot) -> bool:
-    """Fresh semantic authorization for one non-economic final tap."""
-
-    return (
-        is_treasure_screen(snapshot)
-        and has_right_karat_open(snapshot)
-        and not has_gold_signal(snapshot)
-        and has_result(snapshot)
+        and not has_right_gold_open_max(snapshot)
     )
 
 
@@ -1027,7 +1121,7 @@ def _final_reward_transient(snapshot) -> bool:
         return True
     return (
         is_treasure_screen(snapshot)
-        and not has_gold_signal(snapshot)
+        and not has_right_gold_open_max(snapshot)
         and has_result(snapshot)
     )
 
@@ -1060,6 +1154,7 @@ __all__ = (
     "default_progress_fingerprint",
     "drain_gold_keys_fast",
     "local_karat_boundary",
+    "local_reward_present",
     "local_reward_side",
     "resolve_right_button_target",
 )

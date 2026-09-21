@@ -5,8 +5,9 @@ Treasure with the Gold-backed right button visible and approves every
 burst explicitly (interval + total economic-input cap announced before
 each run). Final tap-through inputs are counted separately.
 
-Modes (no navigation, no Trading/C6b, no leave: the user owns the
-device before and after):
+Modes (no entry navigation and no Trading/C6b: the user places the
+device in clean Treasure; a successful burst performs the normal
+verified Back to Lobby):
 
 - ``dry-run`` (default): observe only, classify the live state
   (RIGHT_GOLD_OPEN_MAX / RIGHT_KARAT_OPEN / contradiction / foreign),
@@ -51,6 +52,7 @@ from bot.perception import build_treasure_perception  # noqa: E402
 from bot.perception.treasure_center import TreasureContentDetector  # noqa: E402
 from bot.runtime import build_adb_client, build_frame_source  # noqa: E402
 from bot.runtime_observer import RuntimeObserver  # noqa: E402
+from bot.semantic_actions import DismissTreasureResult  # noqa: E402
 from bot.tap_through_animation import TapThroughAnimation  # noqa: E402
 from bot.treasure_center import (  # noqa: E402
     has_right_button_contradiction,
@@ -62,6 +64,8 @@ from bot.treasure_fast_drain import (  # noqa: E402
     GoldKeyDrainConfig,
     check_fast_drain_entry,
     drain_gold_keys_fast,
+    local_karat_boundary,
+    local_reward_side,
     resolve_right_button_target,
 )
 from bot.treasure_keys import GoldKeyQuantity, GoldKeyQuantityMode  # noqa: E402
@@ -291,25 +295,45 @@ def main(argv=None) -> int:
                     return 2
                 entry_economic_inputs = len(opened.inputs)
             initial = observe()
+            initial_info = _describe(initial)
+            try:
+                initial_reading = content.measure(initial.frame.image)
+                initial_info["local_gold_side"] = local_reward_side(
+                    initial_reading
+                )
+                initial_info["local_karat"] = local_karat_boundary(
+                    initial_reading
+                )
+            except Exception:
+                initial_info["local_gold_side"] = None
+                initial_info["local_karat"] = False
+            report["frames"].append(initial_info)
             entry_reason = check_fast_drain_entry(
                 initial, initial_open_verified=True
             )
             karat_entry = False
-            if entry_reason is not None and args.skip_entry:
-                # Reward-transient entry: same local contract as the
-                # loop (verified open is the --gt lineage); the module
-                # re-validates it before the first tap.
-                from bot.treasure_fast_drain import local_reward_side
-
+            # Immediate Karat after this run's verified E2 entry carries
+            # natural lineage (the ~2-keys edge): latch and finalize
+            # with zero right-button taps instead of refusing.
+            allow_karat_entry = args.allow_karat_entry or not args.skip_entry
+            if entry_reason is not None:
                 try:
-                    side = local_reward_side(content.measure(initial.frame.image))
+                    entry_reading = content.measure(initial.frame.image)
                 except Exception:
-                    side = None
+                    entry_reading = None
+                side = local_reward_side(entry_reading)
                 if side is not None:
                     print(f"[burst] transient entry: local_gold:{side}")
                     entry_reason = None
+                elif (
+                    allow_karat_entry
+                    and local_karat_boundary(entry_reading)
+                ):
+                    print("[burst] local Karat-boundary entry: finalize only")
+                    entry_reason = None
+                    karat_entry = True
             if entry_reason == "already_karat_boundary" and (
-                args.skip_entry or args.allow_karat_entry
+                args.skip_entry or allow_karat_entry
             ):
                 print("[burst] karat-boundary entry: finalize only")
                 entry_reason = None
@@ -355,6 +379,22 @@ def main(argv=None) -> int:
                 info["tap_point"] = list(point)
                 info["tap_pixel"] = list(pixel)
                 info["input_kind"] = "economic_right"
+                if info["right_gold"]:
+                    authorization = "resolved_right_gold"
+                else:
+                    try:
+                        side = local_reward_side(
+                            content.measure(snapshot.frame.image)
+                        )
+                    except Exception:
+                        side = None
+                    authorization = (
+                        f"local_right_gold:{side}"
+                        if side is not None
+                        else "unclassified"
+                    )
+                info["authorization"] = authorization
+                info["physical_currency"] = "requires_before_after_gt"
                 report["taps"].append(info)
                 print(
                     f"[burst] tap #{len(report['taps'])} point={point} "
@@ -369,7 +409,15 @@ def main(argv=None) -> int:
             def record_drain_snapshot(snapshot):
                 latest["snapshot"] = snapshot
                 index = len(report["frames"])
-                report["frames"].append(_describe(snapshot))
+                info = _describe(snapshot)
+                try:
+                    reading = content.measure(snapshot.frame.image)
+                    info["local_gold_side"] = local_reward_side(reading)
+                    info["local_karat"] = local_karat_boundary(reading)
+                except Exception:
+                    info["local_gold_side"] = None
+                    info["local_karat"] = False
+                report["frames"].append(info)
                 try:
                     import cv2
 
@@ -384,9 +432,27 @@ def main(argv=None) -> int:
             def counting_observe():
                 return record_drain_snapshot(observe())
 
+            class RecordingWaitObserver:
+                def wait_until(self, condition, **kwargs):
+                    snapshot = observer.wait_until(condition, **kwargs)
+                    return record_drain_snapshot(snapshot)
+
+            class RecordingFinalActions:
+                def execute(self, action, geometry):
+                    execution = actions.execute(action, geometry)
+                    if isinstance(action, DismissTreasureResult):
+                        info = _describe(latest["snapshot"])
+                        info["tap_point"] = list(
+                            execution.normalized_target
+                        )
+                        info["tap_pixel"] = list(execution.pixel_target)
+                        info["input_kind"] = "dismiss_lateral"
+                        report.setdefault("dismiss_taps", []).append(info)
+                    return execution
+
             tap_through = TapThroughAnimation(
-                observer,
-                actions,
+                RecordingWaitObserver(),
+                RecordingFinalActions(),
                 clock=time.monotonic,
                 sleeper=time.sleep,
             )
@@ -425,8 +491,54 @@ def main(argv=None) -> int:
                 "reason": result.reason,
                 "evidence": list(result.evidence),
             }
+            boundary = next(
+                (
+                    frame
+                    for frame in report["frames"]
+                    if frame["right_karat"] or frame.get("local_karat")
+                ),
+                None,
+            )
+            report["result"]["first_karat_boundary"] = (
+                {
+                    "sequence": boundary["sequence"],
+                    "observed_at": boundary["observed_at"],
+                    "source": (
+                        "resolved_right_karat"
+                        if boundary["right_karat"]
+                        else "local_karat"
+                    ),
+                }
+                if boundary is not None
+                else None
+            )
+            report["result"]["right_button_inputs_after_boundary"] = (
+                sum(
+                    tap["sequence"] >= boundary["sequence"]
+                    for tap in report["taps"]
+                )
+                if boundary is not None
+                else None
+            )
+            exit_completed = False
+            if result.outcome.value == "gold_keys_exhausted":
+                left = runtime.leave_treasure_to_lobby()
+                report["exit"] = {
+                    "status": left.status.value,
+                    "error": left.error,
+                    "transition_outcomes": list(left.transition_outcomes),
+                    "transition_attempts": list(left.transition_attempts),
+                }
+                exit_completed = left.status.value == "completed"
             print(f"[burst] result={report['result']}")
-            return 0 if result.outcome.value == "gold_keys_exhausted" else 3
+            if "exit" in report:
+                print(f"[burst] exit={report['exit']}")
+            return (
+                0
+                if result.outcome.value == "gold_keys_exhausted"
+                and exit_completed
+                else 3
+            )
     except KeyboardInterrupt:
         stop.set()
         print("[hil] cancelled by operator; device left untouched.", file=sys.stderr)

@@ -42,7 +42,7 @@ from bot.state import ResolutionStatus
 from bot.treasure_center import (
     has,
     has_karat_signal,
-    has_result,
+    has_local_reward_transient,
     has_selector_popup,
     is_treasure_screen,
 )
@@ -53,15 +53,21 @@ from bot.treasure_center_semantics import (
 from bot.treasure_keys import TreasureCurrencyFact
 
 
-def _usable(snapshot) -> bool:
+def _usable(snapshot, *, allow_unresolved_result: bool = False) -> bool:
     status = getattr(getattr(snapshot, "state", None), "status", None)
+    if (
+        allow_unresolved_result
+        and status is ResolutionStatus.UNKNOWN
+        and has_local_reward_transient(snapshot)
+    ):
+        return True
     if status is not ResolutionStatus.RESOLVED:
         return False
     return is_treasure_screen(snapshot)
 
 
 def _overlay(snapshot) -> str | None:
-    if has_result(snapshot):
+    if has_local_reward_transient(snapshot):
         return "result"
     if has_selector_popup(snapshot):
         return "selector"
@@ -77,22 +83,31 @@ def _currency(snapshot, gold_name: str) -> str:
 
 
 def fact_for_single(snapshot, *, sequence=None, observed_at=None,
-                    evidence=()):
-    """Build the ``1(Open)`` fact from a fresh Treasure snapshot."""
+                    evidence=(), allow_unresolved_result=False):
+    """Build the ``1(Open)`` fact from a fresh Treasure snapshot.
+
+    ``allow_unresolved_result`` is post-action only: it accepts a positive
+    local reward observation under global UNKNOWN. The default remains
+    fail-closed so UNKNOWN can never authorize the economic input.
+    """
     return _fact(snapshot, _SELECTOR, 1, sequence=sequence,
-                 observed_at=observed_at, evidence=evidence)
+                 observed_at=observed_at, evidence=evidence,
+                 allow_unresolved_result=allow_unresolved_result)
 
 
 def fact_for_repeat(snapshot, *, sequence=None, observed_at=None,
-                    evidence=()):
-    """Build the ``10(Open)`` fact from a fresh Treasure snapshot."""
+                    evidence=(), allow_unresolved_result=False):
+    """Build the ``10(Open)`` fact; see the post-action-only opt-in above."""
     return _fact(snapshot, _REPEAT, 10, sequence=sequence,
-                 observed_at=observed_at, evidence=evidence)
+                 observed_at=observed_at, evidence=evidence,
+                 allow_unresolved_result=allow_unresolved_result)
 
 
 def _fact(snapshot, gold_name: str, amount: int, *, sequence, observed_at,
-          evidence):
-    if not _usable(snapshot):
+          evidence, allow_unresolved_result):
+    if not _usable(
+        snapshot, allow_unresolved_result=bool(allow_unresolved_result)
+    ):
         return None
     if sequence is None:
         try:

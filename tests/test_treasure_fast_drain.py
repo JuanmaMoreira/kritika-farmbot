@@ -19,7 +19,8 @@ from bot.runtime_observer import (
 )
 from bot.semantic_actions import DismissTreasureResult
 from bot.state import ResolutionStatus, ResolvedState
-from bot.tap_through_animation import TapThroughAnimation
+from bot.tap_through_animation import TapThroughAnimation, TapThroughPolicy
+from bot.perception.treasure_center import TreasureContentDetector
 from bot.treasure_center import (
     has_right_button_contradiction,
     has_right_gold_open_max,
@@ -44,9 +45,11 @@ from bot.treasure_fast_drain import (
     check_fast_drain_entry,
     drain_gold_keys_fast,
     local_karat_boundary,
+    local_reward_present,
     local_reward_side,
     resolve_right_button_target,
 )
+
 
 GEOMETRY = FrameGeometry(width=2712, height=1220)
 SINGLE_POINT = (0.618, 0.548)
@@ -158,6 +161,20 @@ def _clean_grid(sequence, timestamp=None):
     )
 
 
+def _stable_selector_only(sequence, timestamp=None):
+    # HIL frame 707: stable Treasure retained only the single/selector
+    # signal; the real right Gold control (repeat) was absent.
+    return _snapshot(
+        sequence,
+        base=SCREEN_TREASURE,
+        observations=[
+            _observation(LANDMARK_TREASURE_TITLE),
+            _observation(INDICATOR_TREASURE_GOLD_KEY_SELECTOR),
+        ],
+        timestamp=timestamp,
+    )
+
+
 def _contradiction(sequence):
     return _snapshot(
         sequence,
@@ -181,6 +198,34 @@ def _foreign(sequence):
 
 def _unknown(sequence):
     return _snapshot(sequence, base=None, status=ResolutionStatus.UNKNOWN)
+
+
+def _unknown_reward(sequence, timestamp=None, *, karat=False):
+    # Title occluded (base UNKNOWN) but the open chest still glows:
+    # yellow over TREASURE_RESULT_REGION x 0.42-0.60 / y 0.55-0.80.
+    if timestamp is None:
+        timestamp = float(sequence)
+    height, width = 1220, 2712
+    image = np.zeros((height, width, 3), dtype=np.uint8)
+    image[int(0.55 * height):int(0.80 * height),
+          int(0.42 * width):int(0.60 * width)] = (0, 255, 255)
+    if karat:
+        image[int(0.78 * height):int(0.86 * height),
+              int(0.305 * width):int(0.365 * width)] = (255, 0, 255)
+    return RuntimeSnapshot(
+        FrameSnapshot(image, timestamp, sequence),
+        ObservationBatch(sequence, timestamp, ()),
+        ResolvedState(
+            ResolutionStatus.UNKNOWN,
+            sequence,
+            timestamp,
+            base_context=None,
+            overlays=(),
+            base_candidates=(),
+        ),
+        RuntimeFacts(),
+        GEOMETRY,
+    )
 
 
 def _ambiguous(sequence):
@@ -1028,10 +1073,28 @@ def test_karat_single_final_dismiss_then_exhausted():
     assert script.taps == [SELECTOR_REPEAT_POINT, DISMISS_POINT]
     assert DISMISS_POINT != SELECTOR_REPEAT_POINT
     assert DISMISS_POINT != BAR_REPEAT_POINT
-    assert DISMISS_POINT == (0.85, 0.50)
+    assert DISMISS_POINT == (0.08, 0.65)
 
 
-def test_dismiss_no_effect_bounded_retry_then_fail_closed():
+def test_frame_707_selector_only_completes_without_reactivating_gold():
+    script = _Script([
+        _karat_result(12, timestamp=12.0),
+        _stable_selector_only(707, timestamp=13.0),
+    ])
+
+    result, _ = _drain(script, _popup(11, timestamp=11.0))
+
+    assert has_right_gold_open_max(_stable_selector_only(707)) is False
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.reason == "karat_boundary"
+    assert result.inputs_emitted == 0
+    assert result.dismiss_inputs == 1
+    assert script.taps == [DISMISS_POINT]
+    assert "finalize:overlay_closed" in result.evidence
+
+
+def test_dismiss_no_effect_bounded_then_fail_closed():
+    # Persistent reward remains bounded by the drain safety deadline.
     script = _Script([
         _popup(11, timestamp=11.0),
         _karat_result(12, timestamp=12.0),
@@ -1042,14 +1105,13 @@ def test_dismiss_no_effect_bounded_retry_then_fail_closed():
         _karat_result(17, timestamp=17.0),
     ])
     config = GoldKeyDrainConfig(
-        dismiss_timeout_s=0.3, max_dismiss_taps=2, tap_interval_s=0.05
+        safety_deadline_s=0.3, tap_interval_s=0.05
     )
     result, _ = _drain(script, _popup(10, timestamp=10.0), config=config)
     assert result.outcome is GoldKeyDrainOutcome.FAILED
     assert result.reason == "dismiss_no_effect"
     assert result.inputs_emitted == 1
-    assert result.dismiss_inputs == 2
-    assert result.dismiss_inputs <= config.max_dismiss_taps
+    assert 1 <= result.dismiss_inputs <= TapThroughPolicy().max_taps
 
 
 def test_never_outside_tap_between_batches():
@@ -1099,14 +1161,13 @@ def test_gold_returned_during_finalize_blocks_any_second_outside_tap():
     assert result.inputs_emitted == 1
     assert result.dismiss_inputs == 1
     assert script.taps == [SELECTOR_REPEAT_POINT, DISMISS_POINT]
+    assert "latch:gold_exhausted:karat_boundary" in result.evidence
     assert "finalize:incompatible_state" in result.evidence
 
 
 def test_finalize_config_validation():
-    with pytest.raises(ValueError):
-        GoldKeyDrainConfig(dismiss_timeout_s=-1.0)
-    with pytest.raises(ValueError):
-        GoldKeyDrainConfig(max_dismiss_taps=0)
+    assert not hasattr(GoldKeyDrainConfig(), "dismiss_timeout_s")
+    assert not hasattr(GoldKeyDrainConfig(), "max_dismiss_taps")
 
 
 def test_finalize_waits_without_input_through_unknown_transition():
@@ -1191,3 +1252,68 @@ def test_karat_entry_refused_without_flag_or_lineage():
     assert denied.outcome is GoldKeyDrainOutcome.FAILED
     assert denied.reason == 'entry_not_verified'
     assert script.taps == []
+
+
+# Focused E2.2 recovery regressions.
+
+
+def test_local_reward_present_requires_reward_and_rejects_gold():
+    base = dict(
+        single_gold_confidence=0.0,
+        repeat_gold_confidence=0.0,
+        bar_single_gold_confidence=0.0,
+        bar_repeat_gold_confidence=0.0,
+    )
+    assert local_reward_present(
+        SimpleNamespace(result_confidence=1.0, **base)
+    )
+    assert not local_reward_present(
+        SimpleNamespace(result_confidence=0.0, **base)
+    )
+    assert not local_reward_present(
+        SimpleNamespace(
+            result_confidence=1.0,
+            **dict(base, bar_repeat_gold_confidence=1.0),
+        )
+    )
+
+
+def test_unknown_local_reward_can_tap_past_two_until_clean_treasure():
+    measure = TreasureContentDetector().measure
+    script = _Script([
+        _karat_result(11, timestamp=11.0),
+        _unknown_reward(12, timestamp=12.0),
+        _unknown_reward(13, timestamp=13.0),
+        _unknown_reward(14, timestamp=14.0),
+        _clean_grid(15, timestamp=15.0),
+    ])
+
+    result, _ = _drain(
+        script,
+        _popup(10, timestamp=10.0),
+        measure_local=measure,
+    )
+
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 0
+    assert result.dismiss_inputs == 4
+    assert script.taps == [DISMISS_POINT] * 4
+
+
+def test_immediate_local_karat_entry_finalizes_without_right_tap():
+    measure = TreasureContentDetector().measure
+    script = _Script([_clean_grid(13, timestamp=13.0)])
+
+    result, _ = _drain(
+        script,
+        _unknown_reward(12, timestamp=12.0, karat=True),
+        measure_local=measure,
+        allow_karat_entry=True,
+    )
+
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.inputs_emitted == 0
+    assert result.dismiss_inputs == 1
+    assert script.taps == [DISMISS_POINT]
+    assert "entry:karat_boundary_local" in result.evidence
+    assert "latch:gold_exhausted:karat_boundary" in result.evidence

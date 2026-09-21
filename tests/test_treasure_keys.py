@@ -139,9 +139,15 @@ def _execute(snapshot=None, request=None, script=None, **overrides):
 # Context / readiness: positive Treasure gates, everything else fails closed.
 
 
-def test_ready_selector_proceeds_to_open_once_success():
-    before = _fact(amount=1, count=10, overlay="selector", sequence=10, observed_at=10.5)
-    after = _fact(amount=1, count=9, overlay="result", sequence=11)
+def test_ready_selector_count_20_to_19_proceeds_to_open_once_success():
+    before = _fact(
+        amount=1,
+        count=20,
+        overlay="selector",
+        sequence=10,
+        observed_at=10.5,
+    )
+    after = _fact(amount=1, count=19, overlay="result", sequence=11)
     result, script = _execute(script=_Script([before, after]))
     assert result.outcome is TreasureOutcome.SUCCESS
     assert result.opened == 1

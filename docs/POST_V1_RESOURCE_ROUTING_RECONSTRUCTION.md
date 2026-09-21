@@ -381,7 +381,7 @@ Catálogo/resolver: `SCREEN_TREASURE` + 7 observaciones (`+2` popup/result nueva
 
 Runtime (`bot/treasure_profile.py` + `bot/treasure_facts.py` + `bot/treasure_runtime.py`, nuevos; 6 acciones + `TreasureActionTargets` en executor):
 
-- Profile: entry (0.721,0.892) remedido lobby; gold-chest (0.636,0.380) T0+Astra; single (0.618,0.548) HIL B2 PASS; repeat (0.693,0.540) centroide label B1 (tap HIL_NOT_EXERCISED); dismiss seguro (0.85,0.50) GT usuario + efecto manual HIL, productive-path HIL pendiente; back (0.802,0.073) Astra+glyph T0. Puntos interiores con margen, bboxes popup disjuntas.
+- Profile: entry (0.721,0.892) remedido lobby; gold-chest (0.636,0.380) T0+Astra; single (0.618,0.548) HIL B2 PASS; repeat (0.693,0.540) centroide label B1; dismiss seguro `(0.08,0.65)` en corredor lateral izquierdo, validado por el HIL productivo final de la sección 24; back (0.802,0.073) Astra+glyph T0. Puntos interiores con margen, bboxes popup disjuntas.
 - Facts: `fact_for_single/repeat` puros desde snapshot fresco (control-selectivo veraz: el monto codificado SÍ está ofrecido con icono Gold y sin Karat). Karat anywhere→fact karat (contradicción fail-closed); sin Gold ni Karat→unknown (nunca autoriza); count=None; overlay selector/result (result gana); None sólo en foreign/UNKNOWN/AMBIGUOUS. `empty` no observable en E2 v1: depleción = fail-closed sin boundary verificado (límite para C6b).
 - Operaciones single-attempt (`max_attempts=1`), sin retry ciego: enter (Lobby limpio→OpenTreasure→screen.treasure), execute (readiness→SelectGoldChest→popup→capability E con plan greedy 10s+1s y read_state fresco por snapshot→consumo verificado), leave (dismiss si result→Back→Lobby limpio verificado), wrapper enter→execute→leave restaurando Lobby siempre (hasta en FAILED/CANCELLED).
 - Separación testeada: cero imports Trading/C6a/scroll/Craft/Relief/Equipment/MW/planner/stage; sin GOLD_CAPACITY_BLOCKED; sin combine/inventory en firmas; taps sólo por ADB.
@@ -620,7 +620,8 @@ Auditoria senior posterior: el unico finalize productivo registrado
 (`20260918T021909`) uso el punto viejo y fallo
 `dismiss_no_effect`. El tap exitoso (0.85,0.50) fue manual/ad-hoc:
 demuestra la geometria fisica, no la ruta productiva. Por eso el
-productive-path HIL queda explicitamente PENDING.
+productive-path HIL quedaba PENDING en ese checkpoint; estado superseded por
+el cierre físico de la sección 24.
 
 La implementacion final reutiliza `TapThroughAnimation` sin cambiar su
 contrato: precondicion fresca result+RIGHT_KARAT_OPEN+no Gold por tap,
@@ -636,5 +637,44 @@ ahora exige `--approved-economic-inputs`, resta la entrada E2 del mismo
 presupuesto, instala un hard guard independiente en cada tap derecho y
 cuenta final tap-through por separado.
 
-Back/exit sigue cubierto por regression E2 leave (Smoke A/B 3/3), pero
-el cierre productivo nuevo requiere un smoke final corto antes del push.
+Back/exit sigue cubierto por regression E2 leave (Smoke A/B 3/3). El cierre
+productivo posterior está documentado en la sección 24.
+
+## 24. E2.2 recovery: cierre físico y falso negativo corregido (2026-09-21)
+
+HIL productivo único (`artifacts/hil_e2_fastdrain/20260921T184146/`):
+
+- Gold Keys 27→0; initial open `SUCCESS`; 10 inputs económicos dentro del
+  cap aprobado 20 (entrada 1 + nueve derechos); frontera Karat fresca en
+  sequence 623; cero taps derechos posteriores.
+- Premium 33,509→33,509 y Gold currency sin cambios. La telemetría registra
+  intención/autorización, pero la invariancia física proviene de las capturas
+  y GT, no de contadores derivados.
+- `TapThroughAnimation` emitió dos taps, ambos mediante
+  `DismissTreasureResult` en el único target profile-owned `(0.08,0.65)`.
+  GT humano: overlay cerrado y Treasure estable. El target lateral queda PASS
+  físico; no se cambió `TapThroughAnimation` ni se creó otro finalizer.
+
+El harness informó `dismiss_no_effect`, pero fue un falso negativo software,
+no un fallo físico. El frame posterior 707 resolvió Treasure sin overlay ni
+`treasure_result` y conservó sólo `treasure_gold_key_selector@1.00`.
+`_final_reward_cleared()` usaba la evidencia amplia `has_gold_signal()` y
+confundía ese selector aislado con el retorno del control económico derecho;
+por eso `expected`, `tappable` y `transient` resultaron falsos.
+
+Fix offline mínimo: el contrato del finalizer usa
+`has_right_gold_open_max()` exclusivamente donde pregunta si reapareció el
+control derecho Gold real. La postcondición es Treasure estable + reward/result
+ausente + `RIGHT_GOLD_OPEN_MAX` ausente. El selector aislado permite completion;
+repeat Gold real continúa siendo incompatible y no autoriza otro tap lateral.
+Los usos de `has_gold_signal()` para contradicción Gold+Karat, frontera Karat y
+espera por evidencia Gold amplia permanecen intactos. Regresión explícita del
+frame 707: TapThrough `COMPLETED` → `GOLD_KEYS_EXHAUSTED`, sin reactivar input
+económico.
+
+Validación final offline: sintaxis verde; fast-drain 68 passed; runtime,
+Treasure keys, TapThrough + consumidores, ActionExecutor y HIL cap 293 passed
+(264 directos + 29 reejecutados con basetemp local por un PermissionError
+ambiental de pytest). `git diff --check` limpio. Sin evaluator (ningún cambio
+de detector/reader/ROI/asset) y sin full suite (cambio Treasure-local; primitive
+TapThrough intacta). No hubo segundo HIL. E2.2 DONE; C6b NO INICIADO.

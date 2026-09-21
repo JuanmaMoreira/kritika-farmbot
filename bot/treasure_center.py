@@ -90,6 +90,18 @@ def has_result(snapshot) -> bool:
     )
 
 
+def has_local_reward_transient(snapshot) -> bool:
+    """Positive Treasure reward evidence independent of base resolution.
+
+    The result observation is still emitted from Treasure-local visual
+    evidence when the reward overlay occludes enough of the title for the
+    global resolver to return UNKNOWN. This predicate carries no input
+    authority by itself; callers must provide causal lineage.
+    """
+
+    return has(snapshot, INDICATOR_TREASURE_RESULT)
+
+
 def has_right_gold_open_max(snapshot) -> bool:
     """Right button Gold-backed, amount-agnostic (E2.2 ``RIGHT_GOLD_OPEN_MAX``).
 
@@ -135,6 +147,7 @@ __all__ = (
     "has",
     "has_gold_signal",
     "has_karat_signal",
+    "has_local_reward_transient",
     "has_result",
     "has_right_button_contradiction",
     "has_right_gold_open_max",

@@ -60,6 +60,7 @@ from bot.treasure_keys import (
     GoldKeyOpenRequest,
     GoldKeyOpenResult,
     GoldKeyQuantity,
+    GoldKeyQuantityMode,
     TreasureCurrencyFact,
     TreasureOutcome,
     check_gold_ready,
@@ -287,7 +288,8 @@ class TreasureRuntime:
             except Exception:
                 return None
             latest["snapshot"] = snapshot
-            iteration = reads["count"] // 2
+            read_index = reads["count"]
+            iteration = read_index // 2
             reads["count"] += 1
             prefer = plan[iteration] if iteration < len(plan) else 1
             builders = (
@@ -295,14 +297,33 @@ class TreasureRuntime:
                 if prefer == 10
                 else (fact_for_single, fact_for_repeat)
             )
+            if (
+                quantity.mode is GoldKeyQuantityMode.OPEN_ONCE
+                and read_index > 0
+            ):
+                builders = (fact_for_single,)
             for build in builders:
-                fact = build(snapshot, sequence=snapshot.sequence)
+                fact = build(
+                    snapshot,
+                    sequence=snapshot.sequence,
+                    allow_unresolved_result=(
+                        quantity.mode is GoldKeyQuantityMode.OPEN_ONCE
+                        and read_index > 0
+                    ),
+                )
                 if fact is not None and (
                     fact.currency == "gold_key" or fact.currency == "karat"
                 ):
                     break
             else:
-                fact = builders[0](snapshot, sequence=snapshot.sequence)
+                fact = builders[0](
+                    snapshot,
+                    sequence=snapshot.sequence,
+                    allow_unresolved_result=(
+                        quantity.mode is GoldKeyQuantityMode.OPEN_ONCE
+                        and read_index > 0
+                    ),
+                )
             return fact
 
         def tap(point: tuple[float, float]) -> None:
@@ -472,8 +493,6 @@ class TreasureRuntime:
 def _expand_quantity(
     quantity: GoldKeyQuantity, max_actions: int
 ) -> tuple[int, ...]:
-    from bot.treasure_keys import GoldKeyQuantityMode
-
     if quantity.mode is GoldKeyQuantityMode.OPEN_ONCE:
         return (1,)
     if quantity.mode is GoldKeyQuantityMode.MAX_WITHIN_BUDGET:

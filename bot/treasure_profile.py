@@ -16,10 +16,19 @@ Fresh HIL E 2026-09-17, 2712x1220 (``artifacts/hil_treasure_a/``):
   popup (n=1607 yellow-mask px). Geometrically calibrated from the
   same popup as the validated single control; the tap itself is
   HIL_NOT_EXERCISED (gastar 10 keys requiere aprobacion no pedida).
-- dismiss: (0.85, 0.50), user-GT safe point outside both economic
-  controls. Manual HIL closed the final Karat reward overlay with zero
-  premium spend; productive-path HIL remains pending. The earlier
-  (0.9, 0.64) had no effect and is not executable.
+- dismiss: (0.08, 0.65), safe lateral point in the left dark
+  corridor, recalibrated 2026-09-18 from the live Karat reward
+  overlay ``artifacts/hil_e2_fastdrain/20260918T204217/dry_000.png``
+  (2712x1224): bottom bar bbox x 0.148-0.568 / y 0.700-0.933,
+  reward grid x >= ~0.20, center chest x ~0.55-0.75. The point
+  sits left of the bar, above it and left of the grid, over
+  background pixels in both overlay (BGR 14,11,2) and clean grid
+  (BGR 56,41,13) states. Safe region x 0.03-0.13 / y 0.58-0.68
+  overlaps no button bbox. The earlier (0.85, 0.50) was a
+  user visual approximation, never validated: it lies inside the
+  reward grid and the productive path proved ``dismiss_no_effect``
+  there (HIL 20260918T204152). It is not executable, nor is the
+  older (0.9, 0.64) which had no effect.
 - back: (0.802, 0.073) Astra ``BACK``; teal glyph bbox
   x 0.780-0.829 / y 0.040-0.104 measured on T0, plate to ~0.872.
   HIL-verify in Smoke A.
@@ -148,7 +157,7 @@ TREASURE_PROFILE = TreasureProfile(
     gold_chest_point=(0.636, 0.380),
     single_point=(0.618, 0.548),
     repeat_point=(0.693, 0.540),
-    dismiss_point=(0.85, 0.50),
+    dismiss_point=(0.08, 0.65),
     back_point=(0.802, 0.073),
     entry_bbox=(0.685, 0.84, 0.755, 0.965),
     gold_chest_bbox=(0.574, 0.27, 0.698, 0.54),

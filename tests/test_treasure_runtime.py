@@ -123,6 +123,24 @@ def _treasure_result(sequence=4, timestamp=None):
     )
 
 
+def _title_occluded_treasure_result(sequence=4, timestamp=None, *, karat=False):
+    currency = (
+        INDICATOR_TREASURE_KARAT_BASE
+        if karat
+        else INDICATOR_TREASURE_GOLD_KEY_SELECTOR
+    )
+    return _snapshot(
+        sequence,
+        base=None,
+        status=ResolutionStatus.UNKNOWN,
+        observations=[
+            _observation(INDICATOR_TREASURE_RESULT),
+            _observation(currency),
+        ],
+        timestamp=timestamp,
+    )
+
+
 class _Timeout(Exception):
     pass
 
@@ -408,6 +426,43 @@ def test_execute_single_open_taps_single_point_once_with_success():
     assert adb.taps.count(single_pixel) == 1
 
 
+def test_execute_open_once_accepts_fresh_title_occluded_reward_result():
+    runtime, adb = _runtime(
+        [
+            _treasure_grid(2),
+            _treasure_popup(3, timestamp=3.4),
+            _title_occluded_treasure_result(4, timestamp=3.8),
+        ],
+        [_treasure_popup(3)],
+    )
+
+    result = runtime.execute_gold_key_open(_open_once())
+
+    assert result.outcome is TreasureOutcome.SUCCESS
+    assert result.opened == 1
+    assert result.inputs == ("tap_open_single",)
+    assert len(adb.taps) == 2
+
+
+def test_execute_open_once_accepts_immediate_karat_result_without_extra_open():
+    runtime, adb = _runtime(
+        [
+            _treasure_grid(2),
+            _treasure_popup(3, timestamp=3.4),
+            _title_occluded_treasure_result(4, timestamp=3.8, karat=True),
+        ],
+        [_treasure_popup(3)],
+    )
+
+    result = runtime.execute_gold_key_open(_open_once())
+
+    assert result.outcome is TreasureOutcome.SUCCESS
+    assert result.opened == 1
+    assert result.boundary == "premium_currency"
+    assert result.inputs == ("tap_open_single",)
+    assert len(adb.taps) == 2
+
+
 def test_execute_smoke_b_sequence_gap_with_fresh_frame_authorizes():
     # HIL 2026-09-18 Smoke B: the decode counter advanced ~60 frames
     # during analyze latency while the popup frame stayed 0.3s fresh.
@@ -597,7 +652,7 @@ def test_fact_none_on_foreign_or_unresolved():
 def test_profile_points_are_hil_single_and_inside_bboxes():
     profile = TREASURE_PROFILE
     assert profile.single_point == (0.618, 0.548)
-    assert profile.dismiss_point == (0.85, 0.50)
+    assert profile.dismiss_point == (0.08, 0.65)
     assert profile.single_exercised is True
     assert profile.repeat_exercised is False
     for point_name, bbox_name in (
