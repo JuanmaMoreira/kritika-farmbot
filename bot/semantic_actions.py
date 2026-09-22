@@ -7,6 +7,7 @@ from enum import Enum
 from numbers import Integral
 
 from bot.geometry import RelativePoint, relative_point_to_pixel
+from bot.craft_semantics import CraftFamily
 from bot.monster_wave_actions import MonsterWaveAction
 
 
@@ -268,6 +269,47 @@ class SelectQuickMenuGuild:
 @dataclass(frozen=True)
 class SelectQuickMenuTrading:
     """Request the HIL-verified shifted Trading tile in Quick Menu."""
+
+
+@dataclass(frozen=True)
+class SelectQuickMenuCraft:
+    """Request Craft from the HIL-verified shifted Quick Menu layout."""
+
+
+@dataclass(frozen=True)
+class OpenHeroCraft:
+    """Open one visible Hero family card; subtype selection stays default."""
+
+    family: CraftFamily
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.family, CraftFamily):
+            raise ValueError("family must be CraftFamily")
+
+
+@dataclass(frozen=True)
+class SelectCraftMax:
+    """Select the acquired Craft >> quantity control once."""
+
+
+@dataclass(frozen=True)
+class ConfirmCraftMaterial:
+    """Use the verified material button; never a Karat spend button."""
+
+
+@dataclass(frozen=True)
+class CancelCraft:
+    """Cancel the currently verified Craft selector."""
+
+
+@dataclass(frozen=True)
+class RejectCraftPremium:
+    """Choose No on the explicitly observed Karat boundary."""
+
+
+@dataclass(frozen=True)
+class DismissCraftResult:
+    """Dismiss Craft result through the acquired non-interactive side area."""
 
 
 @dataclass(frozen=True)
@@ -648,6 +690,13 @@ SemanticAction = (
     | SelectQuickMenuLobby
     | SelectQuickMenuGuild
     | SelectQuickMenuTrading
+    | SelectQuickMenuCraft
+    | OpenHeroCraft
+    | SelectCraftMax
+    | ConfirmCraftMaterial
+    | CancelCraft
+    | RejectCraftPremium
+    | DismissCraftResult
     | OpenCharacterSelect
     | CheckInGuildAttendance
     | Swipe
@@ -789,6 +838,13 @@ __all__ = (
     "SelectQuickMenuLobby",
     "SelectQuickMenuGuild",
     "SelectQuickMenuTrading",
+    "SelectQuickMenuCraft",
+    "OpenHeroCraft",
+    "SelectCraftMax",
+    "ConfirmCraftMaterial",
+    "CancelCraft",
+    "RejectCraftPremium",
+    "DismissCraftResult",
     "SendStaminaToAllFriends",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",

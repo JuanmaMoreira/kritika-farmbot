@@ -827,3 +827,43 @@ bounds 3 caller attempts/1 Combine/1 Sell. Sin evaluator ni full suite porque
 no cambió percepción, executor, navegación compartida o caller. Sin HIL porque
 la composición es pura y no añadió propiedad física; el primer adapter futuro
 debe auditar/adquirir su ruta concreta a Inventory y retorno antes de integrarse.
+
+## 29. D-Craft standalone CLOSED: operación y routing físicos (2026-09-22)
+
+Craft se reimplementó desde el baseline publicado sin portar `craft_sink`, el
+runtime experimental ni su relief acoplado. Los owners son locales:
+`craft_semantics.py` describe facts; `craft_reader.py` lee Quick Menu, Craft
+limpio, selector, frontera premium y resultado; `craft_policy.py` expresa el
+request; `craft_operation.py` ejecuta una sola acción; `craft_runtime.py` posee
+entrada y handoff. No hay planner, sink genérico, recovery framework, MW ni
+import/call a `EquipmentReliefComposer`.
+
+Entrada cerrada: Equipment Inventory fresco por consenso, `Item Count 111/112`
+y por tanto un slot libre; sólo entonces header→Quick Menu shifted→tile Craft.
+Craft limpio exige título, marcadores no ocluidos y tres conteos Hero `/999`;
+evidencia detrás de Quick Menu, selector o popup no satisface readiness. La UI
+visible sin scroll ofrece Weapon; Armor (Helmet/Chest Armor/Pants/Gloves/Boots);
+y Accessories (Earrings/Necklace/Ring), con tiers Expert/Artisan/Hero. La
+operación publicada acepta Hero y cantidad `ONE` o `MAX_AVAILABLE`: coste 49,
+inicio 1/10 y `>>` limitado por `min(material//49, 10)` (325 produjo 6/10).
+
+Premium queda fuera del vocabulario de input. La frontera HIL de Expert Armor
+con 7 materiales mostró `Need 3 material → 15 Karats`; `No` volvió a Craft sin
+cambios. La operación calcula suficiencia antes del confirm, exige currency
+Material y, ante popup defensivo, sólo expone `RejectCraftPremium`. No hay
+relief por craft individual ni retry oculto.
+
+Smoke productivo aprobado: Hero Weapon, 49 materiales, 1/10, exactamente un
+confirm. Resultado `Laoku's Destructive Sword`; el centro se descartó por GT
+humano porque abre detalle del ítem. El cierre seguro verificado es el lateral
+negro no interactivo `(0.20,0.50)`. Craft reapareció limpio y Hero Weapon bajó
+exactamente `325→276`; Armor `734` y Accessories `645` quedaron iguales,
+Karats `33,794` intactos. Quick Menu abrió después directamente sobre Craft,
+sin Lobby.
+
+Validación: evaluator incremental Craft 13/13; 211 tests afectados verdes para
+semántica/operación/runtime, ActionExecutor y Quick Menu. No se ejecutó full
+suite: los únicos cambios compartidos son intents/targets aditivos y sus
+consumidores inmediatos están cubiertos. Craft standalone CLOSED. El futuro
+adapter Craft→Equipment Relief es una tarea separada y conserva causalidad,
+rutas de relief y retry fuera de Craft.

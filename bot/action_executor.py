@@ -13,6 +13,7 @@ from bot.geometry import (
     frame_dimensions,
     relative_point_to_pixel,
 )
+from bot.craft_semantics import CraftFamily
 from bot.semantic_actions import (
     AcceptPurchaseConfirmation,
     AcceptPetInventoryFull,
@@ -93,6 +94,13 @@ from bot.semantic_actions import (
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
     SelectQuickMenuTrading,
+    SelectQuickMenuCraft,
+    OpenHeroCraft,
+    SelectCraftMax,
+    ConfirmCraftMaterial,
+    CancelCraft,
+    RejectCraftPremium,
+    DismissCraftResult,
     SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
@@ -342,6 +350,38 @@ class RotationActionTargets:
 
 
 DEFAULT_ROTATION_ACTION_TARGETS = RotationActionTargets()
+
+
+@dataclass(frozen=True)
+class CraftActionTargets:
+    """Normalized centers of the controls acquired on current Craft UI."""
+
+    select_quick_menu_craft_shifted: RelativePoint = (0.3970, 0.4950)
+    open_hero_weapon: RelativePoint = (0.7660, 0.3500)
+    open_hero_armor: RelativePoint = (0.7660, 0.6150)
+    open_hero_accessory: RelativePoint = (0.7660, 0.8750)
+    select_max: RelativePoint = (0.5460, 0.7450)
+    confirm_material: RelativePoint = (0.4340, 0.6600)
+    cancel: RelativePoint = (0.6200, 0.6600)
+    reject_karats: RelativePoint = (0.5750, 0.6050)
+    dismiss_result_safe_side: RelativePoint = (0.2000, 0.5000)
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.select_quick_menu_craft_shifted,
+            self.open_hero_weapon,
+            self.open_hero_armor,
+            self.open_hero_accessory,
+            self.select_max,
+            self.confirm_material,
+            self.cancel,
+            self.reject_karats,
+            self.dismiss_result_safe_side,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_CRAFT_ACTION_TARGETS = CraftActionTargets()
 
 
 @dataclass(frozen=True)
@@ -610,6 +650,7 @@ class ActionExecutor:
         portal_targets: PortalActionTargets = DEFAULT_PORTAL_ACTION_TARGETS,
         trading_targets: TradingActionTargets = DEFAULT_TRADING_ACTION_TARGETS,
         treasure_targets: TreasureActionTargets = DEFAULT_TREASURE_ACTION_TARGETS,
+        craft_targets: CraftActionTargets = DEFAULT_CRAFT_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
             raise ValueError("adb must provide tap(x, y)")
@@ -639,6 +680,8 @@ class ActionExecutor:
             raise ValueError("trading_targets must be TradingActionTargets")
         if not isinstance(treasure_targets, TreasureActionTargets):
             raise ValueError("treasure_targets must be TreasureActionTargets")
+        if not isinstance(craft_targets, CraftActionTargets):
+            raise ValueError("craft_targets must be CraftActionTargets")
         self.adb = adb
         self.targets = targets
         self.daily_quests_targets = daily_quests_targets
@@ -653,6 +696,7 @@ class ActionExecutor:
         self.portal_targets = portal_targets
         self.trading_targets = trading_targets
         self.treasure_targets = treasure_targets
+        self.craft_targets = craft_targets
 
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry
@@ -772,6 +816,24 @@ class ActionExecutor:
             )
         if isinstance(action, SelectQuickMenuTrading):
             return self.rotation_targets.select_trading_shifted
+        if isinstance(action, SelectQuickMenuCraft):
+            return self.craft_targets.select_quick_menu_craft_shifted
+        if isinstance(action, OpenHeroCraft):
+            return {
+                CraftFamily.WEAPON: self.craft_targets.open_hero_weapon,
+                CraftFamily.ARMOR: self.craft_targets.open_hero_armor,
+                CraftFamily.ACCESSORY: self.craft_targets.open_hero_accessory,
+            }[action.family]
+        if isinstance(action, SelectCraftMax):
+            return self.craft_targets.select_max
+        if isinstance(action, ConfirmCraftMaterial):
+            return self.craft_targets.confirm_material
+        if isinstance(action, CancelCraft):
+            return self.craft_targets.cancel
+        if isinstance(action, RejectCraftPremium):
+            return self.craft_targets.reject_karats
+        if isinstance(action, DismissCraftResult):
+            return self.craft_targets.dismiss_result_safe_side
         if isinstance(action, OpenCharacterSelect):
             return (
                 self.rotation_targets.open_character_select
@@ -917,8 +979,10 @@ __all__ = (
     "ActionExecutor",
     "BlackMarketActionTargets",
     "BattleActionTargets",
+    "CraftActionTargets",
     "DEFAULT_BATTLE_ACTION_TARGETS",
     "DEFAULT_BLACK_MARKET_ACTION_TARGETS",
+    "DEFAULT_CRAFT_ACTION_TARGETS",
     "DEFAULT_DAILY_QUESTS_ACTION_TARGETS",
     "DEFAULT_EQUIPMENT_ACTION_TARGETS",
     "DEFAULT_FRIENDS_ACTION_TARGETS",

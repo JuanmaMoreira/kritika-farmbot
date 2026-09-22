@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "curation": {
+    "source": "HIL chat+steer 2026-09-22",
+    "device": "2712x1224 current Craft UI",
+    "labels": "Human GT recorded before identity/causality: Equipment Inventory 111/112; shifted Quick Menu from Inventory and Craft; stable Craft Hero counts Weapon 325/999, Armor 734/999, Accessories 645/999; Hero unit cost 49; Hero Weapon default 1/10 and current max 6/10; Expert Armor material shortfall 3 opens 15-Karat boundary; No returns unchanged; one approved Hero Weapon craft produced Laoku's Destructive Sword and reduced Hero Weapon material 325 to 276; result closes through lateral black non-interactive area, not center; Quick Menu remained directly accessible from Craft.",
+    "limitations": "Single character/device/theme. Productive result coverage is one Hero Weapon. Armor selector evidence is Expert; Hero Armor execution must fail closed unless its selected Hero recipe is freshly read."
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/craft/context/01_clean.png",
+      "kind": "context",
+      "expected": {"weapon_material": 325, "armor_material": 734, "accessory_material": 645, "capacity": 999, "hero_cost": 49},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/craft-entry-clean.png",
+      "sha256": "8f683faa5f36e88307065a2808ebafaae17a691bef41e19af3583fbd6d8fa275"
+    },
+    {
+      "path": "screencaps/semantic/craft/context/02_after_karat_reject.png",
+      "kind": "context",
+      "expected": {"weapon_material": 325, "armor_material": 734, "accessory_material": 645, "capacity": 999, "hero_cost": 49},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/karat-boundary-rejected-stable-craft.png",
+      "sha256": "6b1557bca246d1b71f44453bdda511477bd3365c2f755de2b60eb9d7089691ef"
+    },
+    {
+      "path": "screencaps/semantic/craft/quick-menu/01_from_equipment_inventory.png",
+      "kind": "quick_menu",
+      "expected": {"lobby": "Lobby", "craft": "Craft", "guild": "Guild"},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/quick-menu-from-equipment-inventory.png",
+      "sha256": "afc4e1ba6fbadbc2d15d0622b11c7a5d80ff7492add6c51df7d83a1e5f366514"
+    },
+    {
+      "path": "screencaps/semantic/craft/quick-menu/02_from_craft.png",
+      "kind": "quick_menu",
+      "expected": {"lobby": "Lobby", "craft": "Craft", "guild": "Guild"},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/quick-menu-from-craft.png",
+      "sha256": "aa26cb640faadfc8757ebc73dcca2138a009a3dba66f1f0537d2815d7171d275"
+    },
+    {
+      "path": "screencaps/semantic/craft/recipe/01_hero_weapon_default.png",
+      "kind": "recipe",
+      "expected": {"family": "weapon", "tier": "hero", "item_type": "weapon", "currency": "material", "unit_cost": 49, "quantity": 1, "quantity_cap": 10},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/hero-weapons-selector-default.png",
+      "sha256": "9ef595b76bc9cdad8f1459a68de93e13fc08f0bff4f122992f87ac62a8671fcf"
+    },
+    {
+      "path": "screencaps/semantic/craft/recipe/02_hero_weapon_max.png",
+      "kind": "recipe",
+      "expected": {"family": "weapon", "tier": "hero", "item_type": "weapon", "currency": "material", "unit_cost": 49, "quantity": 6, "quantity_cap": 10},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/hero-weapons-selector-max.png",
+      "sha256": "89ba96bcc436ece405004bb78aa78e708895e7ff374099b1951adc5a9551cdfb"
+    },
+    {
+      "path": "screencaps/semantic/craft/recipe/03_expert_armor_default.png",
+      "kind": "recipe",
+      "expected": {"family": "armor", "tier": "expert", "item_type": "helmet", "currency": "material", "unit_cost": 10, "quantity": 1, "quantity_cap": 10},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/expert-armor-insufficient-selector.png",
+      "sha256": "8f7261ff09bd31489724d93779543a65067222ecc01a6554684591dea000098d"
+    },
+    {
+      "path": "screencaps/semantic/craft/recipe/04_hero_accessory_default.png",
+      "kind": "recipe",
+      "expected": {"family": "accessory", "tier": "hero", "item_type": "earrings", "currency": "material", "unit_cost": 49, "quantity": 1, "quantity_cap": 10},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/hero-accessories-selector-default.png",
+      "sha256": "2cd914fcde71318db47b8bbddba508db286ee0e532b3a8048c11300a253f7f10"
+    },
+    {
+      "path": "screencaps/semantic/craft/boundary/01_karat.png",
+      "kind": "boundary",
+      "expected": {"missing_material": 3, "karat_cost": 15, "reject_label": "No"},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/expert-armor-karat-boundary.png",
+      "sha256": "7ac9dce5ae2c73c453ec6f53360e2d476a2b767acf8b539e3b440fc14c455a48"
+    },
+    {
+      "path": "screencaps/semantic/craft/result/01_hero_weapon.png",
+      "kind": "result",
+      "expected": {"marker": "craft_result"},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/productive-hero-weapon-result.png",
+      "sha256": "e0348d8a42e078ea3ac6ce66be7b608d79e0d1ef0a9fc0ed5424d78f82382b9e"
+    },
+    {
+      "path": "screencaps/semantic/craft/context/03_after_productive_craft.png",
+      "kind": "context",
+      "expected": {"weapon_material": 276, "armor_material": 734, "accessory_material": 645, "capacity": 999, "hero_cost": 49},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/productive-hero-weapon-after.png",
+      "sha256": "0247e649788cd636c8333c6e920653292fb130c7bb2f711ccf83f793a78bc8e1"
+    },
+    {
+      "path": "screencaps/semantic/craft/quick-menu/03_after_productive_craft.png",
+      "kind": "quick_menu",
+      "expected": {"lobby": "Lobby", "craft": "Craft", "guild": "Guild"},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/productive-quick-menu-after-craft.png",
+      "sha256": "c372233c3c60ed10403ab10bdb8ac9e942a527b81500c33a84542937e663b039"
+    },
+    {
+      "path": "screencaps/semantic/craft/negatives/01_equipment_inventory.png",
+      "kind": "none",
+      "expected": null,
+      "review_status": "confirmed",
+      "raw_source": "artifacts/craft-hil/equipment-inventory-source.png",
+      "sha256": "6a5af75ae271c06caf17d87d345caac43e588dc7067cbcfe25072f0f0ab7a75e"
+    }
+  ]
+}
