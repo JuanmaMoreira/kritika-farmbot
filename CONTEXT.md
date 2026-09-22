@@ -65,6 +65,7 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 - **Send Stamina:** un único All autorizado por Daily visible y desaparición fresca.
 - **Summon Pet Daily:** apertura diaria acotada; Pet relief incidental admite un solo Combine All verificable.
 - **Daily Quests, Mailbox y Guild:** acciones single-attempt o no-op con cierre verificable; Mailbox no libera recursos.
+- **Equipment Sell standalone (post-V1):** capacidad bulk-only fuera del registry productivo. Parte de Equipment Inventory ya abierto, exige Item Count y detalle por consenso, autorización explícita de tipo/grado/Enhance/grupo, confirma una sola vez y sólo declara éxito con Item Count fresco menor. Poor–Legendary separan grupos Equipment/Enhance; Ethereal usa tipo exacto; Ethereal+ y candidatos accesorios/unknown están protegidos. No navega, no escanea, no expande con Karats y no compone Combine→Sell.
 - **Rotation y sesión:** ejecución multi-flow/multicharacter, cancelación, eventos, reporte y selección desde GUI/CLI.
 
 ## Validación vigente
@@ -80,6 +81,7 @@ La GUI permite habilitar, deshabilitar y reordenar esos flows. `SessionRunner` l
 - Evidencia live histórica: Rotation 28/28 y sesiones combinadas 28/28 sin fallos técnicos; Monster Wave confirmó ACTIVE, MAX, Start y board negativo.
 - Cierre refactor + auditoría global final: **2459/2459 hardware-free** (`6ba5c9b`, `04640c2`; nuevo count autoritativo); `REFACTOR_COMPLETE = YES`, 0 K/D-local/BUG.
 - Post-refactor 28/28 PASS: wall 76:59, 196/196 flows, 768/768 transitions, 1 retry bounded, 0 recoveries/failures; percepción 2337.8 s (−42 % vs baseline comparable). Caveats: MW OFF, sin reliefs con trabajo, scopes nuevos de Daily-progress/MW no ejercidos. Detalle en [`docs/POST_REFACTOR_28_28_BENCHMARK.md`](docs/POST_REFACTOR_28_28_BENCHMARK.md).
+- Equipment Sell standalone 2026-09-22: **284 tests dirigidos** (policy/operation/runtime/ActionExecutor/Combine regression), evaluator incremental **12/12**, HIL destructivo autorizado exactamente una vez: `Laoku's Fatal Armor`, Epic Chest no-Enhance, popup `equipment_grade`, un `Sell (Bulk)`, Item Count **120→114**. La lectura inmediata agotó cuatro frames durante la transición y falló cerrada; una observación pasiva posterior probó el efecto. El bound se separó a 48 frames dentro de 4 s, con test de animación tardía y sin retry/input adicional.
 
 Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en tareas docs-only. Los detalles de adquisición y calibración viven en [`docs/HISTORY.md`](docs/HISTORY.md).
 
@@ -99,7 +101,7 @@ Estas cifras describen el checkpoint, no autorizan repetir suites ni hardware en
 
 No forman parte del runtime estable:
 
-- Inventory Relief Chain general, Trading, Craft, Treasure o Equipment Sell;
+- Inventory Relief Chain general o Craft. Equipment Sell existe sólo como capacidad standalone bulk-only y aún no está compuesto con Combine ni callers;
 - Trading Center: C1-C6b están cerrados. `KeysPromotionRuntime` ejecuta C6a con facts frescos y consume únicamente `SILVER_TO_GOLD + OUTPUT_FULL`: preserva `PendingCausalOperation`, cierra Trading por X a Lobby fresco, entra Treasure, hace `OPEN_ONCE` verificado + E2.2 hasta agotar todos los Gold Keys y alcanzar Karat, vuelve directamente `Treasure → Quick Menu → Trading`, restaura Avatar & Keys, relee ambas filas y reintenta la misma operación una sola vez. Un segundo `OUTPUT_FULL` falla cerrado; no hay estimación de capacidad, `UP_TO(n)`, Equipment Inventory, relief ni scroll;
 - E2 Treasure (post-V1, hot-context): runtime autónomo + fast Gold drain cerrados físicamente de punta a punta. HIL productivo 2026-09-21: Gold Keys 27→0, frontera Karat fresca, premium intacto y Treasure estable. C6b lo compone sin añadir policy a Treasure. HIL directo 2026-09-22: Treasure abrió Quick Menu con el header compartido y el nuevo target `(0.332,0.650)` abrió `screen.trading` fresco (confianza 1.000), sin Lobby intermedio, gasto ni trade;
 - Regla de routing: Trading no puede abrir Quick Menu y debe cerrarse primero; Treasure sí puede y usa retorno directo a Trading. Craft y Monster Wave también tienen acceso Quick Menu verificado para integración futura: si origen y destino están conectados por Quick Menu se usa ese camino, sin normalizar obligatoriamente a Lobby. C6b no implementa Craft ni Monster Wave;
@@ -114,4 +116,4 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-Checkpoint V1 cerrado: refactor completo, 2459/2459 hardware-free y 28/28 PASS (76:59). El trabajo diferido vive fuera de V1 en [`ROADMAP.md`](ROADMAP.md): validación de Monster Wave al reactivarse, hub scopes WB/MW, relief scopes, Lobby<77, carries transversales y nuevos flows. No iniciarlos como parte de este checkpoint; cada uno exige su propia evidencia y validación mínima. No recalibrar `screen.lobby` sin adquisición seasonal específica.
+Equipment Sell standalone quedó cerrado con semántica, policy, operación bulk-only y HIL productivo. Siguiente frente exacto: compositor transversal causal `caller equipment-full → Combine → retry caller → Sell autorizado si aún sigue lleno → retry caller`, sin trasladar policy a Craft/Trading/Treasure/MW. No implementar ese compositor como parte de este checkpoint.

@@ -70,6 +70,8 @@ Todo retry es:
 
 `UNKNOWN` y contradicciones fallan cerrados. Cuando no existe una señal robusta, la policy debe ser conservadora y quedar documentada.
 
+Equipment Sell es una capacidad standalone bulk-only, no un flow ni un relief composer. Perception produce `EquipmentInventoryFact`, `EquipmentItemFact` y `EquipmentSellConfirmationFact`; el caller aporta `EquipmentSellAuthorization` explícita. La operación selecciona un candidato ya indicado, confirma detalle fresco dos veces, verifica identidad y grupo del popup, emite como máximo un `Sell (Bulk)` y sólo retorna éxito con Item Count fresco menor. Poor–Legendary agrupa por grado y separa Equipment de Enhance; Ethereal agrupa por tipo exacto no accesorio; Ethereal+ y candidatos accessory/unknown se deniegan. No hay scan, navegación, Karat expansion, presión de inventario, retry destructivo ni composición con Combine.
+
 `VerifiedTransitionResult.action_source_snapshot` publica el snapshot que autorizó el último input cuyo executor terminó normalmente, incluyendo el source actualizado tras retry o recovery de precondition. Sin input, o si el executor falla de forma incierta, no publica anchor. `recovery_after_action` distingue cleanup ocurrido después del input y prohíbe convertir su éxito posterior en nuevo handoff. Un callback local `on_recovery` se ejecuta cuando recovery devuelve un snapshot fresco, antes de evaluar un retry; permite invalidar provenance de una operación sin estado global.
 
 Quick Menu separa visibilidad de autorización. Un tile sólo usa el handoff local `QuickMenuHandoff` creado con source del input `RESOLVED`, limpio y permitido para esa operación, menú posterior fresco y base no contradictorio. `UNKNOWN + menu.quick` puede observarse después de abrirlo: el input del tile se autoriza por ese lineage explícito y el overlay fresco, nunca por UNKNOWN aislado. `AMBIGUOUS`, base foreign, pérdida observada del menú o recovery invalidan el handoff y prohíben retry; una espera pasiva por el destino puede continuar. Layout proviene del source verificado y geometría del frame fresco. Discovery/recovery sin handoff permanece fail-closed; `ContextResolver` no conserva origen temporal.
@@ -136,7 +138,7 @@ No se acepta navegación ciega, conteo indefinido de swipes ni taps sobre filas 
 
 ### Relief por presión de recursos
 
-Una futura Inventory Relief debe separarse del gameplay y activarse sólo por causalidad demostrada: blocker fresco, caller conocido y recurso concreto. Cada operación verifica progreso y retorno. Umbrales, orden de conversiones y ventas requieren evidencia propia; no se heredan automáticamente del experimento.
+Equipment Sell ya existe como operación standalone verificada y separada del gameplay. La futura integración Inventory Relief debe activarla sólo por causalidad demostrada: blocker fresco, caller conocido, Combine primero, retry exacto del caller y venta únicamente si el blocker persiste. El compositor, retorno y segundo retry aún no existen; no se heredan thresholds, loops ni lifecycle del experimento.
 
 ### Expansión funcional
 

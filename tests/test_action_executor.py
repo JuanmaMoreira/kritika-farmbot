@@ -39,9 +39,11 @@ from bot.semantic_actions import (
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
     ExitWorldBoss,
+    CancelEquipmentSale,
     CancelSocketSell,
     CloseSocketEnhanceAll,
     ConfirmCombineAll,
+    ConfirmEquipmentBulkSale,
     ConfirmEtherealMassCombine,
     ConfirmPetCombineAll,
     ConfirmPetMassEvolve,
@@ -71,6 +73,7 @@ from bot.semantic_actions import (
     OpenAwakenedTransmute,
     OpenCombineAll,
     OpenEquipmentCombine,
+    OpenEquipmentSell,
     OpenEtherealMassCombine,
     OpenEtherealRandomPart,
     QuickMenuLayout,
@@ -84,6 +87,7 @@ from bot.semantic_actions import (
     SelectSocketOpalSlot,
     SelectCombineFuse,
     SelectCombineTransmute,
+    SelectEquipmentInventorySlot,
     SelectCharacterMail,
     SelectDailyQuests,
     SelectPetCombine,
@@ -325,6 +329,12 @@ def test_executor_translates_only_safe_socket_route_actions(action, target):
     ("action", "target"),
     (
         (OpenEquipmentCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_combine),
+        (OpenEquipmentSell(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_sell),
+        (
+            ConfirmEquipmentBulkSale(),
+            DEFAULT_EQUIPMENT_ACTION_TARGETS.confirm_bulk_sale,
+        ),
+        (CancelEquipmentSale(), DEFAULT_EQUIPMENT_ACTION_TARGETS.cancel_sale),
         (SelectCombineTransmute(), DEFAULT_EQUIPMENT_ACTION_TARGETS.select_transmute),
         (SelectCombineFuse(), DEFAULT_EQUIPMENT_ACTION_TARGETS.select_fuse),
         (OpenCombineAll(), DEFAULT_EQUIPMENT_ACTION_TARGETS.open_combine_all),
@@ -350,6 +360,21 @@ def test_executor_translates_only_acquired_equipment_combine_relief_actions(acti
 
 def test_combine_all_uses_acquired_input_space_target_not_visual_frame_center():
     assert DEFAULT_EQUIPMENT_ACTION_TARGETS.open_combine_all == (0.6073, 0.9297)
+
+
+@pytest.mark.parametrize("slot_index", range(16))
+def test_executor_supports_each_visible_equipment_inventory_slot(slot_index):
+    adb = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(
+        SelectEquipmentInventorySlot(slot_index),
+        FrameGeometry(width=2712, height=1220),
+    )
+
+    target = DEFAULT_EQUIPMENT_ACTION_TARGETS.inventory_slots[slot_index]
+    adb.tap.assert_called_once_with(int(target[0] * 2712), int(target[1] * 1220))
+    assert receipt.normalized_target == target
 
 
 @pytest.mark.parametrize("slot_index", range(16))

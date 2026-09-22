@@ -12,6 +12,7 @@ from bot.monster_wave_actions import MonsterWaveAction
 
 _BLACK_MARKET_SLOT_COUNT = 10
 _SOCKET_OPAL_SLOT_COUNT = 16
+_EQUIPMENT_INVENTORY_SLOT_COUNT = 16
 
 
 @dataclass(frozen=True)
@@ -456,6 +457,41 @@ class OpenEquipmentCombine:
 
 
 @dataclass(frozen=True)
+class SelectEquipmentInventorySlot:
+    """Request one visible row-major Equipment inventory slot."""
+
+    slot_index: int
+
+    def __post_init__(self) -> None:
+        value = self.slot_index
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, Integral)
+            or not 0 <= value < _EQUIPMENT_INVENTORY_SLOT_COUNT
+        ):
+            raise ValueError(
+                "slot_index must be an integer in "
+                f"[0, {_EQUIPMENT_INVENTORY_SLOT_COUNT - 1}]"
+            )
+        object.__setattr__(self, "slot_index", int(value))
+
+
+@dataclass(frozen=True)
+class OpenEquipmentSell:
+    """Request Sell for the already selected Equipment item."""
+
+
+@dataclass(frozen=True)
+class ConfirmEquipmentBulkSale:
+    """Confirm the already-authorized Equipment bulk group sale."""
+
+
+@dataclass(frozen=True)
+class CancelEquipmentSale:
+    """Cancel the Equipment Sell confirmation popup."""
+
+
+@dataclass(frozen=True)
 class SelectCombineTransmute:
     """Request the base Transmute tab."""
 
@@ -641,6 +677,10 @@ SemanticAction = (
     | TapSocketEnhanceAnimation
     | ExitSocket
     | OpenEquipmentCombine
+    | SelectEquipmentInventorySlot
+    | OpenEquipmentSell
+    | ConfirmEquipmentBulkSale
+    | CancelEquipmentSale
     | SelectCombineTransmute
     | SelectCombineFuse
     | OpenCombineAll
@@ -689,8 +729,10 @@ __all__ = (
     "ContinueAfterWorldBossRaid",
     "ExitWorldBoss",
     "CancelSocketSell",
+    "CancelEquipmentSale",
     "CloseSocketEnhanceAll",
     "ConfirmCombineAll",
+    "ConfirmEquipmentBulkSale",
     "ConfirmEtherealMassCombine",
     "ConfirmPetCombineAll",
     "ConfirmPetMassEvolve",
@@ -758,10 +800,12 @@ __all__ = (
     "OpenAwakenedTransmute",
     "OpenCombineAll",
     "OpenEquipmentCombine",
+    "OpenEquipmentSell",
     "OpenEtherealMassCombine",
     "OpenEtherealRandomPart",
     "SelectCombineFuse",
     "SelectCombineTransmute",
+    "SelectEquipmentInventorySlot",
     "StartWorldBossBattle",
     "TapCombineAnimation",
     "NextPetCombinePage",

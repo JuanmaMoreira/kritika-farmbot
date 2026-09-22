@@ -35,9 +35,11 @@ from bot.semantic_actions import (
     ConfirmCharacterSelection,
     ContinueAfterWorldBossRaid,
     ExitWorldBoss,
+    CancelEquipmentSale,
     CancelSocketSell,
     CloseSocketEnhanceAll,
     ConfirmCombineAll,
+    ConfirmEquipmentBulkSale,
     ConfirmEtherealMassCombine,
     ConfirmPetCombineAll,
     ConfirmPetMassEvolve,
@@ -68,6 +70,7 @@ from bot.semantic_actions import (
     OpenAwakenedTransmute,
     OpenCombineAll,
     OpenEquipmentCombine,
+    OpenEquipmentSell,
     OpenEtherealMassCombine,
     OpenEtherealRandomPart,
     QuickMenuLayout,
@@ -81,6 +84,7 @@ from bot.semantic_actions import (
     SelectSocketOpalSlot,
     SelectCombineFuse,
     SelectCombineTransmute,
+    SelectEquipmentInventorySlot,
     SelectCharacterMail,
     SelectDailyQuests,
     SelectPetCombine,
@@ -438,6 +442,16 @@ class EquipmentActionTargets:
     """Normalized targets acquired from the live equipment relief route."""
 
     open_combine: RelativePoint = (0.5000, 0.6300)
+    # Equipment Inventory controls acquired on 2026-09-22 at 2712x1220.
+    # Coordinates remain normalized and are resolved from the current frame.
+    inventory_slots: tuple[RelativePoint, ...] = tuple(
+        (0.5760 + column * 0.0675, 0.3650 + row * 0.1390)
+        for row in range(4)
+        for column in range(4)
+    )
+    open_sell: RelativePoint = (0.7870, 0.4600)
+    confirm_bulk_sale: RelativePoint = (0.3980, 0.6270)
+    cancel_sale: RelativePoint = (0.6000, 0.6270)
     select_transmute: RelativePoint = (0.3000, 0.1800)
     select_fuse: RelativePoint = (0.2200, 0.1800)
     # Input-space target: the frame-space center is not equivalent on this
@@ -455,6 +469,10 @@ class EquipmentActionTargets:
     def __post_init__(self) -> None:
         for point in (
             self.open_combine,
+            *self.inventory_slots,
+            self.open_sell,
+            self.confirm_bulk_sale,
+            self.cancel_sale,
             self.select_transmute,
             self.select_fuse,
             self.open_combine_all,
@@ -816,6 +834,14 @@ class ActionExecutor:
             return self.socket_targets.animation_safe_tap
         if isinstance(action, OpenEquipmentCombine):
             return self.equipment_targets.open_combine
+        if isinstance(action, SelectEquipmentInventorySlot):
+            return self.equipment_targets.inventory_slots[action.slot_index]
+        if isinstance(action, OpenEquipmentSell):
+            return self.equipment_targets.open_sell
+        if isinstance(action, ConfirmEquipmentBulkSale):
+            return self.equipment_targets.confirm_bulk_sale
+        if isinstance(action, CancelEquipmentSale):
+            return self.equipment_targets.cancel_sale
         if isinstance(action, SelectCombineTransmute):
             return self.equipment_targets.select_transmute
         if isinstance(action, SelectCombineFuse):

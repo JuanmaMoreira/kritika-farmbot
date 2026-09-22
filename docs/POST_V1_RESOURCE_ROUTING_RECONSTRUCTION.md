@@ -768,3 +768,15 @@ tests verdes (C6a/C5/C4, TradingRuntime/navigation, Quick Menu y Treasure/E2.2),
 sintaxis y `git diff --check` limpios. Sin evaluator (sin detector/reader/ROI o
 asset) y sin full suite (infraestructura compartida sólo recibió intent/target y
 allowlist aditivos; no cambió el motor de navegación). C6b CLOSED.
+
+## 27. F-Sell standalone DONE: semántica + operación bulk verificada (2026-09-22)
+
+Se reimplementó Sell Equipment sin portar el chain experimental. Componentes pequeños: `equipment_sell_semantics.py` (Item Count/detail/popup facts + consenso), `equipment_sell_reader.py` (ROIs/OCR locales), `equipment_sell_policy.py` (allowlist caller-owned), `equipment_sell_operation.py` (orden irreversible puro) y `equipment_sell_runtime.py` (sampling físico acotado + `ActionExecutor`). No hay planner, router, scan, detail-close, pressure threshold, Karat expansion, auto-repeat ni imports Craft/MW/Trading/Treasure/C6b.
+
+Policy aceptada y corregida por GT de producto: toda venta es bulk. Poor–Legendary agrupa todos los ítems del mismo grado separando `equipment_grade` y `enhance_grade`; Ethereal sólo autoriza `type_grade` con uno de los seis tipos `weapon/helmet/chest/pants/gloves/boots`; Ethereal+ no se vende. Accessories y unknown no pueden ser candidatos directos. Identidad, grado, tipo, Enhance, grupo o Item Count desconocidos/contradictorios deniegan.
+
+HIL adquirido en Equipment Inventory 2712x1220/1224: Item Count 120/112; página 7/22 último slot adquirido y página 8/22 Karat-locked; detalle Epic Gloves Enhance; Cancel vuelve al detalle; popup Enhance usa `Sell (Bulk)` y popup Epic Equipment usa `Sell [Bulk]`. Un intento de calibrar cierre del detalle cayó dentro de `Equip`, cambió equipo de forma reversible y fue restaurado por el usuario; ese target se descartó y no se implementó scan/cierre automático.
+
+Smoke destructivo con aprobación explícita en chat: `Laoku's Fatal Armor`, `[Epic] Chest Armor`, no-Enhance, grupo completo Epic Equipment. Pre 120/112; exactamente `select_candidate → open_confirmation → confirm_bulk`, `confirm_count=1`, sin retry ni segunda venta; post fresco 114/112, por tanto seis ítems vendidos y capacidad intacta. El runtime original agotó cuatro frames aún durante la transición y devolvió `post_item_count_unreadable_or_stale`; una lectura pasiva posterior probó 120→114. El fix mínimo separa consenso (2 de hasta 4 facts) de observación transitoria (máximo 48 frames dentro de 4 s), con test de animación tardía y cero input adicional. No se repitió la venta.
+
+Validación vigente: 284 tests dirigidos (policy/operation/runtime/ActionExecutor + regresión Equipment Combine), evaluator incremental 12/12 con dos popups positivos, postestado y negativos cercanos, sintaxis y `git diff --check`. No full suite: cambios compartidos limitados a intents/targets aditivos de `ActionExecutor`; consumidores inmediatos y Combine están cubiertos. F-Sell standalone DONE. **NEXT:** compositor transversal causal `equipment-full caller → Combine → retry caller → Sell autorizado si persiste → retry caller`; no se implementa aquí.

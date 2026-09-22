@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "curation": {
+    "source": "HIL chat+steer 2026-09-22 plus two nearby existing negatives",
+    "device": "2712x1220 current Equipment Inventory UI",
+    "labels": "Human GT: Item Count 120/112; page boundary 7 acquired / 8 Karat-locked; selected Epic Gloves Enhance and Epic Chest Armor; popup Enhance-grade and Equipment-grade grouping variants; Cancel returns to detail; one approved Epic Equipment bulk sale reduced Item Count 120 to 114",
+    "limitations": "Single character/device/theme; positive popup coverage is Epic Enhance-grade and Epic Equipment-grade. Ethereal type-scoped grouping remains domain/archival evidence and must fail closed until its popup is readable."
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/equipment-sell/inventory/01_clean.png",
+      "kind": "inventory",
+      "expected": {"item_count": 120, "capacity": 112, "page": 1, "total_pages": 22},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/01_inventory_clean.png",
+      "sha256": "ab17bae4cd864e9f641be28ee4672ff896bf4f3aedb3b6c8a0fe4663f152f9df"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/inventory/02_tail.png",
+      "kind": "inventory",
+      "expected": {"item_count": 120, "capacity": 112, "page": 7, "total_pages": 22},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/02_page_7_tail.png",
+      "sha256": "59c94ddb9e7385ddc02e885d2072e458520c104181a4ee7e19fb2bf33fc6fe99"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/inventory/03_karat_boundary.png",
+      "kind": "inventory",
+      "expected": {"item_count": 120, "capacity": 112, "page": 8, "total_pages": 22},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/03_page_8_boundary.png",
+      "sha256": "0b5099ecdbfeaa7361436cf4fdeb08b937fad07713a5a48c8823e71283fa7aee"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/inventory/04_cancelled_clean.png",
+      "kind": "inventory",
+      "expected": {"item_count": 120, "capacity": 112, "page": 7, "total_pages": 22},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/07_page_7_after_detail_close.png",
+      "sha256": "016a25887e271bf04c8cd50b1edad6c71a11f26392787e2c4362062fbbd47f39"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/inventory/05_after_bulk.png",
+      "kind": "inventory",
+      "expected": {"item_count": 114, "capacity": 112, "page": 7, "total_pages": 22},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/12_after_bulk.png",
+      "sha256": "405d042b83d6912904ab2ab4b52f15a9fe7640f9c71683e447efbb3d385a9e4f"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/detail/01_epic_gloves_enhance.png",
+      "kind": "detail",
+      "expected": {"name": "Gloves (Enhance)", "grade": "epic", "equipment_type": "gloves", "enhance": true},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/04_tail_detail.png",
+      "sha256": "8b0127b4a8fbc82b401686ef39761a4fca9903e6b47d6e10575c61b2c4e785d8"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/detail/02_cancel_return.png",
+      "kind": "detail",
+      "expected": {"name": "Gloves (Enhance)", "grade": "epic", "equipment_type": "gloves", "enhance": true},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/06_cancel_return.png",
+      "sha256": "3960e17e9689bddf3a4ac07c3b85df876de7a1d43a7d633b30404c03658dddbf"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/detail/03_detail_persisted.png",
+      "kind": "detail",
+      "expected": {"name": "Gloves (Enhance)", "grade": "epic", "equipment_type": "gloves", "enhance": true},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/08_far_right_no_close.png",
+      "sha256": "9e7c1086cb4f139bb8641d4ffb4a0f0fa2bebfc26fe2f958c2174f6c9993c196"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/confirmation/01_enhance_group.png",
+      "kind": "confirmation",
+      "expected": {"item_name": "Gloves (Enhance)", "group": "enhance_grade", "group_type": null},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/05_sell_confirmation.png",
+      "sha256": "744084376aeb84c711d1fd16a25d9104d925d42a03e4fb25f84f1910637e9c48"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/confirmation/02_epic_equipment_group.png",
+      "kind": "confirmation",
+      "expected": {"item_name": "Laoku's Fatal Armor", "group": "equipment_grade", "group_type": null},
+      "review_status": "confirmed",
+      "raw_source": "artifacts/hil_equipment_sell/20260922/11_current_grouping.png",
+      "sha256": "026a8847d6d4eba66197281818ccd18e73488b0b60bc65c9a795b0b349b15398"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/negatives/01_lobby.png",
+      "kind": "none",
+      "expected": null,
+      "review_status": "confirmed",
+      "raw_source": "existing curated Trading Center negative",
+      "sha256": "dcf8aac3a575eadfd7777be9b8746e3bdad429ed68a2f6fa3a849d7a3565a97c"
+    },
+    {
+      "path": "screencaps/semantic/equipment-sell/negatives/02_socket_sell.png",
+      "kind": "none",
+      "expected": null,
+      "review_status": "confirmed",
+      "raw_source": "existing curated Socket Sell nearby popup",
+      "sha256": "c5bb373366fe8be53cc58b9d6d2aca1512b493acf8b248d9a3315b60ecf70be6"
+    }
+  ]
+}
