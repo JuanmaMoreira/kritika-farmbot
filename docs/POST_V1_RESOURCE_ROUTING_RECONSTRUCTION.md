@@ -780,3 +780,50 @@ HIL adquirido en Equipment Inventory 2712x1220/1224: Item Count 120/112; página
 Smoke destructivo con aprobación explícita en chat: `Laoku's Fatal Armor`, `[Epic] Chest Armor`, no-Enhance, grupo completo Epic Equipment. Pre 120/112; exactamente `select_candidate → open_confirmation → confirm_bulk`, `confirm_count=1`, sin retry ni segunda venta; post fresco 114/112, por tanto seis ítems vendidos y capacidad intacta. El runtime original agotó cuatro frames aún durante la transición y devolvió `post_item_count_unreadable_or_stale`; una lectura pasiva posterior probó 120→114. El fix mínimo separa consenso (2 de hasta 4 facts) de observación transitoria (máximo 48 frames dentro de 4 s), con test de animación tardía y cero input adicional. No se repitió la venta.
 
 Validación vigente: 284 tests dirigidos (policy/operation/runtime/ActionExecutor + regresión Equipment Combine), evaluator incremental 12/12 con dos popups positivos, postestado y negativos cercanos, sintaxis y `git diff --check`. No full suite: cambios compartidos limitados a intents/targets aditivos de `ActionExecutor`; consumidores inmediatos y Combine están cubiertos. F-Sell standalone DONE. **NEXT:** compositor transversal causal `equipment-full caller → Combine → retry caller → Sell autorizado si persiste → retry caller`; no se implementa aquí.
+
+## 28. F-composer DONE offline: Equipment Relief causal (2026-09-22)
+
+La primera divergencia era exclusivamente de composición: Combine y Sell
+estaban publicados, pero ningún owner preservaba un request caller opaco a
+través de los dos reliefs ni imponía sus bounds conjuntos. Se agregó
+`bot/equipment_relief.py`; no se portó el chain experimental, no se tocó ningún
+caller y no se creó state machine, router o recovery framework.
+
+Contrato exacto: el caller adquiere `FreshCallerContext` y ejecuta su request.
+Todo resultado no-Equipment-Full vuelve intacto. Ante Equipment Full, el
+compositor entra a Combine una vez y ejecuta `EquipmentCombineRelief` con el
+`EquipmentCombineReturnPlan` caller-specific. Tanto `RELIEVED` como
+`NO_RELIEF_AVAILABLE` obligan a readquirir facts posteriores al
+`final_snapshot.sequence` y reintentar el mismo objeto request exactamente una
+vez; `FAILED` o `CANCELLED` cortan sin Sell. Sólo si ese retry vuelve a informar
+Equipment Full se considera Sell.
+
+Sell exige `EquipmentReliefSellPlan`: un `EquipmentSellRequest` ya completo
+(`EquipmentSellAuthorization` + `EquipmentSellCandidate(page, slot)`) y hooks
+verificados de entrada/salida para ese caller. Sin plan retorna
+`SELL_REQUIRED_BUT_NO_AUTHORIZED_CANDIDATE` antes de entrar a Inventory. No hay
+scan ni candidato inventado. `EquipmentSellRuntime.execute()` se invoca una
+vez; `DENIED`, `FAILED` o `CANCELLED` no habilitan retorno/retry. Incluso un
+resultado `SUCCESS` se acepta sólo con facts confirmados, capacidad constante,
+Item Count fresco menor y exactamente un `confirm_bulk`. El retorno publica una
+secuencia posterior al postestado Sell; recién después se readquiere contexto y
+se hace el último retry. Un nuevo Equipment Full retorna
+`EQUIPMENT_FULL_AFTER_SELL`, sin segundo Combine/Sell ni recursion.
+
+La abstracción del boundary es deliberadamente mínima: un predicate del caller
+sobre su propio result. No se unificaron outcomes de Craft, MW, Trading o
+Treasure y el compositor no interpreta éxito/cancelación de negocio fuera del
+único Equipment Full. La identidad del request se conserva; contexts y facts
+físicos no. Los adapters concretos mantienen sus rutas: Combine ya sabe volver
+con su return plan; Sell sigue requiriendo Equipment Inventory abierto y una
+ruta caller-specific. Ninguna ruta nueva se declaró verificada en este
+checkpoint.
+
+Validación: sintaxis/import y `git diff --check` verdes; 25 tests directos y
+159/159 en composer + Combine + Sell policy/operation/runtime. Se prueban ambos
+outcomes no técnicos de Combine, fallos/cancelaciones, plan Sell ausente,
+postcondición destructiva, request idéntico, contexts estrictamente frescos y
+bounds 3 caller attempts/1 Combine/1 Sell. Sin evaluator ni full suite porque
+no cambió percepción, executor, navegación compartida o caller. Sin HIL porque
+la composición es pura y no añadió propiedad física; el primer adapter futuro
+debe auditar/adquirir su ruta concreta a Inventory y retorno antes de integrarse.
