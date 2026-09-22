@@ -867,3 +867,55 @@ suite: los únicos cambios compartidos son intents/targets aditivos y sus
 consumidores inmediatos están cubiertos. Craft standalone CLOSED. El futuro
 adapter Craft→Equipment Relief es una tarea separada y conserva causalidad,
 rutas de relief y retry fuera de Craft.
+
+## 30. G Monster Wave board acquisition + descriptive snapshot (2026-09-22)
+
+G se adquirió con el teléfono en el popup de inventarios MW y sin input del
+agente. El usuario confirmó el GT de cinco filas, en orden, sobre tres
+capturas actuales de la fuente scrcpy productiva: Brawler's Badges `258/72`,
+Weapon Material `412/999`, Hero Weapon Material `284/999`, Bronze Key
+`322/499` y Silver Key `129/499`. El primer número es balance mostrado y el
+segundo es límite mostrado; `258/72` se conserva literalmente, sin clamp ni
+interpretación de cantidad requerida. El popup persistió mientras SKIP expiró
+detrás (`0/30`), por lo que no se reutilizan lecturas a través de transiciones.
+
+| Señal candidata | Cierre G | Evidencia/consumidor futuro |
+|---|---|---|
+| Cinco balances/límites y orden de fila | OBSERVABLE + implementado | GT actual + reader OCR por ROI y consenso; planificación board-first futura |
+| Brawler's Badges | OBSERVABLE + implementado bajo ese literal | El board no muestra una fila separada llamada Arena Tickets; la equivalencia histórica no se usa como input nuevo |
+| Weapon/Hero Weapon Material | OBSERVABLE + implementado bajo esos literales | No se infieren recetas, costes ni necesidades de craft |
+| Bronze/Silver Key | OBSERVABLE + implementado | No se infiere Gold Key ni su capacidad |
+| Ticket NEEDS/READY, purchase-full, ACTIVE/MAX, sapphires, blockers | OBSERVABLE existente | Se reutiliza la semántica MW; ningún conteo de tickets se añade |
+| Otras familias de materiales, tier/categoría objetivo y recetas | NOT_OBSERVABLE en el board adquirido | No hay campo numérico/por-tier inventado; Craft/Trading pueden aportar discoveries separados en fases posteriores |
+| Reward quantities, cantidades requeridas y estado de destinos no listados | NOT_OBSERVABLE | El aviso sólo enumera balances/límites de cinco filas |
+| Gold-key capacity | NOT_OBSERVABLE | Constante explícita en snapshot; C6b conserva su boundary causal |
+
+`bot/monster_wave_board_reader.py` lee sólo el popup resuelto; las cinco
+líneas deben tener título exacto, par numérico explícito y confianza OCR ≥0.90.
+`consensus_board_samples` exige 2–4 samples concordantes con secuencia y tiempo
+crecientes, en una ventana máxima de 1 s posterior a la barrera dada por el
+caller. Cualquier línea ilegible deja todo el fact ausente; jamás produce cero.
+El manifest curado
+`datasets/monster_wave_board_manifest.json` conserva SHA256, procedencia y GT
+positivo, más cuatro negativos contextuales existentes. La evaluación de
+reader + percepción/resolver productivos dio **7/7**. La guarda contextual se
+revisó sobre los **97 frames** del manifest MW histórico; la regresión dirigida
+MW/percepción/eligibilidad dio **129 tests**, y los **16 tests** nuevos cubren
+valores exactos, unreadable, contexto, contradicción y frescura.
+
+`bot/monster_wave_board_snapshot.py` publica solamente `skip_state`, tickets
+binarios, sapphires opcionales, flags positivos de MAX/controles, popup,
+blockers, cinco filas si están confirmadas, evidencia y
+`gold_key_capacity=NOT_OBSERVABLE`. Fact y snapshot deben coincidir en
+contexto/popup, sequence final y timestamp; sus samples deben ser posteriores
+a `after_sequence`, y el frame actual no puede exceder `max_age_s` (2 s por
+defecto). `RESOLVED` foreign, `UNKNOWN`, `AMBIGUOUS`, overlay contradictorio y
+facts stale abortan la construcción. Popup sin lectura confirmada se describe
+como `PRESENT_CONTENT_UNKNOWN` con filas vacías. No se agregó planner, ruta,
+input, navegación, Trading/Craft/Treasure/Relief ni farming. Quick Menu sigue
+físicamente accesible desde MW, reservado para la integración futura.
+
+G cierra adquisición/snapshot únicamente. Los negativos contextuales se tomaron
+del corpus MW previo (incluido retorno por `No`); no se consumió recurso para
+preparar otro estado. La próxima fase es I-impl planner puro, que tendrá que
+tratar como desconocida toda necesidad o capacidad que este board no muestra.

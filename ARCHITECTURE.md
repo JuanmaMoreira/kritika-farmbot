@@ -32,6 +32,8 @@ Los facts demand-driven pueden llegar directamente al consumidor cuando parten d
 
 `RuntimeFactReader` calcula OCR tipado sólo cuando un consumidor lo solicita. `TemporalObserver` agrega evidencia multiframe para estados que no son seguros en una captura, como Auto Battle.
 
+El board de Monster Wave conserva su detector de popup existente. `MonsterWaveBoardReader` se invoca sólo sobre `RESOLVED screen.monster_wave + popup.monster_wave_inventory_board` y lee cinco filas fijas mediante ROIs acotadas; identidad, `balance/límite mostrado` y orden deben coincidir en dos frames posteriores a una barrera del caller. `build_monster_wave_board_snapshot` es puro: exige el mismo contexto, último frame del fact igual al snapshot y edad temporal acotada; si el popup está presente sin consenso, el contenido queda `PRESENT_CONTENT_UNKNOWN`. `UNKNOWN`, `AMBIGUOUS`, evidencia contradictoria o previa a la barrera no producen un snapshot válido. Los pares mostrados no son cantidades requeridas ni recetas; `gold_key_capacity` es `NOT_OBSERVABLE`. No hay navegación, input ni policy de ruta en este contrato.
+
 ### Resolución y observación runtime
 
 `ContextResolver` es puro y determinista: combina contexto base y overlays y devuelve `RESOLVED`, `UNKNOWN` o `AMBIGUOUS`. No captura, no acciona y no conserva policy de flows.

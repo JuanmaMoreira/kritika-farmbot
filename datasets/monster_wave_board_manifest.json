@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "curation": {
+    "question": "Which inventory balances and displayed limits are directly shown by the Monster Wave board?",
+    "positive_ground_truth": "Human-confirmed in chat on 2026-09-22; three current device captures with the same five visible rows",
+    "raw_source": "artifacts/acquisition-monster-wave-board-g/positive-runtime/",
+    "negative_ground_truth": "Existing monster_wave_semantic_manifest.json context and overlay labels; no new numeric labels assigned to historical frames",
+    "limitation": "Only five visible balance/limit pairs are promoted. No recipe, reward, tier, Gold-key capacity or material need is inferred."
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/monster-wave/board-g-current/01.png",
+      "sha256": "6a9b5b954183985c16554b1925b6aae9c508935379f656697f12a832deebe13a",
+      "context": "board_popup",
+      "expected": [["brawlers_badges", 258, 72], ["weapon_material", 412, 999], ["hero_weapon_material", 284, 999], ["bronze_key", 322, 499], ["silver_key", 129, 499]]
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/board-g-current/02.png",
+      "sha256": "0c8900080e9b2ad024f2cbf57da01bbc6061205107b354dc434fabaaa6d3f0de",
+      "context": "board_popup",
+      "expected": [["brawlers_badges", 258, 72], ["weapon_material", 412, 999], ["hero_weapon_material", 284, 999], ["bronze_key", 322, 499], ["silver_key", 129, 499]]
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/board-g-current/03.png",
+      "sha256": "f0101b1cd0e00cd16f5b580c886a090678077020725b0d8273925755f37fb95f",
+      "context": "board_popup",
+      "expected": [["brawlers_badges", 258, 72], ["weapon_material", 412, 999], ["hero_weapon_material", 284, 999], ["bronze_key", 322, 499], ["silver_key", 129, 499]]
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-board-no-after/01.png",
+      "sha256": "b04fc36ed2783e13eda8b685df3074679c207326e34e3e6946dca12d0b34c748",
+      "context": "clean_monster_wave",
+      "expected": null
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-entry-clean/01.png",
+      "sha256": "58de013354d71742ff7f8aac18fc38dd33b022c78fc46dae13ad16397aec4b48",
+      "context": "clean_monster_wave",
+      "expected": null
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/monster-wave-bag-full/01.png",
+      "sha256": "39cd5c2b06c02621b4b166afc3c2a3b97920fcfd63881ab5c63c932f997e7ec2",
+      "context": "socket_full",
+      "expected": null
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/battle-mode-select-initial/01.png",
+      "sha256": "00d518df40c00d71192d5e184c93c02cc6890444ae2d443b4906af5f303fc77c",
+      "context": "foreign",
+      "expected": null
+    }
+  ]
+}
