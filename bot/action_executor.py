@@ -88,6 +88,7 @@ from bot.semantic_actions import (
     SelectPetSummon,
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
+    SelectQuickMenuTrading,
     SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
@@ -314,6 +315,8 @@ class RotationActionTargets:
     select_lobby: RelativePoint = (0.2020, 0.2050)
     select_guild: RelativePoint = (0.2650, 0.6500)
     select_guild_shifted: RelativePoint = (0.3946, 0.6500)
+    # HIL C6b 2026-09-22: Treasure Quick Menu -> Trading Center.
+    select_trading_shifted: RelativePoint = (0.3320, 0.6500)
     open_character_select: RelativePoint = (0.0704, 0.7835)
     open_character_select_shifted: RelativePoint = (0.2000, 0.7835)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
@@ -325,6 +328,7 @@ class RotationActionTargets:
             self.select_lobby,
             self.select_guild,
             self.select_guild_shifted,
+            self.select_trading_shifted,
             self.open_character_select,
             self.open_character_select_shifted,
             self.last_visible_character,
@@ -748,6 +752,8 @@ class ActionExecutor:
                 if action.layout is QuickMenuLayout.LOBBY
                 else self.rotation_targets.select_guild_shifted
             )
+        if isinstance(action, SelectQuickMenuTrading):
+            return self.rotation_targets.select_trading_shifted
         if isinstance(action, OpenCharacterSelect):
             return (
                 self.rotation_targets.open_character_select

@@ -16,7 +16,9 @@ from bot.quick_menu import (
     open_character_select_action,
     quick_menu_accessible,
     select_quick_menu_guild_action,
+    select_quick_menu_trading_action,
 )
+from bot.treasure_center_semantics import SCREEN_TREASURE
 from bot.catalog import MENU_QUICK
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
@@ -33,6 +35,7 @@ from bot.semantic_actions import (
     OpenCharacterSelect,
     QuickMenuLayout,
     SelectQuickMenuGuild,
+    SelectQuickMenuTrading,
 )
 
 
@@ -42,6 +45,7 @@ def test_declared_context_has_quick_menu_capability():
     assert quick_menu_accessible(SCREEN_GUILD)
     assert quick_menu_accessible(SCREEN_PETS_MANAGE)
     assert quick_menu_accessible(SCREEN_PET_SUMMON)
+    assert quick_menu_accessible(SCREEN_TREASURE)
 
 
 def test_undeclared_context_has_no_quick_menu_capability():
@@ -92,6 +96,14 @@ def test_guild_destination_uses_each_acquired_quick_menu_layout():
     )
 
 
+def test_trading_destination_is_only_exposed_for_verified_treasure_origin():
+    assert select_quick_menu_trading_action(
+        SCREEN_TREASURE
+    ) == SelectQuickMenuTrading()
+    with pytest.raises(ValueError, match="verified only from Treasure"):
+        select_quick_menu_trading_action(SCREEN_LOBBY)
+
+
 def test_geometry_is_not_selected_for_an_undeclared_context():
     with pytest.raises(ValueError, match="Quick Menu policy"):
         open_character_select_action(SCREEN_BATTLE_MODE_SELECT)
@@ -126,6 +138,7 @@ def _open_result(source, menu):
 @pytest.mark.parametrize("origin", [
     SCREEN_LOBBY, SCREEN_GUILD, SCREEN_WORLD_BOSS,
     SCREEN_PETS_MANAGE, SCREEN_PET_SUMMON,
+    SCREEN_TREASURE,
 ])
 def test_handoff_allows_fresh_unknown_menu_only_after_verified_origin(origin):
     source = _menu_snapshot(1, origin)

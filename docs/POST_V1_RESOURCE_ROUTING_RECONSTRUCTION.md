@@ -717,3 +717,54 @@ Validación: sintaxis verde; runtime+ActionExecutor 151 passed inicialmente y
 suite (default perception y contratos compartidos existentes no cambiaron de
 comportamiento; sólo builder opt-in + intents/targets aditivos). Este checkpoint
 cierra únicamente el prerrequisito físico; C6b continúa NO INICIADO.
+
+## 26. C6b CLOSED: recovery causal de capacidad Gold (2026-09-22)
+
+Primera divergencia: C6a preservaba correctamente el `PendingCausalOperation`
+de `SILVER_TO_GOLD + OUTPUT_FULL`, pero faltaban tanto el consumer causal como
+el adaptador público del retorno directo. La infraestructura Quick Menu ya
+aportaba apertura, `QuickMenuHandoff` y guards de provenance; faltaban
+`screen.treasure` en la allowlist, el intent/target Trading y un runtime
+específico. No se creó router, registry ni planner.
+
+HIL mínimo (`artifacts/hil_c6b_quick_menu/`, raw local ignorado): Lobby→Treasure
+usó el target E2 existente; el header compartido `(0.1940,0.0564)` abrió Quick
+Menu desde Treasure; un único tap al centro interior del tile Trading
+`(0.3320,0.6500)` abrió Trading. La percepción productiva posterior resolvió
+`screen.trading`, sin overlays, con confianza 1.000. Cero Gold drain, trades o
+premium durante este smoke y ningún Lobby entre Treasure y Trading.
+El cleanup aportó una propiedad adicional: la X cerró ese Trading al Treasure
+subyacente (luego Back dejó Lobby limpio), a diferencia de Trading abierto desde
+Lobby, cuya X vuelve a Lobby. Quick Menu sigue inaccesible mientras Trading está
+abierto; el destino del close depende del origen que abrió el popup.
+
+Implementación: `SelectQuickMenuTrading` + target shifted HIL,
+`QuickMenuTradingRuntime.treasure_to_trading()` single-attempt y
+`KeysPromotionRuntime`. La ruta causal exacta es Trading/Keys → X roja → Lobby
+fresco → Treasure → E `OPEN_ONCE` verificado → E2.2 agota todos los Gold Keys,
+detecta Karat y finaliza reward → Treasure estable → Quick Menu → Trading fresco
+→ Avatar & Keys → nuevo snapshot/ambas row facts → retry del mismo
+`SILVER_TO_GOLD` una sola vez. El retry usa la quantity original
+`MAX_ALLOWED`; no existe `UP_TO(n)`, estimación de capacity ni drenaje "justo".
+El budget C6a cuenta la decisión causal; el retry tiene su propio bound fijo de
+uno. Un segundo `OUTPUT_FULL`, incluido uno posterior al recovery, falla cerrado
+sin segunda visita Treasure.
+
+Freshness: `FreshKeyFacts` exige snapshot Keys-ready y ambas filas pertenecientes
+a su sequence; toda lectura debe ser estrictamente posterior al último snapshot
+de navegación/operación. Tras el retorno directo se exige Trading fresco,
+`ensure_avatar_keys`, snapshot nuevo y facts nuevos antes del retry. Ningún
+`row_y/have/need/snapshot` previo al relief puede autorizar input.
+
+Separación: C6b compone owners inyectados; C5/C4 siguen genéricos, Treasure no
+conoce pending/C6a, Quick Menu no conoce policy y E2.2 no conoce el motivo del
+drain. Cero Equipment Inventory/Combine/Sell/Relief, scroll, Craft o Monster
+Wave. Routing futuro: Trading debe cerrarse antes de usar otro camino; Treasure,
+Craft y Monster Wave tienen Quick Menu disponible y no deben normalizarse a
+Lobby cuando el destino esté verificado allí. Craft/MW no se implementan aquí.
+
+Validación: 20 tests C6b directos; 5 del adapter directo; ladder afectada 548
+tests verdes (C6a/C5/C4, TradingRuntime/navigation, Quick Menu y Treasure/E2.2),
+sintaxis y `git diff --check` limpios. Sin evaluator (sin detector/reader/ROI o
+asset) y sin full suite (infraestructura compartida sólo recibió intent/target y
+allowlist aditivos; no cambió el motor de navegación). C6b CLOSED.

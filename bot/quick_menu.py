@@ -22,7 +22,9 @@ from bot.semantic_actions import (
     OpenCharacterSelect,
     QuickMenuLayout,
     SelectQuickMenuGuild,
+    SelectQuickMenuTrading,
 )
+from bot.treasure_center_semantics import SCREEN_TREASURE
 
 
 @dataclass(frozen=True)
@@ -50,6 +52,7 @@ DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(
             SCREEN_LOBBY,
             SCREEN_PET_SUMMON,
             SCREEN_PETS_MANAGE,
+            SCREEN_TREASURE,
             SCREEN_WORLD_BOSS,
         }
     )
@@ -180,6 +183,19 @@ def select_quick_menu_guild_action(
     return SelectQuickMenuGuild(_layout_for(origin_context, policy))
 
 
+def select_quick_menu_trading_action(
+    origin_context: str | None,
+    *,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> SelectQuickMenuTrading:
+    """Select Trading only from the HIL-verified shifted Treasure menu."""
+
+    layout = _layout_for(origin_context, policy)
+    if origin_context != SCREEN_TREASURE or layout is not QuickMenuLayout.SHIFTED:
+        raise ValueError("Trading Quick Menu target is verified only from Treasure")
+    return SelectQuickMenuTrading()
+
+
 def _layout_for(
     origin_context: str | None,
     policy: QuickMenuPolicy,
@@ -204,4 +220,5 @@ __all__ = (
     "open_character_select_action",
     "quick_menu_accessible",
     "select_quick_menu_guild_action",
+    "select_quick_menu_trading_action",
 )

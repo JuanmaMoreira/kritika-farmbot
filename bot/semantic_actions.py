@@ -265,6 +265,11 @@ class SelectQuickMenuGuild:
 
 
 @dataclass(frozen=True)
+class SelectQuickMenuTrading:
+    """Request the HIL-verified shifted Trading tile in Quick Menu."""
+
+
+@dataclass(frozen=True)
 class OpenCharacterSelect:
     """Request the Character tile inside an already-open Quick Menu."""
 
@@ -606,6 +611,7 @@ SemanticAction = (
     | OpenQuickMenu
     | SelectQuickMenuLobby
     | SelectQuickMenuGuild
+    | SelectQuickMenuTrading
     | OpenCharacterSelect
     | CheckInGuildAttendance
     | Swipe
@@ -740,6 +746,7 @@ __all__ = (
     "SelectPetSummon",
     "SelectQuickMenuLobby",
     "SelectQuickMenuGuild",
+    "SelectQuickMenuTrading",
     "SendStaminaToAllFriends",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",
