@@ -108,7 +108,11 @@ from bot.semantic_actions import (
     ConfirmRepeatGoldOpen,
     DismissTreasureResult,
     ExitTreasure,
+    OpenTrading,
+    SelectTradingAvatarKeys,
+    CloseTrading,
 )
+from bot.trading_navigation_profile import TRADING_NAVIGATION_PROFILE
 from bot.treasure_profile import TREASURE_PROFILE
 
 
@@ -488,6 +492,28 @@ DEFAULT_PORTAL_ACTION_TARGETS = PortalActionTargets()
 
 
 @dataclass(frozen=True)
+class TradingActionTargets:
+    """Injectable copy of the HIL-verified Trading navigation geometry."""
+
+    open_trading: RelativePoint = TRADING_NAVIGATION_PROFILE.entry_point
+    select_avatar_keys: RelativePoint = (
+        TRADING_NAVIGATION_PROFILE.avatar_keys_point
+    )
+    close_trading: RelativePoint = TRADING_NAVIGATION_PROFILE.close_point
+
+    def __post_init__(self) -> None:
+        for point in (
+            self.open_trading,
+            self.select_avatar_keys,
+            self.close_trading,
+        ):
+            relative_point_to_pixel(point, 1, 1)
+
+
+DEFAULT_TRADING_ACTION_TARGETS = TradingActionTargets()
+
+
+@dataclass(frozen=True)
 class TreasureActionTargets:
     """Normalized targets measured for the Treasure Gold layout.
 
@@ -560,6 +586,7 @@ class ActionExecutor:
         socket_targets: SocketActionTargets = DEFAULT_SOCKET_ACTION_TARGETS,
         equipment_targets: EquipmentActionTargets = DEFAULT_EQUIPMENT_ACTION_TARGETS,
         portal_targets: PortalActionTargets = DEFAULT_PORTAL_ACTION_TARGETS,
+        trading_targets: TradingActionTargets = DEFAULT_TRADING_ACTION_TARGETS,
         treasure_targets: TreasureActionTargets = DEFAULT_TREASURE_ACTION_TARGETS,
     ) -> None:
         if not callable(getattr(adb, "tap", None)):
@@ -586,6 +613,8 @@ class ActionExecutor:
             raise ValueError("equipment_targets must be EquipmentActionTargets")
         if not isinstance(portal_targets, PortalActionTargets):
             raise ValueError("portal_targets must be PortalActionTargets")
+        if not isinstance(trading_targets, TradingActionTargets):
+            raise ValueError("trading_targets must be TradingActionTargets")
         if not isinstance(treasure_targets, TreasureActionTargets):
             raise ValueError("treasure_targets must be TreasureActionTargets")
         self.adb = adb
@@ -600,6 +629,7 @@ class ActionExecutor:
         self.socket_targets = socket_targets
         self.equipment_targets = equipment_targets
         self.portal_targets = portal_targets
+        self.trading_targets = trading_targets
         self.treasure_targets = treasure_targets
 
     def execute(
@@ -806,6 +836,12 @@ class ActionExecutor:
             return self.battle_targets.dismiss_world_boss_bag_full
         if isinstance(action, DismissPortalNotification):
             return self.portal_targets.dismiss_portal_notification
+        if isinstance(action, OpenTrading):
+            return self.trading_targets.open_trading
+        if isinstance(action, SelectTradingAvatarKeys):
+            return self.trading_targets.select_avatar_keys
+        if isinstance(action, CloseTrading):
+            return self.trading_targets.close_trading
         if isinstance(action, OpenTreasure):
             return self.treasure_targets.open_treasure
         if isinstance(action, SelectGoldChest):
@@ -861,6 +897,7 @@ __all__ = (
     "DEFAULT_ROTATION_ACTION_TARGETS",
     "DEFAULT_SOCKET_ACTION_TARGETS",
     "DEFAULT_TREASURE_ACTION_TARGETS",
+    "DEFAULT_TRADING_ACTION_TARGETS",
     "FrameGeometry",
     "FriendsActionTargets",
     "GuildActionTargets",
@@ -872,5 +909,6 @@ __all__ = (
     "PortalActionTargets",
     "SocketActionTargets",
     "TreasureActionTargets",
+    "TradingActionTargets",
     "SwipeExecution",
 )

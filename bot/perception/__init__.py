@@ -665,6 +665,33 @@ def build_trading_perception(
     )
 
 
+def build_trading_navigation_perception(
+    asset_root: str | Path | None = None,
+) -> PerceptionEngine:
+    """Build resolver-complete navigation perception plus Trading details.
+
+    Lobby entry/return keeps the complete production vocabulary, while the
+    two existing Trading-specialized detectors add tab and rows evidence for
+    ``ensure_avatar_keys``. This is an opt-in engine for the bounded Trading
+    visit; the default hot path is unchanged and no scoped->global fallback
+    occurs inside a wait.
+    """
+
+    root = (
+        Path(asset_root)
+        if asset_root is not None
+        else Path(__file__).resolve().parents[2]
+    )
+    global_engine = build_default_perception(root)
+    return PerceptionEngine(
+        detectors=(
+            *global_engine.detectors,
+            TradingTabsDetector(asset_root=root),
+            TradingRowsDetector(asset_root=root),
+        )
+    )
+
+
 # Treasure Center observation vocabulary for E2 entry/open/leave waits:
 # the base landmark (promoted to the default engine, same split as the
 # Trading title) plus the selector popup, result state and Gold/Karat
@@ -1180,6 +1207,7 @@ __all__ = (
     "TradingTabsDetector",
     "TradingTabsReading",
     "build_trading_perception",
+    "build_trading_navigation_perception",
     "build_treasure_perception",
     "SocketEnhanceAnimationDetector",
     "SocketEnhanceAnimationReading",

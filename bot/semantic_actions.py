@@ -511,6 +511,21 @@ class DismissPortalNotification:
 
 
 @dataclass(frozen=True)
+class OpenTrading:
+    """Request the direct Lobby -> Trading Center action."""
+
+
+@dataclass(frozen=True)
+class SelectTradingAvatarKeys:
+    """Select Avatars & Keys from an already-confirmed Trading context."""
+
+
+@dataclass(frozen=True)
+class CloseTrading:
+    """Request the Trading-specific X close action to Lobby."""
+
+
+@dataclass(frozen=True)
 class OpenTreasure:
     """Request the direct Lobby -> Treasure tile action."""
 
@@ -633,6 +648,9 @@ SemanticAction = (
     | ExitCombine
     | DismissWorldBossBagFull
     | DismissPortalNotification
+    | OpenTrading
+    | SelectTradingAvatarKeys
+    | CloseTrading
     | OpenTreasure
     | SelectGoldChest
     | ConfirmSingleGoldOpen
@@ -674,6 +692,9 @@ __all__ = (
     "DismissWorldBossBagFull",
     "DeleteReadCharacterMail",
     "DismissPortalNotification",
+    "OpenTrading",
+    "SelectTradingAvatarKeys",
+    "CloseTrading",
     "OpenBlackMarket",
     "OpenGuild",
     "OpenFriends",

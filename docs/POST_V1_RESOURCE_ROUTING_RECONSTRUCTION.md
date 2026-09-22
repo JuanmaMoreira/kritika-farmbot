@@ -678,3 +678,42 @@ Treasure keys, TapThrough + consumidores, ActionExecutor y HIL cap 293 passed
 ambiental de pytest). `git diff --check` limpio. Sin evaluator (ningún cambio
 de detector/reader/ROI/asset) y sin full suite (cambio Treasure-local; primitive
 TapThrough intacta). No hubo segundo HIL. E2.2 DONE; C6b NO INICIADO.
+
+## 25. Prerrequisito C6b: navegación Trading verificada (2026-09-21)
+
+Gap causal confirmado en `d6fdb52`: C1-C5 aportaban percepción, facts y trade,
+pero no existían acciones ni runtime públicos para Lobby↔Trading o restaurar
+Avatar & Keys. La coordenada legacy no se promovió por confianza histórica.
+
+Adquisición HIL mínima (`artifacts/hil_trading_navigation/20260921T211707/`,
+raw local ignorado), 2712x1220, un input autorizado por condición y GT humano:
+
+- Lobby→Trading es directo, sin Quick Menu: `(662,1089)` abrió Trading fresco
+  en General. El target profile usa el centro normalizado del mismo píxel.
+- General→Avatar & Keys: `(1317,293)` activó la pestaña y mostró cuatro filas
+  Keys frescas; cero scroll y cero inputs de fila.
+- Trading→Lobby usa la X roja propia, no Back genérico: `(2108,170)` cerró a
+  Lobby limpio, confirmado por el usuario.
+
+Implementación mínima: `OpenTrading`, `SelectTradingAvatarKeys` y
+`CloseTrading`; `TradingActionTargets`; profile HIL; y `TradingRuntime` con
+`enter_from_lobby`, `ensure_avatar_keys` idempotente y `leave_to_lobby`.
+Cada transición usa `VerifiedTransition` single-attempt y sólo completa con
+postcondición posterior fresca. `build_trading_navigation_perception` es opt-in:
+mantiene vocabulario global resolver-complete para Lobby y agrega los detectores
+Trading tabs/rows existentes; el hot path global queda intacto y no hay fallback
+scoped→global dentro de una espera.
+
+Smoke productivo posterior al código: Lobby→Trading fresh PASS y salida→Lobby
+fresh PASS; la entrada recordó Keys y `ensure_avatar_keys` completó idempotente
+sin tap. Segunda condición, preparada manualmente en General: selección
+`trading.select_avatar_keys` `SUCCESS_FIRST_ATTEMPT` (seq 110) y cierre
+`trading.leave` `SUCCESS_FIRST_ATTEMPT` (seq 239), exactamente dos taps, cero
+retry, scroll, filas, trade o gasto.
+
+Validación: sintaxis verde; runtime+ActionExecutor 151 passed inicialmente y
+21 tests directos finales; regresiones C1-C5/percepción Trading/navegación Lobby
+328 passed. Sin evaluator (ningún detector/reader/ROI/asset cambió) y sin full
+suite (default perception y contratos compartidos existentes no cambiaron de
+comportamiento; sólo builder opt-in + intents/targets aditivos). Este checkpoint
+cierra únicamente el prerrequisito físico; C6b continúa NO INICIADO.
