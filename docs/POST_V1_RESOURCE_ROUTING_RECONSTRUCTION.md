@@ -1031,3 +1031,51 @@ los cuatro fallos son `FileNotFoundError` de
 `tests/test_rotation_selection_scope.py` por cuatro directorios locales
 ignorados ausentes bajo `artifacts/failure_evidence/`; no hay fallo funcional
 de J. J CLOSED. K/L no iniciados.
+
+## 33. K CLOSED: runner standalone one-shot (2026-09-23)
+
+La auditoría K corrigió la exigencia de replanificar tras J: G sólo da cinco
+filas con el popup abierto, mientras J termina en MW limpio sin popup. No hay
+acción verificada que lo reabra sin arriesgar un intento SKIP. K acepta J
+SUCCESS, todos los steps del plan inmutable ejecutados y un contexto/snapshot
+MW limpio más fresco como postcondición. No vuelve a llamar al planner.
+
+`bot/monster_wave_standalone.py` publica `MonsterWaveStandaloneRunner`,
+`MonsterWaveStandaloneRequest/Result` y los modos `ACQUIRE_ONLY`, `PLAN_ONLY`,
+`PREREQUISITES_ONLY`, `FULL_ONE_SHOT`. El adquiridor lee dos frames concordantes
+de un popup board **ya abierto**; no lo provoca. Plan recibe
+`NonBoardResourceFacts` explícito: recompensas exactas para las cinco filas
+(cero explícito), conversión material si hace falta y receta/coste/slots libres
+de Craft si hace falta. Facts faltantes/contradictorios producen el diagnóstico
+tipado de I y cero input. Los modos con ejecución cierran el popup mediante el
+`DeclineMonsterWaveInventory` estable y readquieren MW limpio. J recibe el plan
+una sola vez si es READY; NO_PREREQUISITES omite J.
+
+FULL sale de MW limpio con el intent existente `ExitMonsterWave` y postcondición
+fresca Battle Mode Select; después llama `MonsterWaveActivity.run()` una vez,
+sin copiar su SKIP policy. HIL nuevo autorizado: pantalla MW limpia confirmada
+por usuario; source seq 116 `screen.monster_wave`, `needs_tickets`, cero overlays;
+un `ExitMonsterWave`, outcome `success_first_attempt`, final seq 187
+`screen.battle_mode_select` resuelto. Cero SKIP, trades, Craft o Treasure.
+Equipment Full sigue propagando `MANUAL_RESOLUTION`; no hay adapter
+`EquipmentReliefComposer` de MW. Límites K: planner ≤1, J ≤1, actividad MW ≤1,
+sin farming, replan ni wiring productivo. L queda separado.
+
+El API es importable y recibe board acquisition, navegación, J y actividad
+inyectados por el harness; no se añadió CLI porque todavía no existe un
+composition root standalone que construya todas las capacidades J sin mezclar
+K con L. Para un harness, construir `MonsterWaveBoardAcquisitionRuntime` con
+observer + `MonsterWaveBoardReader`, `MonsterWaveStandaloneNavigationRuntime`
+con `VerifiedTransition` + `MonsterWaveSnapshotRuntime`, e inyectarlos junto a
+`MonsterWaveResourceRouteRuntime` y `MonsterWaveActivity` al runner. El request
+elige modo y aporta `NonBoardResourceFacts` en todos los modos salvo acquire.
+El resultado expone board inicial, plan, transición de cierre, contexto MW
+fresco, resultado J, transición de salida, resultado MW, fase y evidencia.
+
+Validación: 23 tests K directos y 316 regresiones G/I/J/MW/Quick Menu/
+ActionExecutor verdes; `compileall` y `git diff --check` verdes. No evaluator:
+no cambió percepción/ROI/OCR. No full suite: no cambió wiring productivo ni
+runtime compartido; se conserva el checkpoint J de 3178 passed / 4 Rotation
+fixtures locales ignorados ausentes. Smoke K read-only y full no ejercidos:
+el dispositivo quedó en Battle Mode Select tras verificar el puente y no se
+fabricó presión ni un nuevo intento MW.
