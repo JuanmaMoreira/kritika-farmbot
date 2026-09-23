@@ -70,6 +70,8 @@ Fuera de V1 (futuro, no blockers): validación runtime/performance de Monster Wa
 
 ### 11. Post-V1 — Resource Routing / Monster Wave Preparation
 
+L0 prerequisite (2026-09-23): handoff opt-in del board natural implementado offline en `MonsterWaveActivity`; L0 facts **BLOCKED** por GT nuevo: drops de cada recurso probabilísticos por sapphire, sin cantidad entrante exacta estática. No configurar cantidades inventadas ni conectar K/J productivamente. Siguiente decisión: cómo planificar con información disponible sin afirmar un reward exacto; después validar HIL del handoff y retomar L.
+
 Primera frontera post-V1. El documento de reconstrucción conserva el diseño de partida y los checkpoints implementados; el estado vigente por frente se resume abajo.
 
 Decisiones cerradas: board-first planning (Trading nunca como etapa diagnóstica si el board decide); snapshot descriptivo + deterministic route planner separados de executors; Trading/Craft/Treasure como capacidades atómicas independientes; Inventory Relief transversal con Combine Relief siempre primero y venta sólo si sigue necesario, sin ser propiedad de Treasure/Craft/Trading/MW; Gold Key capacity no observable (board ni Trading), popup Silver→Gold full exige navegación manual a Treasure + retorno causal, y abrir Gold Keys es independiente de Equipment Inventory (sin consumo de relief); Craft sin scroll con precondición de entrada ≥1 slot libre de Equipment Inventory; Crafting Materials preventivo por board + fallback defensivo ante popup; directed known-list scrolling como primitive transversal cuyo único consumer actual es Trading Center; MW standalone/debuggable; stage-ready boundary al final.

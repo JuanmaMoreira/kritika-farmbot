@@ -118,6 +118,8 @@ No se agrega framework de options ni opciones x1/x2/x3/MAX. Activar compra autor
 únicamente Fill All en Purchase SKIP Ticket; activar continuación del board acepta
 la pérdida de rewards que excedan los límites mostrados.
 
+L0 agrega el argumento explícito `yield_resource_board=True` en `MonsterWaveActivity.run()` y en el wrapper. Es opt-in por invocación, no una variable de entorno productiva. El default `False` conserva la policy anterior. Con el argumento activo, `StartMonsterWaveSkip` verifica un popup board resuelto y fresco y retorna `RESOURCE_BOARD_PENDING` con `board_sequence`; no pulsa Yes/No ni Back. La sesión actual se detiene fail-closed ante ese handoff sin consumidor, sin rotar. K/J todavía no están conectados al flow.
+
 Standalone y Run Selected Flows:
 
 ```text
@@ -177,6 +179,7 @@ amplía la allow-list de Rotation, scopes, Identity o planning.
 | Tickets faltantes y compra desactivada | COMPLETED | `monster_wave.tickets_missing_purchase_disabled` |
 | Insufficient Sapphire | No y retorno verificado | `monster_wave.insufficient_sapphires` |
 | Board y continuación desactivada | No y retorno verificado | `monster_wave.inventory_warning_declined` |
+| Board con yield opt-in | `RESOURCE_BOARD_PENDING`; popup abierto, sin retorno al hub | `monster_wave.resource_board_pending` + `board_sequence` |
 | Blocker duro sin return adquirido | MANUAL_RESOLUTION | `monster_wave.manual_resolution` |
 | Cancelación | CANCELLED | Lifecycle existente |
 | Input/captura/guard/retorno sin verificar | FAILED | FailureCause y Failure Evidence existentes |

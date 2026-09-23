@@ -11,7 +11,7 @@ from bot.catalog import (SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, MENU_QUICK,
     OVERLAY_WORLD_BOSS_RAID_COMPLETE)
 from bot.flow_contracts import FlowStatus
 from bot.monster_wave_actions import *
-from bot.monster_wave_activity import MonsterWaveActivity, skip_state, SkipState, max_ready
+from bot.monster_wave_activity import MonsterWaveActivity, skip_state, SkipState, max_ready, popup
 from bot.monster_wave_config import MonsterWaveConfig
 from bot.monster_wave_flow import MonsterWaveFlow
 from bot.monster_wave_semantics import *
@@ -169,6 +169,47 @@ def test_inventory_board_user_policy(accept):
     assert r.event_count('monster_wave.inventory_warning_declined')==int(not accept)
 
 
+@pytest.mark.parametrize('accept',[False,True])
+def test_opt_in_resource_board_yields_the_same_open_popup_without_answer_or_exit(accept):
+    d=Device(boundary=POPUP_MW_BOARD)
+    r=d.activity(MonsterWaveConfig(continue_when_nonblocking_inventory_full=accept)).run(
+        yield_resource_board=True)
+    assert r.status is FlowStatus.RESOURCE_BOARD_PENDING
+    assert r.board_sequence == d.sequence
+    assert r.event_count('monster_wave.resource_board_pending') == 1
+    assert d.base == SCREEN_MONSTER_WAVE and d.overlays == (POPUP_MW_BOARD,)
+    assert d.intents[-1] == 'StartMonsterWaveSkip'
+    assert 'AcceptMonsterWaveInventory' not in d.intents
+    assert 'DeclineMonsterWaveInventory' not in d.intents
+    assert 'ExitMonsterWave' not in d.intents
+
+
+def test_opt_in_resource_board_stops_standalone_flow_before_zone_leave():
+    d=Device(base=SCREEN_LOBBY,boundary=POPUP_MW_BOARD)
+    r=MonsterWaveFlow(d,d,d.events).run(yield_resource_board=True)
+    assert r.status is FlowStatus.RESOURCE_BOARD_PENDING
+    assert d.base == SCREEN_MONSTER_WAVE and d.overlays == (POPUP_MW_BOARD,)
+    assert d.intents[-1] == 'StartMonsterWaveSkip'
+
+
+@pytest.mark.parametrize('blocker',[POPUP_EQUIPMENT_INVENTORY_FULL,POPUP_SOCKET_INVENTORY_FULL])
+def test_opt_in_board_yield_does_not_claim_hard_blockers(blocker):
+    d=Device(boundary=blocker)
+    r=d.activity().run(yield_resource_board=True)
+    assert r.status is FlowStatus.MANUAL_RESOLUTION
+    assert r.board_sequence is None
+    assert d.overlays == (blocker,)
+
+
+def test_opt_in_board_yield_respects_cancellation_before_recognition():
+    d=Device(boundary=POPUP_MW_BOARD)
+    d.cancel_after='StartMonsterWaveSkip'
+    r=d.activity().run(yield_resource_board=True)
+    assert r.status is FlowStatus.CANCELLED
+    assert r.board_sequence is None
+    assert d.intents[-1]=='StartMonsterWaveSkip'
+
+
 @pytest.mark.parametrize('blocker',[POPUP_EQUIPMENT_INVENTORY_FULL,POPUP_SOCKET_INVENTORY_FULL])
 def test_hard_blocker_no_unacquired_relief_or_exit(blocker):
     d=Device(boundary=POPUP_MW_BOARD,board_after=blocker)
@@ -209,6 +250,18 @@ def test_unknown_never_authorizes_skip_or_max(state):
     s=snapshot(1,status=state,semantic_observations=tuple(
         Observation(n,1,ObservationSource.LOCAL_CV) for n in MAX))
     assert skip_state(s) is None and not max_ready(s)
+
+
+@pytest.mark.parametrize('state',[ResolutionStatus.UNKNOWN,ResolutionStatus.AMBIGUOUS])
+def test_unresolved_board_cannot_be_yielded(state):
+    s=snapshot(3,base=None,status=state,
+               overlays=(POPUP_MW_BOARD,))
+    assert not popup(POPUP_MW_BOARD)(s)
+
+
+def test_foreign_board_cannot_be_yielded():
+    s=snapshot(3,base=SCREEN_LOBBY,overlays=(POPUP_MW_BOARD,))
+    assert not popup(POPUP_MW_BOARD)(s)
 
 
 def test_contradictory_skip_signals_never_authorize_input():

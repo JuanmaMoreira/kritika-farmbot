@@ -1079,3 +1079,26 @@ runtime compartido; se conserva el checkpoint J de 3178 passed / 4 Rotation
 fixtures locales ignorados ausentes. Smoke K read-only y full no ejercidos:
 el dispositivo quedó en Battle Mode Select tras verificar el puente y no se
 fabricó presión ni un nuevo intento MW.
+
+## 34. L0 prerequisite: board handoff implementado; facts productivos BLOCKED (2026-09-23)
+
+`MonsterWaveActivity.run(yield_resource_board=True)` hace un solo intento MW normal. Si `StartMonsterWaveSkip` retorna un popup board `RESOLVED` fresco, devuelve `FlowStatus.RESOURCE_BOARD_PENDING` y `board_sequence` del postestado, sin Yes/No ni Back. `MonsterWaveFlow` lo propaga sin cerrar `BattleModeZone`; `SessionRunner` sin consumidor detiene la sesión con causa `resource_board_pending`, sin completar el flow, ejecutar el siguiente ni rotar. El opt-in no está habilitado por el registry productivo. El default conserva exactamente la decisión configurada Yes/No. No se conectó K/J, Equipment Relief ni un segundo intento MW.
+
+Audit de `NonBoardResourceFacts` para una operación normal MAX SKIP:
+
+| Fact | Consumidor I | Estático/dinámico | Fuente autoritativa actual | Valor / GT pendiente |
+| --- | --- | --- | --- | --- |
+| Incoming Brawler's Badges | overflow de fila | variable por sapphire | GT usuario: drop probabilístico | no hay cantidad exacta para esta operación |
+| Incoming Weapon Material | overflow y Trading | variable por sapphire | mismo GT | no hay cantidad exacta |
+| Incoming Hero Weapon Material | overflow y Craft | variable por sapphire | mismo GT | no hay cantidad exacta |
+| Incoming Bronze Key | overflow y Keys | variable por sapphire | mismo GT | no hay cantidad exacta |
+| Incoming Silver Key | overflow y Keys | variable por sapphire | mismo GT | no hay cantidad exacta |
+| Weapon→Hero Weapon conversion | cantidad Trading y proyección Hero | dominio de fila Trading | HIL C4/C5: 40 input → 10 output, `hero_weapon_crafting_material` | mapeo aceptado; no resuelve reward incierto |
+| Hero Weapon Craft recipe/cost | `material_per_craft`, familia/tier | fact UI dinámico | `CraftContextFact.hero_cost_for(WEAPON)`; HIL D observó 49 | reader existe, pero no hay fact Craft fresco disponible en el board; no copiar 49 a config |
+| Equipment free slots | gate Craft `>=1` | dinámico por personaje | `EquipmentInventoryFact.capacity - item_count`, lector Craft existente | reader existe, pero no hay fact Inventory fresco en el board; nunca config estática |
+
+El board G sólo muestra balance/límite; no informa rewards. I exige las cinco cantidades entrantes **exactas**, incluso cero explícito, antes de decidir `NO_PREREQUISITES` o `READY`. La respuesta del usuario invalida la premisa de una `MonsterWaveResourceRoutingConfig` con cinco rewards constantes: el drop es probabilístico por sapphire. No se añadieron placeholders, env vars, builder ni fact values; routing productivo sigue deshabilitado. L0 completo no puede declararse CLOSED con el contrato de facts actual. Hace falta una decisión explícita sobre semántica de planificación para rewards inciertos antes de continuar; esta tarea no rediseña I.
+
+Smoke HIL opt-in autorizado: usuario dejó Battle Mode Select visible. El primer lanzamiento falló en ADB genérico antes de captura/input; se repitió con `ADB_PATH` de `AGENT_LOCAL.md`. Preflight `RESOLVED screen.battle_mode_select`, badges MW/WB activos. La actividad con `yield_resource_board=True` y compra de tickets desactivada abrió MW una vez, observó `NEEDS_TICKETS`, publicó `monster_wave.tickets_missing_purchase_disabled` y volvió al hub: `open` y `exit` first-attempt, sin `StartMonsterWaveSkip`, Yes/No, compra ni board. Postestado `RESOLVED screen.battle_mode_select`. El yield físico queda `NEEDS_HIL`; no se fabricó presión ni se autorizó compra para alcanzarlo. Log local ignorado: `artifacts/hil_l0_board_yield.jsonl`.
+
+Validación L0: 158 tests dirigidos (MW activity/integration, session report y GUI) verdes; `compileall` y `git diff --check` limpios. Suite hardware-free completa: **3211 passed / 4 failed** en 688.76 s. Los cuatro fallos son exactamente los mismos parámetros de `tests/test_rotation_selection_scope.py` del baseline J, todos `FileNotFoundError` por `artifacts/failure_evidence/{failure_1297429c865f4d88925dfc4277a1ce6f,failure_50aff0cc123f488ebb35ed26ffe17834,failure_a65642f0e0204b10b7becb08a419d356,failure_fb8201882b60453fb257bf5f25a16145}/failure.json` ignorados y ausentes: `KNOWN_ENVIRONMENTAL_FIXTURE_GAP`, cero fallos nuevos. Evaluator no ejecutado porque no cambió percepción, OCR, ROI, detector ni assets.

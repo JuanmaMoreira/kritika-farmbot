@@ -63,6 +63,10 @@ Source, acción, freshness, retry y recovery siguen perteneciendo al caller. Ver
 
 La lista productiva sigue siendo explícita y ordenada. La GUI configura esa lista; no contiene lógica de negocio.
 
+`MonsterWaveActivity.run(yield_resource_board=True)` entrega el popup de recursos que aparece naturalmente después de `StartMonsterWaveSkip` como `FlowStatus.RESOURCE_BOARD_PENDING`, con `board_sequence` del postestado fresco. No emite Yes/No ni Back después de reconocerlo; el caller recibe el popup abierto y debe adquirir G desde esa barrera. El default `False` conserva la respuesta configurada Yes/No. `MonsterWaveFlow` sólo propaga el handoff; todavía no ejecuta K/J. Si un caller opt-in lo entrega a `SessionRunner` sin consumirlo, la sesión falla cerrada con `resource_board_pending`, sin cerrar la zona, ejecutar otro flow ni rotar.
+
+El planner I exige `IncomingRewardFact` exacto para las cinco filas. El GT de producto indica que cada recurso cae probabilísticamente por sapphire, por lo que no existe una recompensa entrante fija para MAX SKIP. No hay `NonBoardResourceFacts` productivos ni configuración estática de cantidades: L debe permanecer deshabilitado hasta acordar una fuente/contrato de planificación que represente esta mecánica sin fingir exactitud. Conversiones, coste Craft y slots libres no resuelven esa primera ausencia.
+
 ### Operaciones verificadas
 
 `VerifiedTransition` modela precondición, una acción y postcondición observable. Una falla no se convierte en éxito por demora ni por desaparición ambigua.

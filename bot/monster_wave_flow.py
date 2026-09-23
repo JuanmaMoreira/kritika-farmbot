@@ -22,15 +22,17 @@ class MonsterWaveFlow:
                                    lobby_transition=lobby_transition,
                                    cancel_requested=self.activity.cancel_requested)
 
-    def prepared(self, zone, *, daily=False):
-        return PreparedActivity(self.name, zone, partial(self.activity.run, daily_sapphires=daily))
+    def prepared(self, zone, *, daily=False, yield_resource_board=False):
+        return PreparedActivity(self.name, zone, partial(
+            self.activity.run, daily_sapphires=daily,
+            yield_resource_board=yield_resource_board))
 
-    def run(self):
+    def run(self, *, yield_resource_board=False):
         entered = self.zone.enter()
         if not entered.succeeded:
             return MonsterWaveResult(entered.status, error=entered.error, failure=entered.failure,
                 transition_outcomes=entered.transition_outcomes, transition_attempts=entered.transition_attempts)
-        result = self.activity.run()
+        result = self.activity.run(yield_resource_board=yield_resource_board)
         result = replace(result, transition_outcomes=entered.transition_outcomes+result.transition_outcomes,
                          transition_attempts=entered.transition_attempts+result.transition_attempts)
         if not result.succeeded:

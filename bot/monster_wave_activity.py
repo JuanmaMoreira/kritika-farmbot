@@ -97,6 +97,15 @@ def boundary(snapshot):
 class MonsterWaveResult(FlowResult):
     transition_outcomes: tuple[tuple[str, str], ...] = ()
     transition_attempts: tuple[tuple[str, int, int], ...] = ()
+    board_sequence: int | None = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.status is FlowStatus.RESOURCE_BOARD_PENDING:
+            if type(self.board_sequence) is not int or self.board_sequence < 1:
+                raise ValueError('pending resource board requires its fresh sequence')
+        elif self.board_sequence is not None:
+            raise ValueError('only a pending resource board can carry board_sequence')
 
 
 class _Stopped(Exception):
@@ -119,7 +128,9 @@ class MonsterWaveActivity:
         self.facts = facts
         self.verified_transition = verified_transition or VerifiedTransition(observer, actions, events)
 
-    def run(self, *, daily_sapphires=False):
+    def run(self, *, daily_sapphires=False, yield_resource_board=False):
+        if not isinstance(yield_resource_board, bool):
+            raise ValueError('yield_resource_board must be bool')
         transitions, events = [], []
 
         def finish(status=FlowStatus.COMPLETED, **kwargs):
@@ -219,6 +230,10 @@ class MonsterWaveActivity:
                                popup(POPUP_MW_INSUFFICIENT), clean_mw)
                 return exit_hub(current)
             if popup(POPUP_MW_BOARD)(current):
+                if yield_resource_board:
+                    business('resource_board_pending', board_sequence=current.sequence)
+                    return finish(FlowStatus.RESOURCE_BOARD_PENDING,
+                                  board_sequence=current.sequence)
                 if not self.config.continue_when_nonblocking_inventory_full:
                     business('inventory_warning_declined')
                     current = step('decline_inventory', DeclineMonsterWaveInventory(), current,

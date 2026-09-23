@@ -216,6 +216,7 @@ class GuiRuntimeController:
 
 def _flow_status(status: FlowStatus) -> GuiRunStatus:
     return {
+        FlowStatus.RESOURCE_BOARD_PENDING: GuiRunStatus.FAILED,
         FlowStatus.MANUAL_RESOLUTION: GuiRunStatus.MANUAL_RESOLUTION,
         FlowStatus.COMPLETED: GuiRunStatus.COMPLETED,
         FlowStatus.CANCELLED: GuiRunStatus.CANCELLED,

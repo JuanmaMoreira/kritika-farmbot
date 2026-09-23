@@ -126,4 +126,6 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-K está CLOSED como API standalone importable. J SUCCESS + MW limpio fresco es la postcondición de prerrequisitos; no hay relectura obligatoria del board ni segundo planner. El siguiente frente es L stage-ready; no se inició aquí.
+K está CLOSED como API standalone importable. L0-A agregó un yield opt-in del board causal abierto tras Start SKIP; el default mantiene Yes/No y la sesión se detiene cerrada si el handoff no tiene consumidor. L0 completo sigue bloqueado: el GT del usuario establece drops probabilísticos por sapphire, sin reward entrante exacto por fila para MAX SKIP. I/K exigen esos cinco valores exactos y no existe una configuración productiva segura que los suministre. L stage-ready no se inició. Se requiere acordar un contrato de decisión compatible con esta mecánica antes de programar facts productivos.
+El smoke L0 autorizado sólo ejerció la rama `NEEDS_TICKETS` con compra desactivada: Open MW y Exit first-attempt, cero Start/Yes/No, retorno Battle Mode Select. El board no apareció naturalmente; el yield físico sigue `NEEDS_HIL`.
+L0 offline: 158 tests dirigidos verdes; full hardware-free 3211 passed / 4 Rotation fixture `FileNotFoundError` idénticos al baseline J (`KNOWN_ENVIRONMENTAL_FIXTURE_GAP`), cero fallos nuevos. Sin evaluator por no tocar percepción.

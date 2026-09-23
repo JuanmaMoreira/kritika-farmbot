@@ -12,6 +12,7 @@ from bot.flow_contracts import FlowStatus
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
 from bot.gui_controller import _flow_status, _session_status, GuiRunStatus
 from bot.monster_wave_config import MonsterWaveConfig
+from bot.monster_wave_flow import MonsterWaveFlow
 from bot.monster_wave_eligibility import MonsterWaveDailyEligibility
 from bot.monster_wave_semantics import *
 from bot.eligibility import EligibilityStatus
@@ -107,6 +108,28 @@ def test_manual_resolution_stops_before_zone_leave_next_flow_and_rotation(monkey
     assert _flow_status(r.character_results[0].flow_results[0].status) is GuiRunStatus.MANUAL_RESOLUTION
     assert any(e.event=='session.manual_resolution' and e.fields['event_role']=='lifecycle' for e in records)
     assert not any(e.event.endswith('.failed') for e in records)
+
+
+def test_opt_in_board_handoff_stops_session_without_next_flow_or_rotation(monkeypatch):
+    d=Device(base=SCREEN_LOBBY,boundary=POPUP_MW_BOARD)
+    runtime,records,rotation=runtime_for(monkeypatch,d)
+    original=MonsterWaveFlow.prepared
+    monkeypatch.setattr(MonsterWaveFlow,'prepared',
+        lambda self,zone,*,daily=False: original(
+            self,zone,daily=daily,yield_resource_board=True))
+    r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave','world_boss']),
+                          character_count=1)
+    assert r.status is SessionStatus.FAILED
+    assert r.failure_cause == 'resource_board_pending'
+    assert r.character_results[0].flow_results[0].status is FlowStatus.RESOURCE_BOARD_PENDING
+    assert len(r.character_results[0].flow_results)==1
+    assert rotation.calls==0
+    assert d.base==SCREEN_MONSTER_WAVE and d.overlays==(POPUP_MW_BOARD,)
+    assert d.intents[-1]=='StartMonsterWaveSkip'
+    assert sum(intent=='OpenMonsterWave' for intent in d.intents)==1
+    assert any(e.event=='flow.resource_board_pending' for e in records)
+    assert not any(e.event=='flow.manual_resolution' for e in records)
+    assert _flow_status(r.character_results[0].flow_results[0].status) is GuiRunStatus.FAILED
 
 
 def test_technical_failure_preserves_cause_and_business_evidence(monkeypatch):

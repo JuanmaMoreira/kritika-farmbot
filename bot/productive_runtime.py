@@ -310,6 +310,7 @@ class ProductiveRuntime:
                         error="flow_completed_outside_successful_postconditions",
                     )
         event = {
+            FlowStatus.RESOURCE_BOARD_PENDING: "flow.resource_board_pending",
             FlowStatus.MANUAL_RESOLUTION: "flow.manual_resolution",
             FlowStatus.COMPLETED: "flow.completed",
             FlowStatus.CANCELLED: "flow.cancelled",

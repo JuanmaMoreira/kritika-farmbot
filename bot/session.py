@@ -379,6 +379,16 @@ class SessionRunner:
                             continue
                         flow_results.append(result)
                         self._record_flow_events(flow.name, result.events, index, context)
+                        if result.status is FlowStatus.RESOURCE_BOARD_PENDING:
+                            self._record('flow.resource_board_pending', component=flow.name,
+                                         flow=flow.name, character_index=index,
+                                         board_sequence=getattr(result, 'board_sequence', None))
+                            character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                            return self._fail(
+                                character_results, advances_completed,
+                                index=index, flow=flow.name, flow_position=flow_position,
+                                cause='resource_board_pending',
+                            )
                         if result.status is FlowStatus.MANUAL_RESOLUTION:
                             self._record('flow.manual_resolution', component=flow.name,
                                          flow=flow.name, character_index=index)
