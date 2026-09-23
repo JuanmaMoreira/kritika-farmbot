@@ -9,6 +9,7 @@ from bot.flow_contracts import FlowStatus
 from bot.keys_promotion_runtime import (
     FreshKeyFacts,
     GoldCapacityRecoveryNavigation,
+    GoldFullAckResult,
     KeysPromotionRuntime,
 )
 from bot.observations import Observation, ObservationBatch, ObservationSource
@@ -186,6 +187,13 @@ class Harness:
             read_key_facts=self.read,
             execute_key_trade=self.trade,
             drain_gold_keys=self.drain,
+            acknowledge_gold_full=self.ack_gold_full,
+        )
+
+    def ack_gold_full(self, pending):
+        self.trace.append("ack_gold_full")
+        return GoldFullAckResult(
+            FlowStatus.COMPLETED, final_snapshot=_keys_snapshot(3),
         )
 
     def read(self, after_sequence):
@@ -359,7 +367,8 @@ def test_source_aware_recovery_hooks_replace_only_physical_handoffs():
     assert "leave_trading" not in harness.trace
     assert "enter_treasure" not in harness.trace
     assert "quick_menu_to_trading" not in harness.trace
-    assert result.recovery_steps[0:3] == (
+    assert result.recovery_steps[0:4] == (
+        "trading.ack_gold_full",
         "trading.x_to_monster_wave",
         "monster_wave.quick_menu_to_treasure",
         "treasure.open_gold_once",
@@ -541,3 +550,87 @@ def test_c6b_and_quick_menu_adapter_keep_neighbor_domains_out():
         "silver_to_gold",
     ):
         assert forbidden not in quick_source
+
+def test_deferred_gold_full_acks_and_preserves_exact_pending():
+    harness = _gold_full_harness()
+    pending_result = harness.runtime.run(budget_remaining=3, defer_recovery=True)
+    assert pending_result.status is FlowStatus.COMPLETED
+    assert pending_result.pending is not None
+    assert pending_result.pending.operation is KeyTradeOperation.SILVER_TO_GOLD
+    assert pending_result.recovery_count == 0
+    assert "ack_gold_full" in harness.trace
+    assert harness.drain_calls == harness.trading.leave_calls == 0
+    route = []
+    navigation = GoldCapacityRecoveryNavigation(
+        source="monster_wave",
+        leave_trading=lambda: route.append("already_in_mw") or _step(),
+        enter_treasure=lambda: route.append("enter_treasure") or _step(),
+        return_to_trading=lambda: route.append("return_to_trading") or _step(
+            final_snapshot=_keys_snapshot(20),
+        ),
+        leave_step="mw.anchor", enter_step="mw.to_treasure",
+        return_step="treasure.to_mw.to_trading",
+    )
+    resolved = harness.runtime.resolve_pending(
+        pending_result.pending, budget_remaining=2,
+        recovery_navigation=navigation,
+    )
+    assert resolved.status is FlowStatus.COMPLETED
+    assert resolved.retry_count == resolved.recovery_count == 1
+    assert route == ["already_in_mw", "enter_treasure", "return_to_trading"]
+    assert harness.drain_calls == 1
+    assert harness.trade_calls[1][3] == pending_result.pending.quantity
+
+
+def test_deferred_retry_output_full_never_starts_second_cycle():
+    harness = _gold_full_harness(retry=TradeOutcome.OUTPUT_FULL, post_retry=False)
+    pending = harness.runtime.run(budget_remaining=3, defer_recovery=True).pending
+    assert pending is not None
+    navigation = GoldCapacityRecoveryNavigation(
+        source="monster_wave",
+        leave_trading=lambda: _step(),
+        enter_treasure=lambda: _step(),
+        return_to_trading=lambda: _step(final_snapshot=_keys_snapshot(20)),
+        leave_step="mw.anchor", enter_step="mw.to_treasure",
+        return_step="treasure.to_mw.to_trading",
+    )
+    resolved = harness.runtime.resolve_pending(
+        pending, budget_remaining=2, recovery_navigation=navigation,
+    )
+    assert resolved.status is FlowStatus.FAILED
+    assert resolved.retry_count == resolved.recovery_count == 1
+    assert harness.drain_calls == 1
+
+
+def test_output_full_ack_needs_fresh_alert_and_clean_keys_after_one_ok():
+    from bot.keys_promotion_runtime import acknowledge_gold_full_boundary
+    from bot.trading_operation import TradePanelFact
+    harness = _gold_full_harness()
+    pending = harness.runtime.run(budget_remaining=3, defer_recovery=True).pending
+    assert pending is not None
+    taps = []
+    panel = TradePanelFact(
+        item_id="gold_key", input_have=20, input_need=10,
+        quantity=None, sequence=pending.before_fact.sequence + 1,
+        shows_output_full=True,
+    )
+    result = acknowledge_gold_full_boundary(
+        pending,
+        read_panel=lambda: panel,
+        tap_ok=lambda: taps.append("ok"),
+        read_keys_context=lambda *, after_sequence: _keys_snapshot(after_sequence + 1),
+    )
+    assert result.status is FlowStatus.COMPLETED
+    assert taps == ["ok"]
+    taps.clear()
+    stale = acknowledge_gold_full_boundary(
+        pending,
+        read_panel=lambda: TradePanelFact(
+            item_id="gold_key", input_have=20, input_need=10, quantity=None,
+            sequence=pending.before_fact.sequence, shows_output_full=True,
+        ),
+        tap_ok=lambda: taps.append("wrong"),
+        read_keys_context=lambda **kwargs: _keys_snapshot(99),
+    )
+    assert stale.status is FlowStatus.FAILED
+    assert taps == []

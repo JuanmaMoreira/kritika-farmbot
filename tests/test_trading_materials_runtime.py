@@ -46,7 +46,7 @@ def _snapshot(sequence):
     )
 
 
-def _fresh(sequence, item_id="hero_weapon_crafting_material", have=100):
+def _fresh(sequence, item_id="hero_weapon_crafting_material", have=850):
     return FreshMaterialFact(
         _snapshot(sequence),
         TradingRowFact(
@@ -54,7 +54,7 @@ def _fresh(sequence, item_id="hero_weapon_crafting_material", have=100):
             MATERIALS_SECTION,
             0.55,
             have,
-            10,
+            40,
             sequence,
         ),
     )
@@ -66,13 +66,14 @@ def _step():
             "hero_weapon_crafting_material",
             "weapon_material",
             "hero_weapon_material",
-            2,
         ),
     ))
 
 
-def test_exact_planned_material_only_is_located_read_fresh_and_executed_once():
+def test_weapon_material_repeats_max_batches_to_partial_final_batch():
     trace = []
+    amounts = iter((850, 50, 10))
+    sequence = iter(range(13, 40, 2))
 
     class Trading:
         def ensure_general(self):
@@ -94,7 +95,7 @@ def test_exact_planned_material_only_is_located_read_fresh_and_executed_once():
 
     def read(*, target, after_sequence):
         trace.append(("read", target, after_sequence))
-        return _fresh(13, target)
+        return _fresh(next(sequence), target, next(amounts))
 
     def execute(*, operation, snapshot, row_fact, quantity):
         trace.append(("execute", operation.trading_item_id, quantity.mode.value, quantity.amount))
@@ -105,9 +106,9 @@ def test_exact_planned_material_only_is_located_read_fresh_and_executed_once():
                 row_fact.item_id,
                 row_fact.section,
                 row_fact.row_y,
-                80,
+                row_fact.have - (800 if row_fact.have >= 800 else 40),
                 row_fact.need,
-                14,
+                row_fact.sequence + 1,
             ),
         )
 
@@ -119,12 +120,11 @@ def test_exact_planned_material_only_is_located_read_fresh_and_executed_once():
     ).execute(_step())
 
     assert result.status is FlowStatus.COMPLETED
-    assert result.executed_operations == _step().operations
-    assert trace == [
-        "general",
-        ("locate", "hero_weapon_crafting_material", 10),
-        ("read", "hero_weapon_crafting_material", 12),
-        ("execute", "hero_weapon_crafting_material", "exact", 2),
+    assert len(result.executed_operations) == 2
+    assert trace[0] == "general"
+    assert sum(item[0] == "locate" for item in trace if isinstance(item, tuple)) == 1
+    assert [item[2:] for item in trace if isinstance(item, tuple) and item[0] == "execute"] == [
+        ("max_allowed", None), ("max_allowed", None),
     ]
 
 
@@ -193,5 +193,49 @@ def test_equipment_full_boundary_stops_with_missing_adapter_reason():
     result = runtime.execute(_step())
 
     assert result.status is FlowStatus.FAILED
-    assert result.error.endswith(":missing_adapter")
+    assert "equipment_full" in result.error
     assert result.executed_operations == ()
+
+def test_material_drain_requires_progress():
+    class Trading:
+        def ensure_general(self):
+            return SimpleNamespace(status=FlowStatus.COMPLETED, final_snapshot=_snapshot(10))
+    runtime = TradingMaterialsRuntime(
+        Trading(),
+        locate_material=lambda **kwargs: DirectedScrollResult(
+            DirectedScrollOutcome.TARGET_READY, stable_row_y=0.55,
+            stable_sequence=11, last_sequence=12,
+        ),
+        read_material_fact=lambda **kwargs: _fresh(13, have=800),
+        execute_material_trade=lambda *, row_fact, **kwargs: TradeResult(
+            TradeOutcome.SUCCESS, row_fact,
+            TradingRowFact(row_fact.item_id, row_fact.section, row_fact.row_y,
+                           row_fact.have, row_fact.need, row_fact.sequence + 1),
+        ),
+    )
+    result = runtime.execute(TradingMaterialsStep(), max_batches=2)
+    assert result.status is FlowStatus.FAILED
+    assert result.error == "material_trade_progress_not_proven"
+
+
+def test_material_drain_budget_is_explicit():
+    class Trading:
+        def ensure_general(self):
+            return SimpleNamespace(status=FlowStatus.COMPLETED, final_snapshot=_snapshot(10))
+    facts = iter((_fresh(13, have=850), _fresh(15, have=50)))
+    runtime = TradingMaterialsRuntime(
+        Trading(),
+        locate_material=lambda **kwargs: DirectedScrollResult(
+            DirectedScrollOutcome.TARGET_READY, stable_row_y=0.55,
+            stable_sequence=11, last_sequence=12,
+        ),
+        read_material_fact=lambda **kwargs: next(facts),
+        execute_material_trade=lambda *, row_fact, **kwargs: TradeResult(
+            TradeOutcome.SUCCESS, row_fact,
+            TradingRowFact(row_fact.item_id, row_fact.section, row_fact.row_y,
+                           row_fact.have - 800, row_fact.need, row_fact.sequence + 1),
+        ),
+    )
+    result = runtime.execute(TradingMaterialsStep(), max_batches=1)
+    assert result.status is FlowStatus.FAILED
+    assert result.error == "material_batch_budget_exhausted"

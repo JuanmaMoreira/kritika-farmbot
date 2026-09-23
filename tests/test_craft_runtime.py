@@ -327,3 +327,54 @@ def test_craft_runtime_has_no_neighbor_policy_or_relief_ownership():
     assert "OpenTreasure" not in source
     assert "OpenEquipmentSell" not in source
     assert "OpenEquipmentCombine" not in source
+
+def test_hero_drain_repeats_max_available_with_partial_final_batch():
+    from dataclasses import replace
+    from bot.craft_operation import CraftOperationResult
+    from bot.craft_policy import CraftQuantityMode
+
+    base = CraftReader().context_sample(None, sequence=10, observed_at=100.0)
+    facts = [replace(base, weapon_material=amount, sequence=sequence)
+             for sequence, amount in ((10, 1040), (20, 550), (30, 60), (40, 11))]
+    runtime = CraftRuntime.__new__(CraftRuntime)
+    runtime.craft_reader = CraftReader()
+    runtime.cancel_requested = lambda: False
+    runtime._fresh = lambda fact: True
+    reads = iter(facts[:3])
+    runtime._read_consensus = lambda *args, **kwargs: next(reads)
+    operations = iter([
+        CraftOperationResult(CraftOutcome.SUCCESS, before_fact=facts[0], after_fact=facts[1]),
+        CraftOperationResult(CraftOutcome.SUCCESS, before_fact=facts[1], after_fact=facts[2]),
+        CraftOperationResult(CraftOutcome.SUCCESS, before_fact=facts[2], after_fact=facts[3]),
+    ])
+    modes = []
+    def execute(request):
+        modes.append(request.quantity_mode)
+        return next(operations)
+    runtime.execute = execute
+    result = runtime.drain_hero_material(max_batches=3)
+    assert result.outcome is CraftOutcome.SUCCESS
+    assert result.final_fact.weapon_material == 11
+    assert modes == [CraftQuantityMode.MAX_AVAILABLE] * 3
+
+
+def test_hero_drain_requires_progress_and_respects_budget():
+    from dataclasses import replace
+    from bot.craft_operation import CraftOperationResult
+    fact = CraftReader().context_sample(None, sequence=10, observed_at=100.0)
+    fact = replace(fact, weapon_material=800)
+    runtime = CraftRuntime.__new__(CraftRuntime)
+    runtime.craft_reader = CraftReader()
+    runtime.cancel_requested = lambda: False
+    runtime._fresh = lambda value: True
+    runtime._read_consensus = lambda *args, **kwargs: fact
+    runtime.execute = lambda request: CraftOperationResult(
+        CraftOutcome.SUCCESS, before_fact=fact,
+        after_fact=replace(fact, sequence=11),
+    )
+    assert runtime.drain_hero_material(max_batches=2).reason == "craft_progress_not_proven"
+    runtime.execute = lambda request: CraftOperationResult(
+        CraftOutcome.SUCCESS, before_fact=fact,
+        after_fact=replace(fact, sequence=11, weapon_material=310),
+    )
+    assert runtime.drain_hero_material(max_batches=1).reason == "craft_batch_budget_exhausted"

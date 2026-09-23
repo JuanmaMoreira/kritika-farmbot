@@ -920,7 +920,7 @@ del corpus MW previo (incluido retorno por `No`); no se consumió recurso para
 preparar otro estado. I-impl, documentado a continuación, consume esa frontera
 sin reinterpretar como conocida ninguna necesidad o capacidad ausente.
 
-## 31. I-impl pure Resource Route Planner (2026-09-22)
+## 31. I-impl pure Resource Route Planner (2026-09-22; modelo exact-incoming superseded por §35)
 
 I-impl publica `bot/resource_route_planner.py` sin conectarlo al runtime MW.
 La frontera implementada es
@@ -985,14 +985,13 @@ Sin evaluator/corpus porque no cambió percepción; sin full suite porque el
 módulo es nuevo y sólo consume el contrato G cubierto; sin HIL porque ninguna
 propiedad física fue modificada. I-impl CLOSED. J integración queda separada.
 
-## 32. J CLOSED: ejecución offline MW-anchored (2026-09-23)
+## 32. J CLOSED: ejecución offline MW-anchored (2026-09-23; ruta superseded por §35)
 
-El audit HIL de provenance (`artifacts/hil_j_navigation/20260922/`, raw local
-ignorado) cerró la propiedad que faltaba antes de implementar: Quick Menu
-preserva sólo el origen inmediato y no tiene destino Monster Wave. En
-particular, `MW→Craft→Quick Menu→Trading→X→Craft→Back` termina en Lobby, no en
-MW. J no modela un router ni normaliza por Lobby; usa MW como el anchor físico
-del único plan supplied.
+Corrección I2/J2 (§35): la inferencia histórica de que
+`MW→Craft→Quick Menu→Trading→X→Craft→Back` termina en Lobby era falsa.
+Trading es modal y su X restaura Craft; Back desde Craft vuelve a MW.
+Treasure sí conserva la limitación del origen inmediato. J no modela un
+router ni normaliza por Lobby.
 
 `bot/monster_wave_resource_route.py` implementa
 `MonsterWaveResourceRouteRuntime.execute_plan_once(plan, initial)`. Los gates
@@ -1044,9 +1043,9 @@ MW limpio más fresco como postcondición. No vuelve a llamar al planner.
 `MonsterWaveStandaloneRequest/Result` y los modos `ACQUIRE_ONLY`, `PLAN_ONLY`,
 `PREREQUISITES_ONLY`, `FULL_ONE_SHOT`. El adquiridor lee dos frames concordantes
 de un popup board **ya abierto**; no lo provoca. Plan recibe
-`NonBoardResourceFacts` explícito: recompensas exactas para las cinco filas
-(cero explícito), conversión material si hace falta y receta/coste/slots libres
-de Craft si hace falta. Facts faltantes/contradictorios producen el diagnóstico
+`NonBoardResourceFacts` explícito: bajo I2/J2, rewards exactos no son
+necesarios ni participan; sólo la receta/coste/slots libres de Craft cuando
+éste es requerido. Facts faltantes/contradictorios relevantes producen el diagnóstico
 tipado de I y cero input. Los modos con ejecución cierran el popup mediante el
 `DeclineMonsterWaveInventory` estable y readquieren MW limpio. J recibe el plan
 una sola vez si es READY; NO_PREREQUISITES omite J.
@@ -1080,11 +1079,12 @@ fixtures locales ignorados ausentes. Smoke K read-only y full no ejercidos:
 el dispositivo quedó en Battle Mode Select tras verificar el puente y no se
 fabricó presión ni un nuevo intento MW.
 
-## 34. L0 prerequisite: board handoff implementado; facts productivos BLOCKED (2026-09-23)
+## 34. L0 prerequisite: board handoff implementado; diagnóstico exact-incoming superseded por §35 (2026-09-23)
 
 `MonsterWaveActivity.run(yield_resource_board=True)` hace un solo intento MW normal. Si `StartMonsterWaveSkip` retorna un popup board `RESOLVED` fresco, devuelve `FlowStatus.RESOURCE_BOARD_PENDING` y `board_sequence` del postestado, sin Yes/No ni Back. `MonsterWaveFlow` lo propaga sin cerrar `BattleModeZone`; `SessionRunner` sin consumidor detiene la sesión con causa `resource_board_pending`, sin completar el flow, ejecutar el siguiente ni rotar. El opt-in no está habilitado por el registry productivo. El default conserva exactamente la decisión configurada Yes/No. No se conectó K/J, Equipment Relief ni un segundo intento MW.
 
-Audit de `NonBoardResourceFacts` para una operación normal MAX SKIP:
+Audit histórico de `NonBoardResourceFacts` para una operación normal MAX SKIP
+(la exigencia de rewards exactos quedó superseded por §35):
 
 | Fact | Consumidor I | Estático/dinámico | Fuente autoritativa actual | Valor / GT pendiente |
 | --- | --- | --- | --- | --- |
@@ -1097,8 +1097,62 @@ Audit de `NonBoardResourceFacts` para una operación normal MAX SKIP:
 | Hero Weapon Craft recipe/cost | `material_per_craft`, familia/tier | fact UI dinámico | `CraftContextFact.hero_cost_for(WEAPON)`; HIL D observó 49 | reader existe, pero no hay fact Craft fresco disponible en el board; no copiar 49 a config |
 | Equipment free slots | gate Craft `>=1` | dinámico por personaje | `EquipmentInventoryFact.capacity - item_count`, lector Craft existente | reader existe, pero no hay fact Inventory fresco en el board; nunca config estática |
 
-El board G sólo muestra balance/límite; no informa rewards. I exige las cinco cantidades entrantes **exactas**, incluso cero explícito, antes de decidir `NO_PREREQUISITES` o `READY`. La respuesta del usuario invalida la premisa de una `MonsterWaveResourceRoutingConfig` con cinco rewards constantes: el drop es probabilístico por sapphire. No se añadieron placeholders, env vars, builder ni fact values; routing productivo sigue deshabilitado. L0 completo no puede declararse CLOSED con el contrato de facts actual. Hace falta una decisión explícita sobre semántica de planificación para rewards inciertos antes de continuar; esta tarea no rediseña I.
+El board G sólo muestra balance/límite; no informa rewards. El I anterior exigía cinco cantidades entrantes **exactas**, incluso cero explícito; I2 (§35) eliminó esa exigencia. El drop es probabilístico por sapphire y routing productivo continúa deshabilitado hasta L. Este diagnóstico histórico motivó la corrección posterior.
 
 Smoke HIL opt-in autorizado: usuario dejó Battle Mode Select visible. El primer lanzamiento falló en ADB genérico antes de captura/input; se repitió con `ADB_PATH` de `AGENT_LOCAL.md`. Preflight `RESOLVED screen.battle_mode_select`, badges MW/WB activos. La actividad con `yield_resource_board=True` y compra de tickets desactivada abrió MW una vez, observó `NEEDS_TICKETS`, publicó `monster_wave.tickets_missing_purchase_disabled` y volvió al hub: `open` y `exit` first-attempt, sin `StartMonsterWaveSkip`, Yes/No, compra ni board. Postestado `RESOLVED screen.battle_mode_select`. El yield físico queda `NEEDS_HIL`; no se fabricó presión ni se autorizó compra para alcanzarlo. Log local ignorado: `artifacts/hil_l0_board_yield.jsonl`.
 
 Validación L0: 158 tests dirigidos (MW activity/integration, session report y GUI) verdes; `compileall` y `git diff --check` limpios. Suite hardware-free completa: **3211 passed / 4 failed** en 688.76 s. Los cuatro fallos son exactamente los mismos parámetros de `tests/test_rotation_selection_scope.py` del baseline J, todos `FileNotFoundError` por `artifacts/failure_evidence/{failure_1297429c865f4d88925dfc4277a1ce6f,failure_50aff0cc123f488ebb35ed26ffe17834,failure_a65642f0e0204b10b7becb08a419d356,failure_fb8201882b60453fb257bf5f25a16145}/failure.json` ignorados y ausentes: `KNOWN_ENVIRONMENTAL_FIXTURE_GAP`, cero fallos nuevos. Evaluator no ejecutado porque no cambió percepción, OCR, ROI, detector ni assets.
+
+## 35. I2/J2: umbrales operativos, drenaje completo y Trading modal (2026-09-23)
+
+El GT de producto sustituyó el modelo de overflow por reward exacto: cada
+recurso cae de modo estocástico por sapphire. I2 decide **entrada** con balances
+numéricos actuales y umbrales inclusivos: Bronze ≥400/499, Silver ≥450/499,
+Weapon ≥800/999, Hero ≥800/999. `IncomingRewardFact` queda sólo por
+compatibilidad/debug y no participa en producción. Brawler's Badges presionado
+emite warning, nunca Arena ni bloqueo. El rojo visual al llegar/superar la
+capacidad UI confirma una oportunidad futura de fast-path perceptivo; no se
+implementó aquí ni se ejecutó evaluator.
+
+**Entrada != drenaje.** Un viaje ya pagado usa facts frescos y budgets:
+Craft Hero repite `MAX_AVAILABLE` (cap 10 por batch, final parcial) hasta
+Hero <49; Materials repite C4 `MAX_ALLOWED` (40 Weapon→10 Hero, cap UI del
+panel, múltiples batches) hasta Weapon <40; C6a prioriza Silver→Gold, después
+Bronze→Silver y reevalúa hasta `NO_MORE_PROMOTIONS` o presupuesto. Cada batch
+exige progreso probado; stale, no-effect, cancel y límites tipados detienen.
+El permiso de ≥1 slot Equipment se exige al entrar a Craft, no se revalida
+entre batches en el mismo contexto. No hay Equipment/Socket relief en I2/J2.
+
+Materials ≥800 paga Trading y procesa Keys primero incluso bajo los umbrales
+de Keys, luego General; Keys por sí solos no pagan General ni scroll. Hero
+≥800 sin Materials paga Craft y vuelve a MW; sólo abre Trading si Keys pagó
+su umbral. Para Materials, la proyección determinista de nuestra operación
+`hero_actual + floor(weapon_actual/40)*10` decide si Craft rodea Trading
+cuando alcanza 800. Sin Craft: `MW→Trading(Keys→Materials)→X→MW`. Con Craft:
+`MW→Craft(drain)→Quick Menu→Trading(Keys→Materials)→X→Craft(drain)→Back→MW`.
+Trading es modal a su origen, también Craft; la conclusión de §32 que
+prohibía ese camino y afirmaba Lobby quedó corregida. Treasure no es modal:
+`MW→Craft→Quick Menu→Treasure→Back→Craft→Back→Lobby` no es ruta J.
+
+Gold capacity permanece lazy: ningún umbral puede justificar Trading sólo
+para diagnosticarla. Si no se paga Trading, Gold-full puede quedar oculto;
+esto es aceptado porque Gold-full por sí mismo no bloquea MW. Sólo un
+`Silver→Gold OUTPUT_FULL` real conserva `PendingCausalOperation`.
+HIL mínimo de esta corrección, raw ignorado en
+`artifacts/hil_i2_j2_gold_full/20260923/`: GT humano identificó la operación
+Silver→Gold; `before.png` muestra “You cannot purchase any more of this
+item” y `after_ok.png` muestra Trading/Avatars & Keys limpio después de
+un único OK del usuario. Cero input del agente, cero trades o Treasure de
+prueba. C6b exige alert C4 fresco, un ACK y contexto Keys limpio posterior
+antes de que J continúe Materials. Si queda pending, J termina el trabajo
+Materials/Craft ya pagado y vuelve a MW; después C6b drena **todos** los Gold
+mediante E2.2, reabre Trading con facts frescos y reintenta exactamente el
+mismo Silver→Gold una vez. Un segundo OUTPUT_FULL falla cerrado, sin segundo
+Treasure. No hay cálculo de capacidad Gold.
+
+K mantiene los bounds planner/J/MW ≤1 y no replantea tras J. L y el registry
+productivo siguen sin wiring. No se compraron tickets, no se consumieron
+intentos MW y no se ejecutó Craft/Trading/Treasure destructivo para probar
+orquestación. Validación dirigida: 332/332 (I, drains, C4/C5/C6, J, K, G,
+Quick Menu/Trading); sin evaluator porque no cambió percepción y sin full
+suite porque no cambió infraestructura productiva compartida.

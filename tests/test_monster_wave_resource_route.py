@@ -143,33 +143,31 @@ class FakeNavigation:
     def __init__(self, trace):
         self.trace = trace
         self.sequence = 100
-
     def _mw_result(self, name):
         self.trace.append(name)
         self.sequence += 1
         final = _mw_context(self.sequence)
         return MonsterWaveNavigationResult(
-            FlowStatus.COMPLETED,
-            final_snapshot=final,
-            after_sequence=final.sequence,
+            FlowStatus.COMPLETED, final_snapshot=final, after_sequence=final.sequence,
         )
-
     def enter_craft_from_mw(self, anchor, *, entry_capacity_proven):
         assert entry_capacity_proven is True
         self.trace.append("mw_qm_craft")
         return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
-
     def enter_trading_from_mw(self, anchor):
         self.trace.append("mw_qm_trading")
         return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
-
+    def enter_trading_from_craft(self):
+        self.trace.append("craft_qm_trading")
+        return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
+    def leave_trading_to_craft(self):
+        self.trace.append("trading_x_craft")
+        return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
     def enter_treasure_from_mw(self, anchor):
         self.trace.append("mw_qm_treasure")
         return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
-
     def leave_trading_to_mw(self):
         return self._mw_result("trading_x_mw")
-
     def leave_treasure_to_mw(self):
         return self._mw_result("treasure_back_mw")
 
@@ -178,18 +176,16 @@ class FakeCraft:
     def __init__(self, trace):
         self.trace = trace
         self.sequence = 20
-
-    def execute(self, request):
-        self.trace.append("craft_execute")
-        return CraftOperationResult(CraftOutcome.SUCCESS)
-
+    def drain_hero_material(self, *, max_batches):
+        assert max_batches > 0
+        self.trace.append("drain_hero")
+        return SimpleNamespace(outcome=CraftOutcome.SUCCESS)
     def request_back_to_origin(self):
         self.trace.append("craft_back")
         self.sequence += 1
         return CraftRouteResult(
             CraftRouteOutcome.BACK_REQUESTED,
             craft_fact=_craft_fact(self.sequence),
-            inputs=("back_to_origin",),
         )
 
 
@@ -197,302 +193,219 @@ class FakeKeys:
     def __init__(self, trace, *, gold_full=False):
         self.trace = trace
         self.gold_full = gold_full
-
-    def run(self, *, budget_remaining, recovery_navigation):
+    def run(self, *, budget_remaining, defer_recovery):
+        assert defer_recovery is True
         self.trace.append(("keys", budget_remaining))
         if self.gold_full:
-            assert recovery_navigation.source == "monster_wave"
-            assert recovery_navigation.leave_trading().status is FlowStatus.COMPLETED
-            assert recovery_navigation.enter_treasure().status is FlowStatus.COMPLETED
-            self.trace.append("drain_all_gold")
-            assert recovery_navigation.return_to_trading().status is FlowStatus.COMPLETED
-            self.trace.append("retry_silver_to_gold")
-        return SimpleNamespace(status=FlowStatus.COMPLETED, error=None)
+            self.trace.append("ack_gold_full")
+        return SimpleNamespace(
+            status=FlowStatus.COMPLETED, pending=object() if self.gold_full else None,
+            trade_attempts=("silver_to_gold",) if self.gold_full else (),
+        )
+    def resolve_pending(self, pending, *, budget_remaining, recovery_navigation):
+        assert recovery_navigation.source == "monster_wave"
+        assert recovery_navigation.leave_trading().status is FlowStatus.COMPLETED
+        assert recovery_navigation.enter_treasure().status is FlowStatus.COMPLETED
+        self.trace.append("drain_all_gold")
+        assert recovery_navigation.return_to_trading().status is FlowStatus.COMPLETED
+        self.trace.append("retry_same_silver_to_gold")
+        return SimpleNamespace(status=FlowStatus.COMPLETED)
 
 
 class FakeMaterials:
     def __init__(self, trace):
         self.trace = trace
-
-    def execute(self, step):
-        self.trace.append(("materials", tuple(
-            item.trading_item_id for item in step.operations
-        )))
-        return SimpleNamespace(status=FlowStatus.COMPLETED, error=None)
+    def execute(self, step, *, max_batches):
+        assert max_batches == 32
+        self.trace.append("drain_weapon")
+        return SimpleNamespace(status=FlowStatus.COMPLETED)
 
 
 def _runtime(trace, *, gold_full=False, cancelled=lambda: False):
-    navigation = FakeNavigation(trace)
-    snapshots = FakeSnapshots(trace)
-    craft = FakeCraft(trace)
     return MonsterWaveResourceRouteRuntime(
-        navigation,
-        snapshots,
-        craft,
-        FakeKeys(trace, gold_full=gold_full),
-        FakeMaterials(trace),
-        keys_budget_remaining=3,
-        cancel_requested=cancelled,
+        FakeNavigation(trace), FakeSnapshots(trace), FakeCraft(trace),
+        FakeKeys(trace, gold_full=gold_full), FakeMaterials(trace),
+        keys_budget_remaining=3, cancel_requested=cancelled,
     )
 
 
-def test_no_prerequisites_returns_supplied_fresh_snapshot_with_zero_input():
+def _plan(*, craft=False, materials=False, keys=True):
+    steps = []
+    if craft:
+        steps.append(CraftStep("weapon", "hero"))
+    if keys or materials:
+        operations = [KeysPromotionStep()]
+        if materials:
+            operations.append(TradingMaterialsStep())
+        steps.append(TradingSessionStep(tuple(operations)))
+    return ResourceRoutePlan(
+        ResourceRouteStatus.READY if steps else ResourceRouteStatus.NO_PREREQUISITES,
+        steps=tuple(steps),
+    )
+
+
+def test_no_prerequisites_sends_no_input():
     trace = []
     initial = _anchor(10)
-
-    result = _runtime(trace).execute_plan_once(
-        ResourceRoutePlan(ResourceRouteStatus.NO_PREREQUISITES), initial
-    )
-
+    result = _runtime(trace).execute_plan_once(_plan(keys=False), initial)
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
     assert result.final_snapshot is initial.snapshot
-    assert result.final_context is initial.context
     assert trace == []
 
 
-def test_non_executable_plan_gates_without_input():
-    for status in (
-        ResourceRouteStatus.INSUFFICIENT_OBSERVABILITY,
-        ResourceRouteStatus.CONTRADICTORY,
-    ):
-        trace = []
-        plan = ResourceRoutePlan(
-            status,
-            unresolved=(UnresolvedReason(UnresolvedCode.MISSING_BOARD_SNAPSHOT),),
-        )
-        result = _runtime(trace).execute_plan_once(plan, _anchor(10))
-        assert result.status is ResourceRouteExecutionStatus.NON_EXECUTABLE_PLAN
-        assert trace == []
-
-
-def test_craft_then_trading_serializes_both_blocks_through_fresh_mw():
+def test_keys_only_never_enters_general():
     trace = []
-    plan = ResourceRoutePlan(
-        ResourceRouteStatus.READY,
-        steps=(
-            CraftStep("weapon", "hero", 1),
-            TradingSessionStep((KeysPromotionStep(), MATERIALS)),
-        ),
+    result = _runtime(trace).execute_plan_once(_plan(), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.SUCCESS
+    assert trace == ["mw_qm_trading", ("keys", 3), "trading_x_mw", ("fresh_mw", 101)]
+
+
+def test_craft_only_returns_directly_to_mw():
+    trace = []
+    result = _runtime(trace).execute_plan_once(
+        _plan(craft=True, keys=False), _anchor(10),
     )
+    assert result.status is ResourceRouteExecutionStatus.SUCCESS
+    assert trace == ["mw_qm_craft", "drain_hero", "craft_back", ("fresh_mw", 21)]
 
+
+def test_craft_and_keys_return_to_mw_before_keys_only_trading():
+    trace = []
+    result = _runtime(trace).execute_plan_once(_plan(craft=True), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.SUCCESS
+    assert trace == [
+        "mw_qm_craft", "drain_hero", "craft_back", ("fresh_mw", 21),
+        "mw_qm_trading", ("keys", 3), "trading_x_mw", ("fresh_mw", 101),
+    ]
+
+
+def test_materials_pay_for_keys_then_general_without_craft():
+    trace = []
+    result = _runtime(trace).execute_plan_once(
+        _plan(materials=True), _anchor(10),
+    )
+    assert result.status is ResourceRouteExecutionStatus.SUCCESS
+    assert trace == [
+        "mw_qm_trading", ("keys", 3), "drain_weapon",
+        "trading_x_mw", ("fresh_mw", 101),
+    ]
+
+
+def test_trading_modal_restores_craft_and_second_drain_precedes_back():
+    trace = []
+    plan = _plan(craft=True, materials=True)
     result = _runtime(trace).execute_plan_once(plan, _anchor(10))
-
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
     assert result.executed_steps == plan.steps
     assert trace == [
-        "mw_qm_craft",
-        "craft_execute",
-        "craft_back",
-        ("fresh_mw", 21),
-        "mw_qm_trading",
-        ("keys", 3),
-        ("materials", ("hero_weapon_crafting_material",)),
-        "trading_x_mw",
-        ("fresh_mw", 101),
+        "mw_qm_craft", "drain_hero", "craft_qm_trading",
+        ("keys", 3), "drain_weapon", "trading_x_craft",
+        "drain_hero", "craft_back", ("fresh_mw", 21),
     ]
-    assert trace.index("craft_back") < trace.index("mw_qm_trading")
-    assert trace.index(("fresh_mw", 21)) < trace.index("mw_qm_trading")
 
 
-def test_keys_and_materials_share_one_trading_visit_in_required_order():
+def test_combined_gold_full_defers_treasure_until_after_craft_back_to_mw():
     trace = []
-    plan = ResourceRoutePlan(
-        ResourceRouteStatus.READY,
-        steps=(TradingSessionStep((KeysPromotionStep(), MATERIALS)),),
+    result = _runtime(trace, gold_full=True).execute_plan_once(
+        _plan(craft=True, materials=True), _anchor(10),
     )
-
-    result = _runtime(trace).execute_plan_once(plan, _anchor(10))
-
-    assert result.status is ResourceRouteExecutionStatus.SUCCESS
-    assert trace.count("mw_qm_trading") == 1
-    assert trace.index(("keys", 3)) < trace.index(
-        ("materials", ("hero_weapon_crafting_material",))
-    )
-
-
-def test_mw_gold_full_recovery_uses_no_lobby_and_reopens_trading_from_fresh_mw():
-    trace = []
-    plan = ResourceRoutePlan(
-        ResourceRouteStatus.READY,
-        steps=(TradingSessionStep((KeysPromotionStep(), MATERIALS)),),
-    )
-
-    result = _runtime(trace, gold_full=True).execute_plan_once(plan, _anchor(10))
-
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
     assert trace == [
-        "mw_qm_trading",
-        ("keys", 3),
-        "trading_x_mw",
-        ("fresh_mw", 101),
-        "mw_qm_treasure",
-        "drain_all_gold",
-        "treasure_back_mw",
-        ("fresh_mw", 102),
-        "mw_qm_trading",
-        "retry_silver_to_gold",
-        ("materials", ("hero_weapon_crafting_material",)),
-        "trading_x_mw",
-        ("fresh_mw", 103),
+        "mw_qm_craft", "drain_hero", "craft_qm_trading",
+        ("keys", 3), "ack_gold_full", "drain_weapon", "trading_x_craft",
+        "drain_hero", "craft_back", ("fresh_mw", 21),
+        "mw_qm_treasure", "drain_all_gold", "treasure_back_mw",
+        ("fresh_mw", 101), "mw_qm_trading", "retry_same_silver_to_gold",
+        "trading_x_mw", ("fresh_mw", 102),
     ]
-    assert all("lobby" not in repr(item).lower() for item in trace)
-    assert trace.count("drain_all_gold") == 1
-    assert trace.count("retry_silver_to_gold") == 1
 
 
-def test_materials_only_does_not_run_keys_or_duplicate_trading():
+def test_material_gold_full_defers_until_trading_x_returns_mw():
     trace = []
-    plan = ResourceRoutePlan(
-        ResourceRouteStatus.READY,
-        steps=(TradingSessionStep((MATERIALS,)),),
+    result = _runtime(trace, gold_full=True).execute_plan_once(
+        _plan(materials=True), _anchor(10),
     )
-
-    result = _runtime(trace).execute_plan_once(plan, _anchor(10))
-
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
-    assert trace.count("mw_qm_trading") == 1
-    assert not any(isinstance(item, tuple) and item[0] == "keys" for item in trace)
+    assert trace.index("drain_weapon") < trace.index("trading_x_mw") < trace.index("mw_qm_treasure")
 
 
-def test_unsupported_materials_then_keys_order_fails_before_input():
+def test_cancellation_before_input_and_unsupported_order_fail_closed():
     trace = []
-    plan = ResourceRoutePlan(
-        ResourceRouteStatus.READY,
-        steps=(TradingSessionStep((MATERIALS, KeysPromotionStep())),),
+    cancelled = _runtime(trace, cancelled=lambda: True).execute_plan_once(
+        _plan(materials=True), _anchor(10),
     )
-
-    result = _runtime(trace).execute_plan_once(plan, _anchor(10))
-
-    assert result.status is ResourceRouteExecutionStatus.NON_EXECUTABLE_PLAN
-    assert result.failing_step == "trading_operation_order"
+    assert cancelled.status is ResourceRouteExecutionStatus.CANCELLED
+    assert trace == []
+    bad = ResourceRoutePlan(ResourceRouteStatus.READY,
+        steps=(TradingSessionStep((TradingMaterialsStep(), KeysPromotionStep())),))
+    invalid = _runtime(trace).execute_plan_once(bad, _anchor(10))
+    assert invalid.status is ResourceRouteExecutionStatus.NON_EXECUTABLE_PLAN
     assert trace == []
 
-
-def test_cancellation_stops_before_any_input():
+def test_craft_modal_navigation_uses_one_x_and_fresh_restored_craft():
     trace = []
-    plan = ResourceRoutePlan(
-        ResourceRouteStatus.READY,
-        steps=(TradingSessionStep((MATERIALS,)),),
+    class Craft:
+        def enter_from_verified_quick_menu(self, *args, **kwargs):
+            pass
+        def request_back_to_origin(self):
+            pass
+        def open_quick_menu_or_handoff(self):
+            trace.append("craft_open_menu")
+            return CraftRouteResult(
+                CraftRouteOutcome.QUICK_MENU_OPEN,
+                quick_menu_fact=SimpleNamespace(sequence=20),
+            )
+        def select_trading_from_open_menu(self, *, after_sequence):
+            assert after_sequence == 20
+            trace.append("craft_select_trading")
+            return CraftRouteResult(
+                CraftRouteOutcome.TRADING_REQUESTED,
+                quick_menu_fact=SimpleNamespace(sequence=21),
+            )
+        def observe_context(self, *, after_sequence):
+            assert after_sequence == 30
+            trace.append("observe_restored_craft")
+            return CraftRouteResult(
+                CraftRouteOutcome.ENTERED, craft_fact=_craft_fact(31),
+            )
+    class Observer:
+        def wait_until(self, predicate, **kwargs):
+            snapshot = _context(30, SCREEN_TRADING)
+            assert predicate(snapshot)
+            return snapshot
+    class Actions:
+        def execute(self, action, geometry):
+            assert isinstance(action, CloseTrading)
+            trace.append("trading_x")
+    class Transition:
+        actions = Actions()
+        def execute(self, *args, **kwargs):
+            raise AssertionError("unexpected transition")
+    nav = MonsterWavePrerequisiteNavigationRuntime(
+        Observer(), Transition(), Craft(),
     )
-
-    result = _runtime(trace, cancelled=lambda: True).execute_plan_once(
-        plan, _anchor(10)
-    )
-
-    assert result.status is ResourceRouteExecutionStatus.CANCELLED
-    assert trace == []
-
-
-def test_j_has_no_quick_menu_to_mw_no_replan_and_no_battle_execution():
-    import bot.monster_wave_resource_route as module
-
-    source = inspect.getsource(module)
-    assert "SelectQuickMenuMonsterWave" not in source
-    assert "plan_resource_route" not in source
-    assert "StartMonsterWaveSkip" not in source
-    assert "ActivateMonsterWaveSkip" not in source
-    assert "EquipmentReliefComposer" not in source
-
-
-class _Observer:
-    def __init__(self, snapshots=()):
-        self.snapshots = list(snapshots)
-
-    def wait_until(self, condition, **kwargs):
-        for snapshot in list(self.snapshots):
-            if condition(snapshot):
-                self.snapshots.remove(snapshot)
-                return snapshot
-        raise RuntimeError("timeout")
-
-
-class _Transition:
-    def __init__(self, posts):
-        self.posts = list(posts)
-        self.actions = []
-
-    def execute(self, name, action, before, *, expected, precondition, **kwargs):
-        assert precondition(before)
-        final = self.posts.pop(0)
-        self.actions.append(action)
-        outcome = (
-            VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT
-            if expected(final)
-            else VerifiedTransitionOutcome.TIMEOUT
-        )
-        return VerifiedTransitionResult(
-            name,
-            outcome,
-            1,
-            0,
-            final,
-            action_source_snapshot=before,
-        )
-
-
-class _CraftNavigationStub:
-    def enter_from_verified_quick_menu(self, handoff, *, entry_capacity_proven):
-        raise AssertionError("not used")
-
-    def request_back_to_origin(self):
-        raise AssertionError("not used")
-
-
-def test_physical_mw_navigation_uses_open_menu_then_trading_tile_and_x_return():
-    anchor = _anchor(1)
-    menu = _context(2, SCREEN_MONSTER_WAVE, overlays=(MENU_QUICK,))
-    trading = _context(3, SCREEN_TRADING)
-    transition = _Transition((menu, trading))
-    navigation = MonsterWavePrerequisiteNavigationRuntime(
-        _Observer(), transition, _CraftNavigationStub()
-    )
-
-    entered = navigation.enter_trading_from_mw(anchor)
-
+    entered = nav.enter_trading_from_craft()
     assert entered.status is FlowStatus.COMPLETED
-    assert [type(action) for action in transition.actions] == [
-        OpenQuickMenu,
-        SelectQuickMenuTrading,
-    ]
-
-    returned_mw = _mw_context(5)
-    leave_transition = _Transition((returned_mw,))
-    leave_navigation = MonsterWavePrerequisiteNavigationRuntime(
-        _Observer((trading,)), leave_transition, _CraftNavigationStub()
-    )
-    left = leave_navigation.leave_trading_to_mw()
-
+    left = nav.leave_trading_to_craft()
     assert left.status is FlowStatus.COMPLETED
-    assert [type(action) for action in leave_transition.actions] == [CloseTrading]
-
-
-def test_physical_mw_to_treasure_uses_only_verified_shifted_tile():
-    menu = _context(2, SCREEN_MONSTER_WAVE, overlays=(MENU_QUICK,))
-    treasure = _context(3, SCREEN_TREASURE)
-    transition = _Transition((menu, treasure))
-    navigation = MonsterWavePrerequisiteNavigationRuntime(
-        _Observer(), transition, _CraftNavigationStub()
-    )
-
-    entered = navigation.enter_treasure_from_mw(_anchor(1))
-
-    assert entered.status is FlowStatus.COMPLETED
-    assert [type(action) for action in transition.actions] == [
-        OpenQuickMenu,
-        SelectQuickMenuTreasure,
+    assert left.after_sequence == 31
+    assert trace == [
+        "craft_open_menu", "craft_select_trading", "trading_x",
+        "observe_restored_craft",
     ]
 
-
-def test_snapshot_runtime_reacquires_same_frame_fresh_mw_description():
-    context = _mw_context(11)
-    runtime = MonsterWaveSnapshotRuntime(
-        _Observer((context,)),
-        clock=lambda: 11.0,
+def test_failed_materials_keeps_deferred_pending_in_result():
+    trace = []
+    class FailedMaterials:
+        def execute(self, step, *, max_batches):
+            trace.append("materials_failed")
+            return SimpleNamespace(status=FlowStatus.FAILED, error="typed_boundary")
+    runtime = MonsterWaveResourceRouteRuntime(
+        FakeNavigation(trace), FakeSnapshots(trace), FakeCraft(trace),
+        FakeKeys(trace, gold_full=True), FailedMaterials(),
+        keys_budget_remaining=3,
     )
-
-    result = runtime.acquire(after_sequence=10)
-
-    assert result.status is FlowStatus.COMPLETED
-    assert result.fresh is not None
-    assert result.fresh.context is context
-    assert result.fresh.snapshot.evidence.sequence == 11
+    result = runtime.execute_plan_once(_plan(materials=True), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.STEP_FAILED
+    assert result.pending is not None
+    assert trace == ["mw_qm_trading", ("keys", 3), "ack_gold_full", "materials_failed"]

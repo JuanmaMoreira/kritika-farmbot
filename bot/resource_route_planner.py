@@ -7,8 +7,8 @@ capability steps.  It performs no observation, navigation or execution.
 The Monster Wave pair semantics are deliberately narrow: ``balance`` is the
 currently displayed balance and ``displayed_limit`` is the displayed limit.
 Neither value is an incoming reward, recipe or Trading ``have/need`` pair.
-Consequently an overflow is actionable only when an exact incoming reward
-amount is supplied separately and ``balance + incoming > displayed_limit``.
+Entry thresholds authorize travel; execution drains visited capabilities
+using fresh facts. Stochastic Monster Wave rewards do not enter this plan.
 """
 
 from __future__ import annotations
@@ -29,6 +29,10 @@ from bot.monster_wave_board_snapshot import (
 BOARD_ITEM_IDS = tuple(row[0] for row in BOARD_ROWS)
 KEY_ITEM_IDS = frozenset({"bronze_key", "silver_key"})
 MATERIAL_ITEM_IDS = frozenset({"weapon_material", "hero_weapon_material"})
+ENTRY_THRESHOLDS = {
+    "bronze_key": 400, "silver_key": 450,
+    "weapon_material": 800, "hero_weapon_material": 800,
+}
 
 
 class ResourceRouteStatus(str, Enum):
@@ -64,6 +68,8 @@ class PlanningEvidenceKind(str, Enum):
     OVERFLOW = "overflow"
     CAPABILITY = "capability"
     ORDER = "order"
+    WARNING = "warning"
+    THRESHOLD = "threshold"
 
 
 @dataclass(frozen=True)
@@ -170,18 +176,24 @@ class TradingMaterialOperation:
     trading_item_id: str
     source_item_id: str
     destination_item_id: str
-    quantity: int
+    quantity: int | None = None
 
     def __post_init__(self) -> None:
         for name in ("trading_item_id", "source_item_id", "destination_item_id"):
             if not isinstance(getattr(self, name), str) or not getattr(self, name):
                 raise ValueError(f"{name} must be a non-empty string")
-        _positive_int(self.quantity, "quantity")
+        if self.quantity is not None:
+            _positive_int(self.quantity, "quantity")
 
 
 @dataclass(frozen=True)
 class TradingMaterialsStep:
-    operations: tuple[TradingMaterialOperation, ...]
+    operations: tuple[TradingMaterialOperation, ...] = (
+        TradingMaterialOperation(
+            "hero_weapon_crafting_material", "weapon_material",
+            "hero_weapon_material",
+        ),
+    )
     capability: str = "trading_materials"
 
     def __post_init__(self) -> None:
@@ -222,7 +234,7 @@ class TradingSessionStep:
 class CraftStep:
     family: str
     tier: str
-    quantity: int
+    quantity: int | None = None
     capability: str = "craft"
 
     def __post_init__(self) -> None:
@@ -230,7 +242,8 @@ class CraftStep:
             raise ValueError("family must be a non-empty string")
         if not isinstance(self.tier, str) or not self.tier:
             raise ValueError("tier must be a non-empty string")
-        _positive_int(self.quantity, "quantity")
+        if self.quantity is not None:
+            _positive_int(self.quantity, "quantity")
         if self.capability != "craft":
             raise ValueError("Craft step must remain symbolic")
 
@@ -301,8 +314,7 @@ class ResourceRoutePlan:
 
 
 def plan_resource_route(planning: ResourcePlanningInput) -> ResourceRoutePlan:
-    """Return one deterministic, fail-closed prerequisite plan."""
-
+    """Choose visits by current numeric pressure, never by future drops."""
     if not isinstance(planning, ResourcePlanningInput):
         raise ValueError("planning must be ResourcePlanningInput")
     invalid = _validate_board(planning)
@@ -313,216 +325,99 @@ def plan_resource_route(planning: ResourcePlanningInput) -> ResourceRoutePlan:
     rows = {row.item_id: row for row in board.resource_rows}
     evidence = [
         PlanningEvidence(
-            PlanningEvidenceKind.BOARD_PAIR,
-            row.item_id,
+            PlanningEvidenceKind.BOARD_PAIR, row.item_id,
             f"balance:{row.balance},displayed_limit:{row.displayed_limit}",
         )
         for row in board.resource_rows
     ]
-
-    rewards, problem = _unique_facts(
-        planning.non_board.incoming_rewards, "item_id", BOARD_ITEM_IDS,
-    )
-    if problem is not None:
-        return _contradictory(problem, evidence)
-    missing = tuple(
-        UnresolvedReason(
-            UnresolvedCode.MISSING_INCOMING_REWARD,
-            item_id,
-            f"incoming_reward:{item_id}",
-            "exact incoming amount is required; zero must be explicit",
-        )
-        for item_id in BOARD_ITEM_IDS
-        if item_id not in rewards or rewards[item_id].amount is None
-    )
-    if missing:
-        return _insufficient(missing, evidence)
-
-    overflow: dict[str, int] = {}
-    for item_id in BOARD_ITEM_IDS:
-        row = rows[item_id]
-        reward = rewards[item_id]
-        assert isinstance(reward, IncomingRewardFact) and reward.amount is not None
+    badges = rows["brawlers_badges"]
+    if badges.balance >= badges.displayed_limit:
         evidence.append(PlanningEvidence(
-            PlanningEvidenceKind.INCOMING_REWARD,
-            item_id,
-            f"exact:{reward.amount}",
+            PlanningEvidenceKind.WARNING, "brawlers_badges",
+            "pressured_unmanaged:no_arena_route",
         ))
-        if reward.amount > 0 and row.balance + reward.amount > row.displayed_limit:
-            overflow[item_id] = row.balance + reward.amount - row.displayed_limit
+    for item_id, threshold in ENTRY_THRESHOLDS.items():
+        if rows[item_id].balance >= threshold:
             evidence.append(PlanningEvidence(
-                PlanningEvidenceKind.OVERFLOW,
-                item_id,
-                f"{row.balance}+{reward.amount}>{row.displayed_limit}",
+                PlanningEvidenceKind.THRESHOLD, item_id,
+                f"balance:{rows[item_id].balance}>=entry:{threshold}",
             ))
 
-    if not overflow:
-        return ResourceRoutePlan(
-            ResourceRouteStatus.NO_PREREQUISITES,
-            evidence=tuple(evidence),
-        )
-    if "brawlers_badges" in overflow:
-        return _insufficient((UnresolvedReason(
-            UnresolvedCode.ARENA_TICKET_ROUTE_NOT_ESTABLISHED,
-            "brawlers_badges",
-            "arena_ticket_row_and_conversion",
-            "G did not establish Arena Ticket as a distinct planner fact",
-        ),), evidence)
+    keys_trip = (rows["bronze_key"].balance >= 400
+                 or rows["silver_key"].balance >= 450)
+    materials_trip = rows["weapon_material"].balance >= 800
+    hero_trip = rows["hero_weapon_material"].balance >= 800
+    projected_hero = (rows["hero_weapon_material"].balance
+                      + (rows["weapon_material"].balance // 40) * 10)
+    craft_trip = hero_trip or (materials_trip and projected_hero >= 800)
+    if not (keys_trip or materials_trip or craft_trip):
+        return ResourceRoutePlan(ResourceRouteStatus.NO_PREREQUISITES,
+                                 evidence=tuple(evidence))
 
-    keys_needed = bool(KEY_ITEM_IDS.intersection(overflow))
-    conversion_step: TradingMaterialsStep | None = None
-    craft_step: CraftStep | None = None
-
+    # Legacy/debug facts may be supplied but cannot predict MW drops.
     conversions, problem = _unique_facts(
         planning.non_board.material_conversions, "source_item_id", MATERIAL_ITEM_IDS,
     )
     if problem is not None:
         return _contradictory(problem, evidence)
+    conversion = conversions.get("weapon_material")
+    if conversion is not None and (
+        conversion.destination_item_id != "hero_weapon_material"
+        or conversion.trading_item_id != "hero_weapon_crafting_material"
+        or conversion.input_per_trade != 40
+        or conversion.output_per_trade != 10
+    ):
+        return _insufficient((UnresolvedReason(
+            UnresolvedCode.UNSUPPORTED_MATERIAL_CONVERSION, "weapon_material",
+            detail="only the verified 40 Weapon -> 10 Hero conversion is supported",
+        ),), evidence)
     crafts, problem = _unique_facts(
         planning.non_board.craft_capacities, "material_item_id", MATERIAL_ITEM_IDS,
     )
     if problem is not None:
         return _contradictory(problem, evidence)
 
-    trade_count = 0
-    conversion = None
-    if "weapon_material" in overflow:
-        conversion = conversions.get("weapon_material")
-        if conversion is None:
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.MISSING_MATERIAL_CONVERSION,
-                "weapon_material",
-                "material_conversion:weapon_material",
-                "a visible row does not identify its Trading conversion",
-            ),), evidence)
-        assert isinstance(conversion, MaterialConversionFact)
-        if (
-            conversion.destination_item_id != "hero_weapon_material"
-            or conversion.trading_item_id != "hero_weapon_crafting_material"
-        ):
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.UNSUPPORTED_MATERIAL_CONVERSION,
-                "weapon_material",
-                "weapon_to_hero_weapon_conversion",
-                "only the closed Weapon -> Hero Weapon Trading row is supported",
-            ),), evidence)
-        trade_count = math.ceil(
-            overflow["weapon_material"] / conversion.input_per_trade
-        )
-        if rows["weapon_material"].balance < trade_count * conversion.input_per_trade:
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.MATERIAL_CONVERSION_NOT_ACTIONABLE,
-                "weapon_material",
-                "current_material_for_conversion",
-                "incoming rewards cannot be consumed before they arrive",
-            ),), evidence)
-
-    hero_reward = rewards["hero_weapon_material"]
-    assert isinstance(hero_reward, IncomingRewardFact) and hero_reward.amount is not None
-    projected_hero = rows["hero_weapon_material"].balance + hero_reward.amount
-    if conversion is not None:
-        projected_hero += trade_count * conversion.output_per_trade
-    craft_needed = projected_hero > rows["hero_weapon_material"].displayed_limit
-    if craft_needed:
+    steps: list[ResourceRouteStep] = []
+    if craft_trip:
         craft = crafts.get("hero_weapon_material")
         if craft is None:
             return _insufficient((UnresolvedReason(
-                UnresolvedCode.MISSING_CRAFT_FACT,
-                "hero_weapon_material",
+                UnresolvedCode.MISSING_CRAFT_FACT, "hero_weapon_material",
                 "hero_weapon_craft_recipe_and_equipment_capacity",
-                "target tier, recipe and Equipment capacity are non-board facts",
             ),), evidence)
-        assert isinstance(craft, CraftCapacityFact)
-        if craft.family != "weapon" or craft.tier != "hero":
+        if (craft.family, craft.tier, craft.material_per_craft) != ("weapon", "hero", 49):
             return _insufficient((UnresolvedReason(
-                UnresolvedCode.UNSUPPORTED_CRAFT_FACT,
-                "hero_weapon_material",
-                "hero_weapon_craft_recipe",
-                "Craft standalone is closed only for an explicit Hero recipe",
+                UnresolvedCode.UNSUPPORTED_CRAFT_FACT, "hero_weapon_material",
             ),), evidence)
         if craft.free_equipment_slots is None:
             return _insufficient((UnresolvedReason(
-                UnresolvedCode.MISSING_EQUIPMENT_CAPACITY,
-                "hero_weapon_material",
-                "free_equipment_slots",
-                "Craft requires at least one free Equipment slot on entry",
+                UnresolvedCode.MISSING_EQUIPMENT_CAPACITY, "hero_weapon_material",
             ),), evidence)
         if craft.free_equipment_slots < 1:
             return _insufficient((UnresolvedReason(
                 UnresolvedCode.CRAFT_ENTRY_CAPACITY_UNAVAILABLE,
                 "hero_weapon_material",
-                "free_equipment_slots>=1",
-                "Equipment Relief is reactive and is not a planner step",
             ),), evidence)
-        craft_count = math.ceil(
-            (projected_hero - rows["hero_weapon_material"].displayed_limit)
-            / craft.material_per_craft
-        )
-        if craft_count != 1:
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.MULTI_CRAFT_POLICY_NOT_ESTABLISHED,
-                "hero_weapon_material",
-                "multi_craft_route_policy",
-                "the closed Craft capability proves one request, not planner repetition",
-            ),), evidence)
-        if rows["hero_weapon_material"].balance < craft.material_per_craft:
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.CRAFT_MATERIAL_UNAVAILABLE,
-                "hero_weapon_material",
-                "current_hero_weapon_material",
-                "craft-first cannot spend incoming or post-Trade material",
-            ),), evidence)
-        craft_step = CraftStep(craft.family, craft.tier, 1)
+        steps.append(CraftStep("weapon", "hero"))
         evidence.append(PlanningEvidence(
-            PlanningEvidenceKind.CAPABILITY,
-            "hero_weapon_material",
-            "craft:weapon:hero:one",
+            PlanningEvidenceKind.CAPABILITY, "hero_weapon_material",
+            "drain_hero_until_below_49",
         ))
-
-    if conversion is not None:
-        conversion_step = TradingMaterialsStep((TradingMaterialOperation(
-            conversion.trading_item_id,
-            conversion.source_item_id,
-            conversion.destination_item_id,
-            trade_count,
-        ),))
+    if keys_trip or materials_trip:
+        operations: list[TradingSessionOperation] = [KeysPromotionStep()]
+        if materials_trip:
+            operations.append(TradingMaterialsStep())
+            evidence.append(PlanningEvidence(
+                PlanningEvidenceKind.CAPABILITY, "weapon_material",
+                "drain_weapon_until_below_40",
+            ))
+        steps.append(TradingSessionStep(tuple(operations)))
         evidence.append(PlanningEvidence(
-            PlanningEvidenceKind.CAPABILITY,
-            "weapon_material",
-            f"trading_materials:{conversion.trading_item_id}:exact:{trade_count}",
+            PlanningEvidenceKind.ORDER, None,
+            "keys_first_then_materials_if_justified",
         ))
-
-    trading_operations: list[TradingSessionOperation] = []
-    if keys_needed:
-        trading_operations.append(KeysPromotionStep())
-        evidence.append(PlanningEvidence(
-            PlanningEvidenceKind.CAPABILITY,
-            "keys",
-            "keys_promotion:C6a/C6b-owned",
-        ))
-    if conversion_step is not None:
-        trading_operations.append(conversion_step)
-    if len(trading_operations) == 2:
-        evidence.append(PlanningEvidence(
-            PlanningEvidenceKind.ORDER,
-            None,
-            "one_trading_visit:keys_then_materials; Trading opens in Avatar & Keys",
-        ))
-
-    steps: list[ResourceRouteStep] = []
-    if craft_step is not None:
-        steps.append(craft_step)
-    if trading_operations:
-        steps.append(TradingSessionStep(tuple(trading_operations)))
-    if not steps:
-        # Defensive: all recognized overflows must either produce a step or an
-        # unresolved return above.
-        return _contradictory("recognized overflow produced no capability", evidence)
-    return ResourceRoutePlan(
-        ResourceRouteStatus.READY,
-        steps=tuple(steps),
-        evidence=tuple(evidence),
-    )
+    return ResourceRoutePlan(ResourceRouteStatus.READY, steps=tuple(steps),
+                             evidence=tuple(evidence))
 
 
 def _validate_board(planning: ResourcePlanningInput) -> ResourceRoutePlan | None:

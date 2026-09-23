@@ -87,9 +87,17 @@ class TradingMaterialsRuntime:
         self.execute_material_trade = execute_material_trade
         self.cancel_requested = cancel_requested
 
-    def execute(self, step: TradingMaterialsStep) -> TradingMaterialsResult:
+    def execute(self, step: TradingMaterialsStep, *, max_batches: int = 32) -> TradingMaterialsResult:
         if not isinstance(step, TradingMaterialsStep):
             raise ValueError("step must be TradingMaterialsStep")
+        if isinstance(max_batches, bool) or not isinstance(max_batches, int) or max_batches < 1:
+            raise ValueError("max_batches must be positive")
+        if len(step.operations) != 1 or (
+            step.operations[0].trading_item_id,
+            step.operations[0].source_item_id,
+            step.operations[0].destination_item_id,
+        ) != ("hero_weapon_crafting_material", "weapon_material", "hero_weapon_material"):
+            raise ValueError("only Weapon -> Hero material is supported")
         executed: list[TradingMaterialOperation] = []
         results: list[TradeResult] = []
         latest: FreshMaterialFact | None = None
@@ -149,33 +157,47 @@ class TradingMaterialsRuntime:
                 or latest.row_fact.item_id != operation.trading_item_id
             ):
                 return finish(FlowStatus.FAILED, error="fresh_material_fact_mismatch")
-            result = self.execute_material_trade(
-                operation=operation,
-                snapshot=latest.snapshot,
-                row_fact=latest.row_fact,
-                quantity=TradeQuantity(TradeQuantityMode.EXACT, operation.quantity),
-            )
-            if not isinstance(result, TradeResult):
-                return finish(FlowStatus.FAILED, error="material_trade_invalid_result")
-            results.append(result)
-            if result.outcome is TradeOutcome.CANCELLED:
-                return finish(FlowStatus.CANCELLED)
-            if result.outcome is not TradeOutcome.SUCCESS:
-                missing = (
-                    ":missing_adapter"
-                    if result.boundary == "equipment_full"
-                    else ""
+            for _ in range(max_batches):
+                if self._cancelled():
+                    return finish(FlowStatus.CANCELLED)
+                if latest.row_fact.need != 40:
+                    return finish(FlowStatus.FAILED, error="unexpected_weapon_trade_need")
+                if latest.row_fact.have < 40:
+                    return finish(FlowStatus.COMPLETED)
+                result = self.execute_material_trade(
+                    operation=operation,
+                    snapshot=latest.snapshot,
+                    row_fact=latest.row_fact,
+                    quantity=TradeQuantity(TradeQuantityMode.MAX_ALLOWED),
                 )
-                return finish(
-                    FlowStatus.FAILED,
-                    error=(
-                        f"material_trade_failed:{result.outcome.value}:"
-                        f"{result.reason}{missing}"
-                    ),
+                if not isinstance(result, TradeResult):
+                    return finish(FlowStatus.FAILED, error="material_trade_invalid_result")
+                results.append(result)
+                if result.outcome is TradeOutcome.CANCELLED:
+                    return finish(FlowStatus.CANCELLED)
+                if result.outcome is not TradeOutcome.SUCCESS:
+                    return finish(
+                        FlowStatus.FAILED,
+                        error=f"material_trade_failed:{result.outcome.value}:{result.reason}",
+                    )
+                if (result.after_fact is None
+                        or result.after_fact.sequence <= latest.row_fact.sequence
+                        or result.after_fact.have >= latest.row_fact.have):
+                    return finish(FlowStatus.FAILED, error="material_trade_progress_not_proven")
+                executed.append(operation)
+                barrier = result.after_fact.sequence
+                latest = self.read_material_fact(
+                    target=operation.trading_item_id, after_sequence=barrier,
                 )
-            executed.append(operation)
-            assert result.after_fact is not None
-            barrier = result.after_fact.sequence
+                if (not isinstance(latest, FreshMaterialFact)
+                        or latest.snapshot.sequence <= barrier
+                        or latest.row_fact.item_id != operation.trading_item_id):
+                    return finish(FlowStatus.FAILED, error="fresh_material_fact_unavailable")
+                if latest.row_fact.have != result.after_fact.have:
+                    return finish(FlowStatus.FAILED, error="fresh_material_fact_contradictory")
+                if latest.row_fact.have < 40:
+                    return finish(FlowStatus.COMPLETED)
+            return finish(FlowStatus.FAILED, error="material_batch_budget_exhausted")
         return finish(FlowStatus.COMPLETED)
 
     def _cancelled(self) -> bool:

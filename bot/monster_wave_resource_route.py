@@ -2,8 +2,7 @@
 
 This is the J boundary.  It does not plan, replan, execute Monster Wave battle
 work, or route generically.  Craft and the single grouped Trading block are
-serialized through the one physically verified Monster Wave anchor because
-Quick Menu preserves only its immediate origin.
+serialized through MW or the verified modal Trading return to Craft.
 """
 
 from __future__ import annotations
@@ -20,6 +19,7 @@ from bot.craft_semantics import CraftFamily, CraftTier
 from bot.failure_cause import FailureCause
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.keys_promotion_runtime import GoldCapacityRecoveryNavigation
+from bot.keys_promotion import PendingCausalOperation
 from bot.monster_wave_activity import clean_mw, skip_state
 from bot.monster_wave_board_snapshot import (
     BoardPopup,
@@ -242,6 +242,68 @@ class MonsterWavePrerequisiteNavigationRuntime:
             precondition=clean_trading,
         )
 
+    def enter_trading_from_craft(self) -> MonsterWaveNavigationResult:
+        """Craft's verified Quick Menu opens modal Trading."""
+        opened = self.craft_runtime.open_quick_menu_or_handoff()
+        if opened.outcome is CraftRouteOutcome.CANCELLED:
+            return MonsterWaveNavigationResult(FlowStatus.CANCELLED, capability_result=opened)
+        if opened.outcome is not CraftRouteOutcome.QUICK_MENU_OPEN or opened.quick_menu_fact is None:
+            return MonsterWaveNavigationResult(
+                FlowStatus.FAILED, error="craft_quick_menu_failed", capability_result=opened,
+            )
+        selected = self.craft_runtime.select_trading_from_open_menu(
+            after_sequence=opened.quick_menu_fact.sequence,
+        )
+        if selected.outcome is CraftRouteOutcome.CANCELLED:
+            return MonsterWaveNavigationResult(FlowStatus.CANCELLED, capability_result=selected)
+        if selected.outcome is not CraftRouteOutcome.TRADING_REQUESTED or selected.quick_menu_fact is None:
+            return MonsterWaveNavigationResult(
+                FlowStatus.FAILED, error="craft_trading_selection_failed",
+                capability_result=selected,
+            )
+        try:
+            trading = self.observer.wait_until(
+                clean_trading,
+                after_sequence=selected.quick_menu_fact.sequence,
+                timeout=6.0, stable_for=0.25,
+                cancel_requested=self.cancel_requested,
+            )
+            return MonsterWaveNavigationResult(
+                FlowStatus.COMPLETED, final_snapshot=trading,
+                after_sequence=trading.sequence,
+            )
+        except RuntimeWaitCancelled:
+            return MonsterWaveNavigationResult(FlowStatus.CANCELLED)
+        except Exception as error:
+            return MonsterWaveNavigationResult(FlowStatus.FAILED, error=str(error))
+
+    def leave_trading_to_craft(self) -> MonsterWaveNavigationResult:
+        """One X from clean Trading, followed by a fresh local Craft fact."""
+        try:
+            before = self.observer.wait_until(
+                clean_trading, after_sequence=0, timeout=6.0, stable_for=0.25,
+                cancel_requested=self.cancel_requested,
+            )
+            if self.cancel_requested():
+                return MonsterWaveNavigationResult(FlowStatus.CANCELLED)
+            self.transition.actions.execute(CloseTrading(), before.geometry)
+            restored = self.craft_runtime.observe_context(after_sequence=before.sequence)
+            if restored.outcome is CraftRouteOutcome.CANCELLED:
+                return MonsterWaveNavigationResult(FlowStatus.CANCELLED, capability_result=restored)
+            if restored.outcome is not CraftRouteOutcome.ENTERED or restored.craft_fact is None:
+                return MonsterWaveNavigationResult(
+                    FlowStatus.FAILED, error="trading_x_craft_not_verified",
+                    capability_result=restored,
+                )
+            return MonsterWaveNavigationResult(
+                FlowStatus.COMPLETED, after_sequence=restored.craft_fact.sequence,
+                capability_result=restored,
+            )
+        except RuntimeWaitCancelled:
+            return MonsterWaveNavigationResult(FlowStatus.CANCELLED)
+        except Exception as error:
+            return MonsterWaveNavigationResult(FlowStatus.FAILED, error=str(error))
+
     def leave_treasure_to_mw(self) -> MonsterWaveNavigationResult:
         return self._leave_to_mw(
             name="treasure",
@@ -439,6 +501,11 @@ class MonsterWaveGoldCapacityRecovery:
         self.navigation = navigation
         self.snapshots = snapshots
         self._anchor: FreshMonsterWaveSnapshot | None = None
+        self._deferred = False
+
+    def start_from_mw(self, anchor: FreshMonsterWaveSnapshot) -> None:
+        self._anchor = anchor
+        self._deferred = True
 
     def as_navigation(self) -> GoldCapacityRecoveryNavigation:
         return GoldCapacityRecoveryNavigation(
@@ -454,6 +521,12 @@ class MonsterWaveGoldCapacityRecovery:
         )
 
     def leave_trading(self):
+        if self._deferred:
+            self._deferred = False
+            assert self._anchor is not None
+            return MonsterWaveNavigationResult(
+                FlowStatus.COMPLETED, final_snapshot=self._anchor.context,
+            )
         left = self.navigation.leave_trading_to_mw()
         if left.status is not FlowStatus.COMPLETED or left.final_snapshot is None:
             return left
@@ -500,6 +573,7 @@ class ResourceRouteExecutionResult:
     executed_steps: tuple[ResourceRouteStep, ...] = ()
     failing_step: str | None = None
     capability_result: object | None = None
+    pending: PendingCausalOperation | None = None
     evidence: tuple[str, ...] = ()
     final_snapshot: MonsterWaveBoardSnapshot | None = None
     final_context: RuntimeSnapshot | None = None
@@ -533,7 +607,7 @@ class MonsterWaveResourceRouteRuntime:
             (navigation, "enter_trading_from_mw"),
             (navigation, "leave_trading_to_mw"),
             (snapshots, "acquire"),
-            (craft_runtime, "execute"),
+            (craft_runtime, "drain_hero_material"),
             (craft_runtime, "request_back_to_origin"),
             (keys_runtime, "run"),
             (materials_runtime, "execute"),
@@ -565,12 +639,14 @@ class MonsterWaveResourceRouteRuntime:
             raise ValueError("plan must be ResourceRoutePlan")
         executed: list[ResourceRouteStep] = []
         evidence: list[str] = []
+        pending: PendingCausalOperation | None = None
 
         def finish(status, **kwargs):
             return ResourceRouteExecutionResult(
                 status,
                 executed_steps=tuple(executed),
                 evidence=tuple(evidence),
+                pending=pending,
                 **kwargs,
             )
 
@@ -599,154 +675,131 @@ class MonsterWaveResourceRouteRuntime:
             return finish(ResourceRouteExecutionStatus.CANCELLED)
 
         anchor = initial
-        for step in plan.steps:
-            if isinstance(step, CraftStep):
-                entered = self.navigation.enter_craft_from_mw(
-                    anchor,
-                    entry_capacity_proven=True,
-                )
-                evidence.append("route:mw_quick_menu_craft")
-                if entered.status is FlowStatus.CANCELLED:
-                    return finish(
-                        ResourceRouteExecutionStatus.CANCELLED,
-                        failing_step=step.capability,
-                        capability_result=entered,
-                    )
-                if entered.status is not FlowStatus.COMPLETED:
-                    return finish(
-                        ResourceRouteExecutionStatus.STEP_FAILED,
-                        failing_step=step.capability,
-                        capability_result=entered,
-                    )
-                request = CraftRequest(
-                    family=CraftFamily(step.family),
-                    tier=CraftTier(step.tier),
-                    quantity_mode=CraftQuantityMode.ONE,
-                )
-                crafted = self.craft_runtime.execute(request)
-                if crafted.outcome is CraftOutcome.CANCELLED:
-                    return finish(
-                        ResourceRouteExecutionStatus.CANCELLED,
-                        failing_step=step.capability,
-                        capability_result=crafted,
-                    )
-                if crafted.outcome is not CraftOutcome.SUCCESS:
-                    return finish(
-                        ResourceRouteExecutionStatus.STEP_FAILED,
-                        failing_step=step.capability,
-                        capability_result=crafted,
-                    )
-                returned = self.craft_runtime.request_back_to_origin()
-                evidence.append("route:craft_back_to_mw")
-                if returned.outcome is CraftRouteOutcome.CANCELLED:
-                    return finish(
-                        ResourceRouteExecutionStatus.CANCELLED,
-                        failing_step=step.capability,
-                        capability_result=returned,
-                    )
-                if (
-                    returned.outcome is not CraftRouteOutcome.BACK_REQUESTED
-                    or returned.craft_fact is None
-                ):
-                    return finish(
-                        ResourceRouteExecutionStatus.RETURN_TO_MW_FAILED,
-                        failing_step=step.capability,
-                        capability_result=returned,
-                    )
-                refreshed = self.snapshots.acquire(
-                    after_sequence=returned.craft_fact.sequence
-                )
-                if refreshed.status is FlowStatus.CANCELLED:
-                    return finish(
-                        ResourceRouteExecutionStatus.CANCELLED,
-                        failing_step=step.capability,
-                        capability_result=refreshed,
-                    )
-                if refreshed.status is not FlowStatus.COMPLETED or refreshed.fresh is None:
-                    return finish(
-                        ResourceRouteExecutionStatus.RETURN_TO_MW_FAILED,
-                        failing_step=step.capability,
-                        capability_result=refreshed,
-                    )
-                anchor = refreshed.fresh
-                executed.append(step)
-                evidence.append("freshness:craft_return_mw")
-                continue
+        craft = next((s for s in plan.steps if isinstance(s, CraftStep)), None)
+        trading = next((s for s in plan.steps if isinstance(s, TradingSessionStep)), None)
+        has_materials = trading is not None and any(
+            isinstance(op, TradingMaterialsStep) for op in trading.operations
+        )
+        craft_open = False
+        keys_attempts = 0
 
-            assert isinstance(step, TradingSessionStep)
-            entered = self.navigation.enter_trading_from_mw(anchor)
-            evidence.append("route:mw_quick_menu_trading")
-            if entered.status is FlowStatus.CANCELLED:
-                return finish(
-                    ResourceRouteExecutionStatus.CANCELLED,
-                    failing_step=step.capability,
-                    capability_result=entered,
-                )
+        def failed(result, step_name, *, returning=False):
+            if getattr(result, "status", None) is FlowStatus.CANCELLED or (
+                getattr(result, "outcome", None) is CraftOutcome.CANCELLED
+            ) or getattr(result, "outcome", None) is CraftRouteOutcome.CANCELLED:
+                status = ResourceRouteExecutionStatus.CANCELLED
+            elif returning:
+                status = ResourceRouteExecutionStatus.RETURN_TO_MW_FAILED
+            else:
+                status = ResourceRouteExecutionStatus.STEP_FAILED
+            return finish(status, failing_step=step_name, capability_result=result)
+
+        def fresh_mw(after_sequence, step_name):
+            result = self.snapshots.acquire(after_sequence=after_sequence)
+            if result.status is not FlowStatus.COMPLETED or result.fresh is None:
+                return None, failed(result, step_name, returning=True)
+            return result.fresh, None
+
+        if craft is not None:
+            entered = self.navigation.enter_craft_from_mw(
+                anchor, entry_capacity_proven=True,
+            )
+            evidence.append("route:mw_quick_menu_craft")
             if entered.status is not FlowStatus.COMPLETED:
-                return finish(
-                    ResourceRouteExecutionStatus.STEP_FAILED,
-                    failing_step=step.capability,
-                    capability_result=entered,
-                )
-            for operation in step.operations:
+                return failed(entered, craft.capability)
+            craft_open = True
+            drained = self.craft_runtime.drain_hero_material(max_batches=32)
+            evidence.append("craft:drain_hero_until_below_49")
+            if drained.outcome is not CraftOutcome.SUCCESS:
+                return failed(drained, craft.capability)
+
+        if trading is not None:
+            if craft_open and has_materials:
+                entered = self.navigation.enter_trading_from_craft()
+                evidence.append("route:craft_quick_menu_trading_modal")
+            else:
+                if craft_open:
+                    returned = self.craft_runtime.request_back_to_origin()
+                    evidence.append("route:craft_back_to_mw")
+                    if returned.outcome is not CraftRouteOutcome.BACK_REQUESTED or returned.craft_fact is None:
+                        return failed(returned, craft.capability, returning=True)
+                    anchor, problem = fresh_mw(returned.craft_fact.sequence, craft.capability)
+                    if problem is not None:
+                        return problem
+                    craft_open = False
+                entered = self.navigation.enter_trading_from_mw(anchor)
+                evidence.append("route:mw_quick_menu_trading")
+            if entered.status is not FlowStatus.COMPLETED:
+                return failed(entered, trading.capability)
+            for operation in trading.operations:
                 if isinstance(operation, KeysPromotionStep):
-                    recovery = MonsterWaveGoldCapacityRecovery(
-                        self.navigation, self.snapshots
-                    )
                     result = self.keys_runtime.run(
                         budget_remaining=self.keys_budget_remaining,
-                        recovery_navigation=recovery.as_navigation(),
+                        defer_recovery=True,
                     )
-                    evidence.append("trading:keys")
+                    evidence.append("trading:keys_first")
+                    pending = getattr(result, "pending", None)
+                    keys_attempts = len(getattr(result, "trade_attempts", ()))
                 else:
-                    assert isinstance(operation, TradingMaterialsStep)
-                    result = self.materials_runtime.execute(operation)
-                    evidence.append("trading:general_materials")
-                if result.status is FlowStatus.CANCELLED:
-                    return finish(
-                        ResourceRouteExecutionStatus.CANCELLED,
-                        failing_step=operation.capability,
-                        capability_result=result,
-                    )
+                    result = self.materials_runtime.execute(operation, max_batches=32)
+                    evidence.append("trading:drain_weapon_until_below_40")
                 if result.status is not FlowStatus.COMPLETED:
-                    return finish(
-                        ResourceRouteExecutionStatus.STEP_FAILED,
-                        failing_step=operation.capability,
-                        capability_result=result,
-                    )
-            left = self.navigation.leave_trading_to_mw()
-            evidence.append("route:trading_x_to_mw")
-            if left.status is FlowStatus.CANCELLED:
-                return finish(
-                    ResourceRouteExecutionStatus.CANCELLED,
-                    failing_step=step.capability,
-                    capability_result=left,
-                )
-            if left.status is not FlowStatus.COMPLETED or left.final_snapshot is None:
-                return finish(
-                    ResourceRouteExecutionStatus.RETURN_TO_MW_FAILED,
-                    failing_step=step.capability,
-                    capability_result=left,
-                )
-            refreshed = self.snapshots.acquire(
-                after_sequence=left.final_snapshot.sequence
-            )
-            if refreshed.status is FlowStatus.CANCELLED:
-                return finish(
-                    ResourceRouteExecutionStatus.CANCELLED,
-                    failing_step=step.capability,
-                    capability_result=refreshed,
-                )
-            if refreshed.status is not FlowStatus.COMPLETED or refreshed.fresh is None:
-                return finish(
-                    ResourceRouteExecutionStatus.POSTCONDITION_FAILED,
-                    failing_step=step.capability,
-                    capability_result=refreshed,
-                )
-            anchor = refreshed.fresh
-            executed.append(step)
-            evidence.append("freshness:final_mw_snapshot")
+                    return failed(result, operation.capability)
+            if craft_open and has_materials:
+                left = self.navigation.leave_trading_to_craft()
+                evidence.append("route:trading_x_restores_craft")
+                if left.status is not FlowStatus.COMPLETED:
+                    return failed(left, trading.capability, returning=True)
+                drained = self.craft_runtime.drain_hero_material(max_batches=32)
+                evidence.append("craft:drain_new_hero_until_below_49")
+                if drained.outcome is not CraftOutcome.SUCCESS:
+                    return failed(drained, craft.capability)
+                returned = self.craft_runtime.request_back_to_origin()
+                evidence.append("route:craft_back_to_mw")
+                if returned.outcome is not CraftRouteOutcome.BACK_REQUESTED or returned.craft_fact is None:
+                    return failed(returned, craft.capability, returning=True)
+                anchor, problem = fresh_mw(returned.craft_fact.sequence, craft.capability)
+                if problem is not None:
+                    return problem
+                craft_open = False
+            else:
+                left = self.navigation.leave_trading_to_mw()
+                evidence.append("route:trading_x_to_mw")
+                if left.status is not FlowStatus.COMPLETED or left.final_snapshot is None:
+                    return failed(left, trading.capability, returning=True)
+                anchor, problem = fresh_mw(left.final_snapshot.sequence, trading.capability)
+                if problem is not None:
+                    return problem
 
+            if pending is not None:
+                recovery = MonsterWaveGoldCapacityRecovery(self.navigation, self.snapshots)
+                recovery.start_from_mw(anchor)
+                resolved = self.keys_runtime.resolve_pending(
+                    pending,
+                    budget_remaining=max(0, self.keys_budget_remaining - keys_attempts),
+                    recovery_navigation=recovery.as_navigation(),
+                )
+                evidence.append("keys:deferred_gold_full_drain_and_exact_retry")
+                if resolved.status is not FlowStatus.COMPLETED:
+                    return failed(resolved, "keys_promotion")
+                pending = None
+                left = self.navigation.leave_trading_to_mw()
+                evidence.append("route:trading_retry_x_to_mw")
+                if left.status is not FlowStatus.COMPLETED or left.final_snapshot is None:
+                    return failed(left, trading.capability, returning=True)
+                anchor, problem = fresh_mw(left.final_snapshot.sequence, trading.capability)
+                if problem is not None:
+                    return problem
+        elif craft_open:
+            returned = self.craft_runtime.request_back_to_origin()
+            evidence.append("route:craft_back_to_mw")
+            if returned.outcome is not CraftRouteOutcome.BACK_REQUESTED or returned.craft_fact is None:
+                return failed(returned, craft.capability, returning=True)
+            anchor, problem = fresh_mw(returned.craft_fact.sequence, craft.capability)
+            if problem is not None:
+                return problem
+
+        executed.extend(plan.steps)
         return finish(
             ResourceRouteExecutionStatus.SUCCESS,
             final_snapshot=anchor.snapshot,
@@ -774,7 +827,7 @@ class MonsterWaveResourceRouteRuntime:
             if isinstance(step, CraftStep):
                 if step.family not in {item.value for item in CraftFamily}:
                     return "craft_family"
-                if step.tier != CraftTier.HERO.value or step.quantity != 1:
+                if step.tier != CraftTier.HERO.value or step.quantity is not None:
                     return "craft_request"
                 continue
             operations = step.operations
@@ -788,6 +841,13 @@ class MonsterWaveResourceRouteRuntime:
                 for item in operations
             ):
                 return "trading_operation"
+            if not isinstance(operations[0], KeysPromotionStep):
+                return "keys_first"
+            for item in operations:
+                if isinstance(item, TradingMaterialsStep) and any(
+                    operation.quantity is not None for operation in item.operations
+                ):
+                    return "materials_must_drain"
         return None
 
     def _cancelled(self) -> bool:

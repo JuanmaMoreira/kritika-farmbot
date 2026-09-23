@@ -14,11 +14,13 @@ import time
 from bot.action_executor import ActionExecutor, FrameGeometry
 from bot.craft_semantics import (
     CraftContextFact,
+    CraftFamily,
+    CraftTier,
     QuickMenuCraftFact,
     consensus_craft_facts,
 )
 from bot.craft_operation import CraftOperationResult, CraftOutcome, execute_craft
-from bot.craft_policy import CraftRequest
+from bot.craft_policy import CraftQuantityMode, CraftRequest
 from bot.equipment_sell_semantics import EquipmentInventoryFact, consensus_facts
 from bot.quick_menu import QuickMenuHandoff
 from bot.semantic_actions import (
@@ -31,6 +33,7 @@ from bot.semantic_actions import (
     RejectCraftPremium,
     SelectCraftMax,
     SelectQuickMenuCraft,
+    SelectQuickMenuTrading,
     QuickMenuLayout,
 )
 
@@ -38,6 +41,7 @@ from bot.semantic_actions import (
 class CraftRouteOutcome(str, Enum):
     ENTERED = "entered"
     QUICK_MENU_OPEN = "quick_menu_open"
+    TRADING_REQUESTED = "trading_requested"
     BACK_REQUESTED = "back_requested"
     CAPACITY_BLOCKED = "capacity_blocked"
     CANCELLED = "cancelled"
@@ -52,6 +56,14 @@ class CraftRouteResult:
     quick_menu_fact: QuickMenuCraftFact | None = None
     reason: str | None = None
     inputs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class HeroMaterialDrainResult:
+    outcome: CraftOutcome
+    batches: tuple[CraftOperationResult, ...] = ()
+    final_fact: CraftContextFact | None = None
+    reason: str | None = None
 
 
 class CraftRuntime:
@@ -370,6 +382,89 @@ class CraftRuntime:
             max_fact_age=self.max_fact_age,
         )
 
+    def drain_hero_material(self, *, max_batches: int) -> HeroMaterialDrainResult:
+        """Drain the entered Hero Weapon Craft context with verified progress."""
+        if isinstance(max_batches, bool) or not isinstance(max_batches, int) or max_batches < 1:
+            raise ValueError("max_batches must be positive")
+        batches: list[CraftOperationResult] = []
+        previous: CraftContextFact | None = None
+        request = CraftRequest(
+            family=CraftFamily.WEAPON, tier=CraftTier.HERO,
+            quantity_mode=CraftQuantityMode.MAX_AVAILABLE,
+        )
+        for _ in range(max_batches):
+            if self.cancel_requested():
+                return HeroMaterialDrainResult(CraftOutcome.CANCELLED, tuple(batches), previous)
+            current = self._read_consensus(
+                self.craft_reader, "context_sample",
+                after_sequence=0 if previous is None else previous.sequence,
+                consensus=consensus_craft_facts,
+            )
+            if current is None or not self._fresh(current):
+                return HeroMaterialDrainResult(
+                    CraftOutcome.FAILED, tuple(batches), previous,
+                    "fresh_craft_context_unavailable",
+                )
+            if current.weapon_hero_cost != 49:
+                return HeroMaterialDrainResult(
+                    CraftOutcome.FAILED, tuple(batches), current,
+                    "unexpected_hero_recipe_cost",
+                )
+            if current.weapon_material < 49:
+                return HeroMaterialDrainResult(CraftOutcome.SUCCESS, tuple(batches), current)
+            result = self.execute(request)
+            batches.append(result)
+            if result.outcome is not CraftOutcome.SUCCESS:
+                return HeroMaterialDrainResult(
+                    result.outcome, tuple(batches), result.after_fact, result.reason,
+                )
+            if (result.before_fact is None or result.after_fact is None
+                    or result.before_fact.weapon_material != current.weapon_material
+                    or result.after_fact.sequence <= result.before_fact.sequence
+                    or result.after_fact.weapon_material >= result.before_fact.weapon_material):
+                return HeroMaterialDrainResult(
+                    CraftOutcome.FAILED, tuple(batches), result.after_fact,
+                    "craft_progress_not_proven",
+                )
+            previous = result.after_fact
+            if previous.weapon_material < 49:
+                return HeroMaterialDrainResult(CraftOutcome.SUCCESS, tuple(batches), previous)
+        return HeroMaterialDrainResult(
+            CraftOutcome.FAILED, tuple(batches), previous, "craft_batch_budget_exhausted",
+        )
+
+    def select_trading_from_open_menu(self, *, after_sequence: int) -> CraftRouteResult:
+        """Use a fresh local Craft Quick Menu fact for the modal handoff."""
+        menu = self._read_consensus(
+            self.craft_reader, "quick_menu_sample",
+            after_sequence=after_sequence, consensus=consensus_craft_facts,
+        )
+        if menu is None or not self._fresh(menu):
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED if self.cancel_requested() else CraftRouteOutcome.FAILED,
+                quick_menu_fact=menu, reason="fresh_craft_quick_menu_unavailable",
+            )
+        if self.cancel_requested():
+            return CraftRouteResult(CraftRouteOutcome.CANCELLED, quick_menu_fact=menu)
+        self._tap(SelectQuickMenuTrading())
+        return CraftRouteResult(
+            CraftRouteOutcome.TRADING_REQUESTED, quick_menu_fact=menu,
+            inputs=("select_trading",),
+        )
+
+    def observe_context(self, *, after_sequence: int) -> CraftRouteResult:
+        """Prove Trading's X restored Craft before another Craft action."""
+        craft = self._read_consensus(
+            self.craft_reader, "context_sample",
+            after_sequence=after_sequence, consensus=consensus_craft_facts,
+        )
+        if craft is None or not self._fresh(craft):
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED if self.cancel_requested() else CraftRouteOutcome.FAILED,
+                craft_fact=craft, reason="craft_not_restored",
+            )
+        return CraftRouteResult(CraftRouteOutcome.ENTERED, craft_fact=craft)
+
     def _read_next(self, method_name: str, *, timeout: float | None = None):
         fact = self._read_consensus(
             self.craft_reader,
@@ -424,4 +519,4 @@ class CraftRuntime:
         self.actions.execute(action, FrameGeometry.from_frame(self._latest.image))
 
 
-__all__ = ("CraftRouteOutcome", "CraftRouteResult", "CraftRuntime")
+__all__ = ("CraftRouteOutcome", "CraftRouteResult", "CraftRuntime", "HeroMaterialDrainResult")

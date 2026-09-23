@@ -30,7 +30,7 @@ from bot.keys_promotion import (
 )
 from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
 from bot.trading_keys import KeyTradeOperation, is_keys_ready
-from bot.trading_operation import TradeOutcome, TradeResult
+from bot.trading_operation import TradeOutcome, TradePanelFact, TradeResult
 from bot.trading_row_facts import KEYS_SECTION, TradingRowFact
 from bot.treasure_fast_drain import GoldKeyDrainOutcome, GoldKeyDrainResult
 from bot.treasure_keys import GoldKeyQuantity, GoldKeyQuantityMode, TreasureOutcome
@@ -68,6 +68,45 @@ class FreshKeyFacts:
             raise ValueError("both row facts must belong to snapshot.sequence")
         if not is_keys_ready(self.snapshot):
             raise ValueError("snapshot must be fresh Avatar & Keys readiness")
+
+
+@dataclass(frozen=True)
+class GoldFullAckResult(FlowResult):
+    """One verified OK dismissal after the causal output-full alert."""
+
+    final_snapshot: RuntimeSnapshot | None = None
+
+
+def acknowledge_gold_full_boundary(
+    pending: PendingCausalOperation,
+    *,
+    read_panel,
+    tap_ok,
+    read_keys_context,
+    cancel_requested=lambda: False,
+) -> GoldFullAckResult:
+    """Dismiss the observed alert once, then require fresh clean Keys."""
+    if not isinstance(pending, PendingCausalOperation):
+        raise ValueError("pending must be PendingCausalOperation")
+    if not all(callable(item) for item in (
+        read_panel, tap_ok, read_keys_context, cancel_requested,
+    )):
+        raise ValueError("ack callbacks must be callable")
+    if cancel_requested():
+        return GoldFullAckResult(FlowStatus.CANCELLED)
+    panel = read_panel()
+    if (not isinstance(panel, TradePanelFact)
+            or panel.sequence <= pending.before_fact.sequence
+            or not panel.panel_open or not panel.shows_output_full):
+        return GoldFullAckResult(FlowStatus.FAILED, error="fresh_gold_full_alert_unavailable")
+    if cancel_requested():
+        return GoldFullAckResult(FlowStatus.CANCELLED)
+    tap_ok()
+    after = read_keys_context(after_sequence=panel.sequence)
+    if (not isinstance(after, RuntimeSnapshot)
+            or after.sequence <= panel.sequence or not is_keys_ready(after)):
+        return GoldFullAckResult(FlowStatus.FAILED, error="gold_full_ack_not_verified")
+    return GoldFullAckResult(FlowStatus.COMPLETED, final_snapshot=after)
 
 
 @dataclass(frozen=True)
@@ -140,6 +179,7 @@ class KeysPromotionRuntime:
         read_key_facts,
         execute_key_trade,
         drain_gold_keys,
+        acknowledge_gold_full=None,
         cancel_requested=lambda: False,
     ) -> None:
         for owner, method in (
@@ -165,6 +205,9 @@ class KeysPromotionRuntime:
         self.read_key_facts = read_key_facts
         self.execute_key_trade = execute_key_trade
         self.drain_gold_keys = drain_gold_keys
+        if acknowledge_gold_full is not None and not callable(acknowledge_gold_full):
+            raise ValueError("acknowledge_gold_full must be callable or None")
+        self.acknowledge_gold_full = acknowledge_gold_full
         self.cancel_requested = cancel_requested
 
     def run(
@@ -172,6 +215,8 @@ class KeysPromotionRuntime:
         *,
         budget_remaining: int,
         recovery_navigation: GoldCapacityRecoveryNavigation | None = None,
+        defer_recovery: bool = False,
+        recovery_already_used: bool = False,
     ) -> KeysPromotionRuntimeResult:
         """Promote Keys with one bounded Silver->Gold OUTPUT_FULL recovery."""
 
@@ -193,7 +238,7 @@ class KeysPromotionRuntime:
         pending: PendingCausalOperation | None = None
         facts: FreshKeyFacts | None = None
         decision: KeysPromotionDecision | None = None
-        recovered = False
+        recovered = recovery_already_used
         retry_count = 0
 
         def finish(status, **kwargs) -> KeysPromotionRuntimeResult:
@@ -257,69 +302,36 @@ class KeysPromotionRuntime:
                         )
                     pending = folded.pending
                     assert isinstance(pending, PendingCausalOperation)
-                    recovered = True
-                    stale_barrier = max(
-                        facts.snapshot.sequence,
-                        facts.silver_fact.sequence,
-                        facts.gold_fact.sequence,
-                        pending.before_fact.sequence,
-                    )
-                    facts = self._recover_gold_capacity(
-                        after_sequence=stale_barrier,
-                        recovery_steps=recovery_steps,
+                    if self.acknowledge_gold_full is None:
+                        return finish(FlowStatus.FAILED, error="gold_full_ack_unavailable")
+                    acknowledged = self.acknowledge_gold_full(pending)
+                    if not isinstance(acknowledged, GoldFullAckResult):
+                        return finish(FlowStatus.FAILED, error="gold_full_ack_invalid")
+                    if acknowledged.status is FlowStatus.CANCELLED:
+                        raise _Cancelled()
+                    if (acknowledged.status is not FlowStatus.COMPLETED
+                            or acknowledged.final_snapshot is None
+                            or acknowledged.final_snapshot.sequence <= pending.before_fact.sequence
+                            or not is_keys_ready(acknowledged.final_snapshot)):
+                        return finish(FlowStatus.FAILED, error="gold_full_ack_not_verified")
+                    recovery_steps.append("trading.ack_gold_full")
+                    if defer_recovery:
+                        decision = folded
+                        return finish(FlowStatus.COMPLETED)
+                    resolved = self.resolve_pending(
+                        pending,
+                        budget_remaining=budget,
                         recovery_navigation=recovery_navigation,
                     )
-                    retry_decision = KeysPromotionDecision(
-                        kind=KeysPromotionKind.NEXT_OPERATION,
-                        operation=pending.operation,
-                        quantity=pending.quantity,
-                        silver_fact=facts.silver_fact,
-                        gold_fact=facts.gold_fact,
-                        reason="causal_retry_after_gold_drain",
-                        evidence=(
-                            "retry:causal_silver_to_gold",
-                            *pending.evidence,
-                        ),
+                    return KeysPromotionRuntimeResult(
+                        resolved.status, error=resolved.error, failure=resolved.failure,
+                        decision=resolved.decision, pending=pending,
+                        final_facts=resolved.final_facts,
+                        trade_attempts=(*attempts, *resolved.trade_attempts),
+                        recovery_steps=(*recovery_steps, *resolved.recovery_steps),
+                        recovery_count=resolved.recovery_count,
+                        retry_count=resolved.retry_count,
                     )
-                    if self._cancelled():
-                        raise _Cancelled()
-                    retry = self._execute(retry_decision, facts)
-                    retry_count = 1
-                    attempts.append(pending.operation)
-                    recovery_steps.append("trade.retry_silver_to_gold")
-                    if retry.outcome is TradeOutcome.CANCELLED:
-                        raise _Cancelled()
-                    if retry.outcome is TradeOutcome.OUTPUT_FULL:
-                        decision = decide_after_trade(
-                            previous=retry_decision,
-                            result=retry,
-                            budget_remaining=budget,
-                        )
-                        return finish(
-                            FlowStatus.FAILED,
-                            error="causal_retry_output_full",
-                        )
-                    if retry.outcome is not TradeOutcome.SUCCESS:
-                        decision = decide_after_trade(
-                            previous=retry_decision,
-                            result=retry,
-                            budget_remaining=budget,
-                        )
-                        return finish(
-                            FlowStatus.FAILED,
-                            error=f"causal_retry_failed:{retry.outcome.value}",
-                        )
-                    facts = self._fresh_facts(
-                        after_sequence=self._post_trade_barrier(facts, retry)
-                    )
-                    decision = decide_after_trade(
-                        previous=retry_decision,
-                        result=retry,
-                        budget_remaining=budget,
-                        silver_fact=facts.silver_fact,
-                        gold_fact=facts.gold_fact,
-                    )
-                    continue
 
                 if result.outcome in (
                     TradeOutcome.SUCCESS,
@@ -351,6 +363,79 @@ class KeysPromotionRuntime:
                 FlowStatus.FAILED,
                 error=str(error) or type(error).__name__,
                 failure=FailureCause.from_error(error, kind="exception"),
+            )
+
+    def resolve_pending(
+        self,
+        pending: PendingCausalOperation,
+        *,
+        budget_remaining: int,
+        recovery_navigation: GoldCapacityRecoveryNavigation | None = None,
+    ) -> KeysPromotionRuntimeResult:
+        """Drain Gold and retry the saved Silver->Gold operation exactly once."""
+        if not isinstance(pending, PendingCausalOperation):
+            raise ValueError("pending must be PendingCausalOperation")
+        if recovery_navigation is not None and not isinstance(
+            recovery_navigation, GoldCapacityRecoveryNavigation
+        ):
+            raise ValueError("recovery_navigation must be GoldCapacityRecoveryNavigation or None")
+        if isinstance(budget_remaining, bool) or not isinstance(budget_remaining, Integral) or budget_remaining < 0:
+            raise ValueError("budget_remaining must be non-negative")
+        steps: list[str] = []
+        try:
+            fresh = self._recover_gold_capacity(
+                after_sequence=pending.before_fact.sequence,
+                recovery_steps=steps,
+                recovery_navigation=recovery_navigation,
+            )
+            decision = KeysPromotionDecision(
+                kind=KeysPromotionKind.NEXT_OPERATION,
+                operation=pending.operation,
+                quantity=pending.quantity,
+                silver_fact=fresh.silver_fact,
+                gold_fact=fresh.gold_fact,
+                reason="causal_retry_after_gold_drain",
+                evidence=("retry:causal_silver_to_gold", *pending.evidence),
+            )
+            if self._cancelled():
+                raise _Cancelled()
+            retry = self._execute(decision, fresh)
+            steps.append("trade.retry_silver_to_gold")
+            if retry.outcome is TradeOutcome.CANCELLED:
+                raise _Cancelled()
+            if retry.outcome is not TradeOutcome.SUCCESS:
+                reason = (
+                    "causal_retry_output_full"
+                    if retry.outcome is TradeOutcome.OUTPUT_FULL
+                    else f"causal_retry_failed:{retry.outcome.value}"
+                )
+                return KeysPromotionRuntimeResult(
+                    FlowStatus.FAILED, error=reason,
+                    pending=pending, decision=decision, final_facts=fresh,
+                    trade_attempts=(pending.operation,), recovery_steps=tuple(steps),
+                    recovery_count=1, retry_count=1,
+                )
+            continued = self.run(
+                budget_remaining=int(budget_remaining),
+                recovery_already_used=True,
+            )
+            return KeysPromotionRuntimeResult(
+                continued.status, error=continued.error, failure=continued.failure,
+                decision=continued.decision, pending=pending,
+                final_facts=continued.final_facts,
+                trade_attempts=(pending.operation, *continued.trade_attempts),
+                recovery_steps=(*steps, *continued.recovery_steps),
+                recovery_count=1, retry_count=1,
+            )
+        except (_Cancelled, RuntimeWaitCancelled):
+            return KeysPromotionRuntimeResult(
+                FlowStatus.CANCELLED, pending=pending, recovery_steps=tuple(steps),
+                recovery_count=1,
+            )
+        except Exception as error:
+            return KeysPromotionRuntimeResult(
+                FlowStatus.FAILED, error=str(error) or type(error).__name__,
+                pending=pending, recovery_steps=tuple(steps), recovery_count=1,
             )
 
     def _fresh_facts(self, *, after_sequence: int) -> FreshKeyFacts:
@@ -488,6 +573,8 @@ class KeysPromotionRuntime:
 
 __all__ = (
     "FreshKeyFacts",
+    "GoldFullAckResult",
+    "acknowledge_gold_full_boundary",
     "GoldCapacityRecoveryNavigation",
     "KeysPromotionRuntime",
     "KeysPromotionRuntimeResult",

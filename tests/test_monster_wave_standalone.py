@@ -28,7 +28,7 @@ from bot.monster_wave_standalone import (
 )
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.resource_route_planner import (
-    IncomingRewardFact, NonBoardResourceFacts, ResourceRoutePlan,
+    NonBoardResourceFacts, ResourceRoutePlan,
     ResourceRouteStatus, TradingSessionStep, KeysPromotionStep,
     UnresolvedCode, UnresolvedReason,
 )
@@ -52,15 +52,13 @@ def context(sequence, *, popup=False, foreign=False, base=None):
 
 
 ROWS = tuple(MonsterWaveBoardRow(item_id, 1, 100) for item_id, _, _ in BOARD_ROWS)
-FACTS = NonBoardResourceFacts(incoming_rewards=tuple(
-    IncomingRewardFact(item_id, 0) for item_id, _, _ in BOARD_ROWS
-))
+FACTS = NonBoardResourceFacts()
 READY = ResourceRoutePlan(ResourceRouteStatus.READY,
                           steps=(TradingSessionStep((KeysPromotionStep(),)),))
 NONE = ResourceRoutePlan(ResourceRouteStatus.NO_PREREQUISITES)
 UNRESOLVED = ResourceRoutePlan(
     ResourceRouteStatus.INSUFFICIENT_OBSERVABILITY,
-    unresolved=(UnresolvedReason(UnresolvedCode.MISSING_INCOMING_REWARD),),
+    unresolved=(UnresolvedReason(UnresolvedCode.MISSING_CRAFT_FACT),),
 )
 
 
