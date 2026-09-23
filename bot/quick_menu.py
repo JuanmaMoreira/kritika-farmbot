@@ -21,9 +21,12 @@ from bot.verified_transition import VerifiedTransitionResult
 from bot.semantic_actions import (
     OpenCharacterSelect,
     QuickMenuLayout,
+    SelectQuickMenuCraft,
     SelectQuickMenuGuild,
     SelectQuickMenuTrading,
+    SelectQuickMenuTreasure,
 )
+from bot.monster_wave_semantics import SCREEN_MONSTER_WAVE
 from bot.treasure_center_semantics import SCREEN_TREASURE
 
 
@@ -54,6 +57,7 @@ DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(
             SCREEN_PETS_MANAGE,
             SCREEN_TREASURE,
             SCREEN_WORLD_BOSS,
+            SCREEN_MONSTER_WAVE,
         }
     )
 )
@@ -188,12 +192,43 @@ def select_quick_menu_trading_action(
     *,
     policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
 ) -> SelectQuickMenuTrading:
-    """Select Trading only from the HIL-verified shifted Treasure menu."""
+    """Select Trading from a HIL-verified shifted Treasure or MW menu."""
 
     layout = _layout_for(origin_context, policy)
-    if origin_context != SCREEN_TREASURE or layout is not QuickMenuLayout.SHIFTED:
-        raise ValueError("Trading Quick Menu target is verified only from Treasure")
+    if (
+        origin_context not in (SCREEN_TREASURE, SCREEN_MONSTER_WAVE)
+        or layout is not QuickMenuLayout.SHIFTED
+    ):
+        raise ValueError(
+            "Trading Quick Menu target is verified only from Treasure or Monster Wave"
+        )
     return SelectQuickMenuTrading()
+
+
+def select_quick_menu_craft_action(
+    origin_context: str | None,
+    *,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> SelectQuickMenuCraft:
+    """Select Craft only from the HIL-verified shifted MW menu."""
+
+    layout = _layout_for(origin_context, policy)
+    if origin_context != SCREEN_MONSTER_WAVE or layout is not QuickMenuLayout.SHIFTED:
+        raise ValueError("Craft Quick Menu target is verified only from Monster Wave")
+    return SelectQuickMenuCraft()
+
+
+def select_quick_menu_treasure_action(
+    origin_context: str | None,
+    *,
+    policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> SelectQuickMenuTreasure:
+    """Select Treasure only from the HIL-verified shifted MW menu."""
+
+    layout = _layout_for(origin_context, policy)
+    if origin_context != SCREEN_MONSTER_WAVE or layout is not QuickMenuLayout.SHIFTED:
+        raise ValueError("Treasure Quick Menu target is verified only from Monster Wave")
+    return SelectQuickMenuTreasure()
 
 
 def _layout_for(
@@ -219,6 +254,8 @@ __all__ = (
     "quick_menu_matches_origin",
     "open_character_select_action",
     "quick_menu_accessible",
+    "select_quick_menu_craft_action",
     "select_quick_menu_guild_action",
     "select_quick_menu_trading_action",
+    "select_quick_menu_treasure_action",
 )

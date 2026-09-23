@@ -12,6 +12,7 @@ from bot.semantic_actions import (
     CancelCraft,
     ConfirmCraftMaterial,
     DismissCraftResult,
+    ExitCraft,
     OpenHeroCraft,
     RejectCraftPremium,
     SelectCraftMax,
@@ -31,6 +32,7 @@ from bot.semantic_actions import (
         (CancelCraft(), DEFAULT_CRAFT_ACTION_TARGETS.cancel),
         (RejectCraftPremium(), DEFAULT_CRAFT_ACTION_TARGETS.reject_karats),
         (DismissCraftResult(), DEFAULT_CRAFT_ACTION_TARGETS.dismiss_result_safe_side),
+        (ExitCraft(), DEFAULT_CRAFT_ACTION_TARGETS.back_to_origin),
     ),
 )
 def test_executor_translates_only_hil_acquired_craft_controls(action, target):

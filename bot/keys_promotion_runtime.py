@@ -1,16 +1,19 @@
 """C6b causal Gold-capacity recovery orchestration.
 
-The route is intentionally explicit and local:
+The standalone route remains explicit and local:
 
 Trading -> Lobby -> Treasure -> Quick Menu -> Trading -> Avatar & Keys.
 
 Policy stays in :mod:`bot.keys_promotion`; Trading, Treasure and Quick Menu
 keep their physical ownership.  This module only preserves the causal
 Silver->Gold request, composes one recovery visit, and permits one retry.
+Callers with another verified immediate origin may inject the same three
+physical handoffs without moving causal recovery policy out of C6b.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from numbers import Integral
 
@@ -89,6 +92,34 @@ class KeysPromotionRuntimeResult(FlowResult):
             raise ValueError("retry_count must be zero or one")
 
 
+@dataclass(frozen=True)
+class GoldCapacityRecoveryNavigation:
+    """Three source-aware physical hooks used by one C6b recovery.
+
+    C6b retains ownership of the causal Gold-full decision, drain and retry.
+    The supplied hooks own only the immediate-origin navigation contract.
+    """
+
+    source: str
+    leave_trading: Callable[[], object]
+    enter_treasure: Callable[[], object]
+    return_to_trading: Callable[[], object]
+    leave_step: str
+    enter_step: str
+    return_step: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.source, str) or not self.source:
+            raise ValueError("source must be a non-empty string")
+        for name in ("leave_trading", "enter_treasure", "return_to_trading"):
+            if not callable(getattr(self, name)):
+                raise ValueError(f"{name} must be callable")
+        for name in ("leave_step", "enter_step", "return_step"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{name} must be a non-empty string")
+
+
 class _Cancelled(Exception):
     pass
 
@@ -136,7 +167,12 @@ class KeysPromotionRuntime:
         self.drain_gold_keys = drain_gold_keys
         self.cancel_requested = cancel_requested
 
-    def run(self, *, budget_remaining: int) -> KeysPromotionRuntimeResult:
+    def run(
+        self,
+        *,
+        budget_remaining: int,
+        recovery_navigation: GoldCapacityRecoveryNavigation | None = None,
+    ) -> KeysPromotionRuntimeResult:
         """Promote Keys with one bounded Silver->Gold OUTPUT_FULL recovery."""
 
         if (
@@ -146,6 +182,12 @@ class KeysPromotionRuntime:
         ):
             raise ValueError("budget_remaining must be a non-negative integer")
         budget = int(budget_remaining)
+        if recovery_navigation is not None and not isinstance(
+            recovery_navigation, GoldCapacityRecoveryNavigation
+        ):
+            raise ValueError(
+                "recovery_navigation must be GoldCapacityRecoveryNavigation or None"
+            )
         attempts: list[KeyTradeOperation] = []
         recovery_steps: list[str] = []
         pending: PendingCausalOperation | None = None
@@ -225,6 +267,7 @@ class KeysPromotionRuntime:
                     facts = self._recover_gold_capacity(
                         after_sequence=stale_barrier,
                         recovery_steps=recovery_steps,
+                        recovery_navigation=recovery_navigation,
                     )
                     retry_decision = KeysPromotionDecision(
                         kind=KeysPromotionKind.NEXT_OPERATION,
@@ -352,14 +395,28 @@ class KeysPromotionRuntime:
         return result
 
     def _recover_gold_capacity(
-        self, *, after_sequence: int, recovery_steps: list[str]
+        self,
+        *,
+        after_sequence: int,
+        recovery_steps: list[str],
+        recovery_navigation: GoldCapacityRecoveryNavigation | None,
     ) -> FreshKeyFacts:
-        left = self.trading_runtime.leave_to_lobby()
-        recovery_steps.append("trading.leave_to_lobby")
+        navigation = recovery_navigation or GoldCapacityRecoveryNavigation(
+            source="lobby",
+            leave_trading=self.trading_runtime.leave_to_lobby,
+            enter_treasure=self.treasure_runtime.enter_treasure_from_lobby,
+            return_to_trading=self.quick_menu_runtime.treasure_to_trading,
+            leave_step="trading.leave_to_lobby",
+            enter_step="treasure.enter_from_lobby",
+            return_step="quick_menu.treasure_to_trading",
+        )
+
+        left = navigation.leave_trading()
+        recovery_steps.append(navigation.leave_step)
         self._require_step(left, "trading_leave")
 
-        entered = self.treasure_runtime.enter_treasure_from_lobby()
-        recovery_steps.append("treasure.enter_from_lobby")
+        entered = navigation.enter_treasure()
+        recovery_steps.append(navigation.enter_step)
         self._require_step(entered, "treasure_enter")
 
         if self._cancelled():
@@ -389,8 +446,8 @@ class KeysPromotionRuntime:
                 f"gold_drain_failed:{drained.outcome.value}:{drained.reason}"
             )
 
-        returned = self.quick_menu_runtime.treasure_to_trading()
-        recovery_steps.append("quick_menu.treasure_to_trading")
+        returned = navigation.return_to_trading()
+        recovery_steps.append(navigation.return_step)
         self._require_step(returned, "quick_menu_return")
         final = getattr(returned, "final_snapshot", None)
         if final is None:
@@ -431,6 +488,7 @@ class KeysPromotionRuntime:
 
 __all__ = (
     "FreshKeyFacts",
+    "GoldCapacityRecoveryNavigation",
     "KeysPromotionRuntime",
     "KeysPromotionRuntimeResult",
 )

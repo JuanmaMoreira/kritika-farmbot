@@ -6,7 +6,11 @@ import numpy as np
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.flow_contracts import FlowStatus
-from bot.keys_promotion_runtime import FreshKeyFacts, KeysPromotionRuntime
+from bot.keys_promotion_runtime import (
+    FreshKeyFacts,
+    GoldCapacityRecoveryNavigation,
+    KeysPromotionRuntime,
+)
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
 from bot.state import ResolutionStatus, ResolvedState
@@ -324,6 +328,42 @@ def test_gold_full_runs_exact_direct_route_and_retries_fresh_same_operation():
         "trade:silver_to_gold",
     ]
     assert "lobby" not in route[route.index("drain_gold") + 1:]
+
+
+def test_source_aware_recovery_hooks_replace_only_physical_handoffs():
+    harness = _gold_full_harness()
+    route = []
+    navigation = GoldCapacityRecoveryNavigation(
+        source="monster_wave",
+        leave_trading=lambda: route.append("x_to_mw") or _step(),
+        enter_treasure=lambda: route.append("mw_to_treasure") or _step(),
+        return_to_trading=lambda: route.append(
+            "treasure_back_mw_to_trading"
+        ) or _step(final_snapshot=_keys_snapshot(20)),
+        leave_step="trading.x_to_monster_wave",
+        enter_step="monster_wave.quick_menu_to_treasure",
+        return_step="treasure.back_to_monster_wave.quick_menu_to_trading",
+    )
+
+    result = harness.runtime.run(
+        budget_remaining=4,
+        recovery_navigation=navigation,
+    )
+
+    assert result.status is FlowStatus.COMPLETED
+    assert route == [
+        "x_to_mw",
+        "mw_to_treasure",
+        "treasure_back_mw_to_trading",
+    ]
+    assert "leave_trading" not in harness.trace
+    assert "enter_treasure" not in harness.trace
+    assert "quick_menu_to_trading" not in harness.trace
+    assert result.recovery_steps[0:3] == (
+        "trading.x_to_monster_wave",
+        "monster_wave.quick_menu_to_treasure",
+        "treasure.open_gold_once",
+    )
 
 
 def test_fresh_lobby_is_required_before_treasure_entry():

@@ -16,8 +16,11 @@ from bot.quick_menu import (
     open_character_select_action,
     quick_menu_accessible,
     select_quick_menu_guild_action,
+    select_quick_menu_craft_action,
     select_quick_menu_trading_action,
+    select_quick_menu_treasure_action,
 )
+from bot.monster_wave_semantics import SCREEN_MONSTER_WAVE
 from bot.treasure_center_semantics import SCREEN_TREASURE
 from bot.catalog import MENU_QUICK
 from bot.action_executor import FrameGeometry
@@ -35,7 +38,9 @@ from bot.semantic_actions import (
     OpenCharacterSelect,
     QuickMenuLayout,
     SelectQuickMenuGuild,
+    SelectQuickMenuCraft,
     SelectQuickMenuTrading,
+    SelectQuickMenuTreasure,
 )
 
 
@@ -46,6 +51,7 @@ def test_declared_context_has_quick_menu_capability():
     assert quick_menu_accessible(SCREEN_PETS_MANAGE)
     assert quick_menu_accessible(SCREEN_PET_SUMMON)
     assert quick_menu_accessible(SCREEN_TREASURE)
+    assert quick_menu_accessible(SCREEN_MONSTER_WAVE)
 
 
 def test_undeclared_context_has_no_quick_menu_capability():
@@ -96,12 +102,23 @@ def test_guild_destination_uses_each_acquired_quick_menu_layout():
     )
 
 
-def test_trading_destination_is_only_exposed_for_verified_treasure_origin():
+def test_j_destinations_are_only_exposed_for_verified_mw_origin():
     assert select_quick_menu_trading_action(
         SCREEN_TREASURE
     ) == SelectQuickMenuTrading()
-    with pytest.raises(ValueError, match="verified only from Treasure"):
+    assert select_quick_menu_trading_action(
+        SCREEN_MONSTER_WAVE
+    ) == SelectQuickMenuTrading()
+    assert select_quick_menu_craft_action(
+        SCREEN_MONSTER_WAVE
+    ) == SelectQuickMenuCraft()
+    assert select_quick_menu_treasure_action(
+        SCREEN_MONSTER_WAVE
+    ) == SelectQuickMenuTreasure()
+    with pytest.raises(ValueError, match="verified only from Treasure or Monster Wave"):
         select_quick_menu_trading_action(SCREEN_LOBBY)
+    with pytest.raises(ValueError, match="verified only from Monster Wave"):
+        select_quick_menu_craft_action(SCREEN_TREASURE)
 
 
 def test_geometry_is_not_selected_for_an_undeclared_context():
@@ -138,7 +155,7 @@ def _open_result(source, menu):
 @pytest.mark.parametrize("origin", [
     SCREEN_LOBBY, SCREEN_GUILD, SCREEN_WORLD_BOSS,
     SCREEN_PETS_MANAGE, SCREEN_PET_SUMMON,
-    SCREEN_TREASURE,
+    SCREEN_TREASURE, SCREEN_MONSTER_WAVE,
 ])
 def test_handoff_allows_fresh_unknown_menu_only_after_verified_origin(origin):
     source = _menu_snapshot(1, origin)

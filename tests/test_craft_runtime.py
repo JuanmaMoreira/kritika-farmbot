@@ -22,6 +22,8 @@ from bot.craft_semantics import (
     QuickMenuCraftFact,
 )
 from bot.equipment_sell_semantics import EquipmentInventoryFact
+from bot.quick_menu import QuickMenuHandoff
+from bot.semantic_actions import QuickMenuLayout
 
 
 class Clock:
@@ -263,6 +265,55 @@ def test_runtime_execute_returns_success_only_after_fresh_material_decrease():
     assert adb.tap.call_count == 3
     safe = DEFAULT_CRAFT_ACTION_TARGETS.dismiss_result_safe_side
     assert adb.tap.call_args_list[-1].args == (int(safe[0] * 200), int(safe[1] * 100))
+
+
+def test_verified_shifted_handoff_enters_craft_once_with_planner_capacity_gate():
+    value, adb = runtime(sequences=range(2, 8))
+    handoff = QuickMenuHandoff(
+        origin="screen.monster_wave",
+        action_source_sequence=0,
+        menu_sequence=1,
+        layout=QuickMenuLayout.SHIFTED,
+    )
+
+    result = value.enter_from_verified_quick_menu(
+        handoff,
+        entry_capacity_proven=True,
+    )
+
+    assert result.outcome is CraftRouteOutcome.ENTERED
+    assert result.inputs == ("select_craft",)
+    assert handoff.valid is False
+    adb.tap.assert_called_once_with(79, 49)
+
+
+def test_verified_handoff_without_capacity_proof_emits_zero_input():
+    value, adb = runtime(sequences=range(2, 8))
+    handoff = QuickMenuHandoff(
+        origin="screen.monster_wave",
+        action_source_sequence=0,
+        menu_sequence=1,
+        layout=QuickMenuLayout.SHIFTED,
+    )
+
+    result = value.enter_from_verified_quick_menu(
+        handoff,
+        entry_capacity_proven=False,
+    )
+
+    assert result.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
+    adb.tap.assert_not_called()
+
+
+def test_craft_back_is_one_public_immediate_origin_action():
+    value, adb = runtime(sequences=range(1, 5))
+
+    result = value.request_back_to_origin()
+
+    assert result.outcome is CraftRouteOutcome.BACK_REQUESTED
+    assert result.inputs == ("back_to_origin",)
+    assert result.craft_fact is not None
+    adb.tap.assert_called_once_with(160, 7)
 
 
 def test_craft_runtime_has_no_neighbor_policy_or_relief_ownership():

@@ -272,6 +272,11 @@ class SelectQuickMenuTrading:
 
 
 @dataclass(frozen=True)
+class SelectQuickMenuTreasure:
+    """Request the HIL-verified shifted Treasure tile in Quick Menu."""
+
+
+@dataclass(frozen=True)
 class SelectQuickMenuCraft:
     """Request Craft from the HIL-verified shifted Quick Menu layout."""
 
@@ -310,6 +315,11 @@ class RejectCraftPremium:
 @dataclass(frozen=True)
 class DismissCraftResult:
     """Dismiss Craft result through the acquired non-interactive side area."""
+
+
+@dataclass(frozen=True)
+class ExitCraft:
+    """Request Back from Craft to its immediate verified origin."""
 
 
 @dataclass(frozen=True)
@@ -604,6 +614,11 @@ class SelectTradingAvatarKeys:
 
 
 @dataclass(frozen=True)
+class SelectTradingGeneral:
+    """Select General from an already-confirmed Trading context."""
+
+
+@dataclass(frozen=True)
 class CloseTrading:
     """Request the Trading-specific X close action to Lobby."""
 
@@ -690,6 +705,7 @@ SemanticAction = (
     | SelectQuickMenuLobby
     | SelectQuickMenuGuild
     | SelectQuickMenuTrading
+    | SelectQuickMenuTreasure
     | SelectQuickMenuCraft
     | OpenHeroCraft
     | SelectCraftMax
@@ -697,6 +713,7 @@ SemanticAction = (
     | CancelCraft
     | RejectCraftPremium
     | DismissCraftResult
+    | ExitCraft
     | OpenCharacterSelect
     | CheckInGuildAttendance
     | Swipe
@@ -745,6 +762,7 @@ SemanticAction = (
     | DismissPortalNotification
     | OpenTrading
     | SelectTradingAvatarKeys
+    | SelectTradingGeneral
     | CloseTrading
     | OpenTreasure
     | SelectGoldChest
@@ -791,6 +809,7 @@ __all__ = (
     "DismissPortalNotification",
     "OpenTrading",
     "SelectTradingAvatarKeys",
+    "SelectTradingGeneral",
     "CloseTrading",
     "OpenBlackMarket",
     "OpenGuild",
@@ -838,6 +857,7 @@ __all__ = (
     "SelectQuickMenuLobby",
     "SelectQuickMenuGuild",
     "SelectQuickMenuTrading",
+    "SelectQuickMenuTreasure",
     "SelectQuickMenuCraft",
     "OpenHeroCraft",
     "SelectCraftMax",
@@ -845,6 +865,7 @@ __all__ = (
     "CancelCraft",
     "RejectCraftPremium",
     "DismissCraftResult",
+    "ExitCraft",
     "SendStaminaToAllFriends",
     "SelectAvailableWorldBoss",
     "SelectBlackMarketSlot",

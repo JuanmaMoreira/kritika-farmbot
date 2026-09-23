@@ -4,6 +4,7 @@ This runtime owns only three bounded physical transitions:
 
 - clean Lobby -> Trading;
 - resolved Trading -> fresh Avatars & Keys readiness;
+- resolved Trading -> fresh General/material readiness;
 - clean Trading -> clean Lobby.
 
 It contains no trade policy, row selection, scrolling, Treasure knowledge or
@@ -24,9 +25,14 @@ from bot.semantic_actions import (
     CloseTrading,
     OpenTrading,
     SelectTradingAvatarKeys,
+    SelectTradingGeneral,
 )
 from bot.state import ResolutionStatus
-from bot.trading_center import clean_trading, is_trading_screen
+from bot.trading_center import (
+    clean_trading,
+    is_materials_content_ready,
+    is_trading_screen,
+)
 from bot.trading_center_semantics import SCREEN_TRADING
 from bot.trading_keys import is_keys_ready
 from bot.verified_transition import VerifiedTransitionPolicy
@@ -246,6 +252,77 @@ class TradingRuntime:
                 failure=FailureCause.from_error(error, kind="exception"),
             )
 
+    def ensure_general(self) -> TradingStepResult:
+        """Idempotently obtain fresh General/material readiness."""
+
+        transitions = []
+        try:
+            if self.cancel_requested():
+                return _finish(transitions, FlowStatus.CANCELLED)
+            before = self.observer.wait_until(
+                clean_trading,
+                after_sequence=0,
+                timeout=6.0,
+                stable_for=0.25,
+                cancel_requested=self.cancel_requested,
+            )
+            if self.cancel_requested():
+                return _finish(transitions, FlowStatus.CANCELLED)
+            if is_materials_content_ready(before):
+                return _finish(
+                    transitions,
+                    FlowStatus.COMPLETED,
+                    final_snapshot=before,
+                )
+            result = self.transition.execute(
+                "trading.select_general",
+                SelectTradingGeneral(),
+                before,
+                expected=is_materials_content_ready,
+                precondition=clean_trading,
+                retryable_from=None,
+                abort_if=_trading_lost,
+                stable_for=0.25,
+                policy=_single_attempt_policy(),
+            )
+            transitions.append(result)
+            if self.cancel_requested():
+                return _finish(
+                    transitions,
+                    FlowStatus.CANCELLED,
+                    final_snapshot=result.final_snapshot,
+                )
+            final = result.final_snapshot
+            if (
+                not result.succeeded
+                or final.sequence <= before.sequence
+                or not is_materials_content_ready(final)
+            ):
+                return _finish(
+                    transitions,
+                    FlowStatus.FAILED,
+                    final_snapshot=final,
+                    error=(
+                        "trading.select_general_failed:"
+                        f"{result.outcome.value}:{result.error}"
+                    ),
+                    failure=result.failure,
+                )
+            return _finish(
+                transitions,
+                FlowStatus.COMPLETED,
+                final_snapshot=final,
+            )
+        except RuntimeWaitCancelled:
+            return _finish(transitions, FlowStatus.CANCELLED)
+        except Exception as error:
+            return _finish(
+                transitions,
+                FlowStatus.FAILED,
+                error=str(error) or type(error).__name__,
+                failure=FailureCause.from_error(error, kind="exception"),
+            )
+
     def leave_to_lobby(self) -> TradingStepResult:
         """Close Trading through its verified X and require fresh Lobby."""
 
@@ -322,6 +399,10 @@ def ensure_avatar_keys(runtime: TradingRuntime) -> TradingStepResult:
     return runtime.ensure_avatar_keys()
 
 
+def ensure_general(runtime: TradingRuntime) -> TradingStepResult:
+    return runtime.ensure_general()
+
+
 def leave_to_lobby(runtime: TradingRuntime) -> TradingStepResult:
     return runtime.leave_to_lobby()
 
@@ -330,6 +411,7 @@ __all__ = (
     "TradingRuntime",
     "TradingStepResult",
     "ensure_avatar_keys",
+    "ensure_general",
     "enter_from_lobby",
     "is_clean_lobby",
     "leave_to_lobby",

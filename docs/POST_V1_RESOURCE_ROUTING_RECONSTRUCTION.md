@@ -984,3 +984,50 @@ el schema de `MonsterWaveBoardSnapshot` no cambió y no contiene `should_*`.
 Sin evaluator/corpus porque no cambió percepción; sin full suite porque el
 módulo es nuevo y sólo consume el contrato G cubierto; sin HIL porque ninguna
 propiedad física fue modificada. I-impl CLOSED. J integración queda separada.
+
+## 32. J CLOSED: ejecución offline MW-anchored (2026-09-23)
+
+El audit HIL de provenance (`artifacts/hil_j_navigation/20260922/`, raw local
+ignorado) cerró la propiedad que faltaba antes de implementar: Quick Menu
+preserva sólo el origen inmediato y no tiene destino Monster Wave. En
+particular, `MW→Craft→Quick Menu→Trading→X→Craft→Back` termina en Lobby, no en
+MW. J no modela un router ni normaliza por Lobby; usa MW como el anchor físico
+del único plan supplied.
+
+`bot/monster_wave_resource_route.py` implementa
+`MonsterWaveResourceRouteRuntime.execute_plan_once(plan, initial)`. Los gates
+`INSUFFICIENT_OBSERVABILITY`/`CONTRADICTORY` emiten cero input;
+`NO_PREREQUISITES` devuelve el snapshot suministrado. Un plan READY admite
+Craft opcional y un bloque Trading: `MW→Quick Menu→Craft→exact Craft→Back→MW`
+y sólo después `MW→Quick Menu→Trading→Keys opcional→General/materiales
+exactos→X→MW`. Cada retorno readquiere `FreshMonsterWaveSnapshot`; SUCCESS
+incluye ese snapshot final y no lo replanifica ni ejecuta MW SKIP/battle/reward.
+
+El adapter mínimo `bot/trading_materials_runtime.py` une C2/C3/C4 sin
+diagnóstico: `ensure_general` usa el target HIL ya auditado, localiza sólo el
+`trading_item_id` explícito, exige row fact posterior y delega un
+`TradeQuantity(EXACT, quantity)` a C4. Equipment Full sin adapter queda como
+fallo tipado; J no invoca `EquipmentReliefComposer` proactivamente.
+
+C6b conserva la causalidad. `GoldCapacityRecoveryNavigation` sólo inyecta tres
+handoffs físicos por invocación. Standalone/Lobby sigue usando su ruta anterior;
+J suministra exactamente `Trading X→MW fresco→Quick Menu→Treasure→OPEN_ONCE +
+drain total→Treasure estable→Back→MW fresco→Quick Menu→Trading→Avatar & Keys
+fresco→retry SILVER_TO_GOLD x1`. No hay hop Lobby, Quick Menu desde Treasure a
+Trading ni reconstrucción de MW. Si el plan también contiene Materials,
+continúa en General dentro de esa Trading reabierta y sigue siendo un solo
+bloque lógico.
+
+Promociones físicas mínimas: MW en la allowlist Quick Menu, Trading shifted
+admitido desde MW, tile Treasure shifted, `SelectTradingGeneral` y `ExitCraft`.
+No cambió percepción, OCR, ROI, detector ni asset; por eso no se ejecutó
+evaluator. No hubo HIL nuevo porque no apareció ninguna propiedad física fuera
+del audit autoritativo.
+
+Validación: `compileall` verde y **631/631** regresiones afectadas (J, material
+adapter/C4, C6a/C6b, Trading, Craft, Treasure, Quick Menu, ActionExecutor y MW
+snapshot). La suite hardware-free amplia terminó **3178 passed / 4 failed**:
+los cuatro fallos son `FileNotFoundError` de
+`tests/test_rotation_selection_scope.py` por cuatro directorios locales
+ignorados ausentes bajo `artifacts/failure_evidence/`; no hay fallo funcional
+de J. J CLOSED. K/L no iniciados.

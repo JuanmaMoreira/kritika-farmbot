@@ -96,6 +96,7 @@ from bot.semantic_actions import (
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
     SelectQuickMenuTrading,
+    SelectQuickMenuTreasure,
     SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
@@ -427,6 +428,10 @@ def test_executor_supports_each_row_major_black_market_slot(slot_index):
         (
             SelectQuickMenuTrading(),
             DEFAULT_ROTATION_ACTION_TARGETS.select_trading_shifted,
+        ),
+        (
+            SelectQuickMenuTreasure(),
+            DEFAULT_ROTATION_ACTION_TARGETS.select_treasure_shifted,
         ),
         (
             OpenCharacterSelect(),

@@ -20,21 +20,25 @@ from bot.craft_semantics import (
 from bot.craft_operation import CraftOperationResult, CraftOutcome, execute_craft
 from bot.craft_policy import CraftRequest
 from bot.equipment_sell_semantics import EquipmentInventoryFact, consensus_facts
+from bot.quick_menu import QuickMenuHandoff
 from bot.semantic_actions import (
     CancelCraft,
     ConfirmCraftMaterial,
     DismissCraftResult,
+    ExitCraft,
     OpenHeroCraft,
     OpenQuickMenu,
     RejectCraftPremium,
     SelectCraftMax,
     SelectQuickMenuCraft,
+    QuickMenuLayout,
 )
 
 
 class CraftRouteOutcome(str, Enum):
     ENTERED = "entered"
     QUICK_MENU_OPEN = "quick_menu_open"
+    BACK_REQUESTED = "back_requested"
     CAPACITY_BLOCKED = "capacity_blocked"
     CANCELLED = "cancelled"
     FAILED = "failed"
@@ -213,6 +217,117 @@ class CraftRuntime:
             craft_fact=craft,
             quick_menu_fact=menu,
             inputs=("open_quick_menu",),
+        )
+
+    def enter_from_verified_quick_menu(
+        self,
+        handoff: QuickMenuHandoff,
+        *,
+        entry_capacity_proven: bool,
+    ) -> CraftRouteResult:
+        """Consume one shifted-menu handoff and verify fresh Craft context.
+
+        The caller owns the immediate origin and may pass capacity proof only
+        when the immutable route plan already passed Craft's free-slot gate.
+        """
+
+        if not isinstance(handoff, QuickMenuHandoff):
+            raise ValueError("handoff must be QuickMenuHandoff")
+        if entry_capacity_proven is not True:
+            return CraftRouteResult(
+                CraftRouteOutcome.CAPACITY_BLOCKED,
+                reason="craft_entry_capacity_not_proven",
+            )
+        if not handoff.valid or handoff.layout is not QuickMenuLayout.SHIFTED:
+            return CraftRouteResult(
+                CraftRouteOutcome.FAILED,
+                reason="quick_menu_origin_handoff_invalid",
+            )
+        menu = self._read_consensus(
+            self.craft_reader,
+            "quick_menu_sample",
+            after_sequence=handoff.menu_sequence,
+            consensus=consensus_craft_facts,
+        )
+        if menu is None or not self._fresh(menu):
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED
+                if self.cancel_requested()
+                else CraftRouteOutcome.FAILED,
+                quick_menu_fact=menu,
+                reason=(
+                    "cancelled"
+                    if self.cancel_requested()
+                    else "quick_menu_not_verified"
+                ),
+            )
+        if self.cancel_requested():
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED,
+                quick_menu_fact=menu,
+                reason="cancelled",
+            )
+        self._tap(SelectQuickMenuCraft())
+        handoff.invalidate()
+        craft = self._read_consensus(
+            self.craft_reader,
+            "context_sample",
+            after_sequence=menu.sequence,
+            consensus=consensus_craft_facts,
+        )
+        if craft is None or not self._fresh(craft):
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED
+                if self.cancel_requested()
+                else CraftRouteOutcome.FAILED,
+                craft_fact=craft,
+                quick_menu_fact=menu,
+                reason=(
+                    "cancelled"
+                    if self.cancel_requested()
+                    else "fresh_craft_not_verified"
+                ),
+                inputs=("select_craft",),
+            )
+        return CraftRouteResult(
+            CraftRouteOutcome.ENTERED,
+            craft_fact=craft,
+            quick_menu_fact=menu,
+            inputs=("select_craft",),
+        )
+
+    def request_back_to_origin(self) -> CraftRouteResult:
+        """Emit Craft Back once; the caller must verify the immediate origin."""
+
+        craft = self._read_consensus(
+            self.craft_reader,
+            "context_sample",
+            after_sequence=0,
+            consensus=consensus_craft_facts,
+        )
+        if craft is None or not self._fresh(craft):
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED
+                if self.cancel_requested()
+                else CraftRouteOutcome.FAILED,
+                craft_fact=craft,
+                reason=(
+                    "cancelled"
+                    if self.cancel_requested()
+                    else "craft_context_unreadable_or_stale"
+                ),
+            )
+        if self.cancel_requested():
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED,
+                craft_fact=craft,
+                reason="cancelled",
+            )
+        self._tap(ExitCraft())
+        return CraftRouteResult(
+            CraftRouteOutcome.BACK_REQUESTED,
+            craft_fact=craft,
+            inputs=("back_to_origin",),
         )
 
     def execute(self, request: CraftRequest) -> CraftOperationResult:

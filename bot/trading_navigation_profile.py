@@ -52,21 +52,27 @@ def _bbox(value: object, name: str) -> tuple[float, float, float, float]:
 
 @dataclass(frozen=True)
 class TradingNavigationProfile:
-    """Three current, exercised Trading navigation controls."""
+    """Current exercised Trading navigation and tab controls."""
 
     entry_point: tuple[float, float]
     avatar_keys_point: tuple[float, float]
+    general_point: tuple[float, float]
     close_point: tuple[float, float]
     entry_bbox: tuple[float, float, float, float]
     avatar_keys_bbox: tuple[float, float, float, float]
+    general_bbox: tuple[float, float, float, float]
     close_bbox: tuple[float, float, float, float]
     frame_width: int = 2712
     frame_height: int = 1220
 
     def __post_init__(self) -> None:
-        for name in ("entry_point", "avatar_keys_point", "close_point"):
+        for name in (
+            "entry_point", "avatar_keys_point", "general_point", "close_point"
+        ):
             object.__setattr__(self, name, _point(getattr(self, name), name))
-        for name in ("entry_bbox", "avatar_keys_bbox", "close_bbox"):
+        for name in (
+            "entry_bbox", "avatar_keys_bbox", "general_bbox", "close_bbox"
+        ):
             object.__setattr__(self, name, _bbox(getattr(self, name), name))
         for name in ("frame_width", "frame_height"):
             value = getattr(self, name)
@@ -75,6 +81,7 @@ class TradingNavigationProfile:
         for point_name, bbox_name in (
             ("entry_point", "entry_bbox"),
             ("avatar_keys_point", "avatar_keys_bbox"),
+            ("general_point", "general_bbox"),
             ("close_point", "close_bbox"),
         ):
             x, y = getattr(self, point_name)
@@ -88,9 +95,13 @@ TRADING_NAVIGATION_PROFILE = TradingNavigationProfile(
     # ActionExecutor's normalized -> pixel floor conversion.
     entry_point=(0.244284661, 0.893032787),
     avatar_keys_point=(0.485803835, 0.240573770),
+    # HIL J 2026-09-22: Keys -> General produced fresh General/material rows.
+    # The point and bbox promote the already-captured current control.
+    general_point=(0.2924, 0.2418),
     close_point=(0.777470501, 0.139754098),
     entry_bbox=(0.205, 0.820, 0.285, 0.975),
     avatar_keys_bbox=(0.435, 0.150, 0.535, 0.285),
+    general_bbox=(0.2356, 0.1928, 0.3333, 0.2859),
     close_bbox=(0.750, 0.070, 0.805, 0.190),
 )
 

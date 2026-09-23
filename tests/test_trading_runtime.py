@@ -26,12 +26,14 @@ from bot.semantic_actions import (
     CloseTrading,
     OpenTrading,
     SelectTradingAvatarKeys,
+    SelectTradingGeneral,
 )
 from bot.state import ResolutionStatus, ResolvedState
 from bot.trading_center_semantics import (
     INDICATOR_TRADING_GENERAL_ACTIVE,
     INDICATOR_TRADING_KEYS_ACTIVE,
     INDICATOR_TRADING_KEYS_ROWS,
+    INDICATOR_TRADING_MATERIAL_ROWS,
     LANDMARK_TRADING_CENTER_TITLE,
     SCREEN_TRADING,
 )
@@ -97,6 +99,18 @@ def _keys(sequence):
             LANDMARK_TRADING_CENTER_TITLE,
             INDICATOR_TRADING_KEYS_ACTIVE,
             INDICATOR_TRADING_KEYS_ROWS,
+        ),
+    )
+
+
+def _materials(sequence):
+    return _snapshot(
+        sequence,
+        base=SCREEN_TRADING,
+        names=(
+            LANDMARK_TRADING_CENTER_TITLE,
+            INDICATOR_TRADING_GENERAL_ACTIVE,
+            INDICATOR_TRADING_MATERIAL_ROWS,
         ),
     )
 
@@ -383,6 +397,28 @@ def test_avatar_keys_cancellation_after_action_propagates():
     assert len(adb.taps) == 1
 
 
+def test_select_general_from_keys_requires_fresh_material_rows():
+    runtime, transition, adb = _runtime([_keys(14)], [_materials(15)])
+
+    result = runtime.ensure_general()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.final_snapshot.sequence == 15
+    assert isinstance(transition.calls[0][1], SelectTradingGeneral)
+    assert adb.taps == [(792, 294)]
+
+
+def test_general_materials_is_idempotent_without_input():
+    runtime, transition, adb = _runtime([_materials(16)], [])
+
+    result = runtime.ensure_general()
+
+    assert result.status is FlowStatus.COMPLETED
+    assert result.final_snapshot.sequence == 16
+    assert transition.calls == []
+    assert adb.taps == []
+
+
 def test_public_apis_compose_trading_lobby_trading_keys():
     runtime, transition, adb = _runtime(
         [_keys(20), _lobby(21), _general(22)],
@@ -411,10 +447,12 @@ def test_profile_points_are_current_hil_points_inside_current_bboxes():
     profile = TRADING_NAVIGATION_PROFILE
     assert profile.entry_point == (0.244284661, 0.893032787)
     assert profile.avatar_keys_point == (0.485803835, 0.240573770)
+    assert profile.general_point == (0.2924, 0.2418)
     assert profile.close_point == (0.777470501, 0.139754098)
     for point_name, bbox_name in (
         ("entry_point", "entry_bbox"),
         ("avatar_keys_point", "avatar_keys_bbox"),
+        ("general_point", "general_bbox"),
         ("close_point", "close_bbox"),
     ):
         x, y = getattr(profile, point_name)
@@ -429,6 +467,7 @@ def test_executor_defaults_mirror_navigation_profile():
         targets.select_avatar_keys
         == TRADING_NAVIGATION_PROFILE.avatar_keys_point
     )
+    assert targets.select_general == TRADING_NAVIGATION_PROFILE.general_point
     assert targets.close_trading == TRADING_NAVIGATION_PROFILE.close_point
 
 

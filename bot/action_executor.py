@@ -94,6 +94,7 @@ from bot.semantic_actions import (
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
     SelectQuickMenuTrading,
+    SelectQuickMenuTreasure,
     SelectQuickMenuCraft,
     OpenHeroCraft,
     SelectCraftMax,
@@ -101,6 +102,7 @@ from bot.semantic_actions import (
     CancelCraft,
     RejectCraftPremium,
     DismissCraftResult,
+    ExitCraft,
     SendStaminaToAllFriends,
     SellSocketInBulk,
     SelectLastVisibleCharacter,
@@ -123,6 +125,7 @@ from bot.semantic_actions import (
     ExitTreasure,
     OpenTrading,
     SelectTradingAvatarKeys,
+    SelectTradingGeneral,
     CloseTrading,
 )
 from bot.trading_navigation_profile import TRADING_NAVIGATION_PROFILE
@@ -329,6 +332,8 @@ class RotationActionTargets:
     select_guild_shifted: RelativePoint = (0.3946, 0.6500)
     # HIL C6b 2026-09-22: Treasure Quick Menu -> Trading Center.
     select_trading_shifted: RelativePoint = (0.3320, 0.6500)
+    # HIL J 2026-09-22: MW Quick Menu -> Treasure.
+    select_treasure_shifted: RelativePoint = (0.2670, 0.4950)
     open_character_select: RelativePoint = (0.0704, 0.7835)
     open_character_select_shifted: RelativePoint = (0.2000, 0.7835)
     last_visible_character: RelativePoint = (0.5500, 0.7300)
@@ -341,6 +346,7 @@ class RotationActionTargets:
             self.select_guild,
             self.select_guild_shifted,
             self.select_trading_shifted,
+            self.select_treasure_shifted,
             self.open_character_select,
             self.open_character_select_shifted,
             self.last_visible_character,
@@ -365,6 +371,8 @@ class CraftActionTargets:
     cancel: RelativePoint = (0.6200, 0.6600)
     reject_karats: RelativePoint = (0.5750, 0.6050)
     dismiss_result_safe_side: RelativePoint = (0.2000, 0.5000)
+    # HIL J 2026-09-22: Craft Back -> immediate origin.
+    back_to_origin: RelativePoint = (0.8020, 0.0730)
 
     def __post_init__(self) -> None:
         for point in (
@@ -377,6 +385,7 @@ class CraftActionTargets:
             self.cancel,
             self.reject_karats,
             self.dismiss_result_safe_side,
+            self.back_to_origin,
         ):
             relative_point_to_pixel(point, 1, 1)
 
@@ -561,12 +570,14 @@ class TradingActionTargets:
     select_avatar_keys: RelativePoint = (
         TRADING_NAVIGATION_PROFILE.avatar_keys_point
     )
+    select_general: RelativePoint = TRADING_NAVIGATION_PROFILE.general_point
     close_trading: RelativePoint = TRADING_NAVIGATION_PROFILE.close_point
 
     def __post_init__(self) -> None:
         for point in (
             self.open_trading,
             self.select_avatar_keys,
+            self.select_general,
             self.close_trading,
         ):
             relative_point_to_pixel(point, 1, 1)
@@ -816,6 +827,8 @@ class ActionExecutor:
             )
         if isinstance(action, SelectQuickMenuTrading):
             return self.rotation_targets.select_trading_shifted
+        if isinstance(action, SelectQuickMenuTreasure):
+            return self.rotation_targets.select_treasure_shifted
         if isinstance(action, SelectQuickMenuCraft):
             return self.craft_targets.select_quick_menu_craft_shifted
         if isinstance(action, OpenHeroCraft):
@@ -834,6 +847,8 @@ class ActionExecutor:
             return self.craft_targets.reject_karats
         if isinstance(action, DismissCraftResult):
             return self.craft_targets.dismiss_result_safe_side
+        if isinstance(action, ExitCraft):
+            return self.craft_targets.back_to_origin
         if isinstance(action, OpenCharacterSelect):
             return (
                 self.rotation_targets.open_character_select
@@ -934,6 +949,8 @@ class ActionExecutor:
             return self.trading_targets.open_trading
         if isinstance(action, SelectTradingAvatarKeys):
             return self.trading_targets.select_avatar_keys
+        if isinstance(action, SelectTradingGeneral):
+            return self.trading_targets.select_general
         if isinstance(action, CloseTrading):
             return self.trading_targets.close_trading
         if isinstance(action, OpenTreasure):
