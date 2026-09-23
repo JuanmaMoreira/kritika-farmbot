@@ -915,7 +915,72 @@ como `PRESENT_CONTENT_UNKNOWN` con filas vacías. No se agregó planner, ruta,
 input, navegación, Trading/Craft/Treasure/Relief ni farming. Quick Menu sigue
 físicamente accesible desde MW, reservado para la integración futura.
 
-G cierra adquisición/snapshot únicamente. Los negativos contextuales se tomaron
+G cerró adquisición/snapshot únicamente. Los negativos contextuales se tomaron
 del corpus MW previo (incluido retorno por `No`); no se consumió recurso para
-preparar otro estado. La próxima fase es I-impl planner puro, que tendrá que
-tratar como desconocida toda necesidad o capacidad que este board no muestra.
+preparar otro estado. I-impl, documentado a continuación, consume esa frontera
+sin reinterpretar como conocida ninguna necesidad o capacidad ausente.
+
+## 31. I-impl pure Resource Route Planner (2026-09-22)
+
+I-impl publica `bot/resource_route_planner.py` sin conectarlo al runtime MW.
+La frontera implementada es
+`MonsterWaveBoardSnapshot + NonBoardResourceFacts → ResourceRoutePlan`; todos
+los modelos son frozen/hashable y el planner no captura, navega, ejecuta ni lee
+reloj global. `ResourcePlanningInput` recibe `now`, `after_sequence` y edad
+máxima explícitos para rechazar snapshots stale sin refrescarlos.
+
+Semántica exacta preservada de G para las cinco filas: primer número =
+`balance` mostrado actual; segundo número = `displayed_limit`. No son
+`have/need`, reward, receta ni cantidad requerida, y `balance > límite` se
+conserva sin clamp. Una necesidad sólo queda probada cuando
+`NonBoardResourceFacts` aporta la recompensa entrante exacta y se cumple
+estrictamente `balance + incoming > displayed_limit`. Cero debe venir
+explícito; missing/`None` nunca se reemplaza por 1, máximo histórico ni otra
+estimación.
+
+Input externo mínimo:
+
+- `IncomingRewardFact(item_id, amount)` para las cinco filas;
+- `MaterialConversionFact` para una conversión Trading ya establecida por su
+  owner, con source/destination, row id y cantidades exactas por trade;
+- `CraftCapacityFact` sólo cuando hace falta craft-first, con material, familia,
+  tier, coste y slots Equipment libres ya establecidos externamente.
+
+Output: `ResourceRoutePlan(status, steps, unresolved, evidence)`, con estados
+`READY`, `NO_PREREQUISITES`, `INSUFFICIENT_OBSERVABILITY` y `CONTRADICTORY`.
+Reasons y evidencia son tipados. Sólo `READY` puede contener steps; por tanto
+un fact faltante o contradictorio invalida todo el plan en vez de dejar una
+ruta parcial optimista. Los steps son `CraftStep` y `TradingSessionStep`; este
+último contiene `KeysPromotionStep` y/o `TradingMaterialsStep`, nunca
+coordenadas, callbacks, requests runtime ni instancias executor.
+
+Reglas soportadas:
+
+1. todas las recompensas exactas caben → `NO_PREREQUISITES`;
+2. Bronze/Silver excedería su límite → una referencia simbólica a Keys
+   promotion; C6a/C6b conservan orden, Gold-full, Treasure drain y retry;
+3. Weapon Material excedería su límite + conversión explícita
+   Weapon→Hero Weapon + capacidad destino suficiente → Trading Materials
+   exacto;
+4. capacidad Hero Weapon insuficiente + receta Hero Weapon y ≥1 slot Equipment
+   explícitos → un Craft probado antes de Trading;
+5. Keys + Materials → una sola visita Trading, Keys primero porque el entry
+   HIL-cerrado abre Avatar & Keys, luego Materials; no se duplican visitas ni
+   tabs especulativos.
+
+Quedan unresolved: Arena Ticket como destino separado de Brawler's Badges;
+reward amounts ausentes; otras familias/tier/categoría; conversión o receta no
+aportada; Gold capacity; Equipment capacity ausente/cero; repetición de varios
+Crafts; facts stale/foreign/contradictory. Equipment Relief no se emite: sigue
+siendo recovery causal del futuro caller. Treasure tampoco se emite: es detalle
+interno C6b ante el boundary Gold-full, no un prerrequisito top-level. Trading
+no se visita para diagnosticar.
+
+Validación: 15 tests directos del planner y **31/31** junto con
+`tests/test_monster_wave_board.py`; `py_compile` y `git diff --check` verdes.
+Separación estática verifica cero imports ADB/device/ActionExecutor, runtimes
+Trading/Craft/Treasure/Relief, Quick Menu/Lobby, taps, swipes, sleeps o reloj;
+el schema de `MonsterWaveBoardSnapshot` no cambió y no contiene `should_*`.
+Sin evaluator/corpus porque no cambió percepción; sin full suite porque el
+módulo es nuevo y sólo consume el contrato G cubierto; sin HIL porque ninguna
+propiedad física fue modificada. I-impl CLOSED. J integración queda separada.
