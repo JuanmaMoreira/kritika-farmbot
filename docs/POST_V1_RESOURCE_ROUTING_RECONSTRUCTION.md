@@ -1262,3 +1262,17 @@ request MW, L1/L2, evaluator ni gameplay adicional.
 Validación: 184 tests C6a/C6b/C5/C4/C3 y 50 J/K/Materials, `py_compile`
 y `git diff --check` verdes. Sin suite completa: sólo se añadió un helper
 puro y no cambió la ejecución de C6a/C6b ni otros subsistemas.
+
+## 40. C2c: reader productivo local de Item Trade (2026-09-24)
+
+`bot/trading_panel_reader.py` emite `TradePanelFact` desde observaciones
+Trading resueltas y recientes, sin input ni detector global. Replays de C4/C5
+prueban Weapon/Bronze/Silver, cantidad tras `>>` y ausencia observada de segundo
+coste; el coste total visible se divide por la cantidad sólo cuando es exacto
+para conservar el coste unitario que C4 compara con la fila causal. Capturas
+curadas de insuficiencia, límite y Gold-full (incluida la secuencia C6b)
+prueban flags explícitos; contexto ajeno/UNKNOWN/AMBIGUOUS, frame viejo,
+campo ilegible y coste secundario desconocido fallan cerrados. 15 tests directos
+con replay real + 144 regresiones C4/C6b/Keys/C3 verdes; sin HIL, full suite ni
+corpus global. C2b aún debe cerrar intents ActionExecutor y budget Keys lazy;
+C2/L1/L2 no se iniciaron.
