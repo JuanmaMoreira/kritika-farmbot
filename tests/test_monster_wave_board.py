@@ -13,7 +13,8 @@ from bot.capture import FrameSnapshot
 from bot.catalog import POPUP_SOCKET_INVENTORY_FULL, SCREEN_LOBBY
 from bot.monster_wave_board_reader import (
     BOARD_ROWS, MonsterWaveBoardReader, MonsterWaveBoardRow,
-    consensus_board_samples, parse_board_line,
+    RedPressureMeasurement, consensus_board_samples, measure_red_pressure,
+    parse_board_line,
 )
 from bot.monster_wave_board_snapshot import (
     BoardPopup, Tickets, build_monster_wave_board_snapshot,
@@ -27,6 +28,7 @@ from bot.monster_wave_semantics import (
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.ocr import RapidOcrEngine
 from bot.ocr_extractors import RESOURCE_SAPPHIRES
+from bot.perception import build_default_perception
 from bot.runtime_facts import FactEvidence, FactQuality, RuntimeFact
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
 from bot.state import ResolvedState, ResolutionStatus
@@ -34,8 +36,9 @@ from bot.state import ResolvedState, ResolutionStatus
 
 ROOT = Path(__file__).resolve().parents[1]
 CURRENT = ROOT / "screencaps/semantic/monster-wave/board-g-current"
+ALL_RED = ROOT / "screencaps/semantic/monster-wave/board-r1-all-red"
 EXPECTED = (
-    ("brawlers_badges", 258, 72),
+    ("brawlers_badges", None, None),
     ("weapon_material", 412, 999),
     ("hero_weapon_material", 284, 999),
     ("bronze_key", 322, 499),
@@ -74,6 +77,7 @@ def test_current_human_confirmed_board_exact_values_and_consensus(reader):
     assert all(sample is not None for sample in samples)
     for sample in samples:
         assert tuple((row.item_id, row.balance, row.displayed_limit) for row in sample.rows) == EXPECTED
+        assert sample.rows[0].hard_pressure is True
     fact = consensus_board_samples(samples[:2], after_sequence=0)
     assert fact is not None and fact.sample_sequences == (1, 2)
     board = build_monster_wave_board_snapshot(
@@ -88,6 +92,100 @@ def test_current_human_confirmed_board_exact_values_and_consensus(reader):
     assert board.tickets is Tickets.UNKNOWN
     assert board.max_state.selected is True
     assert board.evidence.row_sequences == (1, 2)
+
+
+def test_red_measure_separates_acquired_rows_and_ignores_nearby_red_ui():
+    for folder, expected in ((CURRENT, (True, False, False, False, False)),
+                             (ALL_RED, (True, True, True, True, True))):
+        for i in (1, 2, 3):
+            frame = cv2.imread(str(folder / f"{i:02}.png"))
+            measured = tuple(measure_red_pressure(frame, roi).confident_red
+                             for _item, _title, roi in BOARD_ROWS)
+            assert measured == expected
+            for _item, _title, roi in BOARD_ROWS:
+                altered = frame.copy()
+                h, w = altered.shape[:2]
+                altered[round(roi[1]*h):round(roi[3]*h), round(.30*w):round(.40*w)] = (0, 0, 255)
+                assert measure_red_pressure(altered, roi) == measure_red_pressure(frame, roi)
+
+
+def test_all_red_board_skips_every_ocr_call_and_keeps_consensus(reader, monkeypatch):
+    monkeypatch.setattr(reader.engine, "recognize", lambda *_: pytest.fail("OCR called"))
+    samples = tuple(reader.read_sample(_snapshot(
+        sequence=i, names=(MW_BOARD,), overlays=(POPUP_MW_BOARD,),
+        path=ALL_RED / f"{i:02}.png")) for i in (1, 2))
+    assert all(sample is not None for sample in samples)
+    assert all(row.hard_pressure and row.balance is None for row in samples[0].rows)
+    assert consensus_board_samples(samples, after_sequence=0) is not None
+
+
+def test_uncertain_measure_falls_back_to_original_ocr(reader, monkeypatch):
+    import bot.monster_wave_board_reader as module
+    calls = 0
+    original = reader.engine.recognize
+    def counted(image):
+        nonlocal calls
+        calls += 1
+        return original(image)
+    monkeypatch.setattr(reader.engine, "recognize", counted)
+    monkeypatch.setattr(module, "measure_red_pressure",
+                        lambda _frame, roi: RedPressureMeasurement(False, 0.0, roi))
+    sample = reader.read_sample(_snapshot(
+        sequence=1, names=(MW_BOARD,), overlays=(POPUP_MW_BOARD,),
+        path=CURRENT / "01.png"))
+    assert sample is not None
+    assert calls == 5
+    assert sample.rows[0].balance == 258
+
+
+@pytest.mark.parametrize("red_item", (
+    "brawlers_badges", "hero_weapon_material", "bronze_key", "silver_key",
+))
+def test_individual_red_shortcuts_skip_exactly_one_ocr_call(reader, monkeypatch, red_item):
+    import bot.monster_wave_board_reader as module
+    calls = 0
+    original = reader.engine.recognize
+    def counted(image):
+        nonlocal calls
+        calls += 1
+        return original(image)
+    monkeypatch.setattr(reader.engine, "recognize", counted)
+    target_y = next(roi[1] for item, _title, roi in BOARD_ROWS if item == red_item)
+    monkeypatch.setattr(module, "measure_red_pressure",
+        lambda _frame, roi: RedPressureMeasurement(roi[1] == target_y, 1.0, roi))
+    sample = reader.read_sample(_snapshot(
+        sequence=1, names=(MW_BOARD,), overlays=(POPUP_MW_BOARD,),
+        path=CURRENT / "01.png"))
+    assert sample is not None
+    assert calls == 4
+    assert next(row for row in sample.rows if row.item_id == red_item).balance is None
+
+
+def test_weapon_red_keeps_exact_ocr_when_hero_is_normal(reader, monkeypatch):
+    old = cv2.imread(str(CURRENT / "01.png"))
+    red = cv2.imread(str(ALL_RED / "01.png"))
+    assert old.shape[1] == red.shape[1]
+    _item, _title, (x1, y1, x2, y2) = BOARD_ROWS[1]
+    # Copy only the weapon row; the other four remain the acquired old state.
+    old[round(y1*old.shape[0]):round(y2*old.shape[0]),
+        round(x1*old.shape[1]):round(x2*old.shape[1])] = cv2.resize(
+            red[round(y1*red.shape[0]):round(y2*red.shape[0]),
+                round(x1*red.shape[1]):round(x2*red.shape[1])],
+            (round(x2*old.shape[1])-round(x1*old.shape[1]),
+             round(y2*old.shape[0])-round(y1*old.shape[0])))
+    calls = 0
+    original = reader.engine.recognize
+    def counted(image):
+        nonlocal calls
+        calls += 1
+        return original(image)
+    monkeypatch.setattr(reader.engine, "recognize", counted)
+    snap = _snapshot(sequence=1, names=(MW_BOARD,), overlays=(POPUP_MW_BOARD,))
+    snap.frame.image[:] = old
+    sample = reader.read_sample(snap)
+    assert sample is not None
+    assert sample.rows[1].balance == 999
+    assert calls == 4
 
 
 def test_context_guard_precedes_ocr(reader, monkeypatch):
@@ -226,6 +324,10 @@ def test_snapshot_schema_has_no_routing_and_modules_have_no_executor_imports():
     assert snap is not None
     with pytest.raises(ValueError, match="not observable"):
         replace(snap, gold_key_capacity="499")
+    global_engine = build_default_perception(ROOT)
+    assert len(global_engine.detectors) == 97
+    assert all("red_pressure" not in getattr(getattr(detector, "spec", None), "name", "")
+               for detector in global_engine.detectors)
 
 
 def test_existing_monster_wave_corpus_context_gate(reader):

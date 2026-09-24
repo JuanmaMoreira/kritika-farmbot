@@ -30,24 +30,62 @@ BOARD_ROWS = (
     ("bronze_key", "Bronze Key", (0.42, 0.453, 0.58, 0.480)),
     ("silver_key", "Silver Key", (0.39, 0.478, 0.61, 0.505)),
 )
+# Numeric-pair portion shared by the five acquired row ROIs.  The mean red
+# excess on the curated board frames is <= .0306 for normal rows and >= .1094
+# for red rows; .070 is the midpoint of that observed gap.  Absence of this
+# signal is never used as a negative classification.
+_NUMERIC_X = (0.425, 0.475)
+_RED_PRESSURE_MIN_SCORE = 0.070
 _LINE = re.compile(r"^\((\d+)/(\d+)\)\s+(.+)$")
 
 
 @dataclass(frozen=True)
 class MonsterWaveBoardRow:
     item_id: str
-    balance: int
-    displayed_limit: int
+    balance: int | None
+    displayed_limit: int | None
+    hard_pressure: bool = False
 
     def __post_init__(self) -> None:
         if self.item_id not in {row[0] for row in BOARD_ROWS}:
             raise ValueError("unknown board row")
+        if not isinstance(self.hard_pressure, bool):
+            raise ValueError("hard_pressure must be boolean")
+        if self.balance is None or self.displayed_limit is None:
+            if not (self.balance is None and self.displayed_limit is None
+                    and self.hard_pressure):
+                raise ValueError("missing board pair requires proven hard pressure")
+            return
+        if self.hard_pressure:
+            raise ValueError("hard_pressure without OCR must omit the exact pair")
         for name in ("balance", "displayed_limit"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, Integral):
                 raise ValueError(f"{name} must be an integer")
         if self.balance < 0 or self.displayed_limit <= 0:
             raise ValueError("board balance/limit out of range")
+
+
+@dataclass(frozen=True)
+class RedPressureMeasurement:
+    confident_red: bool
+    score: float
+    roi: tuple[float, float, float, float]
+
+
+def measure_red_pressure(frame: np.ndarray, row_roi: tuple[float, float, float, float]) -> RedPressureMeasurement:
+    """Measure red excess only in the numeric portion of one known board row."""
+    height, width = frame.shape[:2]
+    _x1, y1, _x2, y2 = row_roi
+    roi = (_NUMERIC_X[0], y1, _NUMERIC_X[1], y2)
+    crop = frame[round(y1 * height):round(y2 * height),
+                 round(_NUMERIC_X[0] * width):round(_NUMERIC_X[1] * width)]
+    if crop.size == 0:
+        return RedPressureMeasurement(False, 0.0, roi)
+    channels = crop.astype(np.int16)
+    excess = np.maximum(channels[:, :, 2] - np.maximum(channels[:, :, 0], channels[:, :, 1]), 0)
+    score = float(np.mean(excess) / 255.0)
+    return RedPressureMeasurement(score >= _RED_PRESSURE_MIN_SCORE, score, roi)
 
 
 @dataclass(frozen=True)
@@ -123,7 +161,16 @@ class MonsterWaveBoardReader:
             raise ValueError("frame must be BGR")
         height, width = frame.shape[:2]
         rows, evidence = [], []
+        red = {item_id: measure_red_pressure(frame, roi)
+               for item_id, _title, roi in BOARD_ROWS}
         for item_id, _title, (x1, y1, x2, y2) in BOARD_ROWS:
+            if red[item_id].confident_red and (
+                item_id != "weapon_material"
+                or red["hero_weapon_material"].confident_red
+            ):
+                rows.append(MonsterWaveBoardRow(item_id, None, None, True))
+                evidence.append(f"{item_id}:red_pressure:{red[item_id].score:.4f}")
+                continue
             crop = frame[round(y1 * height):round(y2 * height),
                          round(x1 * width):round(x2 * width)]
             if crop.size == 0:

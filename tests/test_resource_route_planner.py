@@ -1,4 +1,5 @@
 """Operational entry thresholds and symbolic resource routing."""
+from dataclasses import replace
 import pytest
 from bot.monster_wave_board_reader import MonsterWaveBoardRow
 from bot.monster_wave_board_snapshot import (
@@ -135,3 +136,26 @@ def test_stale_board_still_fails_closed():
     planning = ResourcePlanningInput(board(bronze_key=400), NonBoardResourceFacts(),
                                      20.0, 0)
     assert plan_resource_route(planning).status is ResourceRouteStatus.INSUFFICIENT_OBSERVABILITY
+
+
+def test_red_pressure_matches_equivalent_numeric_route_without_changing_thresholds():
+    facts = NonBoardResourceFacts(craft_capacities=(craft_fact(),))
+    numeric = board(brawlers_badges=260, weapon_material=999,
+                    hero_weapon_material=999, bronze_key=499, silver_key=499)
+    red = replace(numeric, resource_rows=tuple(
+        MonsterWaveBoardRow(item, None, None, True) for item in ITEMS))
+    def route(source):
+        return plan_resource_route(ResourcePlanningInput(source, facts, 10.1, 0))
+    assert shape(route(red)) == shape(route(numeric)) == (
+        "craft", ("keys", "materials"))
+    assert any(e.kind is PlanningEvidenceKind.WARNING for e in route(red).evidence)
+
+
+def test_red_weapon_without_exact_projection_fails_closed():
+    numeric = board(weapon_material=800, hero_weapon_material=599)
+    rows = list(numeric.resource_rows)
+    rows[1] = MonsterWaveBoardRow("weapon_material", None, None, True)
+    red = replace(numeric, resource_rows=tuple(rows))
+    result = plan_resource_route(ResourcePlanningInput(red, NonBoardResourceFacts(), 10.1, 0))
+    assert result.status is ResourceRouteStatus.INSUFFICIENT_OBSERVABILITY
+    assert result.unresolved[0].required_fact == "exact_weapon_and_hero_for_projection"

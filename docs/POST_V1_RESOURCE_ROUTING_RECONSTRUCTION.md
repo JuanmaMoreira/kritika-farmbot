@@ -1156,3 +1156,38 @@ intentos MW y no se ejecutó Craft/Trading/Treasure destructivo para probar
 orquestación. Validación dirigida: 332/332 (I, drains, C4/C5/C6, J, K, G,
 Quick Menu/Trading); sin evaluator porque no cambió percepción y sin full
 suite porque no cambió infraestructura productiva compartida.
+
+## 36. R1: fast path rojo local del board (2026-09-23)
+
+El usuario confirmó un popup con los cinco pares rojos. Se capturaron tres
+frames pasivos por ADB, sin input, en `artifacts/r1-red-pressure/20260923/` y
+se curaron bajo `screencaps/semantic/monster-wave/board-r1-all-red/` con SHA256
+en el manifest. GT visual: Brawler `260/72`, Weapon `999/999`, Hero `999/999`,
+Bronze `499/499`, Silver `499/499`. Los tres frames G previos conservan
+Brawler rojo `258/72` y las otras cuatro filas normales. Esos negativos y
+positivos comparten el mismo layout numérico; no se adquirió Brawler normal.
+
+El reader conserva los ROIs OCR G y mide primero el subrecorte normalizado
+`x=.425–.475` dentro de cada ROI de fila. Score = promedio de
+`max(R-max(G,B),0)/255`. En los seis frames curados el máximo normal fue
+`.0306` y el mínimo rojo `.1094`; el umbral `.070` es el punto medio de esa
+separación observada. Rojo confiable prueba `hard_pressure` descriptivo con
+par exacto ausente. Falta de rojo o incertidumbre conserva OCR, título exacto
+y confianza ≥.90. El subrecorte excluye los elementos rojos próximos; los
+tests alteran rojo fuera de él y verifican que el resultado no cambia.
+
+Brawler, Bronze, Silver y Hero rojos omiten OCR. Weapon rojo omite OCR sólo si
+Hero rojo ya prueba Craft; de otro modo mantiene Weapon exacto para
+`hero + floor(weapon/40)*10`, y Hero normal se lee con OCR. El planner conserva
+los umbrales de entrada I2/J2 (400/450/800/800), orden, drenaje y warning
+Brawler; si una proyección llega sin ambos números exactos falla cerrado.
+El snapshot sigue descriptivo y el consenso de dos samples, barrera de
+frescura, contexto y rechazo UNKNOWN/AMBIGUOUS no cambian. No se agregó
+detector global, fallback scoped→global, navegación, input ni wiring L.
+
+Validación afectada: 75/75 tests directos board/planner/J/K; evaluator incremental
+board 10/10 (tres frames rojos nuevos, tres G anteriores y cuatro negativos
+contextuales). Las capturas nuevas usan el contexto board confirmado por humano
+en el evaluator: su altura 1220 impide usar un template global calibrado para
+1224, ajeno al reader local. No se ejecutó corpus global ni suite hardware-free
+completa porque no cambió infraestructura compartida.

@@ -323,33 +323,51 @@ def plan_resource_route(planning: ResourcePlanningInput) -> ResourceRoutePlan:
     board = planning.board
     assert isinstance(board, MonsterWaveBoardSnapshot)
     rows = {row.item_id: row for row in board.resource_rows}
-    evidence = [
-        PlanningEvidence(
-            PlanningEvidenceKind.BOARD_PAIR, row.item_id,
-            f"balance:{row.balance},displayed_limit:{row.displayed_limit}",
-        )
-        for row in board.resource_rows
-    ]
+    evidence = [PlanningEvidence(
+        PlanningEvidenceKind.BOARD_PAIR, row.item_id,
+        ("hard_pressure:red_numeric_pair" if row.balance is None else
+         f"balance:{row.balance},displayed_limit:{row.displayed_limit}"),
+    ) for row in board.resource_rows]
     badges = rows["brawlers_badges"]
-    if badges.balance >= badges.displayed_limit:
+    if badges.hard_pressure or (
+        badges.balance is not None and badges.displayed_limit is not None
+        and badges.balance >= badges.displayed_limit
+    ):
         evidence.append(PlanningEvidence(
             PlanningEvidenceKind.WARNING, "brawlers_badges",
             "pressured_unmanaged:no_arena_route",
         ))
     for item_id, threshold in ENTRY_THRESHOLDS.items():
-        if rows[item_id].balance >= threshold:
+        row = rows[item_id]
+        if row.hard_pressure or (row.balance is not None and row.balance >= threshold):
             evidence.append(PlanningEvidence(
                 PlanningEvidenceKind.THRESHOLD, item_id,
-                f"balance:{rows[item_id].balance}>=entry:{threshold}",
+                (f"hard_pressure:red>=entry:{threshold}" if row.balance is None
+                 else f"balance:{row.balance}>=entry:{threshold}"),
             ))
 
-    keys_trip = (rows["bronze_key"].balance >= 400
-                 or rows["silver_key"].balance >= 450)
-    materials_trip = rows["weapon_material"].balance >= 800
-    hero_trip = rows["hero_weapon_material"].balance >= 800
-    projected_hero = (rows["hero_weapon_material"].balance
-                      + (rows["weapon_material"].balance // 40) * 10)
-    craft_trip = hero_trip or (materials_trip and projected_hero >= 800)
+    def at_entry(item_id: str) -> bool:
+        row = rows[item_id]
+        return row.hard_pressure or (row.balance is not None
+                                     and row.balance >= ENTRY_THRESHOLDS[item_id])
+
+    keys_trip = at_entry("bronze_key") or at_entry("silver_key")
+    materials_trip = at_entry("weapon_material")
+    hero_trip = at_entry("hero_weapon_material")
+    if hero_trip:
+        craft_trip = True
+    elif materials_trip:
+        weapon = rows["weapon_material"].balance
+        hero = rows["hero_weapon_material"].balance
+        # The board reader keeps these exact values whenever projection matters.
+        if weapon is None or hero is None:
+            return _insufficient((UnresolvedReason(
+                UnresolvedCode.BOARD_CONTENT_UNKNOWN,
+                required_fact="exact_weapon_and_hero_for_projection",
+            ),), evidence)
+        craft_trip = hero + (weapon // 40) * 10 >= 800
+    else:
+        craft_trip = False
     if not (keys_trip or materials_trip or craft_trip):
         return ResourceRoutePlan(ResourceRouteStatus.NO_PREREQUISITES,
                                  evidence=tuple(evidence))

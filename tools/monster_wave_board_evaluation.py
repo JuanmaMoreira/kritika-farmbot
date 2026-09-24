@@ -1,4 +1,4 @@
-"""Incremental OCR evaluation on the acquired MW board slice."""
+"""Incremental board reader evaluation on the acquired MW board slice."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.catalog import build_default_resolver
 from bot.monster_wave_board_reader import MonsterWaveBoardReader
-from bot.monster_wave_semantics import POPUP_MW_BOARD, SCREEN_MONSTER_WAVE
-from bot.observations import ObservationBatch
+from bot.monster_wave_semantics import MW_BOARD, POPUP_MW_BOARD, SCREEN_MONSTER_WAVE
+from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.ocr import RapidOcrEngine
 from bot.perception import build_default_perception
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
-from bot.state import ResolutionStatus
+from bot.state import ResolvedState, ResolutionStatus
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,15 +41,28 @@ def evaluate() -> tuple[int, int]:
             errors.append("unreadable PNG")
         else:
             frame = FrameSnapshot(image, float(sequence), sequence)
-            observations: ObservationBatch = perception.analyze(frame)
-            state = resolver.resolve(observations)
+            if entry.get("context_source") == "human_confirmed_board":
+                observations = ObservationBatch(sequence, float(sequence), (
+                    Observation(MW_BOARD, 1.0, ObservationSource.LOCAL_CV),))
+                state = ResolvedState(
+                    ResolutionStatus.RESOLVED, sequence, float(sequence),
+                    base_context=SCREEN_MONSTER_WAVE, overlays=(POPUP_MW_BOARD,))
+            else:
+                observations = perception.analyze(frame)
+                state = resolver.resolve(observations)
             snapshot = RuntimeSnapshot(frame, observations, state, RuntimeFacts(),
                                        FrameGeometry.from_frame(image))
             sample = reader.read_sample(snapshot)
             actual = (None if sample is None else
-                      [[row.item_id, row.balance, row.displayed_limit] for row in sample.rows])
-            if actual != entry["expected"]:
-                errors.append(f"expected={entry['expected']!r} actual={actual!r}")
+                      [[row.item_id, row.balance, row.displayed_limit, row.hard_pressure]
+                       for row in sample.rows])
+            red_rows = set(entry.get("red_rows", ()))
+            expected = (None if entry["expected"] is None else
+                        [[item_id, None, None, True] if item_id in red_rows else
+                         [item_id, balance, limit, False]
+                         for item_id, balance, limit in entry["expected"]])
+            if actual != expected:
+                errors.append(f"expected={expected!r} actual={actual!r}")
             board = (state.status is ResolutionStatus.RESOLVED
                      and state.base_context == SCREEN_MONSTER_WAVE
                      and state.overlays == (POPUP_MW_BOARD,))

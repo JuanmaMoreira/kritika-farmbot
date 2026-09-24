@@ -5,26 +5,54 @@
     "positive_ground_truth": "Human-confirmed in chat on 2026-09-22; three current device captures with the same five visible rows",
     "raw_source": "artifacts/acquisition-monster-wave-board-g/positive-runtime/",
     "negative_ground_truth": "Existing monster_wave_semantic_manifest.json context and overlay labels; no new numeric labels assigned to historical frames",
-    "limitation": "Only five visible balance/limit pairs are promoted. No recipe, reward, tier, Gold-key capacity or material need is inferred."
+    "limitation": "Only five visible balance/limit pairs are promoted as ground truth. R1 may emit red hard pressure without exact OCR; no recipe, reward, tier, Gold-key capacity or material need is inferred.",
+    "r1_red_ground_truth": "Human-confirmed all five red on 2026-09-23; three passive ADB captures at artifacts/r1-red-pressure/20260923/. Existing 2026-09-22 captures provide Brawler red and normal Weapon/Hero/Bronze/Silver."
   },
   "entries": [
     {
       "path": "screencaps/semantic/monster-wave/board-g-current/01.png",
       "sha256": "6a9b5b954183985c16554b1925b6aae9c508935379f656697f12a832deebe13a",
       "context": "board_popup",
+      "red_rows": ["brawlers_badges"],
       "expected": [["brawlers_badges", 258, 72], ["weapon_material", 412, 999], ["hero_weapon_material", 284, 999], ["bronze_key", 322, 499], ["silver_key", 129, 499]]
     },
     {
       "path": "screencaps/semantic/monster-wave/board-g-current/02.png",
       "sha256": "0c8900080e9b2ad024f2cbf57da01bbc6061205107b354dc434fabaaa6d3f0de",
       "context": "board_popup",
+      "red_rows": ["brawlers_badges"],
       "expected": [["brawlers_badges", 258, 72], ["weapon_material", 412, 999], ["hero_weapon_material", 284, 999], ["bronze_key", 322, 499], ["silver_key", 129, 499]]
     },
     {
       "path": "screencaps/semantic/monster-wave/board-g-current/03.png",
       "sha256": "f0101b1cd0e00cd16f5b580c886a090678077020725b0d8273925755f37fb95f",
       "context": "board_popup",
+      "red_rows": ["brawlers_badges"],
       "expected": [["brawlers_badges", 258, 72], ["weapon_material", 412, 999], ["hero_weapon_material", 284, 999], ["bronze_key", 322, 499], ["silver_key", 129, 499]]
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/board-r1-all-red/01.png",
+      "sha256": "468dc3b3353fc3898d1cbf4f151838650504adb5ddfe3a8f18df39efe156d682",
+      "context": "board_popup",
+      "context_source": "human_confirmed_board",
+      "red_rows": ["brawlers_badges", "weapon_material", "hero_weapon_material", "bronze_key", "silver_key"],
+      "expected": [["brawlers_badges", 260, 72], ["weapon_material", 999, 999], ["hero_weapon_material", 999, 999], ["bronze_key", 499, 499], ["silver_key", 499, 499]]
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/board-r1-all-red/02.png",
+      "sha256": "96264f2b998b27aa512bc285a82c13756b2191f50219051ba820c31d87eb67db",
+      "context": "board_popup",
+      "context_source": "human_confirmed_board",
+      "red_rows": ["brawlers_badges", "weapon_material", "hero_weapon_material", "bronze_key", "silver_key"],
+      "expected": [["brawlers_badges", 260, 72], ["weapon_material", 999, 999], ["hero_weapon_material", 999, 999], ["bronze_key", 499, 499], ["silver_key", 499, 499]]
+    },
+    {
+      "path": "screencaps/semantic/monster-wave/board-r1-all-red/03.png",
+      "sha256": "b699ef0b80d9d8eb723d1a1fe3a42be1521e4fe40339e4ad024bff4e3e3c74ee",
+      "context": "board_popup",
+      "context_source": "human_confirmed_board",
+      "red_rows": ["brawlers_badges", "weapon_material", "hero_weapon_material", "bronze_key", "silver_key"],
+      "expected": [["brawlers_badges", 260, 72], ["weapon_material", 999, 999], ["hero_weapon_material", 999, 999], ["bronze_key", 499, 499], ["silver_key", 499, 499]]
     },
     {
       "path": "screencaps/semantic/monster-wave/monster-wave-board-no-after/01.png",
