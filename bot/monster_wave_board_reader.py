@@ -36,7 +36,7 @@ BOARD_ROWS = (
 # signal is never used as a negative classification.
 _NUMERIC_X = (0.425, 0.475)
 _RED_PRESSURE_MIN_SCORE = 0.070
-_LINE = re.compile(r"^\((\d+)/(\d+)\)\s+(.+)$")
+_LINE = re.compile(r"^\((\d+)/(\d+)\)\s*(.+)$")
 
 
 @dataclass(frozen=True)

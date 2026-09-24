@@ -204,9 +204,23 @@ def test_context_guard_precedes_ocr(reader, monkeypatch):
     ("(x/499) Bronze Key", "bronze_key"),
     ("(322/0) Bronze Key", "bronze_key"),
     ("(322/499) Bronze Keya", "bronze_key"),
+    ("(64/499Silver Key", "silver_key"),
+    ("64/499)Silver Key", "silver_key"),
+    ("(64-499)Silver Key", "silver_key"),
+    ("(64/499)SilverKey", "silver_key"),
+    ("(64/499)Bronze Key", "silver_key"),
+    ("(64/499)Silver Key extra", "silver_key"),
 ])
 def test_unreadable_or_wrong_line_never_becomes_zero(text, item_id):
     assert parse_board_line(text, item_id) is None
+
+
+@pytest.mark.parametrize("text", [
+    "(64/499) Silver Key",
+    "(64/499)Silver Key",
+])
+def test_silver_key_accepts_spaced_or_compact_pair_title_boundary(text):
+    assert parse_board_line(text, "silver_key") == MonsterWaveBoardRow("silver_key", 64, 499)
 
 
 def test_balance_above_displayed_limit_is_read_as_shown():
