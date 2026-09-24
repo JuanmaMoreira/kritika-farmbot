@@ -282,6 +282,16 @@ class SelectQuickMenuCraft:
 
 
 @dataclass(frozen=True)
+class SelectQuickMenuInventory:
+    """Request Inventory from the shifted Quick Menu opened over Craft."""
+
+
+@dataclass(frozen=True)
+class ExitEquipmentInventory:
+    """Return from Equipment Inventory to its immediate Craft origin."""
+
+
+@dataclass(frozen=True)
 class OpenHeroCraft:
     """Open one visible Hero family card; subtype selection stays default."""
 
@@ -707,6 +717,8 @@ SemanticAction = (
     | SelectQuickMenuTrading
     | SelectQuickMenuTreasure
     | SelectQuickMenuCraft
+    | SelectQuickMenuInventory
+    | ExitEquipmentInventory
     | OpenHeroCraft
     | SelectCraftMax
     | ConfirmCraftMaterial
@@ -859,6 +871,8 @@ __all__ = (
     "SelectQuickMenuTrading",
     "SelectQuickMenuTreasure",
     "SelectQuickMenuCraft",
+    "SelectQuickMenuInventory",
+    "ExitEquipmentInventory",
     "OpenHeroCraft",
     "SelectCraftMax",
     "ConfirmCraftMaterial",

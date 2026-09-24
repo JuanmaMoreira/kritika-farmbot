@@ -13,10 +13,12 @@ from bot.semantic_actions import (
     ConfirmCraftMaterial,
     DismissCraftResult,
     ExitCraft,
+    ExitEquipmentInventory,
     OpenHeroCraft,
     RejectCraftPremium,
     SelectCraftMax,
     SelectQuickMenuCraft,
+    SelectQuickMenuInventory,
 )
 
 
@@ -24,6 +26,8 @@ from bot.semantic_actions import (
     ("action", "target"),
     (
         (SelectQuickMenuCraft(), DEFAULT_CRAFT_ACTION_TARGETS.select_quick_menu_craft_shifted),
+        (SelectQuickMenuInventory(), DEFAULT_CRAFT_ACTION_TARGETS.select_quick_menu_inventory_shifted),
+        (ExitEquipmentInventory(), DEFAULT_CRAFT_ACTION_TARGETS.inventory_back_to_craft),
         (OpenHeroCraft(CraftFamily.WEAPON), DEFAULT_CRAFT_ACTION_TARGETS.open_hero_weapon),
         (OpenHeroCraft(CraftFamily.ARMOR), DEFAULT_CRAFT_ACTION_TARGETS.open_hero_armor),
         (OpenHeroCraft(CraftFamily.ACCESSORY), DEFAULT_CRAFT_ACTION_TARGETS.open_hero_accessory),

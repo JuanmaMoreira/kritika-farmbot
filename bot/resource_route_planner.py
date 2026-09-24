@@ -389,33 +389,10 @@ def plan_resource_route(planning: ResourcePlanningInput) -> ResourceRoutePlan:
             UnresolvedCode.UNSUPPORTED_MATERIAL_CONVERSION, "weapon_material",
             detail="only the verified 40 Weapon -> 10 Hero conversion is supported",
         ),), evidence)
-    crafts, problem = _unique_facts(
-        planning.non_board.craft_capacities, "material_item_id", MATERIAL_ITEM_IDS,
-    )
-    if problem is not None:
-        return _contradictory(problem, evidence)
-
     steps: list[ResourceRouteStep] = []
     if craft_trip:
-        craft = crafts.get("hero_weapon_material")
-        if craft is None:
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.MISSING_CRAFT_FACT, "hero_weapon_material",
-                "hero_weapon_craft_recipe_and_equipment_capacity",
-            ),), evidence)
-        if (craft.family, craft.tier, craft.material_per_craft) != ("weapon", "hero", 49):
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.UNSUPPORTED_CRAFT_FACT, "hero_weapon_material",
-            ),), evidence)
-        if craft.free_equipment_slots is None:
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.MISSING_EQUIPMENT_CAPACITY, "hero_weapon_material",
-            ),), evidence)
-        if craft.free_equipment_slots < 1:
-            return _insufficient((UnresolvedReason(
-                UnresolvedCode.CRAFT_ENTRY_CAPACITY_UNAVAILABLE,
-                "hero_weapon_material",
-            ),), evidence)
+        # Craft recipe and Equipment slots are read at the destination, not
+        # from a stale or foreign screen while the MW board is open.
         steps.append(CraftStep("weapon", "hero"))
         evidence.append(PlanningEvidence(
             PlanningEvidenceKind.CAPABILITY, "hero_weapon_material",

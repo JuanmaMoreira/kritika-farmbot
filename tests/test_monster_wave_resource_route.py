@@ -150,8 +150,7 @@ class FakeNavigation:
         return MonsterWaveNavigationResult(
             FlowStatus.COMPLETED, final_snapshot=final, after_sequence=final.sequence,
         )
-    def enter_craft_from_mw(self, anchor, *, entry_capacity_proven):
-        assert entry_capacity_proven is True
+    def enter_craft_from_mw(self, anchor):
         self.trace.append("mw_qm_craft")
         return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
     def enter_trading_from_mw(self, anchor):
@@ -176,6 +175,9 @@ class FakeCraft:
     def __init__(self, trace):
         self.trace = trace
         self.sequence = 20
+    def probe_equipment_capacity(self):
+        self.trace.append("probe_capacity")
+        return CraftRouteResult(CraftRouteOutcome.ENTERED)
     def drain_hero_material(self, *, max_batches):
         assert max_batches > 0
         self.trace.append("drain_hero")
@@ -266,7 +268,40 @@ def test_craft_only_returns_directly_to_mw():
         _plan(craft=True, keys=False), _anchor(10),
     )
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
-    assert trace == ["mw_qm_craft", "drain_hero", "craft_back", ("fresh_mw", 21)]
+    assert trace == ["mw_qm_craft", "probe_capacity", "drain_hero", "craft_back", ("fresh_mw", 21)]
+
+
+def test_zero_equipment_slots_surface_blocker_before_any_craft_action():
+    trace = []
+    class FullCraft(FakeCraft):
+        def probe_equipment_capacity(self):
+            self.trace.append("probe_capacity")
+            return CraftRouteResult(CraftRouteOutcome.CAPACITY_BLOCKED,
+                                    reason="no_free_equipment_slot")
+    runtime = MonsterWaveResourceRouteRuntime(
+        FakeNavigation(trace), FakeSnapshots(trace), FullCraft(trace),
+        FakeKeys(trace), FakeMaterials(trace), keys_budget_remaining=3,
+    )
+    result = runtime.execute_plan_once(_plan(craft=True, keys=False), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED
+    assert result.capability_result.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
+    assert trace == ["mw_qm_craft", "probe_capacity"]
+
+
+def test_unreadable_equipment_capacity_fails_closed_before_craft():
+    trace = []
+    class UnreadableCraft(FakeCraft):
+        def probe_equipment_capacity(self):
+            self.trace.append("probe_capacity")
+            return CraftRouteResult(CraftRouteOutcome.FAILED,
+                                    reason="equipment_capacity_unreadable_or_stale")
+    runtime = MonsterWaveResourceRouteRuntime(
+        FakeNavigation(trace), FakeSnapshots(trace), UnreadableCraft(trace),
+        FakeKeys(trace), FakeMaterials(trace), keys_budget_remaining=3,
+    )
+    result = runtime.execute_plan_once(_plan(craft=True, keys=False), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.STEP_FAILED
+    assert trace == ["mw_qm_craft", "probe_capacity"]
 
 
 def test_craft_and_keys_return_to_mw_before_keys_only_trading():
@@ -274,7 +309,7 @@ def test_craft_and_keys_return_to_mw_before_keys_only_trading():
     result = _runtime(trace).execute_plan_once(_plan(craft=True), _anchor(10))
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
     assert trace == [
-        "mw_qm_craft", "drain_hero", "craft_back", ("fresh_mw", 21),
+        "mw_qm_craft", "probe_capacity", "drain_hero", "craft_back", ("fresh_mw", 21),
         "mw_qm_trading", ("keys", 3), "trading_x_mw", ("fresh_mw", 101),
     ]
 
@@ -298,7 +333,7 @@ def test_trading_modal_restores_craft_and_second_drain_precedes_back():
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
     assert result.executed_steps == plan.steps
     assert trace == [
-        "mw_qm_craft", "drain_hero", "craft_qm_trading",
+        "mw_qm_craft", "probe_capacity", "drain_hero", "craft_qm_trading",
         ("keys", 3), "drain_weapon", "trading_x_craft",
         "drain_hero", "craft_back", ("fresh_mw", 21),
     ]
@@ -311,7 +346,7 @@ def test_combined_gold_full_defers_treasure_until_after_craft_back_to_mw():
     )
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
     assert trace == [
-        "mw_qm_craft", "drain_hero", "craft_qm_trading",
+        "mw_qm_craft", "probe_capacity", "drain_hero", "craft_qm_trading",
         ("keys", 3), "ack_gold_full", "drain_weapon", "trading_x_craft",
         "drain_hero", "craft_back", ("fresh_mw", 21),
         "mw_qm_treasure", "drain_all_gold", "treasure_back_mw",

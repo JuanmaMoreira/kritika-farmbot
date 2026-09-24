@@ -267,7 +267,7 @@ def test_runtime_execute_returns_success_only_after_fresh_material_decrease():
     assert adb.tap.call_args_list[-1].args == (int(safe[0] * 200), int(safe[1] * 100))
 
 
-def test_verified_shifted_handoff_enters_craft_once_with_planner_capacity_gate():
+def test_verified_shifted_handoff_enters_craft_once_before_capacity_probe():
     value, adb = runtime(sequences=range(2, 8))
     handoff = QuickMenuHandoff(
         origin="screen.monster_wave",
@@ -276,10 +276,7 @@ def test_verified_shifted_handoff_enters_craft_once_with_planner_capacity_gate()
         layout=QuickMenuLayout.SHIFTED,
     )
 
-    result = value.enter_from_verified_quick_menu(
-        handoff,
-        entry_capacity_proven=True,
-    )
+    result = value.enter_from_verified_quick_menu(handoff)
 
     assert result.outcome is CraftRouteOutcome.ENTERED
     assert result.inputs == ("select_craft",)
@@ -287,7 +284,7 @@ def test_verified_shifted_handoff_enters_craft_once_with_planner_capacity_gate()
     adb.tap.assert_called_once_with(79, 49)
 
 
-def test_verified_handoff_without_capacity_proof_emits_zero_input():
+def test_invalidated_handoff_emits_zero_input():
     value, adb = runtime(sequences=range(2, 8))
     handoff = QuickMenuHandoff(
         origin="screen.monster_wave",
@@ -296,13 +293,71 @@ def test_verified_handoff_without_capacity_proof_emits_zero_input():
         layout=QuickMenuLayout.SHIFTED,
     )
 
-    result = value.enter_from_verified_quick_menu(
-        handoff,
-        entry_capacity_proven=False,
-    )
+    handoff.invalidate()
+    result = value.enter_from_verified_quick_menu(handoff)
 
-    assert result.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
+    assert result.outcome is CraftRouteOutcome.FAILED
     adb.tap.assert_not_called()
+
+
+def test_capacity_probe_reads_inventory_then_returns_to_fresh_craft():
+    value, adb = runtime(sequences=range(1, 9),
+                         inventory=InventoryReader(count=111, capacity=112))
+    result = value.probe_equipment_capacity()
+    assert result.outcome is CraftRouteOutcome.ENTERED
+    assert result.inventory_fact.capacity - result.inventory_fact.item_count == 1
+    assert result.craft_fact.sequence > result.inventory_fact.sequence
+    assert result.inputs == ("open_quick_menu", "select_inventory", "back_to_craft")
+    assert adb.tap.call_count == 3
+    assert [call.args for call in adb.tap.call_args_list] == [(38, 5), (40, 35), (160, 7)]
+
+
+def test_capacity_probe_zero_slots_returns_to_craft_without_crafting():
+    value, adb = runtime(sequences=range(1, 9),
+                         inventory=InventoryReader(count=112, capacity=112))
+    result = value.probe_equipment_capacity()
+    assert result.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
+    assert result.reason == "no_free_equipment_slot"
+    assert result.craft_fact.sequence > result.inventory_fact.sequence
+    assert adb.tap.call_count == 3
+
+
+def test_capacity_probe_unreadable_inventory_fails_without_back_or_craft():
+    value, adb = runtime(sequences=range(1, 7),
+                         inventory=InventoryReader(readable=False))
+    result = value.probe_equipment_capacity()
+    assert result.outcome is CraftRouteOutcome.FAILED
+    assert result.reason == "equipment_capacity_unreadable_or_stale"
+    assert adb.tap.call_count == 2
+
+
+def test_capacity_probe_requires_fresh_craft_after_inventory_back():
+    class MissingReturn(CraftReader):
+        def context_sample(self, frame, *, sequence, observed_at):
+            if sequence >= 7:
+                return None
+            return super().context_sample(frame, sequence=sequence,
+                                          observed_at=observed_at)
+    value, adb = runtime(sequences=range(1, 9), craft=MissingReturn())
+    result = value.probe_equipment_capacity()
+    assert result.outcome is CraftRouteOutcome.FAILED
+    assert result.reason == "craft_not_restored"
+    assert adb.tap.call_count == 3
+
+
+def test_capacity_probe_does_not_reuse_prior_visit_fact():
+    class ChangingInventory(InventoryReader):
+        def inventory_sample(self, frame, *, sequence, observed_at):
+            self.count = 111 if sequence < 13 else 112
+            return super().inventory_sample(frame, sequence=sequence,
+                                            observed_at=observed_at)
+    value, adb = runtime(sequences=range(1, 17), inventory=ChangingInventory())
+    first = value.probe_equipment_capacity()
+    second = value.probe_equipment_capacity()
+    assert first.outcome is CraftRouteOutcome.ENTERED
+    assert second.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
+    assert second.inventory_fact.sequence > first.craft_fact.sequence
+    assert adb.tap.call_count == 6
 
 
 def test_craft_back_is_one_public_immediate_origin_action():

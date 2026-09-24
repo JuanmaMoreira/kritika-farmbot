@@ -124,12 +124,13 @@ def test_incoming_rewards_are_ignored_in_production_plan():
     assert plan(facts=facts, silver_key=449).status is ResourceRouteStatus.NO_PREREQUISITES
 
 
-def test_craft_entry_capacity_remains_explicit_and_no_relief_step_is_invented():
-    assert plan(hero_weapon_material=800).unresolved[0].code is UnresolvedCode.MISSING_CRAFT_FACT
-    full = NonBoardResourceFacts(craft_capacities=(craft_fact(0),))
-    assert plan(facts=full, hero_weapon_material=800).unresolved[0].code is (
-        UnresolvedCode.CRAFT_ENTRY_CAPACITY_UNAVAILABLE
+def test_craft_visit_does_not_require_inventory_or_recipe_before_navigation():
+    assert shape(plan(hero_weapon_material=800)) == ("craft",)
+    assert shape(plan(weapon_material=800, hero_weapon_material=600)) == (
+        "craft", ("keys", "materials"),
     )
+    full = NonBoardResourceFacts(craft_capacities=(craft_fact(0),))
+    assert plan(facts=full, hero_weapon_material=800) == plan(hero_weapon_material=800)
 
 
 def test_stale_board_still_fails_closed():

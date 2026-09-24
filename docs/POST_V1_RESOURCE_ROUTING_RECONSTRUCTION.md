@@ -1207,3 +1207,30 @@ timestamp no creciente, contexto perdido, separación >1.0 s y edad ya >2.0 s
 antes de OCR; después mantiene la concordancia de filas y la comprobación
 final de edad del snapshot. No cambian el reader G/R1, los límites temporales,
 percepción global, input, planner/J/K ni wiring L. L productivo no se inició.
+
+## 38. C1: capacidad Equipment fresca durante la visita Craft (2026-09-24)
+
+El HIL manual del personaje no saturado confirmó Craft limpio→Quick Menu→
+Equipment Inventory `Item Count 86/112`→Back→Craft limpio, mismo personaje y
+cero craft/compra/venta/combine/relief/MW. El retorno fue GT humano; no se
+capturó snapshot automatizado de ese smoke.
+
+I2 conserva thresholds y proyección 40→10, pero un viaje Craft justificado ya
+no exige receta ni slots de otra pantalla antes de planificar. El schema
+`NonBoardResourceFacts.craft_capacities` queda compatible y no decide la ruta.
+J entra a Craft desde MW y llama una vez a `CraftRuntime.probe_equipment_capacity`
+antes del primer `MAX_AVAILABLE`: menú Craft, Inventory con `Item Count` y
+página concordantes/frescos, Back y nuevo `CraftContextFact` confirmado. ≥1
+slot permite el drain; cero slots sale como `EQUIPMENT_CAPACITY_BLOCKED` sin
+craft action ni relief. Lectura o retorno no probado falla cerrado. La receta
+sigue leyéndose dentro de Craft; no hay cache entre visitas/personajes.
+
+L productivo permanece desconectado. No cambiaron A1/R1, OCR/ROIs, rewards,
+umbrales, drain, Trading/Treasure ni policy de sesión.
+
+Validación: 64/64 directos (Craft/J/planner/actions) y 824/824 afectados
+(Craft, J/K, Inventory reader/operation, Trading/Treasure, Quick Menu,
+ActionExecutor, MW). `compileall` y `git diff --check` verdes. Sin evaluator
+porque no cambió percepción; sin suite completa porque el cambio es local al
+probe y sus consumidores. No se repitió HIL: la ida/vuelta física ya se confirmó
+manualmente y el código exige las postcondiciones existentes.

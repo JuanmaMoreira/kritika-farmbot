@@ -96,6 +96,8 @@ from bot.semantic_actions import (
     SelectQuickMenuTrading,
     SelectQuickMenuTreasure,
     SelectQuickMenuCraft,
+    SelectQuickMenuInventory,
+    ExitEquipmentInventory,
     OpenHeroCraft,
     SelectCraftMax,
     ConfirmCraftMaterial,
@@ -363,6 +365,8 @@ class CraftActionTargets:
     """Normalized centers of the controls acquired on current Craft UI."""
 
     select_quick_menu_craft_shifted: RelativePoint = (0.3970, 0.4950)
+    # Inventory tile in the shifted Quick Menu; Craft round-trip confirmed in C1 GT.
+    select_quick_menu_inventory_shifted: RelativePoint = (0.2020, 0.3500)
     open_hero_weapon: RelativePoint = (0.7660, 0.3500)
     open_hero_armor: RelativePoint = (0.7660, 0.6150)
     open_hero_accessory: RelativePoint = (0.7660, 0.8750)
@@ -373,10 +377,12 @@ class CraftActionTargets:
     dismiss_result_safe_side: RelativePoint = (0.2000, 0.5000)
     # HIL J 2026-09-22: Craft Back -> immediate origin.
     back_to_origin: RelativePoint = (0.8020, 0.0730)
+    inventory_back_to_craft: RelativePoint = (0.8020, 0.0730)
 
     def __post_init__(self) -> None:
         for point in (
             self.select_quick_menu_craft_shifted,
+            self.select_quick_menu_inventory_shifted,
             self.open_hero_weapon,
             self.open_hero_armor,
             self.open_hero_accessory,
@@ -386,6 +392,7 @@ class CraftActionTargets:
             self.reject_karats,
             self.dismiss_result_safe_side,
             self.back_to_origin,
+            self.inventory_back_to_craft,
         ):
             relative_point_to_pixel(point, 1, 1)
 
@@ -831,6 +838,10 @@ class ActionExecutor:
             return self.rotation_targets.select_treasure_shifted
         if isinstance(action, SelectQuickMenuCraft):
             return self.craft_targets.select_quick_menu_craft_shifted
+        if isinstance(action, SelectQuickMenuInventory):
+            return self.craft_targets.select_quick_menu_inventory_shifted
+        if isinstance(action, ExitEquipmentInventory):
+            return self.craft_targets.inventory_back_to_craft
         if isinstance(action, OpenHeroCraft):
             return {
                 CraftFamily.WEAPON: self.craft_targets.open_hero_weapon,

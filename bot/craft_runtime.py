@@ -28,11 +28,13 @@ from bot.semantic_actions import (
     ConfirmCraftMaterial,
     DismissCraftResult,
     ExitCraft,
+    ExitEquipmentInventory,
     OpenHeroCraft,
     OpenQuickMenu,
     RejectCraftPremium,
     SelectCraftMax,
     SelectQuickMenuCraft,
+    SelectQuickMenuInventory,
     SelectQuickMenuTrading,
     QuickMenuLayout,
 )
@@ -231,25 +233,63 @@ class CraftRuntime:
             inputs=("open_quick_menu",),
         )
 
+    def probe_equipment_capacity(self) -> CraftRouteResult:
+        """Read current Equipment slots and prove return to this Craft visit."""
+        opened = self.open_quick_menu_or_handoff()
+        if opened.outcome is not CraftRouteOutcome.QUICK_MENU_OPEN:
+            return opened
+        assert opened.quick_menu_fact is not None
+        if self.cancel_requested():
+            return CraftRouteResult(CraftRouteOutcome.CANCELLED, reason="cancelled",
+                                    inputs=opened.inputs)
+        self._tap(SelectQuickMenuInventory())
+        inputs = (*opened.inputs, "select_inventory")
+        inventory = self._read_consensus(
+            self.inventory_reader, "inventory_sample",
+            after_sequence=opened.quick_menu_fact.sequence,
+            consensus=consensus_facts,
+        )
+        if inventory is None or not self._fresh(inventory):
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED if self.cancel_requested() else CraftRouteOutcome.FAILED,
+                inventory_fact=inventory,
+                reason="cancelled" if self.cancel_requested() else "equipment_capacity_unreadable_or_stale",
+                inputs=inputs,
+            )
+        if self.cancel_requested():
+            return CraftRouteResult(CraftRouteOutcome.CANCELLED, inventory_fact=inventory,
+                                    reason="cancelled", inputs=inputs)
+        self._tap(ExitEquipmentInventory())
+        inputs = (*inputs, "back_to_craft")
+        restored = self.observe_context(after_sequence=inventory.sequence)
+        if restored.outcome is not CraftRouteOutcome.ENTERED or restored.craft_fact is None:
+            return CraftRouteResult(
+                CraftRouteOutcome.CANCELLED if restored.outcome is CraftRouteOutcome.CANCELLED
+                else CraftRouteOutcome.FAILED,
+                inventory_fact=inventory, craft_fact=restored.craft_fact,
+                reason="cancelled" if restored.outcome is CraftRouteOutcome.CANCELLED
+                else "craft_not_restored",
+                inputs=inputs,
+            )
+        if inventory.capacity - inventory.item_count < 1:
+            return CraftRouteResult(CraftRouteOutcome.CAPACITY_BLOCKED,
+                                    inventory_fact=inventory, craft_fact=restored.craft_fact,
+                                    reason="no_free_equipment_slot", inputs=inputs)
+        return CraftRouteResult(CraftRouteOutcome.ENTERED,
+                                inventory_fact=inventory, craft_fact=restored.craft_fact,
+                                inputs=inputs)
+
     def enter_from_verified_quick_menu(
         self,
         handoff: QuickMenuHandoff,
-        *,
-        entry_capacity_proven: bool,
     ) -> CraftRouteResult:
         """Consume one shifted-menu handoff and verify fresh Craft context.
 
-        The caller owns the immediate origin and may pass capacity proof only
-        when the immutable route plan already passed Craft's free-slot gate.
+        The route probes Equipment capacity before its first Craft action.
         """
 
         if not isinstance(handoff, QuickMenuHandoff):
             raise ValueError("handoff must be QuickMenuHandoff")
-        if entry_capacity_proven is not True:
-            return CraftRouteResult(
-                CraftRouteOutcome.CAPACITY_BLOCKED,
-                reason="craft_entry_capacity_not_proven",
-            )
         if not handoff.valid or handoff.layout is not QuickMenuLayout.SHIFTED:
             return CraftRouteResult(
                 CraftRouteOutcome.FAILED,

@@ -205,8 +205,6 @@ class MonsterWavePrerequisiteNavigationRuntime:
     def enter_craft_from_mw(
         self,
         anchor: FreshMonsterWaveSnapshot,
-        *,
-        entry_capacity_proven: bool,
     ) -> MonsterWaveNavigationResult:
         transitions, handoff, failed = self._open_mw_menu(anchor)
         if failed is not None:
@@ -216,7 +214,6 @@ class MonsterWavePrerequisiteNavigationRuntime:
             select_quick_menu_craft_action(handoff.origin)
             entered = self.craft_runtime.enter_from_verified_quick_menu(
                 handoff,
-                entry_capacity_proven=entry_capacity_proven,
             )
             if entered.outcome is CraftRouteOutcome.CANCELLED:
                 return self._finish(transitions, FlowStatus.CANCELLED, entered)
@@ -562,6 +559,7 @@ class ResourceRouteExecutionStatus(str, Enum):
     SUCCESS = "success"
     NON_EXECUTABLE_PLAN = "non_executable_plan"
     STEP_FAILED = "step_failed"
+    EQUIPMENT_CAPACITY_BLOCKED = "equipment_capacity_blocked"
     CANCELLED = "cancelled"
     RETURN_TO_MW_FAILED = "return_to_mw_failed"
     POSTCONDITION_FAILED = "postcondition_failed"
@@ -608,6 +606,7 @@ class MonsterWaveResourceRouteRuntime:
             (navigation, "leave_trading_to_mw"),
             (snapshots, "acquire"),
             (craft_runtime, "drain_hero_material"),
+            (craft_runtime, "probe_equipment_capacity"),
             (craft_runtime, "request_back_to_origin"),
             (keys_runtime, "run"),
             (materials_runtime, "execute"),
@@ -701,13 +700,18 @@ class MonsterWaveResourceRouteRuntime:
             return result.fresh, None
 
         if craft is not None:
-            entered = self.navigation.enter_craft_from_mw(
-                anchor, entry_capacity_proven=True,
-            )
+            entered = self.navigation.enter_craft_from_mw(anchor)
             evidence.append("route:mw_quick_menu_craft")
             if entered.status is not FlowStatus.COMPLETED:
                 return failed(entered, craft.capability)
             craft_open = True
+            capacity = self.craft_runtime.probe_equipment_capacity()
+            evidence.append("craft:fresh_equipment_capacity_probe")
+            if capacity.outcome is CraftRouteOutcome.CAPACITY_BLOCKED:
+                return finish(ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED,
+                              failing_step=craft.capability, capability_result=capacity)
+            if capacity.outcome is not CraftRouteOutcome.ENTERED:
+                return failed(capacity, craft.capability)
             drained = self.craft_runtime.drain_hero_material(max_batches=32)
             evidence.append("craft:drain_hero_until_below_49")
             if drained.outcome is not CraftOutcome.SUCCESS:
