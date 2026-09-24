@@ -1191,3 +1191,19 @@ contextuales). Las capturas nuevas usan el contexto board confirmado por humano
 en el evaluator: su altura 1220 impide usar un template global calibrado para
 1224, ajeno al reader local. No se ejecutó corpus global ni suite hardware-free
 completa porque no cambió infraestructura compartida.
+
+## 37. A1: captura del par MW antes de OCR (2026-09-23)
+
+El smoke L0 natural entregó `RESOURCE_BOARD_PENDING`, `board_sequence=282` y
+cero input posterior al board. La adquisición G/R1 sobre el popup abierto
+produjo un snapshot válido con samples concordantes seq 61/116, separados
+0.984 s, edad final 1.156 s y cinco filas legibles. La lectura intercalada
+`capture → OCR → capture → OCR` también mostró un fallo de consenso con
+separación 1.063 s: la latencia OCR consumía la ventana entre capturas.
+
+`MonsterWaveBoardAcquisitionRuntime` ahora obtiene y comprueba ambos contextos
+resueltos y frescos antes de leer sus imágenes congeladas. Rechaza secuencia o
+timestamp no creciente, contexto perdido, separación >1.0 s y edad ya >2.0 s
+antes de OCR; después mantiene la concordancia de filas y la comprobación
+final de edad del snapshot. No cambian el reader G/R1, los límites temporales,
+percepción global, input, planner/J/K ni wiring L. L productivo no se inició.

@@ -131,6 +131,6 @@ Los raws y curados experimentales se conservan físicamente. Su eventual reutili
 
 ## Siguiente paso
 
-K permanece standalone/debug. L0-A entrega un board causal opt-in; el default mantiene Yes/No y la sesión se detiene cerrada si el handoff no tiene consumidor. I2 ya no exige rewards entrantes exactos: los drops probabilísticos no intervienen en la ruta. L stage-ready no se inició; faltan facts productivos frescos de capacidad Craft y composición del caller, además del HIL específico del handoff L0.
-El smoke L0 autorizado sólo ejerció la rama `NEEDS_TICKETS` con compra desactivada: Open MW y Exit first-attempt, cero Start/Yes/No, retorno Battle Mode Select. El board no apareció naturalmente; el yield físico sigue `NEEDS_HIL`.
+K permanece standalone/debug. L0-A entrega un board causal opt-in; el default mantiene Yes/No y la sesión se detiene cerrada si el handoff no tiene consumidor. I2 ya no exige rewards entrantes exactos: los drops probabilísticos no intervienen en la ruta. L stage-ready no se inició; faltan facts productivos frescos de capacidad Craft y composición del caller.
+L0 HIL PASS: `RESOURCE_BOARD_PENDING` con `board_sequence=282`, cero input después del board; G/R1 obtuvo un snapshot válido de dos samples frescos y concordantes sobre el popup aún abierto. A1 captura ambos frames antes de OCR para que su latencia no consuma la ventana de consenso; conserva el límite de separación de 1.0 s y la edad final de 2.0 s. El primer smoke `NEEDS_TICKETS` y su validación offline quedan como antecedentes.
 L0 offline: 158 tests dirigidos verdes; full hardware-free 3211 passed / 4 Rotation fixture `FileNotFoundError` idénticos al baseline J (`KNOWN_ENVIRONMENTAL_FIXTURE_GAP`), cero fallos nuevos. Sin evaluator por no tocar percepción.

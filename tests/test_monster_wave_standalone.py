@@ -37,15 +37,16 @@ from bot.state import ResolutionStatus, ResolvedState
 from bot.verified_transition import VerifiedTransitionOutcome, VerifiedTransitionResult
 
 
-def context(sequence, *, popup=False, foreign=False, base=None):
+def context(sequence, *, popup=False, foreign=False, base=None, timestamp=None):
     image = np.zeros((100, 200, 3), dtype=np.uint8)
+    timestamp = float(sequence) if timestamp is None else timestamp
     names = (MW_BOARD,) if popup else (MW_NEEDS_TICKETS,)
     observations = tuple(Observation(name, 1.0, ObservationSource.LOCAL_CV) for name in names)
     base = base or ("screen.lobby" if foreign else SCREEN_MONSTER_WAVE)
     return RuntimeSnapshot(
-        FrameSnapshot(image, float(sequence), sequence),
-        ObservationBatch(sequence, float(sequence), observations),
-        ResolvedState(ResolutionStatus.RESOLVED, sequence, float(sequence),
+        FrameSnapshot(image, timestamp, sequence),
+        ObservationBatch(sequence, timestamp, observations),
+        ResolvedState(ResolutionStatus.RESOLVED, sequence, timestamp,
                       base_context=base, overlays=(POPUP_MW_BOARD,) if popup else ()),
         RuntimeFacts(), FrameGeometry.from_frame(image),
     )
@@ -267,15 +268,20 @@ def test_planning_facts_must_be_explicit():
 
 
 class Observer:
-    def __init__(self, first, second):
+    def __init__(self, first, second, *, strict=True):
         self.first, self.second = first, second
+        self.strict = strict
+        self.calls = []
 
     def observe(self):
+        self.calls.append("capture_first")
         return self.first
 
     def wait_until(self, predicate, *, after_sequence, **kwargs):
-        assert self.second.sequence > after_sequence
-        assert predicate(self.second)
+        self.calls.append("capture_second")
+        if self.strict:
+            assert self.second.sequence > after_sequence
+            assert predicate(self.second)
         return self.second
 
 
@@ -286,12 +292,110 @@ class Reader:
 
 
 def test_read_only_acquisition_two_matching_popup_frames():
+    observer = Observer(context(9, popup=True), context(10, popup=True))
     acquired = MonsterWaveBoardAcquisitionRuntime(
-        Observer(context(9, popup=True), context(10, popup=True)), Reader(),
+        observer, Reader(),
         clock=lambda: 10.1,
     ).acquire()
     assert acquired.snapshot.resource_rows == ROWS
     assert acquired.snapshot.evidence.row_sequences == (9, 10)
+    assert observer.calls == ["capture_first", "capture_second"]
+
+
+def test_expensive_reading_occurs_after_both_captures_without_spending_spacing_budget():
+    events = []
+    clock = [9.0]
+
+    class TimedObserver:
+        def observe(self):
+            events.append("capture_first")
+            return context(9, popup=True, timestamp=clock[0])
+
+        def wait_until(self, predicate, *, after_sequence, **kwargs):
+            assert after_sequence == 9
+            clock[0] += 0.8
+            events.append("capture_second")
+            return context(10, popup=True, timestamp=clock[0])
+
+    class SlowReader(Reader):
+        def read_sample(self, ctx):
+            events.append(f"read_{ctx.sequence}")
+            clock[0] += 0.55
+            return super().read_sample(ctx)
+
+    acquired = MonsterWaveBoardAcquisitionRuntime(
+        TimedObserver(), SlowReader(), clock=lambda: clock[0],
+    ).acquire()
+    assert events == ["capture_first", "capture_second", "read_9", "read_10"]
+    assert acquired.snapshot.evidence.row_sequences == (9, 10)
+    assert acquired.context.timestamp == 9.8
+    assert clock[0] - acquired.context.timestamp == pytest.approx(1.1)
+
+
+@pytest.mark.parametrize("second", [
+    context(11, popup=True, timestamp=10.01),
+    context(9, popup=True),
+    context(10, popup=True, timestamp=9.0),
+    context(10, popup=True, foreign=True),
+    context(10),
+])
+def test_acquisition_rejects_invalid_second_capture_before_reader(second):
+    class ForbiddenReader:
+        def read_sample(self, _ctx):
+            pytest.fail("invalid capture pair reached OCR")
+
+    observer = Observer(context(9, popup=True), second, strict=False)
+    with pytest.raises(ValueError, match="mw_board_consensus_unavailable"):
+        MonsterWaveBoardAcquisitionRuntime(
+            observer, ForbiddenReader(), clock=lambda: 10.1,
+        ).acquire()
+    assert observer.calls == ["capture_first", "capture_second"]
+
+
+def test_acquisition_rejects_already_stale_pair_before_reader():
+    class ForbiddenReader:
+        def read_sample(self, _ctx):
+            pytest.fail("stale capture pair reached OCR")
+
+    with pytest.raises(ValueError, match="fresh_mw_board_snapshot_unavailable"):
+        MonsterWaveBoardAcquisitionRuntime(
+            Observer(context(9, popup=True), context(10, popup=True)),
+            ForbiddenReader(), clock=lambda: 12.1,
+        ).acquire()
+
+
+def test_acquisition_keeps_final_snapshot_age_limit_after_slow_reading():
+    clock = [10.0]
+
+    class SlowReader(Reader):
+        def read_sample(self, ctx):
+            clock[0] += 1.1
+            return super().read_sample(ctx)
+
+    with pytest.raises(ValueError, match="fresh_mw_board_snapshot_unavailable"):
+        MonsterWaveBoardAcquisitionRuntime(
+            Observer(context(9, popup=True), context(10, popup=True)),
+            SlowReader(), clock=lambda: clock[0],
+        ).acquire()
+
+
+def test_acquisition_rejects_disagreeing_rows_after_two_captures():
+    class DisagreeingReader(Reader):
+        def read_sample(self, ctx):
+            sample = super().read_sample(ctx)
+            if ctx.sequence == 10:
+                return MonsterWaveBoardSample(
+                    (MonsterWaveBoardRow("brawlers_badges", 2, 100), *sample.rows[1:]),
+                    sample.sequence, sample.observed_at, sample.evidence,
+                )
+            return sample
+
+    observer = Observer(context(9, popup=True), context(10, popup=True))
+    with pytest.raises(ValueError, match="mw_board_consensus_unavailable"):
+        MonsterWaveBoardAcquisitionRuntime(
+            observer, DisagreeingReader(), clock=lambda: 10.1,
+        ).acquire()
+    assert observer.calls == ["capture_first", "capture_second"]
 
 
 @pytest.mark.parametrize("foreign", [True, False])

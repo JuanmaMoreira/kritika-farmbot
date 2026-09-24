@@ -69,14 +69,22 @@ class MonsterWaveBoardAcquisitionRuntime:
         first = self.observer.observe()
         if not _board_open(first):
             raise ValueError("fresh_mw_board_popup_not_open")
-        sample1 = self.reader.read_sample(first)
-        if sample1 is None:
-            raise ValueError("first_mw_board_sample_unreadable")
         second = self.observer.wait_until(
             _board_open, after_sequence=first.sequence, timeout=3.0,
             abort_if=lambda s: not _board_open(s),
             cancel_requested=self.cancel_requested,
         )
+        if (not _board_open(second)
+                or second.sequence <= first.sequence
+                or second.timestamp <= first.timestamp
+                or second.timestamp - first.timestamp > 1.0):
+            raise ValueError("mw_board_consensus_unavailable")
+        now = self.clock()
+        if second.timestamp > now or now - second.timestamp > 2.0:
+            raise ValueError("fresh_mw_board_snapshot_unavailable")
+        sample1 = self.reader.read_sample(first)
+        if sample1 is None:
+            raise ValueError("first_mw_board_sample_unreadable")
         sample2 = self.reader.read_sample(second)
         if sample2 is None:
             raise ValueError("second_mw_board_sample_unreadable")
