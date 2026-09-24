@@ -205,6 +205,13 @@ class MonsterWaveActivity:
                              observation_sequence=max(e.sequence for e in fact.evidence))
                     return exit_hub(current)
             # All decisions are local to this run and evidence; no activation cache.
+            # Lifecycle HIL 2026-09-24: tickets are the SKIP activation requirement
+            # (30/30), not entry. Sapphires are consumption. NEEDS means <30/30
+            # (observed 0/30, Activate grey, no timer); >=1 never suffices. Fill All
+            # buys remaining*140k Gold (0/30->4.2M, 20/30->1.4M); activation is a
+            # separate tap; ACTIVE=timer+Start (1:20:57 example, no duration const);
+            # expiry is fresh loss of ACTIVE, never a clock. VIP may lower the
+            # requirement; buff is account-wide. Never Karats.
             if skip_state(current) is SkipState.NEEDS_TICKETS:
                 if not self.config.purchase_skip_tickets:
                     business('tickets_missing_purchase_disabled')
@@ -213,7 +220,9 @@ class MonsterWaveActivity:
                                lambda s: skip_state(s) is SkipState.NEEDS_TICKETS, popup(POPUP_MW_PURCHASE))
                 full = lambda s: popup(POPUP_MW_PURCHASE)(s) and has(s, MW_PURCHASE_FULL)
                 if not full(current):
-                    # Fill All buys the game's remaining quantity. Never repeat a spend.
+                    # Fill All buys the game's remaining quantity once (140k/ticket;
+                    # after 30/30 both x1 and Fill show disabled with remaining cost 0).
+                    # Never x1 loop, never saldo-5, never repeat a spend.
                     current = step('fill_tickets', FillMonsterWaveTickets(), current,
                                    lambda s: popup(POPUP_MW_PURCHASE)(s) and not has(s, MW_PURCHASE_FULL), full)
                     business('tickets_purchased')

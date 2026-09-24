@@ -66,17 +66,28 @@ validan el límite, no afirman una secuencia combinada adquirida.
 | READY | 30/30 y Activate SKIP verde | NEEDS_TICKETS, timer o Start SKIP |
 | ACTIVE | Time Remaining y Start SKIP process | NEEDS_TICKETS o READY |
 
-La compra abre el popup sólo desde NEEDS_TICKETS. Fill All delega al juego la
-cantidad faltante según el contador actual: la ruta adquirida incluye 20/30 →
-30/30, costo 1.400.000 GOLD y costo restante cero. No se simulan incrementos ni se
-pulsa x1 repetidamente. 30/30 verificado en el popup es requisito de cierre, y
-READY verificado en MW es requisito de activación. Si la compra no progresa o la
-postcondición es ilegible, la ejecución falla conservadoramente y no recompra.
+La compra abre el popup sólo desde NEEDS_TICKETS. `tickets_missing_purchase_disabled`
+significa requisito de activación <30/30 sin compra (no entrada; sapphires son el
+consumo; >=1 nunca basta). Fill All delega al juego la cantidad faltante según el
+contador actual: 140.000 GOLD por ticket; rutas adquiridas 20/30 → 30/30 costo
+1.400.000 y 0/30 → 30/30 costo 4.200.000 (HIL 2026-09-24, Gold 9.460.818.965 →
+9.456.618.965, 0 Karats). Tras 30/30 ambos botones quedan gris deshabilitados con
+coste restante cero. No se simulan incrementos ni se pulsa x1 repetidamente.
+30/30 verificado en el popup es requisito de cierre, y READY verificado en MW es
+requisito de activación (la activación nunca es automática). Si la compra no
+progresa o la postcondición es ilegible, la ejecución falla conservadoramente y no
+recompra. El popup documenta: 30 activan SKIP por cierto tiempo (sin duración
+numérica), tickets por sapphires usados, VIP alto pide menos, account-wide y
+rewards por Season's Top Kill Count + tickets usados.
 
 El timer es account-wide, pero no se almacena `skip_active`, countdown, recursos o
-decisiones entre invocaciones/personajes. ACTIVE directo omite compra y activación.
+decisiones entre invocaciones/personajes. HIL 2026-09-24: tras Activate, ACTIVE
+muestra `Time Remaining (1:20:57, ejemplo no constante)` con barra verde + `Start
+SKIP process`; el contador pasa de `0/30` a tiempo restante y MAX pasa de gris
+(NEEDS) a rojo habilitado (ACTIVE). ACTIVE directo omite compra y activación.
 Una entrada posterior NEEDS_TICKETS manda aunque antes se haya observado ACTIVE.
 Si el timer expira durante MAX y deja de verificarse ACTIVE, no se inicia SKIP.
+La expiración futura se detecta sólo por señal fresca, sin reloj supuesto.
 No hay recovery de expiración ni farming loop en esta fase.
 
 ## MAX fijo y tooltip

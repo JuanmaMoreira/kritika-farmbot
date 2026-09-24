@@ -81,7 +81,7 @@ class SessionReport:
 # Explicit projection of existing business contracts, not a failure taxonomy.
 # Do not infer causal explanations from detail/error text or diagnostic events.
 _INCOMPLETE = {
-    'monster_wave.tickets_missing_purchase_disabled': 'SKIP tickets missing; purchase disabled',
+    'monster_wave.tickets_missing_purchase_disabled': 'SKIP activation tickets missing (<30/30); purchase disabled',
     'monster_wave.insufficient_sapphires': 'insufficient sapphires for SKIP',
     'monster_wave.daily_sapphires_below_minimum': 'Daily requires 4 fresh sapphires; SKIP intentionally not started',
     'monster_wave.inventory_warning_declined': 'non-blocking inventory warning declined',
