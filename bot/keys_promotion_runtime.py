@@ -70,6 +70,29 @@ class FreshKeyFacts:
             raise ValueError("snapshot must be fresh Avatar & Keys readiness")
 
 
+# HIL C2a: one confirmed 1/20 Bronze->Silver trade changed Bronze 40->30
+# and Silver 64->66. This is output per conversion, not a Gold capacity fact.
+SILVER_PER_BRONZE_CONVERSION = 2
+
+
+def make_budget(facts: FreshKeyFacts) -> int:
+    """Upper bound on Keys policy steps from one fresh causal fact set.
+
+    MAX_ALLOWED may batch conversions, so count each physically possible
+    conversion as a separate step. Gold-full's single causal retry has its
+    own C6b bound and is not a new promotion decision here.
+    """
+    if not isinstance(facts, FreshKeyFacts):
+        raise ValueError("facts must be FreshKeyFacts")
+    bronze = facts.silver_fact
+    silver = facts.gold_fact
+    bronze_conversions = bronze.have // bronze.need
+    silver_conversions = (
+        silver.have + bronze_conversions * SILVER_PER_BRONZE_CONVERSION
+    ) // silver.need
+    return bronze_conversions + silver_conversions
+
+
 @dataclass(frozen=True)
 class GoldFullAckResult(FlowResult):
     """One verified OK dismissal after the causal output-full alert."""
@@ -573,6 +596,8 @@ class KeysPromotionRuntime:
 
 __all__ = (
     "FreshKeyFacts",
+    "SILVER_PER_BRONZE_CONVERSION",
+    "make_budget",
     "GoldFullAckResult",
     "acknowledge_gold_full_boundary",
     "GoldCapacityRecoveryNavigation",

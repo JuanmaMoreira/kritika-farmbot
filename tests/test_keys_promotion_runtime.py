@@ -11,6 +11,8 @@ from bot.keys_promotion_runtime import (
     GoldCapacityRecoveryNavigation,
     GoldFullAckResult,
     KeysPromotionRuntime,
+    SILVER_PER_BRONZE_CONVERSION,
+    make_budget,
 )
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
@@ -67,6 +69,22 @@ def _facts(sequence, *, bronze, silver):
             "gold_key", KEYS_SECTION, 0.60, silver, 10, sequence
         ),
     )
+
+
+def test_hil_bronze_to_silver_yield_and_budget_decrement():
+    before = _facts(2, bronze=40, silver=64)
+    after = _facts(4, bronze=30, silver=66)
+    assert (before.silver_fact.have - after.silver_fact.have,
+            after.gold_fact.have - before.gold_fact.have) == (10, 2)
+    assert SILVER_PER_BRONZE_CONVERSION == 2
+    assert make_budget(before) == 11  # 4 Bronze + floor((64 + 4*2)/10) Silver
+    assert make_budget(after) == 10
+
+
+def test_budget_includes_newly_generated_silver_without_deciding_order():
+    assert make_budget(_facts(2, bronze=50, silver=9)) == 6
+    assert make_budget(_facts(2, bronze=0, silver=20)) == 2
+    assert make_budget(_facts(2, bronze=9, silver=9)) == 0
 
 
 def _step(status=FlowStatus.COMPLETED, *, final_snapshot=None, error=None):

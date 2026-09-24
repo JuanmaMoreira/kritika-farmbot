@@ -1234,3 +1234,31 @@ ActionExecutor, MW). `compileall` y `git diff --check` verdes. Sin evaluator
 porque no cambió percepción; sin suite completa porque el cambio es local al
 probe y sus consumidores. No se repitió HIL: la ida/vuelta física ya se confirmó
 manualmente y el código exige las postcondiciones existentes.
+
+## 39. C2a: rendimiento Bronze→Silver confirmado (2026-09-24)
+
+En el personaje no saturado, Trading/Avatars & Keys limpio, dos frames antes
+confirmaron Bronze `40/10` (fila `silver_key`) y Silver `64/10` (fila `gold_key`)
+por OCR C3 concordante y ground truth humano. El popup de la primera fila
+mostró Bronze `(40/10)`, cantidad `1/20` y salida anunciada Silver `2`.
+Tras autorización inmediata, un solo tap Trade cerró el popup; dos frames
+posteriores confirmaron Bronze `30/10` y Silver `66/10`, con ground truth humano
+de un único trade, sin `OUTPUT_FULL` ni otra promoción. Deltas observados:
+`bronze_consumed=10`, `silver_produced=2`. Raws locales ignorados:
+`artifacts/hil_c2a/{before_1,before_2,panel,after_1,after_2}.png`.
+SHA-256 por orden: `fb89bc5d690b844f4572c60adf62dcd85a8ccadddf188aa06cdcb04aff45532`,
+`835583f354544b4dbb8373f9984b07e6469b177035503c292df10b5767fb0253`,
+`806ecd6ae9e2f8c93b9c05bd522d3a2703bed97f11df0749d2551d14d8fba002`,
+`79a7f8fd23d73099fe60fae43850ad8adecf621ef852129969a9aec78b0b25f8`,
+`d78b5af34f1408e6c0bb7822e437adb35f077b5995b460720882ddb3f9db7550`.
+
+El rendimiento vive sólo en C6b (`SILVER_PER_BRONZE_CONVERSION=2`). Su helper
+`make_budget(FreshKeyFacts)` acota decisiones con
+`floor(B/bronze_need) + floor((S + 2*floor(B/bronze_need))/silver_need)`.
+`MAX_ALLOWED` puede agrupar conversiones, así que una acción por conversión
+es un upper bound conservador. C6a sigue decidiendo orden con facts frescos;
+el retry Gold-full conserva su bound causal separado. Sin builders C2, A1,
+request MW, L1/L2, evaluator ni gameplay adicional.
+Validación: 184 tests C6a/C6b/C5/C4/C3 y 50 J/K/Materials, `py_compile`
+y `git diff --check` verdes. Sin suite completa: sólo se añadió un helper
+puro y no cambió la ejecución de C6a/C6b ni otros subsistemas.
