@@ -174,10 +174,11 @@ def execute_key_trade(
     snapshot,
     row_fact: TradingRowFact,
     quantity: TradeQuantity,
-    targets: TradePanelTargets,
-    tap: Callable[[tuple[float, float]], None],
+    targets: TradePanelTargets | None,
+    tap: Callable[[tuple[float, float]], None] | None,
     read_panel,
     read_row,
+    act: Callable[[object], None] | None = None,
     cancel_requested: Callable[[], bool] = lambda: False,
     max_fact_age: int = 2,
 ) -> TradeResult:
@@ -199,10 +200,10 @@ def execute_key_trade(
         raise ValueError("row_fact must be TradingRowFact")
     if not isinstance(quantity, TradeQuantity):
         raise ValueError("quantity must be TradeQuantity")
-    if not isinstance(targets, TradePanelTargets):
-        raise ValueError("targets must be TradePanelTargets")
-    if not callable(tap) or not callable(read_panel) or not callable(read_row):
-        raise ValueError("tap, read_panel and read_row must be callable")
+    if tap is not None and not isinstance(targets, TradePanelTargets):
+        raise ValueError("targets must be TradePanelTargets for legacy tap")
+    if (callable(tap) == callable(act)) or not callable(read_panel) or not callable(read_row):
+        raise ValueError("exactly one input callback and both readers are required")
     if not callable(cancel_requested):
         raise ValueError("cancel_requested must be callable")
 
@@ -235,7 +236,7 @@ def execute_key_trade(
         row_fact=row_fact,
         quantity=quantity,
         allowed_cost_kinds=KEY_ALLOWED_COST_KINDS,
-        row_tap_x=ROW_TAP_X,
+        row_tap_x=ROW_TAP_X if tap is not None else None,
         expected_item_id=expected,
         max_fact_age=max_fact_age,
     )
@@ -246,6 +247,7 @@ def execute_key_trade(
         tap=tap,
         read_panel=read_panel,
         read_row=read_row,
+        act=act,
         cancel_requested=cancel_requested,
     )
     return TradeResult(

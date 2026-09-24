@@ -253,7 +253,7 @@ class GoldKeyOpenRequest:
 
     quantity: GoldKeyQuantity
     allowed_currency_kinds: frozenset[str]
-    targets: TreasureOpenTargets
+    targets: TreasureOpenTargets | None = None
     max_actions: int = 10
     max_fact_age_s: float = 2.0
     post_action_timeout_s: float = 5.0
@@ -273,8 +273,8 @@ class GoldKeyOpenRequest:
         if kinds != GOLD_ALLOWED_CURRENCY_KINDS:
             raise ValueError('allowed_currency_kinds must be exactly {"gold_key"}')
         object.__setattr__(self, "allowed_currency_kinds", kinds)
-        if not isinstance(self.targets, TreasureOpenTargets):
-            raise ValueError("targets must be TreasureOpenTargets")
+        if self.targets is not None and not isinstance(self.targets, TreasureOpenTargets):
+            raise ValueError("targets must be TreasureOpenTargets or None")
         if (
             isinstance(self.max_actions, bool)
             or not isinstance(self.max_actions, Integral)
@@ -478,14 +478,16 @@ def execute_gold_key_open(
     *,
     snapshot,
     request: GoldKeyOpenRequest,
-    tap: Callable[[tuple[float, float]], None],
+    tap: Callable[[tuple[float, float]], None] | None,
     read_state: Callable[[], TreasureCurrencyFact | None],
+    act: Callable[[object], None] | None = None,
     cancel_requested: Callable[[], bool] = lambda: False,
     clock: Callable[[], float] | None = None,
 ) -> GoldKeyOpenResult:
     """Execute one bounded Gold Keys opening; single causal tap per open.
 
-    Injected I/O only: ``tap`` performs one normalized tap per call,
+    Injected I/O only: production ``act`` emits typed ActionExecutor intents;
+    legacy ``tap`` performs one normalized tap per call.
     ``read_state`` returns a fresh ``TreasureCurrencyFact`` or None. No
     navigation, no retry, no double inputs: each iteration reads fresh
     currency, taps at most once (single for 1, repeat for 10), then
@@ -499,8 +501,10 @@ def execute_gold_key_open(
     """
     if not isinstance(request, GoldKeyOpenRequest):
         raise ValueError("request must be GoldKeyOpenRequest")
-    if not callable(tap) or not callable(read_state):
-        raise ValueError("tap and read_state must be callable")
+    if callable(tap) == callable(act) or not callable(read_state):
+        raise ValueError("exactly one input callback and read_state are required")
+    if tap is not None and request.targets is None:
+        raise ValueError("legacy tap requires targets")
     if not callable(cancel_requested):
         raise ValueError("cancel_requested must be callable")
     if clock is not None and not callable(clock):
@@ -734,13 +738,18 @@ def execute_gold_key_open(
                     evidence=tuple([*evidence, "capped_before_overshoot"]),
                 )
 
-        point = (
-            targets.open_single_point
-            if offered == 1
-            else targets.open_repeat_point
-        )
         try:
-            tap(point)
+            if act is not None:
+                from bot.semantic_actions import (
+                    ConfirmRepeatGoldOpen, ConfirmSingleGoldOpen,
+                )
+                act(ConfirmSingleGoldOpen() if offered == 1 else ConfirmRepeatGoldOpen())
+            else:
+                point = (
+                    targets.open_single_point if offered == 1
+                    else targets.open_repeat_point
+                )
+                tap(point)
         except Exception as error:
             return GoldKeyOpenResult(
                 outcome=TreasureOutcome.FAILED,

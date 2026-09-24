@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import numpy as np
 import pytest
@@ -18,6 +18,15 @@ from bot.action_executor import (
     FrameGeometry,
 )
 from bot.semantic_actions import (
+    SelectTradingRow,
+    SelectTradingMaximum,
+    ConfirmTradingTrade,
+    CancelTradingTrade,
+    AcknowledgeTradingGoldFull,
+    ConfirmSingleGoldOpen,
+    ConfirmRepeatGoldOpen,
+    ContinueGoldDrainFromResult,
+    DismissTreasureResult,
     AcceptPurchaseConfirmation,
     AcceptPetInventoryFull,
     AcceptSocketInventoryFull,
@@ -111,6 +120,7 @@ from bot.semantic_actions import (
     NextPetCombinePage,
     StartWorldBossBattle,
 )
+from bot.trading_row_facts import KEYS_SECTION, TradingRowFact
 
 
 def test_frame_geometry_is_derived_from_actual_landscape_frame_shape():
@@ -589,3 +599,25 @@ def test_executor_rejects_unknown_untyped_action_without_input():
         executor.execute(object(), FrameGeometry(width=1000, height=500))
 
     adb.tap.assert_not_called()
+
+
+def test_c2b_trading_and_treasure_controls_use_typed_executor_intents():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    geometry = FrameGeometry(width=2712, height=1220)
+    row = TradingRowFact("gold_key", KEYS_SECTION, .5700836, 169, 10, 1)
+    cases = (
+        (SelectTradingRow(row), (2034, 695)),
+        (SelectTradingMaximum(), (1895, 978)),
+        (ConfirmTradingTrade(), (1338, 953)),
+        (CancelTradingTrade(), (964, 952)),
+        (AcknowledgeTradingGoldFull(), (1355, 762)),
+        (ConfirmSingleGoldOpen(), (1676, 668)),
+        (ConfirmRepeatGoldOpen(), (1879, 659)),
+        (ContinueGoldDrainFromResult(), (908, 1000)),
+        (DismissTreasureResult(), (216, 793)),
+    )
+    for action, expected in cases:
+        receipt = executor.execute(action, geometry)
+        assert receipt.pixel_target == expected
+    assert adb.tap.call_args_list == [call(*expected) for _, expected in cases]

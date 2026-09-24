@@ -597,7 +597,7 @@ class MonsterWaveResourceRouteRuntime:
         keys_runtime,
         materials_runtime,
         *,
-        keys_budget_remaining: int,
+        keys_budget_remaining: int | None = None,
         cancel_requested=lambda: False,
     ) -> None:
         for owner, method in (
@@ -613,7 +613,7 @@ class MonsterWaveResourceRouteRuntime:
         ):
             if not callable(getattr(owner, method, None)):
                 raise ValueError(f"runtime must provide {method}()")
-        if (
+        if keys_budget_remaining is not None and (
             isinstance(keys_budget_remaining, bool)
             or not isinstance(keys_budget_remaining, Integral)
             or int(keys_budget_remaining) < 1
@@ -626,7 +626,9 @@ class MonsterWaveResourceRouteRuntime:
         self.craft_runtime = craft_runtime
         self.keys_runtime = keys_runtime
         self.materials_runtime = materials_runtime
-        self.keys_budget_remaining = int(keys_budget_remaining)
+        self.keys_budget_remaining = (
+            int(keys_budget_remaining) if keys_budget_remaining is not None else None
+        )
         self.cancel_requested = cancel_requested
 
     def execute_plan_once(
@@ -680,7 +682,7 @@ class MonsterWaveResourceRouteRuntime:
             isinstance(op, TradingMaterialsStep) for op in trading.operations
         )
         craft_open = False
-        keys_attempts = 0
+        keys_budget_left = self.keys_budget_remaining
 
         def failed(result, step_name, *, returning=False):
             if getattr(result, "status", None) is FlowStatus.CANCELLED or (
@@ -743,7 +745,11 @@ class MonsterWaveResourceRouteRuntime:
                     )
                     evidence.append("trading:keys_first")
                     pending = getattr(result, "pending", None)
-                    keys_attempts = len(getattr(result, "trade_attempts", ()))
+                    keys_budget_left = (
+                        result.remaining_budget
+                        if self.keys_budget_remaining is None
+                        else max(0, self.keys_budget_remaining - len(getattr(result, "trade_attempts", ())))
+                    )
                 else:
                     result = self.materials_runtime.execute(operation, max_batches=32)
                     evidence.append("trading:drain_weapon_until_below_40")
@@ -780,7 +786,7 @@ class MonsterWaveResourceRouteRuntime:
                 recovery.start_from_mw(anchor)
                 resolved = self.keys_runtime.resolve_pending(
                     pending,
-                    budget_remaining=max(0, self.keys_budget_remaining - keys_attempts),
+                    budget_remaining=keys_budget_left,
                     recovery_navigation=recovery.as_navigation(),
                 )
                 evidence.append("keys:deferred_gold_full_drain_and_exact_retry")

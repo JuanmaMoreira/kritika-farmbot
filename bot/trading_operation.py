@@ -286,7 +286,7 @@ class TradeRequest:
     row_fact: TradingRowFact
     quantity: TradeQuantity
     allowed_cost_kinds: frozenset[str]
-    row_tap_x: float
+    row_tap_x: float | None = None
     expected_item_id: str | None = None
     max_fact_age: int = 2
 
@@ -310,9 +310,10 @@ class TradeRequest:
         object.__setattr__(
             self, "allowed_cost_kinds", frozenset(k.strip() for k in kinds)
         )
-        object.__setattr__(
-            self, "row_tap_x", _require_unit(self.row_tap_x, "row_tap_x")
-        )
+        if self.row_tap_x is not None:
+            object.__setattr__(
+                self, "row_tap_x", _require_unit(self.row_tap_x, "row_tap_x")
+            )
         expected = self.expected_item_id
         if expected is None:
             object.__setattr__(self, "expected_item_id", self.row_fact.item_id)
@@ -478,16 +479,18 @@ def execute_verified_trade(
     *,
     request: TradeRequest,
     context: TradePreconditionContext,
-    targets: TradePanelTargets,
-    tap: Callable[[tuple[float, float]], None],
+    targets: TradePanelTargets | None,
+    tap: Callable[[tuple[float, float]], None] | None,
     read_panel: Callable[[], TradePanelFact | None],
     read_row: Callable[[], TradingRowFact | None],
+    act: Callable[[object], None] | None = None,
     cancel_requested: Callable[[], bool] = lambda: False,
 ) -> TradeResult:
     """Execute one bounded trade; single causal tap per control.
 
-    Injected I/O only: ``tap`` performs one normalized tap per call,
-    ``read_panel``/``read_row`` return fresh facts or None. No
+    Injected I/O only: production ``act`` emits typed ActionExecutor intents;
+    legacy ``tap`` remains for standalone callers. ``read_panel``/``read_row``
+    return fresh domain facts or None. No
     navigation, no retry, no double inputs: ``>>`` fires at most
     once and confirm fires at most once, each only after all guards
     hold on the freshest panel fact. Any abort before confirm taps
@@ -497,18 +500,50 @@ def execute_verified_trade(
     never resolved: no Treasure/Craft/Relief navigation happens here.
     """
     before = request.row_fact
-    if not callable(tap) or not callable(read_panel) or not callable(
+    if (callable(tap) == callable(act)) or not callable(read_panel) or not callable(
         read_row
     ):
-        raise ValueError("tap, read_panel and read_row must be callable")
+        raise ValueError("exactly one input callback and both readers are required")
     if not callable(cancel_requested):
         raise ValueError("cancel_requested must be callable")
-    if not isinstance(targets, TradePanelTargets):
-        raise ValueError("targets must be TradePanelTargets")
+    if tap is not None and not isinstance(targets, TradePanelTargets):
+        raise ValueError("targets must be TradePanelTargets for legacy tap")
+    if tap is not None and request.row_tap_x is None:
+        raise ValueError("legacy tap requires row_tap_x")
+
+    if act is not None:
+        from bot.semantic_actions import (
+            CancelTradingTrade, ConfirmTradingTrade, SelectTradingMaximum,
+            SelectTradingRow,
+        )
+
+    def input_row() -> None:
+        if act is not None:
+            act(SelectTradingRow(before))
+        else:
+            tap((request.row_tap_x, before.row_y))
+
+    def input_max() -> None:
+        if act is not None:
+            act(SelectTradingMaximum())
+        else:
+            tap(targets.max_point)
+
+    def input_confirm() -> None:
+        if act is not None:
+            act(ConfirmTradingTrade())
+        else:
+            tap(targets.confirm_point)
+
+    def input_cancel() -> None:
+        if act is not None:
+            act(CancelTradingTrade())
+        else:
+            tap(targets.cancel_point)
 
     def _cancel_once(inputs: list[str], reason: str) -> None:
-        if targets.cancel_point is not None:
-            tap(targets.cancel_point)
+        if act is not None or targets.cancel_point is not None:
+            input_cancel()
             inputs.append("tap_cancel")
 
     try:
@@ -543,7 +578,7 @@ def execute_verified_trade(
     evidence: list[str] = [f"before:{before.have}/{before.need}"]
 
     try:
-        tap((request.row_tap_x, before.row_y))
+        input_row()
     except Exception as error:
         return TradeResult(
             outcome=TradeOutcome.FAILED,
@@ -676,7 +711,7 @@ def execute_verified_trade(
         evidence.append("max_skipped:already_selected")
     else:
         try:
-            tap(targets.max_point)
+            input_max()
         except Exception as error:
             return TradeResult(
                 outcome=TradeOutcome.FAILED,
@@ -792,7 +827,7 @@ def execute_verified_trade(
         )
 
     try:
-        tap(targets.confirm_point)
+        input_confirm()
     except Exception as error:
         return TradeResult(
             outcome=TradeOutcome.FAILED,

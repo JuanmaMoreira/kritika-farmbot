@@ -1276,3 +1276,31 @@ campo ilegible y coste secundario desconocido fallan cerrados. 15 tests directos
 con replay real + 144 regresiones C4/C6b/Keys/C3 verdes; sin HIL, full suite ni
 corpus global. C2b aún debe cerrar intents ActionExecutor y budget Keys lazy;
 C2/L1/L2 no se iniciaron.
+
+## 41. C2b: input semántico y presupuesto Keys lazy (2026-09-24)
+
+C2b añade intents de fila Trading observada, `>>`, Trade, No, OK Gold-full
+y botón derecho Gold del resultado Treasure. `ActionExecutor` posee los targets;
+C4 conserva la lectura `TradePanelFact` de C2c y sus ACK/postcondiciones,
+C6b conserva el pending causal y exige Keys limpio tras OK, y E2.2 conserva
+la frontera Gold/Karat y el cierre final `DismissTreasureResult`. `TreasureRuntime`
+despacha x1/x10 por los intents ya existentes; las rutas C4/C6b/E2.2 admiten
+callbacks semánticos que despachan al executor sin tap directo productivo.
+
+HIL C2b confirmó físicamente un solo `10(Open)` Gold en `(0.693,0.540)`:
+`45/499→35/499`, reward abierto y cero Karat. No confirma cierre ni ciclo
+repetido selector→animación→selector. HIL Gold-full
+(`artifacts/hil_c2b_gold_full_ok/20260924T053239/`) confirmó `Drakenn14`
+Gold `499/499` por GT, una pulsación de fila `Gold Key 2` produjo
+inmediatamente `You have reached the MAX limit of Gold Key.` sin Item Trade
+ni consumo Silver, y un único OK medido en `(1355,762)` sobre 2712×1220
+(`0.4996,0.6246`) devolvió Trading/Keys limpio con Bronze `499/10` y
+Silver `169/10` intactos.
+
+J deja de exigir un número anticipado para Keys. `KeysPromotionRuntime.run()`
+lee `FreshKeyFacts` primero y usa exactamente una vez el `make_budget` de C2a
+cuando no recibe un bound explícito; devuelve remanente para el recovery
+diferido. `make_budget` sigue siendo el único owner de `10 Bronze→2 Silver`;
+el bound no decide orden, `MAX_ALLOWED` ni el retry. El contrato explícito
+permanece compatible con K/J. Sin composition root C2, board request nuevo,
+L1/L2, cambios de perception ni HIL adicional.

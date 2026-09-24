@@ -13,9 +13,8 @@ Fresh HIL E 2026-09-17, 2712x1220 (``artifacts/hil_treasure_a/``):
 - single: (0.618, 0.548), HIL B2 PASS (1 tap authorized,
   1677x669, dorado 354 -> 353, cero premium, sin retry).
 - repeat: ``10(Open)`` label centroid (0.693, 0.540) from the B1
-  popup (n=1607 yellow-mask px). Geometrically calibrated from the
-  same popup as the validated single control; the tap itself is
-  HIL_NOT_EXERCISED (gastar 10 keys requiere aprobacion no pedida).
+  popup (n=1607 yellow-mask px). C2b HIL later verified one authorized
+  selector tap: Gold Keys 45/499 -> 35/499, reward state, zero Karat.
 - dismiss: (0.08, 0.65), safe lateral point in the left dark
   corridor, recalibrated 2026-09-18 from the live Karat reward
   overlay ``artifacts/hil_e2_fastdrain/20260918T204217/dry_000.png``
@@ -81,7 +80,7 @@ class TreasureProfile:
     Points must lie strictly inside their bbox with margin; bboxes
     that share a surface must not overlap. No navigation, no policy,
     no ADB: pure geometry. ``single_exercised`` records the HIL tap
-    proof; ``repeat_exercised`` stays False until a live 10-open.
+    proof; ``repeat_exercised`` records the later C2b selector HIL.
     """
 
     entry_point: tuple[float, float]
@@ -98,7 +97,7 @@ class TreasureProfile:
     frame_width: int = 2712
     frame_height: int = 1220
     single_exercised: bool = True
-    repeat_exercised: bool = False
+    repeat_exercised: bool = True
 
     def __post_init__(self) -> None:
         for name in (
@@ -156,7 +155,7 @@ TREASURE_PROFILE = TreasureProfile(
     entry_point=(0.721, 0.892),
     gold_chest_point=(0.636, 0.380),
     single_point=(0.618, 0.548),
-    repeat_point=(0.693, 0.540),
+    repeat_point=(0.6928467, 0.5401640),
     dismiss_point=(0.08, 0.65),
     back_point=(0.802, 0.073),
     entry_bbox=(0.685, 0.84, 0.755, 0.965),
@@ -165,6 +164,9 @@ TREASURE_PROFILE = TreasureProfile(
     repeat_bbox=(0.650, 0.395, 0.730, 0.565),
     back_bbox=(0.790, 0.025, 0.872, 0.108),
 )
+
+# E2.2 HIL: Gold-backed right control on the result bar.
+RESULT_BAR_GOLD_POINT: tuple[float, float] = (0.335, 0.82)
 
 
 def open_targets(profile: TreasureProfile = TREASURE_PROFILE):
@@ -185,6 +187,7 @@ def open_targets(profile: TreasureProfile = TREASURE_PROFILE):
 
 
 __all__ = (
+    "RESULT_BAR_GOLD_POINT",
     "TREASURE_PROFILE",
     "TreasureProfile",
     "open_targets",

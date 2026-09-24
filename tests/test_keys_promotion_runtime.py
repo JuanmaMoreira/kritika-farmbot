@@ -1,9 +1,11 @@
 from types import SimpleNamespace
 import inspect
+from unittest.mock import Mock, patch
 
 import numpy as np
 
-from bot.action_executor import FrameGeometry
+from bot.action_executor import ActionExecutor, FrameGeometry
+from bot.semantic_actions import AcknowledgeTradingGoldFull
 from bot.capture import FrameSnapshot
 from bot.flow_contracts import FlowStatus
 from bot.keys_promotion_runtime import (
@@ -85,6 +87,28 @@ def test_budget_includes_newly_generated_silver_without_deciding_order():
     assert make_budget(_facts(2, bronze=50, silver=9)) == 6
     assert make_budget(_facts(2, bronze=0, silver=20)) == 2
     assert make_budget(_facts(2, bronze=9, silver=9)) == 0
+
+
+def test_lazy_budget_uses_first_fresh_facts_once_per_run():
+    first = _facts(2, bronze=0, silver=20)
+    harness = Harness([first, _facts(4, bronze=0, silver=0)], [TradeOutcome.SUCCESS])
+    with patch("bot.keys_promotion_runtime.make_budget", wraps=make_budget) as budget:
+        result = harness.runtime.run()
+    assert result.status is FlowStatus.COMPLETED
+    budget.assert_called_once_with(first)
+    assert harness.trace[:2] == ["ensure_avatar_keys", "read_facts"]
+    assert result.remaining_budget == 1
+
+
+def test_lazy_budget_is_recomputed_for_each_bounded_operation():
+    first = _facts(2, bronze=9, silver=9)
+    second = _facts(4, bronze=20, silver=0)
+    harness = Harness([first, second, _facts(6, bronze=0, silver=0)],
+                      [TradeOutcome.SUCCESS])
+    with patch("bot.keys_promotion_runtime.make_budget", wraps=make_budget) as budget:
+        assert harness.runtime.run().status is FlowStatus.COMPLETED
+        assert harness.runtime.run().status is FlowStatus.COMPLETED
+    assert [call.args[0] for call in budget.call_args_list] == [first, second]
 
 
 def _step(status=FlowStatus.COMPLETED, *, final_snapshot=None, error=None):
@@ -652,3 +676,17 @@ def test_output_full_ack_needs_fresh_alert_and_clean_keys_after_one_ok():
     )
     assert stale.status is FlowStatus.FAILED
     assert taps == []
+
+    adb = Mock()
+    actions = ActionExecutor(adb)
+    intents = []
+    def act(intent):
+        intents.append(intent)
+        actions.execute(intent, GEOMETRY)
+    semantic = acknowledge_gold_full_boundary(
+        pending, read_panel=lambda: panel, tap_ok=None, act=act,
+        read_keys_context=lambda *, after_sequence: _keys_snapshot(after_sequence + 1),
+    )
+    assert semantic.status is FlowStatus.COMPLETED
+    assert [type(item) for item in intents] == [AcknowledgeTradingGoldFull]
+    adb.tap.assert_called_once_with(1355, 762)

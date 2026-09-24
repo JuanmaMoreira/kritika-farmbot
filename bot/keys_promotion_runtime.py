@@ -104,16 +104,17 @@ def acknowledge_gold_full_boundary(
     pending: PendingCausalOperation,
     *,
     read_panel,
-    tap_ok,
+    tap_ok=None,
     read_keys_context,
+    act=None,
     cancel_requested=lambda: False,
 ) -> GoldFullAckResult:
     """Dismiss the observed alert once, then require fresh clean Keys."""
     if not isinstance(pending, PendingCausalOperation):
         raise ValueError("pending must be PendingCausalOperation")
-    if not all(callable(item) for item in (
-        read_panel, tap_ok, read_keys_context, cancel_requested,
-    )):
+    if (callable(tap_ok) == callable(act) or not all(callable(item) for item in (
+        read_panel, read_keys_context, cancel_requested,
+    ))):
         raise ValueError("ack callbacks must be callable")
     if cancel_requested():
         return GoldFullAckResult(FlowStatus.CANCELLED)
@@ -124,7 +125,11 @@ def acknowledge_gold_full_boundary(
         return GoldFullAckResult(FlowStatus.FAILED, error="fresh_gold_full_alert_unavailable")
     if cancel_requested():
         return GoldFullAckResult(FlowStatus.CANCELLED)
-    tap_ok()
+    if act is not None:
+        from bot.semantic_actions import AcknowledgeTradingGoldFull
+        act(AcknowledgeTradingGoldFull())
+    else:
+        tap_ok()
     after = read_keys_context(after_sequence=panel.sequence)
     if (not isinstance(after, RuntimeSnapshot)
             or after.sequence <= panel.sequence or not is_keys_ready(after)):
@@ -143,6 +148,7 @@ class KeysPromotionRuntimeResult(FlowResult):
     recovery_steps: tuple[str, ...] = ()
     recovery_count: int = 0
     retry_count: int = 0
+    remaining_budget: int | None = None
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -152,6 +158,12 @@ class KeysPromotionRuntimeResult(FlowResult):
             raise ValueError("recovery_count must be zero or one")
         if self.retry_count not in (0, 1):
             raise ValueError("retry_count must be zero or one")
+        if self.remaining_budget is not None and (
+            isinstance(self.remaining_budget, bool)
+            or not isinstance(self.remaining_budget, Integral)
+            or self.remaining_budget < 0
+        ):
+            raise ValueError("remaining_budget must be non-negative or None")
 
 
 @dataclass(frozen=True)
@@ -236,20 +248,20 @@ class KeysPromotionRuntime:
     def run(
         self,
         *,
-        budget_remaining: int,
+        budget_remaining: int | None = None,
         recovery_navigation: GoldCapacityRecoveryNavigation | None = None,
         defer_recovery: bool = False,
         recovery_already_used: bool = False,
     ) -> KeysPromotionRuntimeResult:
         """Promote Keys with one bounded Silver->Gold OUTPUT_FULL recovery."""
 
-        if (
+        if budget_remaining is not None and (
             isinstance(budget_remaining, bool)
             or not isinstance(budget_remaining, Integral)
             or int(budget_remaining) < 0
         ):
             raise ValueError("budget_remaining must be a non-negative integer")
-        budget = int(budget_remaining)
+        budget = int(budget_remaining) if budget_remaining is not None else None
         if recovery_navigation is not None and not isinstance(
             recovery_navigation, GoldCapacityRecoveryNavigation
         ):
@@ -274,11 +286,14 @@ class KeysPromotionRuntime:
                 recovery_steps=tuple(recovery_steps),
                 recovery_count=int(recovered),
                 retry_count=retry_count,
+                remaining_budget=budget,
                 **kwargs,
             )
 
         try:
             facts = self._fresh_facts(after_sequence=0)
+            if budget is None:
+                budget = make_budget(facts)
             decision = decide_next_keys_operation(
                 silver_fact=facts.silver_fact,
                 gold_fact=facts.gold_fact,

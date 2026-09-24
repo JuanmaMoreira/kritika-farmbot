@@ -1,8 +1,14 @@
 """Generic verified trade primitive: guards, quantity, boundaries."""
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
+from bot.action_executor import ActionExecutor, FrameGeometry
+from bot.semantic_actions import (
+    CancelTradingTrade, ConfirmTradingTrade, SelectTradingMaximum,
+    SelectTradingRow,
+)
 
 from bot.trading_operation import (
     TradeCostFact,
@@ -129,6 +135,57 @@ def test_fresh_matching_fact_may_open():
     )
     assert result.outcome is TradeOutcome.SUCCESS
     assert script.taps[0] == (0.70, 0.70)
+
+
+def test_c4_semantic_input_runs_through_action_executor_and_keeps_postcondition():
+    script = _success_script()
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    intents = []
+
+    def act(intent):
+        intents.append(intent)
+        executor.execute(intent, FrameGeometry(2712, 1220))
+
+    result = execute_verified_trade(
+        request=_request(), context=_context(), targets=None, tap=None,
+        act=act, read_panel=script.read_panel, read_row=script.read_row,
+    )
+
+    assert result.outcome is TradeOutcome.SUCCESS
+    assert [type(intent) for intent in intents] == [
+        SelectTradingRow, SelectTradingMaximum, ConfirmTradingTrade,
+    ]
+    assert adb.tap.call_count == 3
+    assert script.taps == []
+
+
+def test_c4_semantic_no_and_gold_full_row_boundary():
+    adb = Mock()
+    executor = ActionExecutor(adb)
+    intents = []
+    def act(intent):
+        intents.append(intent)
+        executor.execute(intent, FrameGeometry(2712, 1220))
+
+    mismatch = _Script([_panel(item_id=OTHER)], [])
+    rejected = execute_verified_trade(
+        request=_request(), context=_context(), targets=None, tap=None,
+        act=act, read_panel=mismatch.read_panel, read_row=mismatch.read_row,
+    )
+    assert rejected.outcome is TradeOutcome.FAILED
+    assert [type(intent) for intent in intents] == [SelectTradingRow, CancelTradingTrade]
+
+    intents.clear()
+    gold_full = _Script([_panel(item_id=None, input_have=None, input_need=None,
+                                quantity=None, shows_output_full=True)], [])
+    blocked = execute_verified_trade(
+        request=_request(), context=_context(), targets=None, tap=None,
+        act=act, read_panel=gold_full.read_panel, read_row=gold_full.read_row,
+    )
+    assert blocked.outcome is TradeOutcome.OUTPUT_FULL
+    assert blocked.reason == "output_full_on_open"
+    assert [type(intent) for intent in intents] == [SelectTradingRow]
 
 
 def test_row_tap_uses_stable_row_y():

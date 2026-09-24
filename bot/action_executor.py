@@ -129,9 +129,16 @@ from bot.semantic_actions import (
     SelectTradingAvatarKeys,
     SelectTradingGeneral,
     CloseTrading,
+    SelectTradingRow,
+    SelectTradingMaximum,
+    ConfirmTradingTrade,
+    CancelTradingTrade,
+    AcknowledgeTradingGoldFull,
+    ContinueGoldDrainFromResult,
 )
 from bot.trading_navigation_profile import TRADING_NAVIGATION_PROFILE
-from bot.treasure_profile import TREASURE_PROFILE
+from bot.trading_panel_profile import ROW_TAP_X, TRADING_PANEL_PROFILE
+from bot.treasure_profile import RESULT_BAR_GOLD_POINT, TREASURE_PROFILE
 
 
 @dataclass(frozen=True)
@@ -579,6 +586,12 @@ class TradingActionTargets:
     )
     select_general: RelativePoint = TRADING_NAVIGATION_PROFILE.general_point
     close_trading: RelativePoint = TRADING_NAVIGATION_PROFILE.close_point
+    row_x: float = ROW_TAP_X
+    maximum: RelativePoint = TRADING_PANEL_PROFILE.max_point
+    confirm_trade: RelativePoint = TRADING_PANEL_PROFILE.confirm_point
+    cancel_trade: RelativePoint = TRADING_PANEL_PROFILE.cancel_point
+    # HIL C2b Gold-full OK: pixel (1355, 762) on 2712x1220.
+    acknowledge_gold_full: RelativePoint = (0.4996313, 0.6245902)
 
     def __post_init__(self) -> None:
         for point in (
@@ -586,6 +599,11 @@ class TradingActionTargets:
             self.select_avatar_keys,
             self.select_general,
             self.close_trading,
+            (self.row_x, 0.5),
+            self.maximum,
+            self.confirm_trade,
+            self.cancel_trade,
+            self.acknowledge_gold_full,
         ):
             relative_point_to_pixel(point, 1, 1)
 
@@ -607,6 +625,7 @@ class TreasureActionTargets:
     select_gold_chest: RelativePoint = TREASURE_PROFILE.gold_chest_point
     confirm_single_gold_open: RelativePoint = TREASURE_PROFILE.single_point
     confirm_repeat_gold_open: RelativePoint = TREASURE_PROFILE.repeat_point
+    continue_gold_drain_from_result: RelativePoint = RESULT_BAR_GOLD_POINT
     dismiss_treasure_result: RelativePoint = TREASURE_PROFILE.dismiss_point
     exit_treasure: RelativePoint = TREASURE_PROFILE.back_point
 
@@ -616,6 +635,7 @@ class TreasureActionTargets:
             self.select_gold_chest,
             self.confirm_single_gold_open,
             self.confirm_repeat_gold_open,
+            self.continue_gold_drain_from_result,
             self.dismiss_treasure_result,
             self.exit_treasure,
         ):
@@ -964,6 +984,19 @@ class ActionExecutor:
             return self.trading_targets.select_general
         if isinstance(action, CloseTrading):
             return self.trading_targets.close_trading
+        if isinstance(action, SelectTradingRow):
+            from bot.trading_row_facts import TradingRowFact
+            if not isinstance(action.row_fact, TradingRowFact):
+                raise ValueError("row_fact must be TradingRowFact")
+            return (self.trading_targets.row_x, action.row_fact.row_y)
+        if isinstance(action, SelectTradingMaximum):
+            return self.trading_targets.maximum
+        if isinstance(action, ConfirmTradingTrade):
+            return self.trading_targets.confirm_trade
+        if isinstance(action, CancelTradingTrade):
+            return self.trading_targets.cancel_trade
+        if isinstance(action, AcknowledgeTradingGoldFull):
+            return self.trading_targets.acknowledge_gold_full
         if isinstance(action, OpenTreasure):
             return self.treasure_targets.open_treasure
         if isinstance(action, SelectGoldChest):
@@ -972,6 +1005,8 @@ class ActionExecutor:
             return self.treasure_targets.confirm_single_gold_open
         if isinstance(action, ConfirmRepeatGoldOpen):
             return self.treasure_targets.confirm_repeat_gold_open
+        if isinstance(action, ContinueGoldDrainFromResult):
+            return self.treasure_targets.continue_gold_drain_from_result
         if isinstance(action, DismissTreasureResult):
             return self.treasure_targets.dismiss_treasure_result
         if isinstance(action, ExitTreasure):

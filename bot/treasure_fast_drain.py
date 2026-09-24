@@ -48,7 +48,7 @@ UI audit (E/E2/E2.1 raws, 2026-09-17/18 + Round A HIL):
 - selector popup (initial): center overlay, right button bbox approx
   x 0.650-0.730 / y 0.395-0.565, point (0.693, 0.540) geometrically
   calibrated from the B1 popup (``TREASURE_PROFILE.repeat_point``).
-  Repeat tap itself HIL_NOT_EXERCISED (bar tap exercised instead).
+  C2b HIL verified one 10(Open) selector tap (45->35 Gold Keys).
 - result overlay (repeat): bottom bar, right icon ROI x 0.305-0.365 /
   y 0.78-0.86, centroid (0.335, 0.82). Different position from the
   selector popup: the target is resolved per snapshot/reading
@@ -135,7 +135,9 @@ from enum import Enum
 import time
 from numbers import Real
 
-from bot.semantic_actions import DismissTreasureResult
+from bot.semantic_actions import (
+    ConfirmRepeatGoldOpen, ContinueGoldDrainFromResult, DismissTreasureResult,
+)
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughOutcome, TapThroughPolicy
 from bot.treasure_center import (
@@ -150,15 +152,15 @@ from bot.treasure_center import (
     has_selector_popup,
     is_treasure_screen,
 )
-from bot.treasure_profile import TREASURE_PROFILE
+from bot.treasure_profile import RESULT_BAR_GOLD_POINT, TREASURE_PROFILE
 
 #: Selector-popup right-button point (B1 geometry; repeat tap pending HIL).
-SELECTOR_REPEAT_POINT: tuple[float, float] = (0.693, 0.540)
+SELECTOR_REPEAT_POINT: tuple[float, float] = TREASURE_PROFILE.repeat_point
 
 #: Result bottom-bar right-button point: centroid of the bar repeat icon
 #: ROI x 0.305-0.365 / y 0.78-0.86 (``TREASURE_BAR_REPEAT_ICON_REGION``).
-#: Derived geometrically, HIL_NOT_EXERCISED for live taps.
-BAR_REPEAT_POINT: tuple[float, float] = (0.335, 0.82)
+#: Prior E2.2 drain HIL exercised the result-bar right Gold control.
+BAR_REPEAT_POINT: tuple[float, float] = RESULT_BAR_GOLD_POINT
 
 #: Animation/result ROI for the visual-progress fingerprint
 #: (``TREASURE_RESULT_REGION`` provenance; numpy-only, no detector).
@@ -366,7 +368,7 @@ def resolve_right_button_target(
 
     Result overlay -> bottom-bar repeat point; otherwise the selector
     popup repeat point. Never the left ``1(Open)`` control. Both points
-    are HIL_PENDING for live repeat taps.
+    have separate HIL evidence (C2b selector and E2.2 result bar).
     """
     _require_point(repeat_point, "repeat_point")
     _require_point(bar_repeat_point, "bar_repeat_point")
@@ -515,6 +517,7 @@ def drain_gold_keys_fast(
     initial_snapshot,
     observe,
     tap,
+    act=None,
     config: GoldKeyDrainConfig | None = None,
     target: tuple[float, float] | None = None,
     target_for=None,
@@ -532,7 +535,8 @@ def drain_gold_keys_fast(
     """Drain Gold Keys through the right button until the Karat boundary.
 
     Injected I/O only: ``observe`` returns a fresh classified snapshot
-    per call, ``tap`` performs one normalized tap at the given point,
+    per call; production ``act`` emits semantic right-Gold intents through
+    ActionExecutor, while legacy ``tap`` accepts a normalized point.
     ``measure_local`` (optional) returns a title-independent content
     reading for ``snapshot.frame.image`` (``TreasureContentDetector``
     ``.measure`` in production, a double in tests). Exactly one tap per
@@ -553,8 +557,8 @@ def drain_gold_keys_fast(
         config = GoldKeyDrainConfig()
     if not isinstance(config, GoldKeyDrainConfig):
         raise ValueError("config must be GoldKeyDrainConfig")
-    if not callable(observe) or not callable(tap):
-        raise ValueError("observe and tap must be callable")
+    if not callable(observe) or callable(tap) == callable(act):
+        raise ValueError("observe and exactly one input callback are required")
     if not callable(cancel_requested):
         raise ValueError("cancel_requested must be callable")
     if measure_local is not None and not callable(measure_local):
@@ -730,7 +734,7 @@ def drain_gold_keys_fast(
             return _require_point(bar_repeat_point, "bar_repeat_point")
         return _require_point(repeat_point, "repeat_point")
 
-    def _do_tap(point, tag: str):
+    def _do_tap(point, tag: str, side: str):
         """Emit one right-button tap; return a terminal result or None.
 
         The Gold-exhaustion latch permanently forbids right-button
@@ -746,7 +750,11 @@ def drain_gold_keys_fast(
                 extra=("refused:latched",),
             )
         try:
-            tap(point)
+            if act is not None:
+                act(ContinueGoldDrainFromResult() if side == LOCAL_SIDE_BAR
+                    else ConfirmRepeatGoldOpen())
+            else:
+                tap(point)
         except Exception as error:
             return _finish(
                 GoldKeyDrainOutcome.FAILED,
@@ -1009,16 +1017,16 @@ def drain_gold_keys_fast(
                 if terminal is not None:
                     return terminal
                 continue
+            side = "bar" if has_result(snapshot) else "popup"
             try:
-                point = _point_for(snapshot)
+                point = _point_for(snapshot) if act is None else None
             except Exception as error:
                 return _finish(
                     GoldKeyDrainOutcome.FAILED,
                     reason=f"target_failed:{type(error).__name__}",
                     extra=("target_failed",),
                 )
-            side = "bar" if has_result(snapshot) else "popup"
-            terminal = _do_tap(point, f"observed-{side}")
+            terminal = _do_tap(point, f"observed-{side}", side)
             if terminal is not None:
                 return terminal
             if inputs % config.watchdog_every == 0:
@@ -1066,7 +1074,10 @@ def drain_gold_keys_fast(
                     continue
                 gold_observations += 1
                 evidence.append(f"local_gold:{side}")
-                terminal = _do_tap(_local_point(side), f"local-{side}")
+                terminal = _do_tap(
+                    _local_point(side) if act is None else None,
+                    f"local-{side}", side,
+                )
                 if terminal is not None:
                     return terminal
                 if inputs % config.watchdog_every == 0:

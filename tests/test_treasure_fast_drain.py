@@ -3,11 +3,12 @@
 import inspect
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
 
-from bot.action_executor import FrameGeometry
+from bot.action_executor import ActionExecutor, FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.catalog import SCREEN_LOBBY
 from bot.observations import Observation, ObservationBatch, ObservationSource
@@ -17,7 +18,9 @@ from bot.runtime_observer import (
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
-from bot.semantic_actions import DismissTreasureResult
+from bot.semantic_actions import (
+    ConfirmRepeatGoldOpen, ContinueGoldDrainFromResult, DismissTreasureResult,
+)
 from bot.state import ResolutionStatus, ResolvedState
 from bot.tap_through_animation import TapThroughAnimation, TapThroughPolicy
 from bot.perception.treasure_center import TreasureContentDetector
@@ -409,6 +412,37 @@ def test_fresh_right_gold_emits_one_tap_then_karat_exhausts():
     assert result.inputs_emitted == 1
     assert script.taps == [SELECTOR_REPEAT_POINT]
     assert result.karat_boundary_seen is True
+
+
+def test_e22_semantic_right_controls_dispatch_through_action_executor():
+    script = _Script([
+        _popup(11, timestamp=11.0),
+        _result(12, timestamp=12.0),
+        _karat(13, timestamp=13.0),
+    ])
+    clock = _Clock()
+    adb = Mock()
+    actions = ActionExecutor(adb)
+    intents = []
+    def act(intent):
+        intents.append(intent)
+        actions.execute(intent, FrameGeometry(2712, 1220))
+    result = drain_gold_keys_fast(
+        initial_snapshot=_popup(10, timestamp=10.0),
+        observe=script.observe, tap=None, act=act,
+        initial_open_verified=True,
+        clock=clock.now, sleeper=clock.sleep,
+        fingerprint=lambda snap: ("seq", snap.sequence),
+        tap_through=TapThroughAnimation(
+            script, _FinalActions(script), clock=clock.now,
+            sleeper=clock.sleep,
+        ),
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert [type(intent) for intent in intents] == [
+        ConfirmRepeatGoldOpen, ContinueGoldDrainFromResult,
+    ]
+    assert adb.tap.call_count == 2
 
 
 def test_repeated_fresh_frames_emit_repeated_taps():

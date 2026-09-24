@@ -5,10 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from numbers import Integral
+from typing import TYPE_CHECKING
 
 from bot.geometry import RelativePoint, relative_point_to_pixel
 from bot.craft_semantics import CraftFamily
 from bot.monster_wave_actions import MonsterWaveAction
+
+if TYPE_CHECKING:
+    from bot.trading_row_facts import TradingRowFact
 
 
 _BLACK_MARKET_SLOT_COUNT = 10
@@ -634,6 +638,38 @@ class CloseTrading:
 
 
 @dataclass(frozen=True)
+class SelectTradingRow:
+    """Open the already observed Trading row."""
+
+    row_fact: TradingRowFact
+
+    def __post_init__(self) -> None:
+        from bot.trading_row_facts import TradingRowFact
+        if not isinstance(self.row_fact, TradingRowFact):
+            raise ValueError("row_fact must be TradingRowFact")
+
+
+@dataclass(frozen=True)
+class SelectTradingMaximum:
+    """Select >> in an already verified Item Trade panel."""
+
+
+@dataclass(frozen=True)
+class ConfirmTradingTrade:
+    """Confirm an already verified Item Trade panel."""
+
+
+@dataclass(frozen=True)
+class CancelTradingTrade:
+    """Choose No in an Item Trade panel."""
+
+
+@dataclass(frozen=True)
+class AcknowledgeTradingGoldFull:
+    """Choose OK on the verified Gold-full alert."""
+
+
+@dataclass(frozen=True)
 class OpenTreasure:
     """Request the direct Lobby -> Treasure tile action."""
 
@@ -651,6 +687,11 @@ class ConfirmSingleGoldOpen:
 @dataclass(frozen=True)
 class ConfirmRepeatGoldOpen:
     """Request exactly one 10 (Open) batch from the Gold popup."""
+
+
+@dataclass(frozen=True)
+class ContinueGoldDrainFromResult:
+    """Request the Gold-backed right button on the Treasure result bar."""
 
 
 @dataclass(frozen=True)
@@ -776,10 +817,16 @@ SemanticAction = (
     | SelectTradingAvatarKeys
     | SelectTradingGeneral
     | CloseTrading
+    | SelectTradingRow
+    | SelectTradingMaximum
+    | ConfirmTradingTrade
+    | CancelTradingTrade
+    | AcknowledgeTradingGoldFull
     | OpenTreasure
     | SelectGoldChest
     | ConfirmSingleGoldOpen
     | ConfirmRepeatGoldOpen
+    | ContinueGoldDrainFromResult
     | DismissTreasureResult
     | ExitTreasure
 )
@@ -823,6 +870,11 @@ __all__ = (
     "SelectTradingAvatarKeys",
     "SelectTradingGeneral",
     "CloseTrading",
+    "SelectTradingRow",
+    "SelectTradingMaximum",
+    "ConfirmTradingTrade",
+    "CancelTradingTrade",
+    "AcknowledgeTradingGoldFull",
     "OpenBlackMarket",
     "OpenGuild",
     "OpenFriends",
@@ -841,6 +893,7 @@ __all__ = (
     "SelectGoldChest",
     "ConfirmSingleGoldOpen",
     "ConfirmRepeatGoldOpen",
+    "ContinueGoldDrainFromResult",
     "DismissTreasureResult",
     "ExitTreasure",
     "OpenCharacterSelect",

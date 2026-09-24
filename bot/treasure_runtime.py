@@ -66,7 +66,7 @@ from bot.treasure_keys import (
     check_gold_ready,
     execute_gold_key_open as execute_capability,
 )
-from bot.treasure_profile import TREASURE_PROFILE, open_targets
+from bot.treasure_profile import TREASURE_PROFILE
 from bot.verified_transition import VerifiedTransitionPolicy
 
 
@@ -326,17 +326,11 @@ class TreasureRuntime:
                 )
             return fact
 
-        def tap(point: tuple[float, float]) -> None:
-            geometry = latest["snapshot"].geometry
-            pixel = (
-                int(point[0] * geometry.width),
-                int(point[1] * geometry.height),
-            )
+        def act(intent) -> None:
             actions = getattr(self.transition, "actions", None)
-            adb = getattr(actions, "adb", None)
-            if adb is None or not callable(getattr(adb, "tap", None)):
-                raise ValueError("transition must expose actions.adb.tap")
-            adb.tap(*pixel)
+            if actions is None or not callable(getattr(actions, "execute", None)):
+                raise ValueError("transition must expose actions.execute")
+            actions.execute(intent, latest["snapshot"].geometry)
 
         # Freshness is physical, not sequential: the authorizing selector
         # snapshot carries the popup frame capture time as the causal
@@ -349,7 +343,7 @@ class TreasureRuntime:
         request = GoldKeyOpenRequest(
             quantity=quantity,
             allowed_currency_kinds=frozenset(GOLD_ALLOWED_CURRENCY_KINDS),
-            targets=open_targets(self.profile),
+            targets=None,
             max_actions=max_actions,
             max_fact_age_s=2.0,
             source="lobby",
@@ -358,7 +352,8 @@ class TreasureRuntime:
         return execute_capability(
             snapshot=selector.final_snapshot,
             request=request,
-            tap=tap,
+            tap=None,
+            act=act,
             read_state=read_state,
             cancel_requested=self.cancel_requested,
         )

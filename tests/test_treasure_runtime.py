@@ -213,7 +213,7 @@ def _transition_result(name, outcome, final, error=None):
 
 class FakeTransition:
     def __init__(self, adb, posts):
-        self.actions = SimpleNamespace(adb=adb)
+        self.actions = ActionExecutor(adb)
         self._posts = list(posts)
         self.calls = []
 
@@ -239,12 +239,7 @@ class FakeTransition:
                 before,
                 "precondition_rejected",
             )
-        geometry = before.geometry
-        pixel = (
-            int(action_point(action)[0] * geometry.width),
-            int(action_point(action)[1] * geometry.height),
-        )
-        self.actions.adb.tap(*pixel)
+        self.actions.execute(action, before.geometry)
         post = self._posts.pop(0) if self._posts else before
         if abort_if is not None and abort_if(post):
             return _transition_result(
@@ -424,6 +419,21 @@ def test_execute_single_open_taps_single_point_once_with_success():
     )
     assert adb.taps[-1] == single_pixel
     assert adb.taps.count(single_pixel) == 1
+
+
+def test_execute_repeat_open_uses_executor_selector_intent_once():
+    runtime, adb = _runtime(_open_session_snaps(), [_treasure_popup(3)])
+    result = runtime.execute_gold_key_open(
+        GoldKeyQuantity(mode=GoldKeyQuantityMode.EXACT, amount=10),
+        max_actions=1,
+    )
+    assert result.outcome is TreasureOutcome.SUCCESS
+    assert result.inputs == ("tap_open_repeat",)
+    repeat_pixel = (
+        int(TREASURE_PROFILE.repeat_point[0] * 2712),
+        int(TREASURE_PROFILE.repeat_point[1] * 1220),
+    )
+    assert adb.taps.count(repeat_pixel) == 1
 
 
 def test_execute_open_once_accepts_fresh_title_occluded_reward_result():
@@ -654,7 +664,7 @@ def test_profile_points_are_hil_single_and_inside_bboxes():
     assert profile.single_point == (0.618, 0.548)
     assert profile.dismiss_point == (0.08, 0.65)
     assert profile.single_exercised is True
-    assert profile.repeat_exercised is False
+    assert profile.repeat_exercised is True
     for point_name, bbox_name in (
         ("entry_point", "entry_bbox"),
         ("gold_chest_point", "gold_chest_bbox"),

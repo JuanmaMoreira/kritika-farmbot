@@ -203,6 +203,7 @@ class FakeKeys:
         return SimpleNamespace(
             status=FlowStatus.COMPLETED, pending=object() if self.gold_full else None,
             trade_attempts=("silver_to_gold",) if self.gold_full else (),
+            remaining_budget=(6 if self.gold_full else 7),
         )
     def resolve_pending(self, pending, *, budget_remaining, recovery_navigation):
         assert recovery_navigation.source == "monster_wave"
@@ -286,6 +287,25 @@ def test_zero_equipment_slots_surface_blocker_before_any_craft_action():
     assert result.status is ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED
     assert result.capability_result.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
     assert trace == ["mw_qm_craft", "probe_capacity"]
+
+
+def test_j_accepts_lazy_keys_budget_and_preserves_deferred_remainder():
+    trace = []
+    class LazyKeys(FakeKeys):
+        def resolve_pending(self, pending, *, budget_remaining, recovery_navigation):
+            self.trace.append(("keys_remainder", budget_remaining))
+            return super().resolve_pending(
+                pending, budget_remaining=budget_remaining,
+                recovery_navigation=recovery_navigation,
+            )
+    runtime = MonsterWaveResourceRouteRuntime(
+        FakeNavigation(trace), FakeSnapshots(trace), FakeCraft(trace),
+        LazyKeys(trace, gold_full=True), FakeMaterials(trace),
+    )
+    result = runtime.execute_plan_once(_plan(keys=True), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.SUCCESS
+    assert ("keys", None) in trace
+    assert ("keys_remainder", 6) in trace
 
 
 def test_unreadable_equipment_capacity_fails_closed_before_craft():
