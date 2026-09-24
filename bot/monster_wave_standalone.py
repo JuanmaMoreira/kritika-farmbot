@@ -63,12 +63,29 @@ class MonsterWaveBoardAcquisitionRuntime:
         self.cancel_requested = cancel_requested
         self.clock = clock
 
-    def acquire(self) -> FreshMonsterWaveBoard:
+    def acquire(self, *, after_sequence: int = 0) -> FreshMonsterWaveBoard:
+        from numbers import Integral
+
+        if (
+            isinstance(after_sequence, bool)
+            or not isinstance(after_sequence, Integral)
+            or int(after_sequence) < 0
+        ):
+            raise ValueError("after_sequence must be non-negative")
+        barrier_in = int(after_sequence)
         if self.cancel_requested():
             raise RuntimeWaitCancelled()
         first = self.observer.observe()
         if not _board_open(first):
             raise ValueError("fresh_mw_board_popup_not_open")
+        if first.sequence <= barrier_in:
+            first = self.observer.wait_until(
+                _board_open, after_sequence=barrier_in, timeout=3.0,
+                abort_if=lambda s: not _board_open(s),
+                cancel_requested=self.cancel_requested,
+            )
+            if not _board_open(first) or first.sequence <= barrier_in:
+                raise ValueError("fresh_mw_board_popup_not_open")
         second = self.observer.wait_until(
             _board_open, after_sequence=first.sequence, timeout=3.0,
             abort_if=lambda s: not _board_open(s),

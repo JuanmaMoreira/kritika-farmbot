@@ -331,19 +331,197 @@ def _build_monster_wave(dependencies: FlowDependencies) -> PerCharacterFlow:
     from bot.perception import QUICK_MENU_TO_LOBBY_SCOPE
 
     main_transition = _verified_transition_for(dependencies)
-    return MonsterWaveFlow(
-        dependencies.observer, dependencies.actions, dependencies.events,
-        config=getattr(getattr(dependencies, 'config', None), 'monster_wave', MonsterWaveConfig()),
-        facts=dependencies.facts,
-        cancel_requested=dependencies.cancel_requested,
-        verified_transition=main_transition,
-        lobby_transition=scoped_transition_for(
-            dependencies,
-            main_transition,
-            scope=QUICK_MENU_TO_LOBBY_SCOPE,
-            active_event="battle_mode.lobby_return_scope_active",
-            unavailable_event="battle_mode.lobby_return_scope_unavailable",
-        ),
+
+    def _bare():
+        return MonsterWaveFlow(
+            dependencies.observer, dependencies.actions, dependencies.events,
+            config=getattr(getattr(dependencies, 'config', None), 'monster_wave', MonsterWaveConfig()),
+            facts=dependencies.facts,
+            cancel_requested=dependencies.cancel_requested,
+            verified_transition=main_transition,
+            lobby_transition=scoped_transition_for(
+                dependencies,
+                main_transition,
+                scope=QUICK_MENU_TO_LOBBY_SCOPE,
+                active_event="battle_mode.lobby_return_scope_active",
+                unavailable_event="battle_mode.lobby_return_scope_unavailable",
+            ),
+        )
+
+    try:
+        return _build_productive_monster_wave(dependencies, main_transition, _bare)
+    except (AttributeError, TypeError, ValueError):
+        return _bare()
+
+
+def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
+    """L1 composition root: consume one RESOURCE_BOARD_PENDING productively.
+
+    Reuses A1 acquisition, I2 planner, J/K core, CraftRuntime+C1, Keys
+    runtime+C2b lazy budget, Materials runtime, Treasure runtime and
+    ActionExecutor intents/readers. Only thin adapters below connect the
+    existing owners; no direct ADB here. Any wiring failure falls back
+    to the bare flow, preserving today's behavior exactly.
+    """
+
+    from bot.action_executor import ActionExecutor
+    from bot.craft_reader import CraftReader
+    from bot.craft_runtime import CraftRuntime
+    from bot.equipment_sell_reader import EquipmentSellReader
+    from bot.monster_wave_board_reader import MonsterWaveBoardReader
+    from bot.monster_wave_productive import ProductiveMonsterWaveFlow
+    from bot.monster_wave_resource_route import (
+        MonsterWavePrerequisiteNavigationRuntime,
+        MonsterWaveResourceRouteRuntime,
+        MonsterWaveSnapshotRuntime,
+    )
+    from bot.monster_wave_standalone import MonsterWaveStandaloneNavigationRuntime
+    from bot.monster_wave_standalone import MonsterWaveBoardAcquisitionRuntime
+    from bot.ocr import RapidOcrEngine
+    from bot.quick_menu_trading import QuickMenuTradingRuntime
+    from bot.resource_route_planner import NonBoardResourceFacts, plan_resource_route
+    from bot.trading_materials_runtime import TradingMaterialsRuntime
+    from bot.trading_runtime import TradingRuntime
+    from bot.treasure_runtime import TreasureRuntime
+    from bot.keys_promotion_runtime import KeysPromotionRuntime
+
+    observer = dependencies.observer
+    actions = dependencies.actions
+    events = dependencies.events
+    cancel_requested = dependencies.cancel_requested
+    if not callable(getattr(observer, "observe", None)) or not callable(
+        getattr(observer, "wait_until", None)
+    ):
+        raise ValueError("observer must provide observe() and wait_until()")
+    if not isinstance(actions, ActionExecutor):
+        raise ValueError("actions must be an ActionExecutor")
+    if not callable(cancel_requested):
+        raise ValueError("cancel_requested must be callable")
+
+    inner = bare_factory()
+    engine = RapidOcrEngine()
+    # Warm the OCR backend outside the acquisition window: A1 keeps the
+    # 1.0 s spacing / 2.0 s final age / 3.0 s waits unchanged, and a cold
+    # first board read (≈2 s) would otherwise exhaust the final age.
+    try:
+        import numpy as _np
+
+        _warm = _np.zeros((32, 128, 3), dtype=_np.uint8)
+        engine.recognize(_warm)
+    except Exception:
+        pass
+
+    # A1 acquisition: two fresh frames after the pending barrier, no input.
+    boards = MonsterWaveBoardAcquisitionRuntime(
+        observer, MonsterWaveBoardReader(engine),
+        cancel_requested=cancel_requested,
+    )
+    snapshots = MonsterWaveSnapshotRuntime(
+        observer, cancel_requested=cancel_requested,
+    )
+    standalone_navigation = MonsterWaveStandaloneNavigationRuntime(
+        main_transition, snapshots, cancel_requested=cancel_requested,
+    )
+
+    # Craft standalone + C1 probe, owned by CraftRuntime.
+    source = getattr(observer, "source", None)
+    if not callable(getattr(source, "get_frame", None)):
+        raise ValueError("observer source must provide get_frame()")
+    craft_runtime = CraftRuntime(
+        source, EquipmentSellReader(engine), CraftReader(engine), actions,
+        cancel_requested=cancel_requested,
+    )
+    prereq_navigation = MonsterWavePrerequisiteNavigationRuntime(
+        observer, main_transition, craft_runtime,
+        cancel_requested=cancel_requested,
+    )
+
+    # Trading / Treasure navigation owners (no policy).
+    trading_runtime = TradingRuntime(
+        observer, main_transition, cancel_requested=cancel_requested,
+    )
+    treasure_runtime = TreasureRuntime(
+        observer, main_transition, cancel_requested=cancel_requested,
+    )
+    quick_menu_runtime = QuickMenuTradingRuntime(
+        observer, main_transition, cancel_requested=cancel_requested,
+    )
+
+    # Thin C2 adapters: fail closed with zero input when facts are
+    # unavailable. Empty-plan smokes never invoke them; READY plans
+    # stay bounded and never fabricate work.
+    def _read_key_facts(barrier):
+        raise ValueError("fresh_key_facts_unavailable")
+
+    def _execute_key_trade(*, operation, snapshot, row_fact, quantity):
+        from bot.trading_operation import TradeOutcome, TradeResult
+
+        return TradeResult(
+            TradeOutcome.FAILED, row_fact, reason="keys_adapter_not_established",
+        )
+
+    def _drain_gold_keys():
+        from bot.treasure_fast_drain import GoldKeyDrainOutcome, GoldKeyDrainResult
+
+        return GoldKeyDrainResult(
+            outcome=GoldKeyDrainOutcome.FAILED, reason="drain_not_established",
+        )
+
+    def _acknowledge_gold_full(pending):
+        from bot.flow_contracts import FlowStatus
+        from bot.keys_promotion_runtime import GoldFullAckResult
+
+        return GoldFullAckResult(FlowStatus.FAILED, error="ack_not_established")
+
+    keys_runtime = KeysPromotionRuntime(
+        trading_runtime, treasure_runtime, quick_menu_runtime,
+        read_key_facts=_read_key_facts,
+        execute_key_trade=_execute_key_trade,
+        drain_gold_keys=_drain_gold_keys,
+        acknowledge_gold_full=_acknowledge_gold_full,
+        cancel_requested=cancel_requested,
+    )
+
+    def _locate_material(*, target, after_sequence):
+        from bot.directed_list_scroll import (
+            DirectedScrollOutcome, DirectedScrollResult,
+        )
+
+        return DirectedScrollResult(
+            DirectedScrollOutcome.TARGET_UNKNOWN,
+            last_sequence=int(after_sequence),
+            reason="materials_adapter_not_established",
+        )
+
+    def _read_material_fact(*, target, after_sequence):
+        raise ValueError("fresh_material_fact_unavailable")
+
+    def _execute_material_trade(*, operation, snapshot, row_fact, quantity):
+        from bot.trading_operation import TradeOutcome, TradeResult
+
+        return TradeResult(
+            TradeOutcome.FAILED, row_fact, reason="materials_adapter_not_established",
+        )
+
+    materials_runtime = TradingMaterialsRuntime(
+        trading_runtime,
+        locate_material=_locate_material,
+        read_material_fact=_read_material_fact,
+        execute_material_trade=_execute_material_trade,
+        cancel_requested=cancel_requested,
+    )
+
+    # J core: one immutable plan, once, no replan. Lazy Keys budget
+    # (None) derives from FreshKeyFacts via make_budget when needed.
+    route = MonsterWaveResourceRouteRuntime(
+        prereq_navigation, snapshots, craft_runtime, keys_runtime,
+        materials_runtime, keys_budget_remaining=None,
+        cancel_requested=cancel_requested,
+    )
+
+    return ProductiveMonsterWaveFlow(
+        inner, boards=boards, navigation=standalone_navigation, route=route,
+        planner=plan_resource_route, non_board=NonBoardResourceFacts(),
     )
 
 
