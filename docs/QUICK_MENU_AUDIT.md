@@ -1,5 +1,7 @@
 # Auditoría transversal de Quick Menu (baseline `0cca707`)
 
+> **LEGACY_STALE — procedencia histórica, no autoridad operativa.** Fechas, fases, gates, cifras y siguientes pasos de este cuerpo describen su checkpoint. Vigentes: [proceso](../AGENTS.md), [GAMEPLAY_GT](GAMEPLAY_GT.md), [arquitectura](../ARCHITECTURE.md), [estado](../CONTEXT.md), [pendientes](../ROADMAP.md) y [resource routing](RESOURCE_ROUTING.md). Código/tests actuales prevalecen para implementación; el GT actual prevalece sobre inferencias físicas históricas.
+
 Estado: **contrato pendiente; implementación detenida**. La [decisión posterior de handoff](QUICK_MENU_HANDOFF_DECISION.md) reemplaza la recomendación final de buscar landmarks bajo el panel para el normal path; los datos y la matriz de este audit siguen vigentes. Esta auditoría distingue la base física conocida por la adquisición de la base que resuelve el runtime en un frame. No cambia código ni aceptación perceptiva. Checkpoint recibido: `2202/2202` hardware-free.
 
 ## Contrato observado

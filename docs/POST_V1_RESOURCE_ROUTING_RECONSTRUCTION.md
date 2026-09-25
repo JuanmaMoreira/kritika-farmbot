@@ -1,5 +1,7 @@
 # Post-V1 — Resource Routing / Monster Wave Preparation (reconstruction)
 
+> **LEGACY_STALE — procedencia histórica, no autoridad operativa.** Fechas, fases, gates, cifras y siguientes pasos de este cuerpo describen su checkpoint. Vigentes: [proceso](../AGENTS.md), [GAMEPLAY_GT](GAMEPLAY_GT.md), [arquitectura](../ARCHITECTURE.md), [estado](../CONTEXT.md), [pendientes](../ROADMAP.md) y [resource routing](RESOURCE_ROUTING.md). Código/tests actuales prevalecen para implementación; el GT actual prevalece sobre inferencias físicas históricas.
+
 Planning-only frontier. No runtime implemented, no code/tests/assets/manifests touched.
 
 ## 0. Estado V1 de partida
@@ -1304,3 +1306,22 @@ diferido. `make_budget` sigue siendo el único owner de `10 Bronze→2 Silver`;
 el bound no decide orden, `MAX_ALLOWED` ni el retry. El contrato explícito
 permanece compatible con K/J. Sin composition root C2, board request nuevo,
 L1/L2, cambios de perception ni HIL adicional.
+
+## 42. L2: relief reactivo del resume productivo MW (2026-09-24)
+
+El resultado final de L1 conserva el popup causal. L2 clasifica exactamente
+Equipment Full o Socket Full, usa el relief concreto correspondiente una vez
+por tipo y vuelve a intentar el mismo request MW (`daily` incluido). Si el
+retry revela el otro popup, se ejecuta ese relief una vez; si reaparece un
+tipo agotado, se falla cerrado. No hay prioridad Equipment/Socket, segundo
+board/planner/J, replan ni framework genérico. Equipment delega a
+`EquipmentReliefComposer`: Combine una vez, retry fresco y Sell sólo con plan
+explícito. Producción no tiene Sell plan autorizado, por lo que no vende.
+Socket conserva sus guards y bounds internos. Smoke productivo pendiente.
+
+Validación L2: sintaxis y `git diff --check` verdes; 59 tests directos de
+MW productivo/Equipment/Socket y 259 regresiones MW/runtime/World Boss. Suite
+hardware-free: 3293 passed y cuatro `FileNotFoundError` de fixtures Rotation
+ausentes (`tests/test_rotation_selection_scope.py`), el mismo gap ambiental
+documentado en L0. El smoke queda detenido por el gate explícito de suite
+completa verde; no se envió input físico ni se midió consumo de Sapphires.

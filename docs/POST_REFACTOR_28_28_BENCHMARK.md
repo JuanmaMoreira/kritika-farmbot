@@ -1,5 +1,7 @@
 # Post-refactor 28/28 benchmark — 2026-09-16
 
+> **LEGACY_STALE — procedencia histórica, no autoridad operativa.** Fechas, fases, gates, cifras y siguientes pasos de este cuerpo describen su checkpoint. Vigentes: [proceso](../AGENTS.md), [GAMEPLAY_GT](GAMEPLAY_GT.md), [arquitectura](../ARCHITECTURE.md), [estado](../CONTEXT.md), [pendientes](../ROADMAP.md) y [resource routing](RESOURCE_ROUTING.md). Código/tests actuales prevalecen para implementación; el GT actual prevalece sobre inferencias físicas históricas.
+
 Analysis-only. No code changed, no suite/evaluator/corpus/HIL run, no commit/push.
 Branch `rebuild/stable-baseline` @ `04640c2` (`REFACTOR_COMPLETE=YES`), last productive change `6ba5c9b`.
 

@@ -1,5 +1,7 @@
 # Eligibility mínima v1 — antecedente
 
+> **LEGACY_STALE — procedencia histórica, no autoridad operativa.** Fechas, fases, gates, cifras y siguientes pasos de este cuerpo describen su checkpoint. Vigentes: [proceso](../AGENTS.md), [GAMEPLAY_GT](GAMEPLAY_GT.md), [arquitectura](../ARCHITECTURE.md), [estado](../CONTEXT.md), [pendientes](../ROADMAP.md) y [resource routing](RESOURCE_ROUTING.md). Código/tests actuales prevalecen para implementación; el GT actual prevalece sobre inferencias físicas históricas.
+
 > El recorrido Lobby → check → Lobby de esta v1 fue sustituido por
 > [`BATTLE_MODE_SHARED_ZONE.md`](BATTLE_MODE_SHARED_ZONE.md). Este documento conserva
 > las decisiones y validación del checkpoint anterior. Hoy el check WB sólo observa

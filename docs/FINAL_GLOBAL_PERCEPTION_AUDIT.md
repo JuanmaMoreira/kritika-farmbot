@@ -1,5 +1,7 @@
 # Final global perception audit
 
+> **LEGACY_STALE — procedencia histórica, no autoridad operativa.** Fechas, fases, gates, cifras y siguientes pasos de este cuerpo describen su checkpoint. Vigentes: [proceso](../AGENTS.md), [GAMEPLAY_GT](GAMEPLAY_GT.md), [arquitectura](../ARCHITECTURE.md), [estado](../CONTEXT.md), [pendientes](../ROADMAP.md) y [resource routing](RESOURCE_ROUTING.md). Código/tests actuales prevalecen para implementación; el GT actual prevalece sobre inferencias físicas históricas.
+
 Baseline: `rebuild/stable-baseline @ 392458f`. Prior checkpoint: 2451/2451 hardware-free.
 Date: 2026-09-16. Inventory derived from productive code (`bot/`), not from history docs.
 Tests/tools/workbench excluded from the productive inventory, used as evidence.

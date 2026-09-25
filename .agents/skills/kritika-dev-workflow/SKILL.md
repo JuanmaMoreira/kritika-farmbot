@@ -1,35 +1,17 @@
 ---
 name: kritika-dev-workflow
-description: Desarrollar o depurar Kritika FarmBot con cambio mínimo, causa demostrada y validación proporcional. Usar para implementación normal y bugs; no para campañas puras de adquisición HIL.
+description: Desarrollar o depurar Kritika FarmBot con causa demostrada, cambio mínimo y validación afectada. No usar para campañas puras HIL.
 ---
 
-# Kritika development workflow
+# Desarrollo causal
 
-Aplicar las políticas permanentes del `AGENTS.md` raíz mediante un ciclo corto y causal.
+Aplicar [AGENTS](../../../AGENTS.md); consultar [GAMEPLAY_GT](../../../docs/GAMEPLAY_GT.md) antes de interpretar un fallo físico o pedir HIL.
 
-## Ciclo
+1. Leer estado/diff local y sólo el contrato relevante. Separar GT, implementación y heurística; no inferir wiring desde componentes standalone.
+2. Localizar la primera divergencia en logs/capturas/código. Un miss de percepción no reabre un hecho físico cerrado.
+3. Implementar la composición mínima en el owner existente. No resolver vecinos ni ramas hipotéticas; ramas explícitas bastan para un conjunto pequeño de estados.
+4. Elegir validación capaz de falsar el cambio: docs/referencias para docs, directos + afectados para lógica, replay/incremental si cambió percepción. Reutilizar resultados no invalidados.
+5. Si queda una pregunta física realmente abierta, usar un smoke autorizado y breve; detenerlo en la primera divergencia, corregir mínimamente y repetir sólo lo invalidado. No exigir HIL para cada rama o postcondición ya establecida.
+6. Cerrar al resolver el alcance: diff acotado, trabajo ajeno preservado y fuente documental dueña actualizada. No añadir mejoras por oportunidad.
 
-1. **Observe:** reunir el fallo, log, test, frame o contrato que demuestre el problema. Separar hechos de hipótesis.
-2. **First causal divergence:** localizar el primer punto donde la ejecución observada se aparta de la esperada. No empezar por síntomas posteriores.
-3. **Classify:** decidir si la causa es local, transversal o física.
-4. **Minimal change:** corregir el owner más estrecho que pueda resolver la divergencia sin cambiar policy vecina.
-5. **Minimal validation:** recorrer la escalera de `AGENTS.md` sólo hasta el nivel capaz de falsar el cambio. Registrar qué resultado previo quedó invalidado.
-6. **HIL if physical:** pedir un smoke corto cuando la incógnita sea hitbox, gesto, timing, loading, animación, overlay o respuesta real del dispositivo.
-7. **Stop:** cerrar cuando la causa quedó corregida y la evidencia afectada pasa. No continuar con mejoras oportunistas.
-
-## Local o transversal
-
-- Tratar como local una divergencia con un owner y contrato claros, aunque exista una generalización posible.
-- Proponer cambio transversal sólo cuando varios casos reales exhiban la misma causa y el contrato compartido reduzca complejidad total.
-- Si una solución necesita nuevas policies, coordinadores, lifecycles o varias capas de fallback, detener el patch y presentar evidencia, costo y alternativa simple antes de seguir.
-
-## Validation decision
-
-- Nombrar qué cambió y qué resultados puede alterar.
-- Reutilizar toda validación previa no invalidada.
-- Antes de trabajo inusualmente caro, comunicar comando/alcance, invalidación concreta y por qué el nivel anterior no alcanza.
-- No usar tests sintéticos para declarar probada una propiedad física.
-
-## Terminado
-
-La tarea termina cuando la primera divergencia causal está resuelta, pasan las validaciones afectadas, se obtuvo HIL cuando la propiedad era física, el diff no contiene trabajo vecino y `git status` preserva cambios ajenos. Actualizar documentación sólo cuando el estado o contrato real haya cambiado.
+Si aparecen varias capas nuevas, excepciones o estado implícito para una acción simple, detener el patch y proponer la alternativa local más simple. Cambios transversales requieren causa compartida real y alcance acordado; no preservar complejidad por inversión previa.

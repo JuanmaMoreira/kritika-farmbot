@@ -2,6 +2,10 @@
 
 Este documento conserva decisiones, evidencia y líneas reemplazadas. No define el estado productivo: para eso ver [`../CONTEXT.md`](../CONTEXT.md). Los contratos vigentes están en [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
+## Reset de autoridad documental
+
+[GAMEPLAY_GT](GAMEPLAY_GT.md) conserva verdad física; [RESOURCE_ROUTING](RESOURCE_ROUTING.md), policy/wiring actual. El [snapshot anterior al reset](legacy/DOC_RESET_20260925.md) preserva docs completas y cambios documentales locales, incluidos diarios de validación y contradicciones. Reconstrucciones/auditorías/checkpoints son procedencia, no instrucciones actuales.
+
 ## Origen y vertical slice
 
 El runtime 0.2 reemplazó el diseño legacy monolítico por límites explícitos: captura, percepción semántica, resolución de contexto, flows, ejecución física y ADB. El tag `legacy-pre-hybrid` preserva el runtime anterior.

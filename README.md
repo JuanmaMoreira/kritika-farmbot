@@ -68,6 +68,9 @@ El usuario debe dejar el personaje actual en la precondición declarada o en un 
 
 ## Documentación
 
+- [docs/GAMEPLAY_GT.md](docs/GAMEPLAY_GT.md): fuente canónica de gameplay, clases físicas, caller y oclusión.
+- [docs/RESOURCE_ROUTING.md](docs/RESOURCE_ROUTING.md): policy y wiring actual de preparación/reliefs.
+
 - [CONTEXT.md](CONTEXT.md): snapshot del sistema productivo actual y limitaciones vigentes.
 - [ARCHITECTURE.md](ARCHITECTURE.md): componentes, contratos y límites 0.2 vigentes.
 - [ROADMAP.md](ROADMAP.md): próximo trabajo y futuro conocido.

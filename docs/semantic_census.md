@@ -1,5 +1,7 @@
 # Semantic census legacy — Fase 3H.2
 
+> LEGACY_STALE: los tipos del censo son históricos/técnicos, no clases físicas vigentes. Para clasificación y layering usar [GAMEPLAY_GT](GAMEPLAY_GT.md).
+
 Este artefacto preserva conocimiento de dominio; **no es configuración runtime** ni
 autoriza promoción automática. La fuente auditada es `CONTEXTOS_DEFINIDOS` de
 `bot/constants.py` en `b3b11e2`, contrastada con `legacy-pre-hybrid` (sin diferencias
