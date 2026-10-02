@@ -228,6 +228,23 @@ class AdbClient:
         result = self._run("forward", "--list", timeout=timeout)
         return tuple(line.strip() for line in result.stdout.splitlines() if line.strip())
 
+    def capture_png(self, *, timeout: float | None = None) -> bytes:
+        """Fresh native screenshot, preserving binary PNG bytes."""
+        command = self._command("exec-out", "screencap", "-p")
+        duration = self.default_timeout if timeout is None else _positive_timeout(timeout)
+        try:
+            result = self._runner(list(command), capture_output=True, text=False,
+                                  timeout=duration, check=False, shell=False)
+        except subprocess.TimeoutExpired as error:
+            raise AdbTimeoutError(command, duration, stderr=_output_text(error.stderr)) from error
+        except OSError as error:
+            raise AdbError(command, reason="Could not capture native screenshot") from error
+        if result.returncode != 0:
+            raise AdbError(command, returncode=result.returncode, stderr=_output_text(result.stderr))
+        if not isinstance(result.stdout, bytes) or not result.stdout.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise AdbError(command, reason="Native screenshot is not PNG")
+        return result.stdout
+
     def _run(
         self, *args: str, timeout: float | None = None
     ) -> subprocess.CompletedProcess[str]:

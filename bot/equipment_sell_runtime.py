@@ -19,6 +19,7 @@ from bot.equipment_sell_operation import (
     execute_equipment_sell,
 )
 from bot.equipment_sell_semantics import consensus_facts
+from bot.equipment_block_scan import EquipmentBlockMatcher
 from bot.semantic_actions import (
     CancelEquipmentSale,
     CloseEquipmentDetail,
@@ -72,6 +73,19 @@ class EquipmentSellRuntime:
         self._after_sequence = 0
         self._not_before = 0.0
         self.events = events
+        try:
+            self.block_matcher = EquipmentBlockMatcher()
+        except (OSError, ValueError, KeyError, TypeError):
+            self.block_matcher = None
+        self._block_reference = None
+        self._block_stats = dict(comparisons=0,cv_slots_skipped=0,blocks_skipped=0,
+                                 discovery_panels=0,panels_opened=0,fallback_count=0,logical_slots_skipped=0)
+
+    def _block_crop(self, image, center):
+        try:
+            return self.block_matcher.crop(image,center) if self.block_matcher else None
+        except Exception:
+            return None
 
     def execute(self, request: EquipmentSellRequest) -> EquipmentSellResult:
         """Execute at most one confirm; never navigate, scan or retry input."""
@@ -112,10 +126,14 @@ class EquipmentSellRuntime:
     def execute_relief(self, policy):
         from bot.equipment_inventory_relief import execute_inventory_relief
         started = self.clock()
+        self._block_reference = None
+        self._block_stats = dict(comparisons=0,cv_slots_skipped=0,blocks_skipped=0,
+                                 discovery_panels=0,panels_opened=0,fallback_count=0,logical_slots_skipped=0)
         result = execute_inventory_relief(
             policy, read_inventory=self._inventory_after,
             inspect=self._inspect, bulk_sell=self._bulk_candidate,
             expand=self._expand, cancel_requested=self.cancel_requested,
+            skip_protected=self._skip_protected,telemetry=self._scan_telemetry,
         )
         record_best_effort(self.events, "equipment.inventory_relief.result",
                           outcome=result.outcome, reason=result.reason,
@@ -124,7 +142,17 @@ class EquipmentSellRuntime:
                           capacity=getattr(result.after,"capacity",None),
                           sales=len(result.sales), expansions=len(result.expansions),
                           elapsed_seconds=self.clock()-started)
+        record_best_effort(self.events, 'equipment.sell.scan.summary',
+                          **self._block_stats,elapsed_seconds=self.clock()-started)
+        self._block_reference = None
         return result
+
+    def _scan_telemetry(self, **fields):
+        if fields.get('phase')=='logical_skip':
+            self._block_stats['logical_slots_skipped']+=fields['end']-fields['start']+1
+        if fields.get('phase')=='cv_fallback':
+            self._block_stats['fallback_count']+=1
+        record_best_effort(self.events,'equipment.sell.scan.transition',**fields)
 
     def _inventory_after(self, cursor, predicate=lambda v: True):
         fact = self._read_consensus("inventory_sample",
@@ -153,6 +181,8 @@ class EquipmentSellRuntime:
 
     def _inspect(self, candidate, inventory):
         self._navigate_page(candidate.page, inventory)
+        center=self.actions.equipment_targets.inventory_slots[candidate.slot]
+        first=self._block_crop(self._latest.image,center)
         self._tap(SelectEquipmentInventorySlot(candidate.slot))
         detail = self._read_next("detail_sample")
         self._tap(CloseEquipmentDetail())
@@ -161,6 +191,10 @@ class EquipmentSellRuntime:
         if closed is None or (closed.item_count,closed.capacity,closed.page) != (
                 inventory.item_count,inventory.capacity,candidate.page):
             raise RuntimeError("detail_close_unverified")
+        second=self._block_crop(self._latest.image,center)
+        self._block_reference=(candidate,(inventory.item_count,inventory.capacity),(first,second))
+        if self._block_stats:
+            self._block_stats['discovery_panels']+=1
         record_best_effort(self.events, "equipment.sell.scan.item", page=candidate.page,
                           slot=candidate.slot, name=getattr(detail,"name",None),
                           grade=getattr(getattr(detail,"grade",None),"value",None),
@@ -171,16 +205,58 @@ class EquipmentSellRuntime:
                           source_sequence=getattr(detail,"sequence",None))
         return detail
 
+    def _skip_protected(self, candidate, inventory, item):
+        """Return the first differing logical slot; never return item policy."""
+        index=(candidate.page-1)*16+candidate.slot
+        reference=self._block_reference
+        if (self.block_matcher is None or reference is None or reference[0]!=candidate or
+                reference[1]!=(inventory.item_count,inventory.capacity)):
+            self._scan_telemetry(phase='cv_fallback',index=index)
+            return index-1
+        refs=reference[2]
+        previous_page=candidate.page
+        next_index=index-1
+        while next_index>=0 and not self.cancel_requested():
+            page,slot=divmod(next_index,16);page+=1
+            if page!=previous_page:
+                self._navigate_page(page,inventory)
+                previous_page=page
+            if self._latest is None or not 0<=self.clock()-self._latest.timestamp<=2:
+                self._inventory_after(0)
+            if self._latest is None or not 0<=self.clock()-self._latest.timestamp<=2:
+                self._scan_telemetry(phase='cv_fallback',index=next_index)
+                break
+            center=self.actions.equipment_targets.inventory_slots[slot]
+            query=self._block_crop(self._latest.image,center)
+            score=self.block_matcher.score(refs,query)
+            self._block_stats['comparisons']+=1
+            if score is None or score<self.block_matcher.threshold:
+                if score is None or score>=self.block_matcher.uncertain_floor:
+                    self._block_stats['fallback_count']+=1
+                break
+            self._block_stats['cv_slots_skipped']+=1
+            next_index-=1
+        skipped=index-next_index-1
+        if skipped:
+            self._block_stats['blocks_skipped']+=1
+        record_best_effort(self.events,'equipment.sell.scan.block',anchor_index=index,
+                          next_candidate_index=next_index,slots_skipped=skipped,
+                          reference_phase_count=len(refs))
+        return next_index
+
     def _bulk_candidate(self, candidate, authorization, item):
+        self._block_reference=None
         from bot.equipment_sell_operation import EquipmentSellRequest
         result = self.execute(EquipmentSellRequest(authorization, candidate, expected_item=item))
         record_best_effort(self.events, "equipment.sell.bulk.result", outcome=result.outcome.value,
                           reason=result.reason, confirms=result.confirm_count,
+                          logical_index=(candidate.page-1)*16+candidate.slot,
                           before_count=getattr(result.before,"item_count",None),
                           after_count=getattr(result.after,"item_count",None))
         return result
 
     def _expand(self, before):
+        self._block_reference=None
         from bot.equipment_inventory_relief import EquipmentCapacityExpansionResult
         page, row = before.capacity // 16 + 1, (before.capacity % 16) // 4
         if page > before.total_pages:
@@ -296,6 +372,8 @@ class EquipmentSellRuntime:
             FrameGeometry.from_frame(self._latest.image),
             events=self.events, source_sequence=self._latest.sequence,
         )
+        if isinstance(action, SelectEquipmentInventorySlot):
+            self._block_stats['panels_opened']+=1
         self._after_sequence = self._latest.sequence
         self._not_before = self.clock()
 

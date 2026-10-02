@@ -1,0 +1,487 @@
+{
+  "acquired": "2026-10-02",
+  "method": "native ADB/scrcpy captures; fixed game labels and SDK chrome only",
+  "raw_sources": "local acquisition evidence; deliberately not versioned",
+  "entries": [
+    {
+      "asset": "normal.png",
+      "asset_sha256": "27e1c639157ae0dd9784dc2c2cfc1f424e1786e160550a5a201b679db21e88f8",
+      "source": "normal_return.png",
+      "source_sha256": "587b4dd2ed06192dfa145003151d08824609c57ebdf58878b99efece556481d6",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.23,
+        0.843,
+        0.411,
+        0.875
+      ]
+    },
+    {
+      "asset": "loading.png",
+      "asset_sha256": "ffcff32935f3c4cbd9a4d23cf2190b7e0c66833a7b968a59c9d9c3a848da9487",
+      "source": "lobby_after1.png",
+      "source_sha256": "30708f6ad27b30b774eb456e3114f8441673763ced948e5a150ef5aec2c869e9",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.454,
+        0.553,
+        0.549,
+        0.628
+      ]
+    },
+    {
+      "asset": "elite.png",
+      "asset_sha256": "ceaaa69e7c8b01d7edf20edcf351e90500bafdab995fa29ce0669d233c662ddf",
+      "source": "elite.png",
+      "source_sha256": "479b99fc6e412f0fab1f9fd3dadec60da13f48eae822784e34d67a5a498cd031",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.235,
+        0.843,
+        0.4,
+        0.875
+      ]
+    },
+    {
+      "asset": "abyssal.png",
+      "asset_sha256": "1b1bb548db7cc32bc963216432fc2a88a00e934fc132fd56487867675be84135",
+      "source": "normal_return.png",
+      "source_sha256": "587b4dd2ed06192dfa145003151d08824609c57ebdf58878b99efece556481d6",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.443,
+        0.145,
+        0.56,
+        0.184
+      ]
+    },
+    {
+      "asset": "world_map.png",
+      "asset_sha256": "dd65eff0d56ff4ddc175a99cd501ae99fc1689edb4a7e5c742e985a29319c768",
+      "source": "world_map.png",
+      "source_sha256": "b4d49bcb69333f9cf45424735ed8c25ebcfb65b7193742b3a96ed0bbf7082017",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.345,
+        0.262,
+        0.378,
+        0.3
+      ]
+    },
+    {
+      "asset": "stage8.png",
+      "asset_sha256": "f9b62a2574155cad8ffd606ee83290787c65579c0266ccf820d1c4e99e0b21cf",
+      "source": "normal_return.png",
+      "source_sha256": "587b4dd2ed06192dfa145003151d08824609c57ebdf58878b99efece556481d6",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.644,
+        0.65,
+        0.668,
+        0.687
+      ]
+    },
+    {
+      "asset": "config.png",
+      "asset_sha256": "451f240b5dc4c4b1b071a033b4e0678b8b4d5a7ef6e747d73900e5dabf0bd8b4",
+      "source": "stage8_config.png",
+      "source_sha256": "4e54989cb5afd753258dc9bc3754afd481645729e9939397b744361b100edfd2",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.356,
+        0.176,
+        0.505,
+        0.219
+      ]
+    },
+    {
+      "asset": "support_active.png",
+      "asset_sha256": "fffeedbeaab292e229468529c56beb8d253cb78d3ae5b86aa3aa399d0d29f86f",
+      "source": "stage8_config.png",
+      "source_sha256": "4e54989cb5afd753258dc9bc3754afd481645729e9939397b744361b100edfd2",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.704,
+        0.771,
+        0.795,
+        0.8
+      ]
+    },
+    {
+      "asset": "support_needs.png",
+      "asset_sha256": "48f6ffa93f01f4bba47f05ba3f9de5ee162962cb088730030ea8a6727709b463",
+      "source": "mao_needs.png",
+      "source_sha256": "021bb9fcf94c6a90f909513b1a39e41a2660fc8666250de3af670e313cd816da",
+      "native_shape": [
+        1224,
+        2712
+      ],
+      "crop": [
+        0.703,
+        0.762,
+        0.802,
+        0.828
+      ]
+    },
+    {
+      "asset": "support_ready.png",
+      "asset_sha256": "78808bb95edd18951747c4d8bbda70115c3de1b27cc5c1961314a002e816945f",
+      "source": "mao_ready.png",
+      "source_sha256": "4681d1d1105b89ccbb88e5897b9f57c528c59f35648bfb24633936546e2cedba",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.703,
+        0.762,
+        0.802,
+        0.828
+      ]
+    },
+    {
+      "asset": "support_purchase.png",
+      "asset_sha256": "14d5398aacd8eb119c4359a67fd8b390ff2762c99845eabdb8e91f4dda7864aa",
+      "source": "mao_purchase.png",
+      "source_sha256": "982b824f30f89c3a78eba36d5455d4af825832f1d53acffd0d1a8fac0080c0e6",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.392,
+        0.09,
+        0.625,
+        0.14
+      ]
+    },
+    {
+      "asset": "support_full.png",
+      "asset_sha256": "cd0f9fa8ee13fc1223319577d78a5ce0fbb077c2f7e4aa42fbac187a1a5838e6",
+      "source": "mao_fill_all.png",
+      "source_sha256": "b10d8953da945274af525ddc1a0f53713869bd8bfcdb7a057aa9af1dd531354b",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.56,
+        0.648,
+        0.607,
+        0.688
+      ]
+    },
+    {
+      "asset": "skip_ticket.png",
+      "asset_sha256": "bbfe113eda004e89e9a2704e92febf58c5be53a6808122b7ccb3d38cd4b0c909",
+      "source": "system_ad_launch.png",
+      "source_sha256": "67a690c998986c6420338b990dcf0379f35d26f3f73bf3d066cfc6e677148a7e",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.429,
+        0.47,
+        0.572,
+        0.503
+      ]
+    },
+    {
+      "asset": "penance.png",
+      "asset_sha256": "2f61c4166eed3cab77ee67159629786ffbaf637f2f13511c8149cd9a14359f4a",
+      "source": "stage8_config.png",
+      "source_sha256": "4e54989cb5afd753258dc9bc3754afd481645729e9939397b744361b100edfd2",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.42,
+        0.84,
+        0.485,
+        0.95
+      ]
+    },
+    {
+      "asset": "start.png",
+      "asset_sha256": "46f20c8a117dc1011c87785a5ef8b53d814e671246517fcd7c7d9951c4e9fa56",
+      "source": "start_modal.png",
+      "source_sha256": "c189588141c3ce873836733e180b5731c6b69cbc4a6288f7316dd56135b93ef5",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.343,
+        0.116,
+        0.465,
+        0.157
+      ]
+    },
+    {
+      "asset": "auto.png",
+      "asset_sha256": "f3dbc1c9429d0fc7dff028602aab336fc0e77e8ab9e8232aa957109aabc0f611",
+      "source": "auto_modal.png",
+      "source_sha256": "d03efed7de946c2ada4b3f7a550018906819fcee31e20ec12684f3cd392da20f",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.281,
+        0.055,
+        0.326,
+        0.098
+      ]
+    },
+    {
+      "asset": "max300.png",
+      "asset_sha256": "998ab111317ff752e3de06b21e725192f0399db9f5d39759c870f393f095b54c",
+      "source": "auto_modal.png",
+      "source_sha256": "d03efed7de946c2ada4b3f7a550018906819fcee31e20ec12684f3cd392da20f",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.324,
+        0.752,
+        0.433,
+        0.821
+      ]
+    },
+    {
+      "asset": "video2.png",
+      "asset_sha256": "9f50405313ab3323aef31ada92720490bdd91e02cdc10ba594edd9ded699695a",
+      "source": "auto_modal.png",
+      "source_sha256": "d03efed7de946c2ada4b3f7a550018906819fcee31e20ec12684f3cd392da20f",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.331,
+        0.865,
+        0.4,
+        0.91
+      ]
+    },
+    {
+      "asset": "video1.png",
+      "asset_sha256": "fe616d899a26c8eae39369bcc15909e6d9aaefd46f4ac5db8acf6f0fe6be2b52",
+      "source": "auto_video1.png",
+      "source_sha256": "ecb03aa57bc3fe4fb3e820d87c6f878a4efec69a331d2eb86325d6131a3e371e",
+      "native_shape": [
+        1224,
+        2712
+      ],
+      "crop": [
+        0.331,
+        0.865,
+        0.4,
+        0.91
+      ]
+    },
+    {
+      "asset": "video0.png",
+      "asset_sha256": "3413df20f3ed72e99dd8b0d3806b10299818eebe72c9985656fa348b97d91c3a",
+      "source": "auto_video0.png",
+      "source_sha256": "aa921988d9679d569e24477977954a63c588cc111c8badb013a16fa3b9f0d5a8",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.331,
+        0.865,
+        0.4,
+        0.91
+      ]
+    },
+    {
+      "asset": "daily_exhausted.png",
+      "asset_sha256": "b0518c9583c3dae33549f65d99aa1ef5d8fe346b162a3463096aaf8191756a2b",
+      "source": "video0_popup_probe.png",
+      "source_sha256": "a6adc2b245ea557f9e7e81b3110027a437e21df065464146991a8ec6c27dbb0f",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.361,
+        0.404,
+        0.64,
+        0.534
+      ]
+    },
+    {
+      "asset": "alert_ok.png",
+      "asset_sha256": "3dd31b05a3755750a75aa23a61cb20d32d7105a58069826df95b9e2d7e2137fc",
+      "source": "video0_popup_probe.png",
+      "source_sha256": "a6adc2b245ea557f9e7e81b3110027a437e21df065464146991a8ec6c27dbb0f",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.44,
+        0.585,
+        0.566,
+        0.664
+      ]
+    },
+    {
+      "asset": "results.png",
+      "asset_sha256": "e3ed10221033872882ad9f57eaf5fd1d6c38b03e976c48fde0913247e5a64d69",
+      "source": "ad_result1.png",
+      "source_sha256": "827e7713cd52778ccb97ccec288b01fc20f0a43c303167ea8d2bfb0d08f206d1",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.318,
+        0.194,
+        0.687,
+        0.24
+      ]
+    },
+    {
+      "asset": "currency.png",
+      "asset_sha256": "0df1e3c3fade08a0b2f9bf10cab772e335f44b7b10bbf2650aea9e9ea187d49b",
+      "source": "stamina_currency.png",
+      "source_sha256": "23d69b66df55a7abca2e2fc74a9c3627d1e24a60b7088f0240ae13a751dc04a8",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.549,
+        0.2,
+        0.623,
+        0.27
+      ]
+    },
+    {
+      "asset": "stamina_row.png",
+      "asset_sha256": "5518038cef974d40ce62d9e3faf3719e362db5ee58a3ac1984aac616f35d25ce",
+      "source": "stamina_currency.png",
+      "source_sha256": "23d69b66df55a7abca2e2fc74a9c3627d1e24a60b7088f0240ae13a751dc04a8",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.302,
+        0.405,
+        0.391,
+        0.448
+      ]
+    },
+    {
+      "asset": "stamina_panel.png",
+      "asset_sha256": "a916412fb0b626fe678a79d354b436288e0f123d10082f93f1fda1aa6d2bcdbe",
+      "source": "stamina_trade_panel.png",
+      "source_sha256": "4b12aa8795857b6269da8dd7bec9be73fa340d1d51551a53902a7ae34b9e506a",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.343,
+        0.51,
+        0.418,
+        0.59
+      ]
+    },
+    {
+      "asset": "kcoin.png",
+      "asset_sha256": "0994dac5c8e6b217834a2263096738265e4429e667f9d3f45c7cb58f45ac7230",
+      "source": "stamina_trade_panel.png",
+      "source_sha256": "4b12aa8795857b6269da8dd7bec9be73fa340d1d51551a53902a7ae34b9e506a",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.541,
+        0.307,
+        0.599,
+        0.339
+      ]
+    },
+    {
+      "asset": "trade_one.png",
+      "asset_sha256": "cccd17ce6b4004a121d7ce3a39d239ad06573712869edeedbc8929fdb3d919ee",
+      "source": "stamina_trade_panel.png",
+      "source_sha256": "4b12aa8795857b6269da8dd7bec9be73fa340d1d51551a53902a7ae34b9e506a",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.599,
+        0.787,
+        0.643,
+        0.823
+      ]
+    },
+    {
+      "asset": "ad_reward_close.png",
+      "asset_sha256": "6bdac7ca298da5162ec3b654e563c16a3e3c05b0c84dd86dc7ed473f929d17c0",
+      "source": "ad_wait1.png",
+      "source_sha256": "34fa0c994150ebef2cd99a2c4c47a2f4fb2930dfb528cd312f09f6fef91aa801",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.778,
+        0.024,
+        0.942,
+        0.102
+      ]
+    },
+    {
+      "asset": "ad_reward_close_light.png",
+      "asset_sha256": "557561dd1e6cb81830095a9ed20f2bb84153e6a9f3ef9c3c6f11af2a39e68d12",
+      "source": "smoke_ad_active.png",
+      "source_sha256": "d50b1358accb36c776074eab61a91d87f4a56bc67b5af0b90feab2a0984129f8",
+      "native_shape": [
+        1220,
+        2712
+      ],
+      "crop": [
+        0.79,
+        0.023,
+        0.942,
+        0.099
+      ]
+    }
+  ]
+}

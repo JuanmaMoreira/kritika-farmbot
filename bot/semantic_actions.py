@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from bot.stages_actions import StageAction, CloseAdAffordance
+
 from dataclasses import dataclass
 from enum import Enum
 from numbers import Integral
@@ -759,6 +761,7 @@ class DismissWorldBossBagFull:
 
 
 SemanticAction = (
+    StageAction | CloseAdAffordance |
     MonsterWaveAction
     | OpenBlackMarket
     | CloseBlackMarket

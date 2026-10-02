@@ -17,6 +17,7 @@ def test_default_registry_is_explicit_and_preserves_selection_order():
     registry = DEFAULT_FLOW_REGISTRY
 
     assert [item.id for item in registry.definitions] == [
+        "stages_daily",
         "black_market",
         "world_boss",
         "monster_wave",

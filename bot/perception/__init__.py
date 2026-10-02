@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .stages import StagesDetector
+
 from pathlib import Path
 
 from .black_market import (
@@ -214,6 +216,7 @@ def build_default_perception(
                 for spec in (*DEFAULT_LOCAL_CV_SPECS, *MONSTER_WAVE_SPECS,
                              *TRADING_CENTER_SPECS, *TREASURE_CENTER_SPECS)
             ),
+            StagesDetector(asset_root=root),
             BlackMarketGoldDetector(asset_root=root),
             BlackMarketPurchasedDetector(asset_root=root),
             SocketIncompatibleOpalDetector(asset_root=root),

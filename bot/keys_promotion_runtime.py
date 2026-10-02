@@ -25,6 +25,7 @@ from bot.keys_promotion import (
     SILVER_ROW_ID,
     KeysPromotionDecision,
     KeysPromotionKind,
+    KeysPromotionPhase,
     PendingCausalOperation,
     decide_after_trade,
     decide_next_keys_operation,
@@ -264,6 +265,7 @@ class KeysPromotionRuntime:
         recovery_navigation: GoldCapacityRecoveryNavigation | None = None,
         defer_recovery: bool = False,
         recovery_already_used: bool = False,
+        initial_phase: KeysPromotionPhase = KeysPromotionPhase.INITIAL,
     ) -> KeysPromotionRuntimeResult:
         """Promote Keys with one bounded Silver->Gold OUTPUT_FULL recovery."""
 
@@ -310,6 +312,7 @@ class KeysPromotionRuntime:
                 silver_fact=facts.silver_fact,
                 gold_fact=facts.gold_fact,
                 budget_remaining=budget,
+                phase=initial_phase,
             )
             while True:
                 if decision.kind is KeysPromotionKind.NO_MORE_PROMOTIONS:
@@ -447,6 +450,7 @@ class KeysPromotionRuntime:
                 silver_fact=fresh.silver_fact,
                 gold_fact=fresh.gold_fact,
                 reason="causal_retry_after_gold_drain",
+                phase=pending.phase,
                 evidence=("retry:causal_silver_to_gold", *pending.evidence),
             )
             if self._cancelled():
@@ -470,6 +474,7 @@ class KeysPromotionRuntime:
             continued = self.run(
                 budget_remaining=int(budget_remaining),
                 recovery_already_used=True,
+                initial_phase=pending.phase,
             )
             return KeysPromotionRuntimeResult(
                 continued.status, error=continued.error, failure=continued.failure,

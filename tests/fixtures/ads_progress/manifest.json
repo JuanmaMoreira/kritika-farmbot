@@ -1,0 +1,68 @@
+{
+  "provenance": "native ADB 2026-10-02; acquired SDK top progress; no advertising content retained",
+  "entries": [
+    {
+      "file": "ad_progress_01.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "present": true,
+      "sha256": "384070acd7c73edd95ae231b888557bb1f9a11adf59363d56ff3d7367202ed66"
+    },
+    {
+      "file": "ad_progress_02.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "present": true,
+      "sha256": "5b233ca14bd311b906933ee71a556ec864f5815c3b745521535bd9f5f7b1e32e"
+    },
+    {
+      "file": "ad_progress_03.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "present": true,
+      "sha256": "d018697bd9ca4c52d98d1dc2fbe2c9e86711c1509bc6bf4cb43b68fe8ecbec4a"
+    },
+    {
+      "file": "ad_progress_04.png",
+      "shape": [
+        1224,
+        2712
+      ],
+      "present": true,
+      "sha256": "08a2f063790dae05031492b9a0889fc96a5685767e2941d4eaec631749102ebd"
+    },
+    {
+      "file": "ad_progress_05.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "present": true,
+      "sha256": "8edf606266a516ac9b7fe7b44a6900f27082f2c2dd5e80452b0a7634e9193720"
+    },
+    {
+      "file": "ad_progress_06.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "present": false,
+      "sha256": "bfde1f28f4453361a5104a19c754e0f54473411109febc06431f3ad36b611d68"
+    },
+    {
+      "file": "current_after_abort.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "present": false,
+      "sha256": "5addc8cd721b1ced43b45c1158ae6be983ac78808662d40d76dc2fb3f81757e1"
+    }
+  ]
+}

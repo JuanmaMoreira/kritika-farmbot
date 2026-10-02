@@ -243,6 +243,23 @@ class ScrcpyFrameSource:
                 sequence=snapshot.sequence,
             )
 
+    def refresh_native(self) -> FrameSnapshot:
+        """Refresh a static SDK surface in the stream's shared sequence space.
+
+        scrcpy does not emit frames while a rewarded-ad end card is static.
+        The fresh screencap gets its actual acquisition time, never a relabelled
+        timestamp for an old decoded image. Receiver/lifecycle ownership stays
+        with this source; this method creates no process or device-side file.
+        """
+        import cv2
+        started = self._clock()
+        png = self.adb.capture_png()
+        image = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            raise CaptureError("Native PNG could not be decoded")
+        self._publish(image, timestamp=started)
+        return self.get_frame()
+
     @property
     def local_endpoint(self) -> str:
         return f"tcp:{self.local_port}"

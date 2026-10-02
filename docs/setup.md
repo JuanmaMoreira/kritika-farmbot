@@ -19,7 +19,7 @@ Desde la raíz del repositorio, crear y activar un entorno virtual con el mecani
 python -m pip install -r requirements.txt
 ```
 
-Las dependencias cubren captura/visión, carga de configuración, el AdsManager basado en UIAutomator2 y la suite automatizada con pytest. OCR, VLM y frameworks de detección todavía no forman parte del proyecto.
+Las dependencias cubren captura/visión, OCR variable, carga de configuración y tests con pytest. AdsManager productivo usa ADB activity/window y Back verificado, con CV de chrome y retorno al juego; UIAutomator es diagnóstico focalizado, no autoridad obligatoria de cierre. Stages Daily está disponible por Flow Registry/CLI/GUI como rutina ads-only; configuración local de device/ADB y cleanup conservan sus owners existentes. No requiere plugins ni una dependencia nueva de UI hierarchy.
 
 ## Configuración local
 
@@ -88,4 +88,4 @@ La herramienta sólo observa input físico mediante `HumanInputObserver`; no env
 
 ## Estado de ejecución
 
-No existe todavía un comando de ejecución fiable para el bot completo. `tools/smoke_capture.py` valida únicamente transporte y captura 0.2. El entry point y los módulos legacy de contexto, acciones y flows conservan imports de la antigua API de `bot.screen`; se reconstruirán sobre contratos semánticos en fases futuras.
+Los launchers productivos comparten Flow Registry y runtime: `python -m tools.run_flow --list-flows` lista actividades sin abrir dispositivo; `python -m tools.run_flow stages_daily` ejecuta Stages una vez en el personaje activo. La GUI se inicia con `python -m tools.gui`; sesiones con orden explícito usan `tools.run_session`. Las ejecuciones físicas son deliberadas y requieren device/config local. Stages Daily actual es ads-only y termina en Lobby con reward verificado; no incluye combate/manual. Los entry points legacy no son el contrato productivo vigente.

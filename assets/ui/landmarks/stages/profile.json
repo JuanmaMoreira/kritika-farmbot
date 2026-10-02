@@ -1,0 +1,452 @@
+{
+  "normal": {
+    "source": "normal_return.png",
+    "crop": [
+      0.23,
+      0.843,
+      0.411,
+      0.875
+    ],
+    "search": [
+      0.22,
+      0.83,
+      0.425,
+      0.89
+    ]
+  },
+  "loading": {
+    "source": "lobby_after1.png",
+    "crop": [
+      0.454,
+      0.553,
+      0.549,
+      0.628
+    ],
+    "search": [
+      0.44,
+      0.54,
+      0.56,
+      0.64
+    ]
+  },
+  "elite": {
+    "source": "elite.png",
+    "crop": [
+      0.235,
+      0.843,
+      0.4,
+      0.875
+    ],
+    "search": [
+      0.22,
+      0.83,
+      0.425,
+      0.89
+    ]
+  },
+  "abyssal": {
+    "source": "normal_return.png",
+    "crop": [
+      0.443,
+      0.145,
+      0.56,
+      0.184
+    ],
+    "search": [
+      0.425,
+      0.13,
+      0.58,
+      0.205
+    ]
+  },
+  "world_map": {
+    "source": "world_map.png",
+    "crop": [
+      0.345,
+      0.262,
+      0.378,
+      0.3
+    ],
+    "search": [
+      0.338,
+      0.25,
+      0.386,
+      0.309
+    ]
+  },
+  "stage8": {
+    "source": "normal_return.png",
+    "crop": [
+      0.644,
+      0.65,
+      0.668,
+      0.687
+    ],
+    "search": [
+      0.635,
+      0.63,
+      0.68,
+      0.702
+    ]
+  },
+  "config": {
+    "source": "stage8_config.png",
+    "crop": [
+      0.356,
+      0.176,
+      0.505,
+      0.219
+    ],
+    "search": [
+      0.349,
+      0.16,
+      0.514,
+      0.235
+    ]
+  },
+  "support_active": {
+    "source": "stage8_config.png",
+    "crop": [
+      0.704,
+      0.771,
+      0.795,
+      0.8
+    ],
+    "search": [
+      0.695,
+      0.75,
+      0.803,
+      0.823
+    ]
+  },
+  "support_needs": {
+    "source": "mao_needs.png",
+    "crop": [
+      0.703,
+      0.762,
+      0.802,
+      0.828
+    ],
+    "search": [
+      0.698,
+      0.752,
+      0.81,
+      0.838
+    ]
+  },
+  "support_ready": {
+    "source": "mao_ready.png",
+    "crop": [
+      0.703,
+      0.762,
+      0.802,
+      0.828
+    ],
+    "search": [
+      0.698,
+      0.752,
+      0.81,
+      0.838
+    ]
+  },
+  "support_purchase": {
+    "source": "mao_purchase.png",
+    "crop": [
+      0.392,
+      0.09,
+      0.625,
+      0.14
+    ],
+    "search": [
+      0.38,
+      0.08,
+      0.636,
+      0.156
+    ]
+  },
+  "support_full": {
+    "source": "mao_fill_all.png",
+    "crop": [
+      0.56,
+      0.648,
+      0.607,
+      0.688
+    ],
+    "search": [
+      0.55,
+      0.636,
+      0.619,
+      0.7
+    ]
+  },
+  "skip_ticket": {
+    "source": "system_ad_launch.png",
+    "crop": [
+      0.429,
+      0.47,
+      0.572,
+      0.503
+    ],
+    "search": [
+      0.41,
+      0.455,
+      0.586,
+      0.521
+    ]
+  },
+  "penance": {
+    "source": "stage8_config.png",
+    "crop": [
+      0.42,
+      0.84,
+      0.485,
+      0.95
+    ],
+    "search": [
+      0.41,
+      0.83,
+      0.49,
+      0.96
+    ]
+  },
+  "start": {
+    "source": "start_modal.png",
+    "crop": [
+      0.343,
+      0.116,
+      0.465,
+      0.157
+    ],
+    "search": [
+      0.33,
+      0.1,
+      0.49,
+      0.18
+    ]
+  },
+  "auto": {
+    "source": "auto_modal.png",
+    "crop": [
+      0.281,
+      0.055,
+      0.326,
+      0.098
+    ],
+    "search": [
+      0.26,
+      0.04,
+      0.35,
+      0.11
+    ]
+  },
+  "max300": {
+    "source": "auto_modal.png",
+    "crop": [
+      0.324,
+      0.752,
+      0.433,
+      0.821
+    ],
+    "search": [
+      0.313,
+      0.74,
+      0.442,
+      0.828
+    ]
+  },
+  "video2": {
+    "source": "auto_modal.png",
+    "crop": [
+      0.331,
+      0.865,
+      0.4,
+      0.91
+    ],
+    "search": [
+      0.32,
+      0.847,
+      0.415,
+      0.92
+    ]
+  },
+  "video1": {
+    "source": "auto_video1.png",
+    "crop": [
+      0.331,
+      0.865,
+      0.4,
+      0.91
+    ],
+    "search": [
+      0.32,
+      0.847,
+      0.415,
+      0.92
+    ]
+  },
+  "video0": {
+    "source": "auto_video0.png",
+    "crop": [
+      0.331,
+      0.865,
+      0.4,
+      0.91
+    ],
+    "search": [
+      0.32,
+      0.847,
+      0.415,
+      0.92
+    ]
+  },
+  "daily_exhausted": {
+    "source": "video0_popup_probe.png",
+    "crop": [
+      0.361,
+      0.404,
+      0.64,
+      0.534
+    ],
+    "search": [
+      0.35,
+      0.39,
+      0.651,
+      0.552
+    ]
+  },
+  "alert_ok": {
+    "source": "video0_popup_probe.png",
+    "crop": [
+      0.44,
+      0.585,
+      0.566,
+      0.664
+    ],
+    "search": [
+      0.431,
+      0.574,
+      0.577,
+      0.676
+    ]
+  },
+  "results": {
+    "source": "ad_result1.png",
+    "crop": [
+      0.318,
+      0.194,
+      0.687,
+      0.24
+    ],
+    "search": [
+      0.31,
+      0.18,
+      0.7,
+      0.255
+    ]
+  },
+  "currency": {
+    "source": "stamina_currency.png",
+    "crop": [
+      0.549,
+      0.2,
+      0.623,
+      0.27
+    ],
+    "search": [
+      0.539,
+      0.192,
+      0.636,
+      0.282
+    ]
+  },
+  "stamina_row": {
+    "source": "stamina_currency.png",
+    "crop": [
+      0.302,
+      0.405,
+      0.391,
+      0.448
+    ],
+    "search": [
+      0.3,
+      0.38,
+      0.4,
+      0.47
+    ]
+  },
+  "stamina_panel": {
+    "source": "stamina_trade_panel.png",
+    "crop": [
+      0.343,
+      0.51,
+      0.418,
+      0.59
+    ],
+    "search": [
+      0.337,
+      0.495,
+      0.432,
+      0.62
+    ]
+  },
+  "kcoin": {
+    "source": "stamina_trade_panel.png",
+    "crop": [
+      0.541,
+      0.307,
+      0.599,
+      0.339
+    ],
+    "search": [
+      0.538,
+      0.29,
+      0.615,
+      0.35
+    ]
+  },
+  "trade_one": {
+    "source": "stamina_trade_panel.png",
+    "crop": [
+      0.599,
+      0.787,
+      0.643,
+      0.823
+    ],
+    "search": [
+      0.59,
+      0.775,
+      0.652,
+      0.832
+    ]
+  },
+  "ad_reward_close": {
+    "source": "ad_wait1.png",
+    "crop": [
+      0.778,
+      0.024,
+      0.942,
+      0.102
+    ],
+    "search": [
+      0.75,
+      0.01,
+      0.95,
+      0.12
+    ]
+  },
+  "ad_reward_close_light": {
+    "source": "smoke_ad_active.png",
+    "crop": [
+      0.79,
+      0.023,
+      0.942,
+      0.099
+    ],
+    "search": [
+      0.775,
+      0.01,
+      0.95,
+      0.12
+    ]
+  }
+}

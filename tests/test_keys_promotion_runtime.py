@@ -550,9 +550,9 @@ def test_retry_output_full_fails_closed_without_second_drain():
 def test_later_gold_full_after_successful_recovery_never_recovers_twice():
     harness = Harness(
         [
-            _facts(2, bronze=20, silver=20),
-            _facts(30, bronze=20, silver=20),
-            _facts(32, bronze=20, silver=20),
+            _facts(2, bronze=0, silver=20),
+            _facts(30, bronze=0, silver=20),
+            _facts(32, bronze=0, silver=20),
         ],
         [TradeOutcome.OUTPUT_FULL, TradeOutcome.SUCCESS, TradeOutcome.OUTPUT_FULL],
     )

@@ -84,10 +84,10 @@ def _after(previous, outcome, silver, gold, budget, **overrides):
 
 # Order: Silver->Gold first whenever Silver covers its need.
 
-def test_both_tradeable_prefers_silver_to_gold():
+def test_both_tradeable_starts_bronze_when_capacity_fits():
     decision = _decide(silver_have=50, gold_have=25)
     assert decision.kind is KeysPromotionKind.NEXT_OPERATION
-    assert decision.operation is KeyTradeOperation.SILVER_TO_GOLD
+    assert decision.operation is KeyTradeOperation.BRONZE_TO_SILVER
 
 
 def test_silver_only_prefers_silver_to_gold():
@@ -112,7 +112,7 @@ def test_neither_tradeable_is_terminal():
 
 def test_exact_need_counts_as_tradeable():
     decision = _decide(silver_have=10, gold_have=10)
-    assert decision.operation is KeyTradeOperation.SILVER_TO_GOLD
+    assert decision.operation is KeyTradeOperation.BRONZE_TO_SILVER
     boundary = _decide(silver_have=9, gold_have=10)
     assert boundary.operation is KeyTradeOperation.SILVER_TO_GOLD
     bronze = _decide(silver_have=10, gold_have=9)
@@ -122,7 +122,7 @@ def test_exact_need_counts_as_tradeable():
 # Refresh: SUCCESS never authorizes a second trade on the old snapshot.
 
 def test_success_silver_to_gold_rejects_stale_snapshot():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     stale_silver = _silver(50, sequence=10)
     stale_gold = _gold(25, sequence=10)
     decision = _after(
@@ -145,18 +145,18 @@ def test_success_bronze_to_silver_rejects_stale_snapshot():
     assert decision.reason == "stale_facts"
 
 
-def test_success_with_fresh_facts_redecides_silver_first():
+def test_success_with_fresh_facts_preserves_bronze_phase():
     previous = _decide(silver_have=50, gold_have=5)
     decision = _after(
         previous, TradeOutcome.SUCCESS, _silver(40, sequence=11),
         _gold(15, sequence=12), budget=2, after=_silver(40, sequence=13),
     )
     assert decision.kind is KeysPromotionKind.NEXT_OPERATION
-    assert decision.operation is KeyTradeOperation.SILVER_TO_GOLD
+    assert decision.operation is KeyTradeOperation.BRONZE_TO_SILVER
 
 
 def test_success_with_fresh_empty_facts_terminates():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     decision = _after(
         previous, TradeOutcome.SUCCESS, _silver(5, sequence=11),
         _gold(5, sequence=12), budget=2, after=_gold(20, sequence=13),
@@ -196,7 +196,7 @@ def test_after_fact_of_one_row_never_feeds_the_other():
 
 def test_next_quantity_is_max_allowed():
     for decision in (
-        _decide(silver_have=50, gold_have=25),
+        _decide(silver_have=5, gold_have=25),
         _decide(silver_have=50, gold_have=5),
     ):
         assert decision.quantity is not None
@@ -207,22 +207,22 @@ def test_next_quantity_is_max_allowed():
 
 def test_no_output_capacity_arithmetic_in_policy():
     assert "_key_counts" not in POLICY_SOURCE
-    assert "499" not in POLICY_SOURCE
+    assert "Gold capacity is NOT OBSERVABLE" in POLICY_SOURCE
 
 
 def test_next_carries_causal_facts_for_audit():
-    decision = _decide(silver_have=50, gold_have=25)
+    decision = _decide(silver_have=5, gold_have=25)
     assert decision.silver_fact is not None
     assert decision.gold_fact is not None
     assert decision.silver_fact.item_id == BRONZE_ROW
     assert decision.gold_fact.item_id == SILVER_ROW
-    assert "order:silver_first" in decision.evidence
+    assert "order:silver_final" in decision.evidence
 
 
 # Boundaries: Gold-full preserves the causal request; the rest fail closed.
 
 def test_output_full_silver_to_gold_preserves_causal_boundary():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     before = _gold(25, sequence=10)
     result = _result(
         TradeOutcome.OUTPUT_FULL, before,
@@ -245,7 +245,7 @@ def test_output_full_silver_to_gold_preserves_causal_boundary():
 
 
 def test_gold_boundary_needs_no_fresh_reads():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     result = _result(
         TradeOutcome.OUTPUT_FULL, _gold(25, sequence=10),
         boundary="output_full", reason="output_full_on_open",
@@ -262,11 +262,12 @@ def test_pending_carries_no_treasure_routing_or_amount():
     assert names == {
         "operation", "quantity", "before_fact",
         "boundary", "reason", "evidence",
+        "phase",
     }
     for forbidden in ("route", "back", "lobby", "retry", "treasure",
                       "amount", "repeat", "should_"):
         assert forbidden not in names, forbidden
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     result = _result(
         TradeOutcome.OUTPUT_FULL, _gold(25, sequence=10),
         boundary="output_full", reason="output_full_on_open",
@@ -301,7 +302,7 @@ def test_output_full_bronze_to_silver_fails_closed():
     TradeOutcome.CANCELLED,
 ])
 def test_terminal_outcomes_do_not_authorize_another_trade(outcome):
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     decision = _after(
         previous, outcome, _silver(50, sequence=11),
         _gold(25, sequence=12), budget=2,
@@ -312,7 +313,7 @@ def test_terminal_outcomes_do_not_authorize_another_trade(outcome):
 
 
 def test_limit_reached_fails_closed():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     decision = _after(
         previous, TradeOutcome.LIMIT_REACHED, _silver(50, sequence=11),
         _gold(25, sequence=12), budget=2, boundary="limit_reached",
@@ -322,7 +323,7 @@ def test_limit_reached_fails_closed():
 
 
 def test_insufficient_input_requires_fresh_facts():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     stale = _after(
         previous, TradeOutcome.INSUFFICIENT_INPUT,
         _silver(50, sequence=10), _gold(25, sequence=10), budget=2,
@@ -333,7 +334,7 @@ def test_insufficient_input_requires_fresh_facts():
 
 
 def test_insufficient_input_with_fresh_empty_facts_terminates():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     decision = _after(
         previous, TradeOutcome.INSUFFICIENT_INPUT,
         _silver(5, sequence=11), _gold(5, sequence=12), budget=2,
@@ -343,7 +344,7 @@ def test_insufficient_input_with_fresh_empty_facts_terminates():
 
 
 def test_no_more_input_with_fresh_bronze_authorizes_next():
-    previous = _decide(silver_have=50, gold_have=25)
+    previous = _decide(silver_have=5, gold_have=25)
     decision = _after(
         previous, TradeOutcome.NO_MORE_INPUT,
         _silver(50, sequence=11), _gold(5, sequence=12), budget=2,

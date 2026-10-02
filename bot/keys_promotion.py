@@ -1,75 +1,16 @@
-"""Pure deterministic Keys promotion policy (C6a).
+"""Pure Keys phase policy; every decision uses fresh verified row facts.
 
-Stateless ordering over fresh Trading Keys row facts. Decides ONE next
-step per call for the C5 Avatar & Keys capability; never executes UI,
-never calls C5/C4, never navigates, never opens Treasure, never touches
-Craft/Relief, Monster Wave, planners or stages.
+Bronze produces two Silver per ten Bronze. The Silver board capacity is 499
+(acquired USER_GT). Gold capacity is NOT OBSERVABLE. Initially pre-drain
+Silver only when the complete Bronze phase cannot fit. Exact-one pre-drain
+uses C4's existing verified initial selection, without new quantity controls.
+Once Bronze begins, preserve its phase while the next MAX batch fits. Fresh
+post-trade facts retain the phase; exhausted Bronze enters the Silver final
+phase. A real capacity change can require another pre-drain.
 
-Domain facts (C5-confirmed, HIL-backed):
-
-- ``BRONZE_TO_SILVER`` consumes Bronze Keys; its causal row is
-  ``silver_key`` ("Silver Key 2"). Fact ``have``/``need`` are BRONZE
-  counts (HIL 5/10).
-- ``SILVER_TO_GOLD`` consumes Silver Keys; its causal row is
-  ``gold_key`` ("Gold Key 2"). Fact ``have``/``need`` are SILVER counts
-  (HIL 9/10).
-- Bronze has no output row of its own: it is observed only through the
-  Silver output row. There is nothing to scroll to find it.
-- Gold capacity is NOT OBSERVABLE anywhere in Trading: no reader
-  reports it and no fact contains it. This policy never infers it,
-  never counts rows, and never computes output-capacity arithmetic.
-
-Adaptive order (deterministic, observable inputs only):
-
-- When the Silver input covers its need (gold fact ``have >= need``),
-  the Silver->Gold promotion is available: request it FIRST, before
-  minting more Silver from Bronze.
-- Otherwise, when the Bronze input covers its need (silver fact
-  ``have >= need``), request Bronze->Silver.
-- When neither input covers its need, report ``NO_MORE_PROMOTIONS``.
-- After every executed trade the caller supplies a fresh fact-set;
-  this module never chains a second trade on a pre-trade snapshot.
-
-This order is NOT claimed to optimize Silver capacity: it is simply
-the deterministic rule "consume available Silver toward Gold before
-minting more Silver", re-decided from fresh state after each step.
-History ordered Keys with inferred-capacity arithmetic without ground
-truth of Gold capacity; that arithmetic is discarded here by design
-(see ``docs/POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md``).
-
-Quantity: every ``NEXT_OPERATION`` carries ``MAX_ALLOWED``. C4 already
-bounds the confirmed amount by the observed panel cap and ``have//need``,
-so the policy must not compute output capacity, must not scale by an
-inferred cap, and never touches the panel ``>>`` control (C4 owns it).
-
-Freshness: each ``TradingRowFact`` carries a capture sequence.
-:func:`decide_next_keys_operation` validates shape/identity only.
-:func:`decide_after_trade` requires, on any path that could authorize
-another trade (``SUCCESS``, ``INSUFFICIENT_INPUT``, ``NO_MORE_INPUT``),
-a fact-set strictly newer than the decided one on BOTH rows; reuse of
-the pre-trade snapshot fails closed as stale. Terminal paths
-(``OUTPUT_FULL``, ``LIMIT_REACHED``, ``NO_EFFECT``, ``FAILED``,
-``CANCELLED``) preserve evidence and never authorize another trade, so
-they need no fresh reads. The ``after_fact`` of one row is never used
-to invent the fact of the other row.
-
-Budget: every emitted ``NEXT_OPERATION`` is one bounded step. Callers
-pass an explicit non-negative ``budget_remaining`` (no default); zero
-yields ``BUDGET_EXHAUSTED`` and authorizes nothing. The policy keeps no
-counters and runs no loops: after each executed trade the caller
-decrements the budget and threads the remainder into
-:func:`decide_after_trade`.
-
-Gold-full boundary: ``OUTPUT_FULL`` from ``SILVER_TO_GOLD`` becomes
-``GOLD_CAPACITY_BLOCKED`` with the pending causal operation preserved
-(operation, original quantity intent, executed before-fact, boundary
-evidence, sequence metadata). No Treasure opening is computed here, no
-Gold-Key amount is derived, and no automatic second attempt is armed:
-C6b decides that later with a complete Treasure runtime. ``OUTPUT_FULL``
-from ``BRONZE_TO_SILVER`` is unexpected (that trade outputs Silver,
-whose availability is observed through tradeability, not through a full
-popup): it fails closed as ``FAILED`` with the boundary preserved in
-evidence.
+C4 owns panel MAX, cost/quantity checks, single confirm and effect verification.
+This policy executes no input and keeps the existing budget and Gold-full
+causal recovery boundaries. No operation is authorized from stale row facts.
 """
 
 from __future__ import annotations
@@ -92,6 +33,19 @@ SILVER_ROW_ID = "silver_key"
 
 #: Causal Silver-input row ("Gold Key 2" output; have/need = Silver).
 GOLD_ROW_ID = "gold_key"
+
+# USER_GT board denominator (322/499 Bronze, 129/499 Silver), acquired natively
+# and recorded in GAMEPLAY_GT. This is not the unobservable Gold capacity.
+SILVER_CAPACITY = 499
+SILVER_PER_BRONZE_CONVERSION = 2
+KEY_PANEL_MAX_CONVERSIONS = 20
+
+
+class KeysPromotionPhase(str, Enum):
+    INITIAL = 'initial'
+    SILVER_PRE_DRAIN = 'silver_pre_drain'
+    BRONZE = 'bronze'
+    SILVER_FINAL = 'silver_final'
 
 
 class KeysPromotionKind(str, Enum):
@@ -121,15 +75,19 @@ class PendingCausalOperation:
     reason: str | None = None
     evidence: tuple[str, ...] = ()
 
+    phase: KeysPromotionPhase = KeysPromotionPhase.INITIAL
+
     def __post_init__(self) -> None:
+        if not isinstance(self.phase, KeysPromotionPhase):
+            raise ValueError("phase must be KeysPromotionPhase")
         if self.operation is not KeyTradeOperation.SILVER_TO_GOLD:
             raise ValueError(
                 "pending causal operation is only defined for silver_to_gold"
             )
         if not isinstance(self.quantity, TradeQuantity):
             raise ValueError("quantity must be TradeQuantity")
-        if self.quantity.mode is not TradeQuantityMode.MAX_ALLOWED:
-            raise ValueError("pending quantity must be max_allowed")
+        if not _supported_quantity(self.quantity):
+            raise ValueError("pending quantity must be max_allowed or exact one")
         if not isinstance(self.before_fact, TradingRowFact):
             raise ValueError("before_fact must be TradingRowFact")
         if (
@@ -149,7 +107,7 @@ class PendingCausalOperation:
 
 @dataclass(frozen=True)
 class KeysPromotionDecision:
-    """One stateless policy step: a next operation or a terminal state."""
+    """One fresh policy step retaining phase intent or a terminal state."""
 
     kind: KeysPromotionKind
     operation: KeyTradeOperation | None = None
@@ -160,16 +118,22 @@ class KeysPromotionDecision:
     reason: str | None = None
     evidence: tuple[str, ...] = ()
 
+    phase: KeysPromotionPhase = KeysPromotionPhase.INITIAL
+
     def __post_init__(self) -> None:
         if not isinstance(self.kind, KeysPromotionKind):
             raise ValueError("kind must be KeysPromotionKind")
+        if not isinstance(self.phase, KeysPromotionPhase):
+            raise ValueError("phase must be KeysPromotionPhase")
         if self.kind is KeysPromotionKind.NEXT_OPERATION:
             if not isinstance(self.operation, KeyTradeOperation):
                 raise ValueError("next_operation requires a key operation")
             if not isinstance(self.quantity, TradeQuantity):
                 raise ValueError("next_operation requires a quantity")
-            if self.quantity.mode is not TradeQuantityMode.MAX_ALLOWED:
-                raise ValueError("next_operation quantity must be max_allowed")
+            if not _supported_quantity(self.quantity) or (
+                    self.quantity.mode is not TradeQuantityMode.MAX_ALLOWED and
+                    self.operation is not KeyTradeOperation.SILVER_TO_GOLD):
+                raise ValueError("quantity must be max_allowed or Silver exact one")
             if not isinstance(self.silver_fact, TradingRowFact):
                 raise ValueError("next_operation requires the silver fact")
             if not isinstance(self.gold_fact, TradingRowFact):
@@ -223,11 +187,17 @@ def default_keys_quantity() -> TradeQuantity:
     return TradeQuantity(mode=TradeQuantityMode.MAX_ALLOWED)
 
 
+def _supported_quantity(quantity):
+    return (quantity.mode is TradeQuantityMode.MAX_ALLOWED or
+            (quantity.mode is TradeQuantityMode.EXACT and quantity.amount == 1))
+
+
 def decide_next_keys_operation(
     *,
     silver_fact: TradingRowFact,
     gold_fact: TradingRowFact,
     budget_remaining: int,
+    phase: KeysPromotionPhase = KeysPromotionPhase.INITIAL,
 ) -> KeysPromotionDecision:
     """Decide ONE next Keys step from fresh observable facts.
 
@@ -268,26 +238,49 @@ def decide_next_keys_operation(
             reason="budget_exhausted",
             evidence=("budget_exhausted", *base),
         )
-    if is_tradeable(gold_fact):
-        return KeysPromotionDecision(
-            kind=KeysPromotionKind.NEXT_OPERATION,
-            operation=KeyTradeOperation.SILVER_TO_GOLD,
-            quantity=default_keys_quantity(),
-            silver_fact=silver_fact,
-            gold_fact=gold_fact,
-            reason="silver_tradeable_first",
-            evidence=("order:silver_first", *base),
-        )
-    if is_tradeable(silver_fact):
+    if not isinstance(phase, KeysPromotionPhase):
+        raise ValueError('phase must be KeysPromotionPhase')
+    bronze_conversions = silver_fact.have // silver_fact.need
+    space = SILVER_CAPACITY - gold_fact.have
+    pending_output = bronze_conversions * SILVER_PER_BRONZE_CONVERSION
+    next_output = min(bronze_conversions, KEY_PANEL_MAX_CONVERSIONS) * SILVER_PER_BRONZE_CONVERSION
+    bronze_fits = (space >= next_output if phase is KeysPromotionPhase.BRONZE
+                   else space >= pending_output)
+    # Huge over-capacity Bronze cannot fit in one complete phase even with
+    # Silver empty. Start the physically fitting batch, then recheck capacity.
+    if pending_output > SILVER_CAPACITY and space >= next_output:
+        bronze_fits = True
+    if is_tradeable(silver_fact) and bronze_fits:
         return KeysPromotionDecision(
             kind=KeysPromotionKind.NEXT_OPERATION,
             operation=KeyTradeOperation.BRONZE_TO_SILVER,
             quantity=default_keys_quantity(),
             silver_fact=silver_fact,
             gold_fact=gold_fact,
-            reason="silver_short_bronze_tradeable",
-            evidence=("order:bronze_next", *base),
+            reason="bronze_phase_capacity_verified",
+            evidence=("order:bronze_phase", f"silver_space:{space}", *base),
+            phase=KeysPromotionPhase.BRONZE,
         )
+    if is_tradeable(gold_fact):
+        pre_drain = is_tradeable(silver_fact)
+        return KeysPromotionDecision(
+            kind=KeysPromotionKind.NEXT_OPERATION,
+            operation=KeyTradeOperation.SILVER_TO_GOLD,
+            # The fresh panel starts at one. C4 already verifies EXACT and
+            # skips MAX when one is selected: no quantity controls are added.
+            quantity=(TradeQuantity(TradeQuantityMode.EXACT, 1)
+                      if pre_drain else default_keys_quantity()),
+            silver_fact=silver_fact,
+            gold_fact=gold_fact,
+            reason="silver_pre_drain_required" if pre_drain else "silver_final_phase",
+            evidence=("order:silver_pre_drain" if pre_drain else "order:silver_final", *base),
+            phase=(KeysPromotionPhase.BRONZE if pre_drain and phase is KeysPromotionPhase.BRONZE else
+                   KeysPromotionPhase.SILVER_PRE_DRAIN if pre_drain else KeysPromotionPhase.SILVER_FINAL),
+        )
+    if is_tradeable(silver_fact):
+        return KeysPromotionDecision(KeysPromotionKind.FAILED,
+            silver_fact=silver_fact, gold_fact=gold_fact,
+            reason='silver_capacity_cannot_enable_bronze', evidence=base)
     return KeysPromotionDecision(
         kind=KeysPromotionKind.NO_MORE_PROMOTIONS,
         silver_fact=silver_fact,
@@ -344,6 +337,7 @@ def decide_after_trade(
                 f"outcome:{outcome.value}",
                 *result.evidence,
             ),
+            phase=previous.phase,
         )
     if outcome in (
         TradeOutcome.NO_EFFECT,
@@ -415,6 +409,7 @@ def decide_after_trade(
         silver_fact=silver_fact,
         gold_fact=gold_fact,
         budget_remaining=budget,
+        phase=previous.phase,
     )
 
 
@@ -453,6 +448,7 @@ def _after_output_full(
             before_fact=before,
             boundary=boundary,
             reason=result.reason,
+            phase=previous.phase,
             evidence=(
                 "operation:silver_to_gold",
                 f"boundary:{boundary}",

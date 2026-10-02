@@ -550,7 +550,7 @@ SOCKET_TAB_SPEC = LocalCvSpec(
         Path("assets/ui/landmarks/socket-tab-equipment-dimmed-current.png"),
         Path("assets/ui/landmarks/socket-tab-enhance-dimmed-current.png"),
     ),
-    region=(0.16, 0.11, 0.26, 0.24),
+    region=(0.1595, 0.1095, 0.2605, 0.2405),
     calibration=LinearGapCalibration(
         negative_anchor=0.7131282687187195,
         positive_anchor=0.9773702621459961,

@@ -17,6 +17,7 @@ Capture → Perception / Runtime Facts → ContextResolver
 | ContextResolver | Resolución pura y determinista: RESOLVED / UNKNOWN / AMBIGUOUS; no captura, input ni policy temporal |
 | RuntimeObserver / TemporalObserver | Snapshot coherente de frame, secuencia, tiempo, observaciones, facts y geometría; evidencia multiframe sólo donde hace falta |
 | Flow / activity | Intención de negocio, gates, outcomes y composición de operaciones; sin CV/ADB directos |
+| AdsManager / AndroidAdsObserver | Lifecycle transversal de publicidad; ownership Android, progreso/cierre seguro y retorno. El caller prueba reward y decide retry |
 | Support operation | Relief concreto y retorno caller-specific; no planner ni recovery general |
 | BattleModeZone / PreparedActivity | Entrada/salida del hub y binding de actividad; sin gameplay o policy de inventario |
 | SessionRunner / Rotation | Orden explícito y policy de sesión / cambio transversal de personaje |
@@ -47,7 +48,17 @@ Rutas concretas respetan caller/Back de GAMEPLAY_GT. El caller posee su retorno 
 
 - El planner de recursos es puro; el board describe, cada capacidad decide/ejecuta dentro de su operación con facts frescos. El executor de ruta consume un plan, no replantea por su cuenta.
 - Economic owners verifican identidad, cantidad, moneda, límites y efecto. No imputar saldos desde acciones previas. Karats no se gastan mediante fallback implícito; USER_GT Equipment autoriza explícitamente la siguiente fila +4 tras Combine y scan Sell sin candidato accesible.
-- Equipment conserva request causal y Combine primero. Sell productivo aplica policy USER_GT y scan desde tail accesible fresco; cada Bulk confirma una vez y prueba Item Count decreciente. Sin candidato, expansión secuencial +4 con coste y efecto verificados. Tras cualquier efecto se descarta scan/index y se reinicia; nunca retry destructivo inconcluso. Su existencia standalone no prueba wiring de un caller.
+- Equipment conserva request causal y Combine primero. Sell productivo aplica policy USER_GT y scan desde tail accesible fresco; cada Bulk confirma una vez y prueba Item Count decreciente. Sin candidato, expansión secuencial +4 con coste y efecto verificados. CV de bloques sólo descubre candidatos; panel/policy/popup siguen autorizando cada Bulk. Tras Bulk compatible se invalidan pixels/crops/templates/geometría y se transforman rangos lógicos protegidos por delta fresco; navegar a la región nueva sin reinspección innecesaria. Expansión, contexto/resort o delta contradictorio invalidan también ese modelo y restauran scan secuencial. Nunca retry destructivo inconcluso. Su existencia standalone no prueba wiring de un caller.
 - Recovery vuelve a estado conocido; la sesión decide cómo continuar con el resultado. Los límites concretos de MW/Craft/Keys están en RESOURCE_ROUTING.
 
 Configuración import-safe y explícita; paths/seriales locales fuera de código portable. Cleanup de source/proceso/socket/forward pertenece a su owner. No incorporar lifecycle frameworks, planners generales o abstracciones preventivas sin necesidad real conforme a AGENTS.
+
+## AdsManager transversal
+
+AdsManager no pertenece a Stages ni selecciona contenido publicitario. `AndroidAdsObserver` reúne pixels frescos y activity/window; el adapter despacha acciones Android/semánticas y el manager mantiene el lifecycle bounded. Stages es un caller: navegación/configuración/Mao permanecen concretos, y su success exige Results y Sapphire after > before. No se crea un framework general de stages.
+
+- Activity/focus deben concordar. Package/activity son contexto, no prueba de reward ni de fase closable. Usar `dumpsys window` completo donde `windows` no aporta foco. Cada input fuerza screencap nativa fresca; no reinterpretar pixels SDK stale sobre main como permiso para otro Back. UI hierarchy actual sin affordances útiles es diagnóstico, no dependencia de cleanup.
+- Chrome fijo SDK reward-ready permite cierre normal; CV de la barra SDK sólo prueba progreso, nunca autoriza un input. Movimiento ≥.01/reset conserva observación, con grace 15 s y límite absoluto 180 s multipart. No OCR ni reconocimiento de marca/contenido del anuncio.
+- ~60 s es fallback sólo para estado desconocido/estancado sin progreso conocido. Back 1 → pixels/Android frescos → Back 2 únicamente si sigue ownership positivo ad/external. Main + superficie conocida detiene inputs inmediatamente; results tienen grace bounded 4 s. Nunca Back→Back a ciegas ni segundo Back dentro del juego. External package se recupera con Back bounded, sin CTA/install/permisos/compras.
+- `AdsOutcome.RETURNED` señala retorno con results; **AD_COMPLETED** funcional sólo después de que el caller pruebe reward. `AD_ABORTED_RECOVERED` no es success ni supone reward/debit; el caller restaura estado y puede reintentar bounded. `UNAVAILABLE` por intento puede terminar en ADS_UNAVAILABLE/MANUAL_ENTRY_REQUIRED según policy del caller. `EXHAUSTED` corresponde a agotamiento explícito. `AD_RECOVERY_FAILED` sólo si no puede verificarse recuperación segura.
+- Freshness y resultado inconcluso conservan los guards consumptivos. Policy concreta No Ads/same-character reset y prerequisites de Stages pertenecen a RESOURCE_ROUTING; límites físicos adquiridos a GAMEPLAY_GT.

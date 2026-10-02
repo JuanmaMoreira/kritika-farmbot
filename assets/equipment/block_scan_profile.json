@@ -1,0 +1,7 @@
+{
+  "roi": [-0.027, -0.063, 0.027, 0.028],
+  "alignment_margin": 2,
+  "threshold": 0.90,
+  "uncertain_floor": 0.84,
+  "provenance": "2026-10-02 native Monk p7/p8, 24 frames, 5772 same-frame pairs. BGR NCC retaining tier frame, excluding variable CP. Inter-block max 0.8318296; intra-block same-frame p5 0.9452218. Threshold rounds the gap midpoint upward. Cross-glow ambiguous positives fall back to strong panels. Two reference phases are acquired around that strong panel; never reused across Bulk/expansion."
+}

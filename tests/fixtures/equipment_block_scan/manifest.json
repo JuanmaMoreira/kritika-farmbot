@@ -1,0 +1,242 @@
+[
+  {
+    "path": "ethereal_necklace_p7_s0_phase0.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_00.png",
+    "source_sha256": "d5c5a5a9226e15b5901ab94ce47c98deab4ee46c7cb7f96b31350f53e62dcecb",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "b445fd61b606a77865b6f04072d0a2900ab3a68b4c10ef617ee3b3e77a4d41a4"
+  },
+  {
+    "path": "ethereal_necklace_p7_s0_phase3.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_03.png",
+    "source_sha256": "b62c682c1eafe9a9ec757e0c9c4915f3464c5bdb8deab7a9dda85d03d93345fb",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "7bdecd7de558ccae42fd193ad0dc38cbf7d4debac59e825ac71f29f82b6c7192"
+  },
+  {
+    "path": "ethereal_necklace_p7_s0_phase6.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_06.png",
+    "source_sha256": "e29430fd50805078808a3ece492f4edf12aed2a4ee1f2c61cde78476a5cba566",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "9ba955a6bba7fab32bfa5be670241823fbef0186af7917330df93a11b2412e35"
+  },
+  {
+    "path": "ethereal_necklace_p7_s0_phase9.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_09.png",
+    "source_sha256": "07e0754c8c142919cb66c54e88f1af9094ecc3f262d91394927ce67e24115c53",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "c713a0584961b45441b6add4d71970cdd2ac2cedc2ea3c67290c9127a1887089"
+  },
+  {
+    "path": "ethereal_necklace_p7_s8_phase0.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_00.png",
+    "source_sha256": "d5c5a5a9226e15b5901ab94ce47c98deab4ee46c7cb7f96b31350f53e62dcecb",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "170a4b871c2c8e63d21ef93dad2d1d559e8fe97d70f8ea85b79a5e6db5d47476"
+  },
+  {
+    "path": "ethereal_necklace_p7_s8_phase3.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_03.png",
+    "source_sha256": "b62c682c1eafe9a9ec757e0c9c4915f3464c5bdb8deab7a9dda85d03d93345fb",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "2cc62931b8a53c46d691d3b10a27075ef6dce699c8da4a6f6a2c5582b702e0ee"
+  },
+  {
+    "path": "ethereal_necklace_p7_s8_phase6.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_06.png",
+    "source_sha256": "e29430fd50805078808a3ece492f4edf12aed2a4ee1f2c61cde78476a5cba566",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "d9ac7f21bad98d8fb197dfd0f00f7d24b91eb1773723dc4e9cc5f8ba63be0164"
+  },
+  {
+    "path": "ethereal_necklace_p7_s8_phase9.png",
+    "label": "ethereal_necklace",
+    "source": "sell_glow_p7_09.png",
+    "source_sha256": "07e0754c8c142919cb66c54e88f1af9094ecc3f262d91394927ce67e24115c53",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "bfc8665b210e887ecf4dba010680c904ce347404d2d69eca3aad7d297bae19c4"
+  },
+  {
+    "path": "ethereal_ring_p8_s0_phase0.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_00.png",
+    "source_sha256": "0372d5799a5ab1a20c31d427099eb8930dc0dfb923aba23e687ec830c867f833",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "543217bfec79ebe9670f5df5c929e6e840db8436aac209c848dacdeb875b568e"
+  },
+  {
+    "path": "ethereal_ring_p8_s0_phase3.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_03.png",
+    "source_sha256": "5298e0929897453bcf86616a6ae922ea007cbeec5a696eafdf40014a0a01b8c4",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "d74f4ee7ef62c9757b42e16b4834916bd2a873868a56c310a3c2374b63f61b0e"
+  },
+  {
+    "path": "ethereal_ring_p8_s0_phase6.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_06.png",
+    "source_sha256": "7515ab05319f302cc18b82ba05edcac9ee9eb89327c0e52797d134d0b767d2b6",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "976d9bc157dc2544f6c93b4c0ef9c9015b2aa7c2a88d61b0debc3e8c4440ffc1"
+  },
+  {
+    "path": "ethereal_ring_p8_s0_phase9.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_09.png",
+    "source_sha256": "14b10a622cc577227fd8da1211c881497c8eb4924d318be60b0fb4fb61d20ce0",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 0,
+    "fixture_sha256": "0e96c9c70888760c7b1c7f81dca09df36134572a1c1fa2d5620ff03c64e5d72e"
+  },
+  {
+    "path": "ethereal_ring_p8_s8_phase0.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_00.png",
+    "source_sha256": "0372d5799a5ab1a20c31d427099eb8930dc0dfb923aba23e687ec830c867f833",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "3acefc9095e3061bbab3f30aa2d6d24b36b5304458fce0296136226142634f6c"
+  },
+  {
+    "path": "ethereal_ring_p8_s8_phase3.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_03.png",
+    "source_sha256": "5298e0929897453bcf86616a6ae922ea007cbeec5a696eafdf40014a0a01b8c4",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "cb281559348eb12b481a81298446ac19031f277b2c4b752a72a17c2820b0f780"
+  },
+  {
+    "path": "ethereal_ring_p8_s8_phase6.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_06.png",
+    "source_sha256": "7515ab05319f302cc18b82ba05edcac9ee9eb89327c0e52797d134d0b767d2b6",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "6ec3f0d45709da3b3f714b6c75b11f9b5f7e61e53d2a6d93d9486403545ac2df"
+  },
+  {
+    "path": "ethereal_ring_p8_s8_phase9.png",
+    "label": "ethereal_ring",
+    "source": "sell_glow_p8_09.png",
+    "source_sha256": "14b10a622cc577227fd8da1211c881497c8eb4924d318be60b0fb4fb61d20ce0",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 8,
+    "fixture_sha256": "d1eb0bc59ed1ca93c128774e1c0b3cfc17b875cea0ad3a9c7f2987a733cb860b"
+  },
+  {
+    "path": "legendary_ring_enhance_p8_s14_phase0.png",
+    "label": "legendary_ring_enhance",
+    "source": "sell_glow_p8_00.png",
+    "source_sha256": "0372d5799a5ab1a20c31d427099eb8930dc0dfb923aba23e687ec830c867f833",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 14,
+    "fixture_sha256": "ce75b73a997035a92eb995518ca68b4b2f44c2c928b821c053ad55699281e702"
+  },
+  {
+    "path": "legendary_ring_enhance_p8_s14_phase3.png",
+    "label": "legendary_ring_enhance",
+    "source": "sell_glow_p8_03.png",
+    "source_sha256": "5298e0929897453bcf86616a6ae922ea007cbeec5a696eafdf40014a0a01b8c4",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 14,
+    "fixture_sha256": "8b1bd47fc9c08853821c5555875b61ae38b9a7926d1fae6cf5c839ae9a68eb26"
+  },
+  {
+    "path": "legendary_ring_enhance_p8_s14_phase6.png",
+    "label": "legendary_ring_enhance",
+    "source": "sell_glow_p8_06.png",
+    "source_sha256": "7515ab05319f302cc18b82ba05edcac9ee9eb89327c0e52797d134d0b767d2b6",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 14,
+    "fixture_sha256": "6e2c31de77c06197b63ecef7cfbf20844ffb9556bf88af92a1de5fcc7edc34aa"
+  },
+  {
+    "path": "legendary_ring_enhance_p8_s14_phase9.png",
+    "label": "legendary_ring_enhance",
+    "source": "sell_glow_p8_09.png",
+    "source_sha256": "14b10a622cc577227fd8da1211c881497c8eb4924d318be60b0fb4fb61d20ce0",
+    "native_shape": [
+      1220,
+      2712
+    ],
+    "slot": 14,
+    "fixture_sha256": "c2a89a40d2220b8341911e1ef25352ec46e25edfe35ac9475db5095076386271"
+  }
+]

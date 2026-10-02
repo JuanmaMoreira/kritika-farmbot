@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from numbers import Integral
 from time import monotonic
 
+from bot.stages_actions import StageAction, CloseAdAffordance, POINTS as STAGES_POINTS
 from bot.adb import AdbClient
 from bot.event_log import EventSink, record_best_effort
 from bot.monster_wave_actions import MONSTER_WAVE_TARGETS, SelectMonsterWaveMax
@@ -827,6 +828,10 @@ class ActionExecutor:
         return self._target_for(action)
 
     def _target_for(self, action: SemanticAction) -> RelativePoint:
+        if isinstance(action, StageAction):
+            return STAGES_POINTS[action.control]
+        if isinstance(action, CloseAdAffordance):
+            return action.point
         if type(action) in MONSTER_WAVE_TARGETS:
             return MONSTER_WAVE_TARGETS[type(action)]
         if isinstance(action, OpenBlackMarket):

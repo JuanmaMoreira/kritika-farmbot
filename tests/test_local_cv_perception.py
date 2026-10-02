@@ -340,11 +340,13 @@ def test_default_perception_contains_exactly_the_approved_specs(monkeypatch):
     assert isinstance(
         engine.detectors[-1], PetMassEvolveConfirmationDetector
     )
-    assert tuple(detector.spec for detector in engine.detectors[len(DEFAULT_LOCAL_CV_SPECS):-14]) == (
+    assert tuple(detector.spec for detector in engine.detectors[len(DEFAULT_LOCAL_CV_SPECS):-14] if hasattr(detector, "spec")) == (
         *MONSTER_WAVE_SPECS,
         *TRADING_CENTER_SPECS,
         *TREASURE_CENTER_SPECS,
     )
+    from bot.perception.stages import StagesDetector
+    assert sum(isinstance(d, StagesDetector) for d in engine.detectors) == 1
     assert len(created) == 2 * (len(DEFAULT_LOCAL_CV_SPECS) + len(MONSTER_WAVE_SPECS) + len(TRADING_CENTER_SPECS) + len(TREASURE_CENTER_SPECS))
     assert tuple(spec.name for spec in DEFAULT_LOCAL_CV_SPECS) == (
         LANDMARK_LOBBY_TRADING_CENTER_LABEL,

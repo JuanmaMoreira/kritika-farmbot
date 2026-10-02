@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
+from bot.stages_daily_flow import StagesDailyFlow
 from bot.black_market_flow import BlackMarketFlow
 from bot.daily_quests_flow import DailyQuestsFlow
 from bot.flow_contracts import FlowContract, FlowScope, PerCharacterFlow
@@ -968,7 +969,14 @@ def _build_guild_check_in(dependencies: FlowDependencies) -> PerCharacterFlow:
     )
 
 
+def _build_stages_daily(dependencies):
+    from bot.stages_wiring import build_stages_daily
+    return build_stages_daily(dependencies, _build_monster_wave(dependencies))
+
+
 DEFAULT_FLOW_REGISTRY = FlowRegistry((
+    FlowDefinition('stages_daily', 'Stages Daily', StagesDailyFlow.scope,
+                   StagesDailyFlow.contract, _build_stages_daily),
     FlowDefinition(
         "black_market",
         "Black Market",

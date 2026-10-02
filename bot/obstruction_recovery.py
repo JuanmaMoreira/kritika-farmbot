@@ -170,6 +170,7 @@ class PortalObstructionRecovery:
         regions=(),
         target=None,
         monster_wave_entry_source=None,
+        stages_entry_source=None,
     ):
         """Try to clear a confirmed portal; return freshest snapshot or None.
 
@@ -199,7 +200,19 @@ class PortalObstructionRecovery:
             and not snapshot.state.overlays
             and target is None
         )
-        if not _compatible_surface(snapshot) and not entry_context:
+        # Acquired Stage Start guard → Socket/Combine: the portal may hide
+        # their first base landmark. This handoff never replays Start or ad.
+        stages_entry_context = (
+            stages_entry_source is not None
+            and stages_entry_source.state.base_context == "screen.stages"
+            and set(stages_entry_source.state.overlays).intersection({
+                "popup.socket_inventory_full", "popup.equipment_inventory_full"})
+            and snapshot.sequence > stages_entry_source.sequence
+            and snapshot.state.status is ResolutionStatus.UNKNOWN
+            and not snapshot.state.overlays
+            and target is None
+        )
+        if not _compatible_surface(snapshot) and not entry_context and not stages_entry_context:
             return None
         self._check_cancelled()
         try:
