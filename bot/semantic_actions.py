@@ -543,6 +543,45 @@ class SelectEquipmentInventorySlot:
 
 
 @dataclass(frozen=True)
+class OpenEquipmentInventoryFromFull:
+    """Open Inventory from the known Equipment Full modal, after Combine."""
+
+
+@dataclass(frozen=True)
+class CloseEquipmentDetail:
+    """Dismiss detail through the known upper void, preserving Inventory caller."""
+
+
+@dataclass(frozen=True)
+class NextEquipmentInventoryPage:
+    pass
+
+
+@dataclass(frozen=True)
+class PreviousEquipmentInventoryPage:
+    pass
+
+
+@dataclass(frozen=True)
+class OpenEquipmentCapacityRow:
+    row: int
+
+    def __post_init__(self):
+        if type(self.row) is not int or not 0 <= self.row < 4:
+            raise ValueError("row must be 0..3")
+
+
+@dataclass(frozen=True)
+class ConfirmEquipmentCapacityExpansion:
+    """Confirm exactly one verified next row (+4 slots)."""
+
+
+@dataclass(frozen=True)
+class CancelEquipmentCapacityExpansion:
+    pass
+
+
+@dataclass(frozen=True)
 class OpenEquipmentSell:
     """Request Sell for the already selected Equipment item."""
 
@@ -605,6 +644,16 @@ class AcknowledgeEtherealNoMaterial:
 @dataclass(frozen=True)
 class TapCombineAnimation:
     """Request one tap in the acquired Combine animation region."""
+
+
+@dataclass(frozen=True)
+class TapEtherealResultAnimation:
+    """Advance the post-Mass-Combine Ethereal result animation.
+
+    USER_GT: the concrete item shown is irrelevant and may vary, so this
+    never targets the item or any visible button — only the safe void
+    around them until the Random Part BASE is recovered.
+    """
 
 
 @dataclass(frozen=True)
@@ -797,6 +846,13 @@ SemanticAction = (
     | ExitSocket
     | OpenEquipmentCombine
     | SelectEquipmentInventorySlot
+    | OpenEquipmentInventoryFromFull
+    | CloseEquipmentDetail
+    | NextEquipmentInventoryPage
+    | PreviousEquipmentInventoryPage
+    | OpenEquipmentCapacityRow
+    | ConfirmEquipmentCapacityExpansion
+    | CancelEquipmentCapacityExpansion
     | OpenEquipmentSell
     | ConfirmEquipmentBulkSale
     | CancelEquipmentSale
@@ -810,6 +866,7 @@ SemanticAction = (
     | ConfirmEtherealMassCombine
     | AcknowledgeEtherealNoMaterial
     | TapCombineAnimation
+    | TapEtherealResultAnimation
     | ExitCombine
     | DismissWorldBossBagFull
     | DismissPortalNotification
@@ -944,6 +1001,13 @@ __all__ = (
     "OpenAwakenedTransmute",
     "OpenCombineAll",
     "OpenEquipmentCombine",
+    "OpenEquipmentInventoryFromFull",
+    "CloseEquipmentDetail",
+    "NextEquipmentInventoryPage",
+    "PreviousEquipmentInventoryPage",
+    "OpenEquipmentCapacityRow",
+    "ConfirmEquipmentCapacityExpansion",
+    "CancelEquipmentCapacityExpansion",
     "OpenEquipmentSell",
     "OpenEtherealMassCombine",
     "OpenEtherealRandomPart",
@@ -952,5 +1016,6 @@ __all__ = (
     "SelectEquipmentInventorySlot",
     "StartWorldBossBattle",
     "TapCombineAnimation",
+    "TapEtherealResultAnimation",
     "NextPetCombinePage",
 )

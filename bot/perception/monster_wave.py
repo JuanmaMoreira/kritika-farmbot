@@ -83,4 +83,12 @@ MONSTER_WAVE_SPECS = (
         (0.419, 0.15100000000000002, 0.58, 0.235),
         LinearGapCalibration(0.5560694336891174, 0.9936479330062866),
     ),
+# Native 2026-10-02 literal Points Reward title; excludes underlying CLEAR
+# glow and all variable reward content. Evaluated against native Point/after
+# and the existing MW negative corpus.
+    LocalCvSpec(
+        'landmark.monster_wave_points_reward', Path('assets/ui/landmarks/monster-wave/monster_wave_points_reward.png'),
+        (.398, .205, .605, .287),
+        LinearGapCalibration(0.45, 0.99),
+    ),
 )

@@ -4,33 +4,50 @@
 
 ## Activity
 
-Una invocación ejecuta un proceso SKIP MAX. La cantidad resuelta por el juego no crea un loop del bot. No hay Start manual, Auto Battle MW, countdown persistido ni farming loop.
+**USER_GT / product policy:** el propósito productivo de MW es gastar Sapphires mediante SKIP para obtener rewards. Resource routing y todos los reliefs actuales son fallbacks ante presión/capacidad; no son el objetivo del flow ni flows de limpieza standalone.
+
+Por personaje, preparación una vez y pasadas en loop. La preparación no debe confundirse con cada pasada productiva. No hay Start manual fuera de la pasada SKIP, ni Auto Battle MW, ni countdown persistido.
 
 ```text
-hub → MW → normalizar Weekly Results / New Ranking si aparecen
-→ observar NEEDS_TICKETS / READY / ACTIVE
-→ comprar faltantes si se permite → activar si READY
-→ double tap MAX → verificar estado funcional fresco → Start SKIP una vez
-→ CLEAR / insufficient sapphires / resource board / blocker observado
-→ handling de ese resultado y retorno contractual
+hub → leer Sapphires frescos una vez
+  0 → no work, sin entrar a MW
+  >0 → calcular ceil(sapphires_iniciales / 100) → MW
+→ normalizar Weekly Results / New Ranking si aparecen
+→ comprobar SKIP al comienzo de cada personaje:
+  si ACTIVE, no reactivar; si no activo, preparación necesaria para activarlo
+→ seleccionar MAX una sola vez al comienzo (la selección persiste entre pasadas)
+→ loop productivo de pasadas SKIP (operación de una pasada conceptualmente reusable;
+  el flow productivo normal la ejecuta en loop y futuros flows podrán ejecutar
+  una sola pasada sin duplicar la lógica):
+  Start SKIP → resource board? → espera bounded paciente → CLEAR / insufficient sapphires / blocker observado
+→ retorno contractual
 ```
 
-Activity admite como máximo dos acknowledgements de entrada, sin suponer orden/coexistencia. Cada operación SKIP es single-attempt: no repite compra/activación/MAX/Start/confirmaciones por timeout. Cancelación/contradicciones paran; las navegaciones externas conservan sus guards bounded.
+Activity admite como máximo dos acknowledgements de entrada, sin suponer orden/coexistencia. Preparación (compra/activación/selección MAX) es single-attempt por personaje: no repite compra/activación/MAX por timeout. Cada pasada SKIP observa su propio resultado. Cancelación/contradicciones paran; las navegaciones externas conservan sus guards bounded.
 
-- NEEDS_TICKETS con compra deshabilitada termina con `tickets_missing_purchase_disabled`.
-- Compra habilitada usa Fill All una vez y exige tickets completos frescos; luego READY permite activar. ACTIVE directo omite compra y activación. No simular saldo ni timer entre personajes.
-- MAX se despacha como dos taps consecutivos de un intent; no es un retry. Implementación actual comprueba ACTIVE, MAX, controles adyacentes visibles y tooltip ausente antes de Start. Tooltip persistente termina por espera bounded, sin taps compensatorios. Esta implementación no convierte OCR/títulos decorativos en GT ni exige nuevo framework.
-- Insufficient sapphires usa No, nunca compra premium. CLEAR se reconoce, confirma y retorna; si falla el retorno, no ocultar el fallo técnico con el evento de gameplay.
-- `yield_resource_board=False` conserva respuesta Yes/No configurada. Con `True`, RESOURCE_BOARD_PENDING entrega popup abierto y `board_sequence` fresca sin Yes/No/Back posteriores; el caller debe consumirlo.
+En entrada/reentrada MW: MODAL conocido → normalizar primero (`popup.monster_wave_weekly_results` / `AcknowledgeMonsterWaveWeekly`, Previous Season Rewards; `popup.monster_wave_new_ranking` / `AcknowledgeMonsterWaveRanking`). El source verificado de `OpenMonsterWave` efectivo y el landmark fresco inequívoco del MODAL autorizan sólo su ACK aunque la BASE sea UNKNOWN; no fabrican `screen.monster_wave`. Tras cada ACK se verifica el cambio/desaparición en snapshot fresco y se reevalúa desde arriba. Sólo sin MODAL pendiente, si la BASE sigue irresuelta y falta una señal necesaria cuya ROI intersecta H&H, se intenta recovery on-demand una vez. CONFIRMED → dismiss → ABSENT fresco → reevaluar entrada completa, incluidos MODAL; no se repite Open ni se navega. Un fallo de executor, contradicción, stale o modal desconocido no autoriza ACK ni este recovery.
+
+- Si SKIP está NEEDS_TICKETS, Productive MW usa Fill All para completar 30/30 con Gold, verifica READY, activa SKIP y continúa. Faltar tickets no es condición terminal.
+- Fill All se usa exactamente una vez por preparación y nunca ticket por ticket; luego READY verificado permite activar. ACTIVE directo omite compra y activación. No simular saldo ni timer entre personajes. Si el juego rechaza la compra por Gold insuficiente, fallo cerrado sin repetir compra ni inventar saldo.
+- MAX consume como máximo 100 Sapphires por pasada (`ceil(sapphires_iniciales / 100)` pasadas esperadas). MAX se despacha como dos taps consecutivos de un intent una sola vez al comienzo del personaje; no es un retry ni se repite por pasada. Implementación actual comprueba ACTIVE, MAX, controles adyacentes visibles y tooltip ausente antes de Start. Tooltip persistente termina por espera bounded, sin taps compensatorios. Esta implementación no convierte OCR/títulos decorativos en GT ni exige nuevo framework.
+- En cada resource board: sin presión → YES para permitir ejecutar el SKIP; con presión → NO para cancelar, ejecutar los reliefs necesarios, restaurar MW y reintentar la intención productiva.
+- Después de YES, esperar de forma bounded pero paciente mediante polling aproximadamente cada 1 s; no asumir una latencia fija de 5 s.
+- Sapphires consumidos se contabilizan sólo después de una señal de éxito confirmada, actualmente `CLEAR` u otra señal futura establecida. `CLEAR` se reconoce, confirma y continúa/retorna según el loop; si falla el retorno, no ocultar el fallo técnico con el evento de gameplay.
+- `insufficient sapphires` queda como terminal/fallback defensivo; usa No, nunca compra premium. No hace falta provocar deliberadamente una pasada extra si el saldo inicial permitió calcular las pasadas.
+- `yield_resource_board=False` conserva respuesta Yes/No configurada. Con `True`, RESOURCE_BOARD_PENDING entrega popup abierto y `board_sequence` fresca sin Yes/No/Back posteriores; el caller debe consumirlo conforme a la regla YES-sin-presión / NO-con-presión anterior.
 
 ## Composición real
 
-L1 productivo consume el handoff mediante una preparación única y reanuda el mismo request. L2 local atiende Equipment/Socket después del resume; no repetir board/planner/J. Componentes presentes **no** significan callbacks completos: ver RESOURCE_ROUTING. Un pending no consumido o MANUAL_RESOLUTION detiene SessionRunner, sin navegación ciega ni rotación. La rama No del blocker Socket post-relief tiene una policy GT diferente (tarea incompleta, siguiente personaje); no confundirla con ese terminal genérico ni declararla implementada por existir L2.
+L1 productivo consume el handoff mediante una preparación única y reanuda el mismo request. L2 local atiende Equipment/Socket después del resume; dentro del retry/relief de una misma pasada/request bloqueado no se repite board/planner/J. Cada nueva pasada del farming loop obtiene y evalúa su propio resource board fresco y puede producir una decisión/plan nuevo —rewards de una pasada pueden crear presión para la siguiente—; no reutilizar snapshot/plan entre pasadas. Componentes presentes **no** significan callbacks completos: ver RESOURCE_ROUTING. El loop productivo y la operación de una pasada reusable son contrato requerido; no declarar el loop cerrado por existir L1/L2. Un pending no consumido o MANUAL_RESOLUTION detiene SessionRunner, sin navegación ciega ni rotación. La rama No del blocker Socket post-relief tiene una policy GT diferente (tarea incompleta, siguiente personaje); no confundirla con ese terminal genérico ni declararla implementada por existir L2. Ningún relief actual es un flow de limpieza independiente; un futuro flow cuyo propósito sea limpiar recursos deberá declararse explícitamente como tal.
 
-`MonsterWaveConfig` conserva dos booleanos, ambos false por defecto: `MW_PURCHASE_SKIP_TICKETS` y `MW_CONTINUE_WHEN_NONBLOCKING_INVENTORY_FULL`. El primero autoriza Fill All; el segundo acepta continuar con pérdida de rewards sobre límites. No hay política estratégica adicional implícita.
+`MonsterWaveConfig` conserva dos booleanos, ambos false por defecto: `MW_PURCHASE_SKIP_TICKETS` y `MW_CONTINUE_WHEN_NONBLOCKING_INVENTORY_FULL`. El primero queda sin efecto en la preparación productiva (Fill All automático por USER_GT); el segundo acepta continuar con pérdida de rewards sobre límites. No hay política estratégica adicional implícita.
 
-Contrato Daily: badge MW en el hub antes de actividad; ausencia estable omite, UNKNOWN no equivale a ausencia. Cuando se invoca con `daily_sapphires=True`, lee saldo fresco MW antes de compra/activación/MAX/Start: 0–3 devuelve business incomplete sin iniciar intento; ≥4 permite seguir; OCR inconcluso falla cerrado. Manual no impone ese mínimo. **Limitación actual:** Run Session prepara por tipo MonsterWaveFlow y omite el wrapper ProductiveMonsterWaveFlow; no declarar Daily productivo integrado hasta corregir ese binding separado.
+MW no tiene Eligibility: el badge Daily no gatea el trabajo productivo, aunque la misión ya esté completada. El precheck usa `resource.sapphires` fresco en Battle Mode Select antes de entrar. Cero devuelve `COMPLETED` con evento `monster_wave.no_work`, sin entrada, preparación ni MAX; un saldo positivo entra y alimenta `sapphires_initial` para el farming loop, sin segunda lectura dentro de MW ni mínimo Daily de cuatro. OCR inconcluso falla cerrado antes de entrar. Session y ejecución standalone usan el mismo precheck. Eligibility continúa para otros flows, como World Boss.
+
+El detector/fact del badge se conserva por sus consumidores independientes: contratos de contexto del hub/World Boss, scope de World Boss y corpus semántico compartido; no decide ejecución MW.
 
 ## Gaps reales
 
-Primero P0 Craft y callbacks de preparación/relief descritos en CONTEXT/RESOURCE_ROUTING; luego cierre físico L2. Lifecycle automático ante expiración SKIP sigue pendiente: pérdida de ACTIVE impide Start, no reactiva automáticamente. Fill All con Gold insuficiente permanece UNKNOWN de baja prioridad; no adquirir ni bloquear MW por ello. No se exige repetir GT ni suite completa antes de cada smoke.
+Craft, Keys/Gold, Materials y los callers Equipment/Socket están conectados; validación y límites concretos en CONTEXT/RESOURCE_ROUTING. Fill All con Gold insuficiente permanece UNKNOWN de baja prioridad; no adquirir ni bloquear MW por ello. Existe un MODAL adicional `Point Reward` (**USER_GT**, clase física establecida) que puede aparecer por encima de CLEAR al cruzar ciertos conquest points; el loop de resultado SKIP lo reconoce por su título, lo confirma con su OK y continúa con CLEAR mediante su lógica existente (`AcknowledgeMonsterWavePointsReward` → snapshot fresco → `AcknowledgeMonsterWaveClear`). Landmark del título literal nativo adquirido el 2026-10-02, excluye el glow de CLEAR y el reward variable. Evaluator incremental: positivo 0.99998, máximo negativo 0.28619 en 102 pares; replay full distingue Point antes de OK y CLEAR después. ACK live verificado antes de CLEAR. No inventar dismiss/ordering técnico más allá de este GT. No se exige repetir GT ni suite completa antes de cada smoke.
+
+La salida reusable conserva Battle Mode Select. Back normalmente llega a ese hub; después de la rama Inventory puede llegar directamente a Lobby (live conocido). Un Lobby limpio y fresco admite OpenBattleModeSelect una vez; ningún paso extra se añade a la salida normal. Validado live sin consumos después de cuatro CLEAR.

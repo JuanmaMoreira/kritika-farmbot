@@ -22,9 +22,9 @@ class MonsterWaveFlow:
                                    lobby_transition=lobby_transition,
                                    cancel_requested=self.activity.cancel_requested)
 
-    def prepared(self, zone, *, daily=False, yield_resource_board=False):
+    def prepared(self, zone, *, yield_resource_board=False):
         return PreparedActivity(self.name, zone, partial(
-            self.activity.run, daily_sapphires=daily,
+            self.activity.run,
             yield_resource_board=yield_resource_board))
 
     def run(self, *, yield_resource_board=False):

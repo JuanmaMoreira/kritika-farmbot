@@ -35,9 +35,12 @@ CONFIGURABLE_EQUIPMENT_TYPES = frozenset(
         EquipmentType.PANTS,
         EquipmentType.GLOVES,
         EquipmentType.BOOTS,
+        EquipmentType.EARRING,
+        EquipmentType.NECKLACE,
+        EquipmentType.RING,
     }
 )
-PROTECTED_ACCESSORY_TYPES = frozenset(
+ACCESSORY_EQUIPMENT_TYPES = frozenset(
     {EquipmentType.EARRING, EquipmentType.NECKLACE, EquipmentType.RING}
 )
 
@@ -115,6 +118,9 @@ class EquipmentItemFact:
     evidence: tuple[str, ...] = ()
     contradictory: bool = False
 
+    sell_available: bool | None = None
+    grade_visual: EquipmentGrade | None = None
+
     def __post_init__(self) -> None:
         if not isinstance(self.name, str):
             raise ValueError("name must be a string")
@@ -125,6 +131,10 @@ class EquipmentItemFact:
             raise ValueError("equipment_type must be EquipmentType")
         if not isinstance(self.enhance, bool):
             raise ValueError("enhance must be bool")
+        if self.sell_available is not None and type(self.sell_available) is not bool:
+            raise ValueError("sell_available must be bool or None")
+        if self.grade_visual is not None and not isinstance(self.grade_visual, EquipmentGrade):
+            raise ValueError("grade_visual must be EquipmentGrade or None")
         _validate_common_fact(self)
 
     @property
@@ -133,6 +143,7 @@ class EquipmentItemFact:
             bool(self.name)
             and self.grade is not EquipmentGrade.UNKNOWN
             and self.equipment_type is not EquipmentType.UNKNOWN
+            and (self.grade_visual is None or self.grade_visual is self.grade)
             and not self.contradictory
         )
 
@@ -241,7 +252,7 @@ def _fact_value(fact: FactT) -> tuple[object, ...]:
     if isinstance(fact, EquipmentInventoryFact):
         return (fact.item_count, fact.capacity, fact.page, fact.total_pages)
     if isinstance(fact, EquipmentItemFact):
-        return (fact.name.casefold(), fact.grade, fact.equipment_type, fact.enhance)
+        return (fact.name.casefold(), fact.grade, fact.equipment_type, fact.enhance, fact.sell_available, fact.grade_visual)
     return (fact.item_name.casefold(), fact.group, fact.group_type)
 
 
@@ -284,7 +295,7 @@ __all__ = (
     "EquipmentSellConfirmationFact",
     "EquipmentType",
     "LOW_BULK_GRADES",
-    "PROTECTED_ACCESSORY_TYPES",
+    "ACCESSORY_EQUIPMENT_TYPES",
     "PROTECTED_GRADES",
     "consensus_facts",
 )

@@ -26,7 +26,7 @@ from bot.equipment_sell_semantics import (
     EquipmentItemFact,
     EquipmentSellConfirmationFact,
     EquipmentType,
-    PROTECTED_ACCESSORY_TYPES,
+    ACCESSORY_EQUIPMENT_TYPES,
     consensus_facts,
 )
 
@@ -156,11 +156,11 @@ def _execute(script, *, request=None, before=None, cancel=lambda: False):
 # Exact accepted vocabulary and strict parsers.
 
 
-def test_exact_six_configurable_types_and_three_protected_accessories():
+def test_exact_nine_configurable_types_and_three_accessory_types():
     assert {value.value for value in CONFIGURABLE_EQUIPMENT_TYPES} == {
-        "weapon", "helmet", "chest", "pants", "gloves", "boots"
+        "weapon", "helmet", "chest", "pants", "gloves", "boots", "earring", "necklace", "ring"
     }
-    assert {value.value for value in PROTECTED_ACCESSORY_TYPES} == {
+    assert {value.value for value in ACCESSORY_EQUIPMENT_TYPES} == {
         "earring", "necklace", "ring"
     }
 
@@ -268,8 +268,8 @@ def test_ethereal_non_accessory_can_be_explicitly_authorized():
     )
 
 
-@pytest.mark.parametrize("equipment_type", list(PROTECTED_ACCESSORY_TYPES) + [EquipmentType.UNKNOWN])
-def test_accessories_and_unknown_type_are_protected(equipment_type):
+@pytest.mark.parametrize("equipment_type", list(ACCESSORY_EQUIPMENT_TYPES) + [EquipmentType.UNKNOWN])
+def test_types_absent_from_caller_allowlist_and_unknown_are_denied(equipment_type):
     assert not _authorization().allows(_item(equipment_type=equipment_type))
 
 
@@ -281,7 +281,6 @@ def test_contradictory_or_unconfirmed_item_is_denied():
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"allowed_types": frozenset({EquipmentType.RING})},
         {"allowed_types": frozenset({EquipmentType.UNKNOWN})},
         {"allowed_grades": frozenset({EquipmentGrade.ETHEREAL_PLUS})},
         {"allowed_grades": frozenset({EquipmentGrade.UNKNOWN})},
@@ -412,14 +411,14 @@ def test_ethereal_bulk_requires_exact_non_accessory_group_type():
     assert not authorization.allows_bulk(item, mismatch)
 
 
-def test_ethereal_enhance_or_grade_wide_group_is_denied():
+def test_ethereal_enhance_requires_its_own_bulk_family():
     authorization = _authorization(
         allowed_grades=frozenset({EquipmentGrade.ETHEREAL}),
         allowed_bulk_groups=frozenset(
             {EquipmentBulkGroup.TYPE_GRADE, EquipmentBulkGroup.ENHANCE_GRADE}
         ),
     )
-    assert not authorization.allows_bulk(
+    assert authorization.allows_bulk(
         _item(grade=EquipmentGrade.ETHEREAL),
         _confirmation(group=EquipmentBulkGroup.ENHANCE_GRADE, group_type=None),
     )
@@ -482,3 +481,12 @@ def test_equipment_sell_vocabulary_is_bulk_only():
     assert "EquipmentSellMode" not in (
         Path(__file__).resolve().parents[1] / "bot" / "equipment_sell_operation.py"
     ).read_text(encoding="utf-8")
+
+
+def test_k_coin_confirmation_identity_and_typed_bulk_remain_strict():
+    lines=("If you would like to sell all of the [Boots] of",
+           "this grade,", "use the Sell [Bulk] button.")
+    assert parse_confirmation("Selling [Laoku's Awakened Boots] for 200",lines) == (
+        "Laoku's Awakened Boots",EquipmentBulkGroup.TYPE_GRADE,EquipmentType.BOOTS)
+    assert parse_confirmation("Selling [Laoku's Awakened Boots] for unknown",lines) is None
+    assert parse_confirmation("Selling [Laoku's Awakened Boots] for 200 and Ring",lines) is None

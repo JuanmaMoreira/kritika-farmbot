@@ -33,7 +33,7 @@ class CaptureTimeoutError(CaptureError):
 
 @dataclass(frozen=True)
 class FrameSnapshot:
-    """A BGR image and the monotonic identity of its decoded frame."""
+    """BGR image, host-clock capture time from scrcpy PTS, decoded sequence."""
 
     image: np.ndarray
     timestamp: float
@@ -144,6 +144,7 @@ class ScrcpyFrameSource:
         self._snapshot: FrameSnapshot | None = None
         self._sequence = 0
         self._pending_config_packet: bytes | None = None
+        self._video_clock_offset: float | None = None
         self._forward_active = False
         self._process: subprocess.Popen[bytes] | None = None
         self._socket: socket.socket | None = None
@@ -170,6 +171,7 @@ class ScrcpyFrameSource:
             self._failure = None
             self._snapshot = None
             self._pending_config_packet = None
+            self._video_clock_offset = None
             self._stop_event.clear()
             self._frame_event.clear()
 
@@ -298,10 +300,18 @@ class ScrcpyFrameSource:
                     payload = self._pending_config_packet + payload
                     self._pending_config_packet = None
                 decoded_pts = pts_flags & self.PACKET_PTS_MASK
+                received_at = self._clock()
+                # Anchor the device PTS once per stream. Later queued packets
+                # retain their capture age instead of becoming "fresh" when
+                # CPU contention finally allows the decoder to process them.
+                if self._video_clock_offset is None:
+                    self._video_clock_offset = received_at - decoded_pts / 1_000_000
+                captured_at = min(received_at,
+                                  self._video_clock_offset + decoded_pts / 1_000_000)
                 if self._decoder is None:
                     raise CaptureError("Capture decoder is not initialized")
                 for image in self._decoder.decode(payload, decoded_pts):
-                    self._publish(image)
+                    self._publish(image, timestamp=captured_at)
         except _CaptureStopped:
             pass
         except Exception as error:
@@ -342,7 +352,7 @@ class ScrcpyFrameSource:
             data.extend(chunk)
         return bytes(data)
 
-    def _publish(self, image: np.ndarray) -> None:
+    def _publish(self, image: np.ndarray, *, timestamp: float | None = None) -> None:
         if not isinstance(image, np.ndarray) or image.ndim != 3 or image.shape[2] != 3:
             raise CaptureError("Decoder must produce a BGR ndarray with three channels")
         height, width = image.shape[:2]
@@ -351,7 +361,8 @@ class ScrcpyFrameSource:
         with self._frame_lock:
             self._sequence += 1
             self._snapshot = FrameSnapshot(
-                image=image.copy(), timestamp=self._clock(), sequence=self._sequence
+                image=image.copy(), timestamp=self._clock() if timestamp is None else timestamp,
+                sequence=self._sequence
             )
         self._frame_event.set()
 

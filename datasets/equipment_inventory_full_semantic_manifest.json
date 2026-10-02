@@ -8,8 +8,8 @@
       1224
     ],
     "human_ground_truth": "confirmed_incrementally_in_chat",
-    "scope": "semantic acquisition and perception promotion only; no EquipmentCombineRelief or World Boss positive-branch integration",
-    "caller_scope": "Only screen.world_boss was observed. No other caller is generalized.",
+    "scope": "Original semantic acquisition 2026-08-29 plus native MW EquipmentCombineRelief Fuse result regression 2026-10-02; live integration status in RESOURCE_ROUTING.",
+    "caller_scope": "Original acquisition World Boss; native MW Equipment Full caller exercised 2026-10-02. No other caller is generalized.",
     "layering": {
       "observed_chat_region": [
         0.44,
@@ -1078,6 +1078,17 @@
       "base_context": "screen.world_boss",
       "overlays": [],
       "review_status": "confirmed"
+    },
+    {
+      "path": "artifacts/mw_stabilization/fuse_animation_native.png",
+      "base_context": "screen.combine",
+      "overlays": [],
+      "observations": [
+        "activity.combine_animation_tappable"
+      ],
+      "review_status": "confirmed",
+      "raw_source": "ADB native MW Equipment Full -> Combine All Fuse single confirm -> known result, 2026-10-02",
+      "sha256": "43785a0799826a1e898291f40dc02d74a01d4207b266a2cddff6b60724a1f51f"
     }
   ]
 }

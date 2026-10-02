@@ -247,8 +247,9 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     assert events.failure_evidence is None
 
 
-def test_legacy_equipment_inventory_relief_name_has_no_compatibility_alias():
-    assert not Path("bot/equipment_inventory_relief.py").exists()
+def test_inventory_owner_does_not_restore_legacy_runtime_alias():
+    import bot.equipment_inventory_relief as inventory_owner
+    assert not hasattr(inventory_owner, "EquipmentInventoryRelief")
     assert not hasattr(productive, "EquipmentInventoryRelief")
 
 

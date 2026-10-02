@@ -144,6 +144,7 @@ class GuiRuntimeController:
                 dotenv_path=request.dotenv_path,
                 log_path=log_path,
                 debug=request.debug,
+                equipment_sell_policy=request.equipment_sell,
                 cancel_token=token,
                 registry=self.registry,
                 event_consumers=(self._enqueue_event,),

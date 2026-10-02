@@ -14,6 +14,7 @@ from typing import Mapping
 
 from dotenv import dotenv_values
 from bot.monster_wave_config import MonsterWaveConfig
+from bot.equipment_sell_policy import EquipmentSellPolicy
 
 
 DEFAULT_ADB_EXECUTABLE = "adb"
@@ -30,8 +31,11 @@ class RuntimeConfig:
     adb_executable: str = DEFAULT_ADB_EXECUTABLE
     game_package: str = DEFAULT_GAME_PACKAGE
     monster_wave: MonsterWaveConfig = MonsterWaveConfig()
+    equipment_sell: EquipmentSellPolicy = EquipmentSellPolicy()
 
     def __post_init__(self) -> None:
+        if not isinstance(self.equipment_sell, EquipmentSellPolicy):
+            raise ValueError('equipment_sell must be EquipmentSellPolicy')
         if not isinstance(self.monster_wave, MonsterWaveConfig):
             raise ValueError('monster_wave must be MonsterWaveConfig')
         for field_name in (

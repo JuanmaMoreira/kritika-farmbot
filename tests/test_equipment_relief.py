@@ -461,3 +461,21 @@ def test_composer_imports_no_caller_business_or_neighbor_resource_modules():
         "bot.quick_menu",
     ):
         assert forbidden not in source
+
+
+def test_productive_policy_checks_fresh_inventory_after_combine_before_caller_retry():
+    from dataclasses import replace
+    from bot.equipment_sell_policy import EquipmentSellPolicy
+    from bot.equipment_inventory_relief import EquipmentInventoryReliefResult
+    scenario = Scenario(["equipment_full", "success"], contexts=(1,21))
+    plan = replace(scenario.plan, request=EquipmentSellPolicy())
+    request = replace(scenario.request, sell_plan=plan)
+    scenario.sell.execute_relief.return_value = EquipmentInventoryReliefResult(
+        "success", "capacity_available", inventory(127,14), inventory(127,18))
+    result = scenario.composer.run(request)
+    assert result.outcome is EquipmentReliefOutcome.CALLER_RESULT
+    assert result.caller_attempt_count == 2
+    assert [name for name,*_ in scenario.trace] == [
+        "acquire", "caller", "combine.enter", "sell.enter", "sell.return", "acquire", "caller"]
+    scenario.sell.execute.assert_not_called()
+    scenario.sell.execute_relief.assert_called_once_with(plan.request)

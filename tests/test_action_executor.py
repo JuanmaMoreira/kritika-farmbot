@@ -116,6 +116,7 @@ from bot.semantic_actions import (
     ToggleAutoBattle,
     TapSocketEnhanceAnimation,
     TapCombineAnimation,
+    TapEtherealResultAnimation,
     CancelPetMassEvolveSelection,
     NextPetCombinePage,
     StartWorldBossBattle,
@@ -356,6 +357,7 @@ def test_executor_translates_only_safe_socket_route_actions(action, target):
         (ConfirmEtherealMassCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.confirm_ethereal_mass_combine),
         (AcknowledgeEtherealNoMaterial(), DEFAULT_EQUIPMENT_ACTION_TARGETS.acknowledge_ethereal_no_material),
         (TapCombineAnimation(), DEFAULT_EQUIPMENT_ACTION_TARGETS.animation_tap),
+        (TapEtherealResultAnimation(), DEFAULT_EQUIPMENT_ACTION_TARGETS.ethereal_result_animation_tap),
         (ExitCombine(), DEFAULT_EQUIPMENT_ACTION_TARGETS.exit_combine),
     ),
 )
@@ -371,6 +373,13 @@ def test_executor_translates_only_acquired_equipment_combine_relief_actions(acti
 
 def test_combine_all_uses_acquired_input_space_target_not_visual_frame_center():
     assert DEFAULT_EQUIPMENT_ACTION_TARGETS.open_combine_all == (0.6073, 0.9297)
+
+
+def test_ethereal_result_animation_tap_stays_outside_item_and_buttons():
+    # USER_GT 2026-09-28: the live result card spans x~0.31-0.62/y~0.50-0.85
+    # with wings top-center and Recombine/Mao Coins texts at x~0.66-0.82,
+    # so the left-middle void below stays clear across result variants.
+    assert DEFAULT_EQUIPMENT_ACTION_TARGETS.ethereal_result_animation_tap == (0.1500, 0.5000)
 
 
 @pytest.mark.parametrize("slot_index", range(16))
@@ -621,3 +630,44 @@ def test_c2b_trading_and_treasure_controls_use_typed_executor_intents():
         receipt = executor.execute(action, geometry)
         assert receipt.pixel_target == expected
     assert adb.tap.call_args_list == [call(*expected) for _, expected in cases]
+
+
+def test_trading_max_dispatch_events_bind_target_and_source_sequence():
+    adb = Mock()
+    events = Mock()
+    executor = ActionExecutor(adb)
+
+    receipt = executor.execute(
+        SelectTradingMaximum(), FrameGeometry(width=2712, height=1224),
+        events=events, source_sequence=1412,
+    )
+
+    assert receipt.normalized_target == (0.699, 0.802)
+    assert receipt.pixel_target == (1895, 981)
+    adb.tap.assert_called_once_with(1895, 981)
+    calls = events.record.call_args_list
+    assert [entry.args[0] for entry in calls] == [
+        "action.started", "action.dispatched", "action.completed",
+    ]
+    assert all(entry.kwargs["source_sequence"] == 1412 for entry in calls)
+    assert all(entry.kwargs["pixel_target"] == (1895, 981) for entry in calls)
+    assert calls[1].kwargs["dispatch_result"] == "adb_command_returned"
+    assert calls[0].kwargs["monotonic_timestamp"] <= calls[1].kwargs["monotonic_timestamp"]
+
+
+def test_trading_max_dispatch_error_records_failure_without_success():
+    adb = Mock()
+    adb.tap.side_effect = RuntimeError("ADB input failed")
+    events = Mock()
+    executor = ActionExecutor(adb)
+
+    with pytest.raises(RuntimeError, match="ADB input failed"):
+        executor.execute(
+            SelectTradingMaximum(), FrameGeometry(width=2712, height=1224),
+            events=events, source_sequence=1412,
+        )
+
+    assert [entry.args[0] for entry in events.record.call_args_list] == [
+        "action.started", "action.failed",
+    ]
+    assert events.record.call_args_list[-1].kwargs["stage"] == "dispatch"

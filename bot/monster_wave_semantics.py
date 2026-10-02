@@ -18,6 +18,7 @@ MW_CLEAR = "landmark.monster_wave_clear"
 MW_DAILY = "indicator.monster_wave_daily_active"
 MW_RANKING = "landmark.monster_wave_new_ranking"
 MW_WEEKLY = "landmark.monster_wave_weekly_results"
+MW_POINTS_REWARD = "landmark.monster_wave_points_reward"
 POPUP_MW_PURCHASE = "popup.monster_wave_ticket_purchase"
 POPUP_MW_INSUFFICIENT = "popup.monster_wave_insufficient_sapphires"
 POPUP_MW_BOARD = "popup.monster_wave_inventory_board"
@@ -25,15 +26,17 @@ POPUP_MW_CLEAR = "popup.monster_wave_clear"
 OVERLAY_MW_TOOLTIP = "overlay.monster_wave_usage_tooltip"
 POPUP_MW_RANKING = "popup.monster_wave_new_ranking"
 POPUP_MW_WEEKLY = "popup.monster_wave_weekly_results"
+POPUP_MW_POINTS_REWARD = "popup.monster_wave_points_reward"
 
 MW_OBSERVATIONS = (
     MW_SCREEN, MW_NEEDS_TICKETS, MW_READY, MW_TIMER, MW_SKIP_START,
     MW_MAX, MW_CONTROLS_CLEAR, MW_TOOLTIP, MW_PURCHASE, MW_PURCHASE_FULL,
     MW_INSUFFICIENT, MW_BOARD, MW_CLEAR, MW_DAILY, MW_RANKING, MW_WEEKLY,
+    MW_POINTS_REWARD,
 )
 MW_OVERLAY_LANDMARKS = (
     (POPUP_MW_PURCHASE, MW_PURCHASE), (POPUP_MW_INSUFFICIENT, MW_INSUFFICIENT),
     (POPUP_MW_BOARD, MW_BOARD), (POPUP_MW_CLEAR, MW_CLEAR),
     (OVERLAY_MW_TOOLTIP, MW_TOOLTIP), (POPUP_MW_RANKING, MW_RANKING),
-    (POPUP_MW_WEEKLY, MW_WEEKLY),
+    (POPUP_MW_WEEKLY, MW_WEEKLY), (POPUP_MW_POINTS_REWARD, MW_POINTS_REWARD),
 )

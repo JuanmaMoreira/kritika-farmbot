@@ -1,13 +1,18 @@
 # Pendientes
 
-Orden de trabajo; estado real en [CONTEXT](CONTEXT.md), contratos físicos en [GAMEPLAY_GT](docs/GAMEPLAY_GT.md), wiring pendiente en [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md).
+Estado real en [CONTEXT](CONTEXT.md); UI física en [GAMEPLAY_GT](docs/GAMEPLAY_GT.md); routing único en [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md).
 
-1. **P0 Craft:** separar identidad de economía; sustituir título OCR duro por landmark seguro fuera de CHAT/Heaven & Hell. Revisar Hero Weapon count expuesto y rate; Armor/Accessory no deben gatear una operación Weapon. Conservar guards económicos necesarios.
-2. **Validación dirigida:** tests/replays de lo afectado; evaluator incremental sólo si cambia percepción. Reutilizar resultados vigentes; fixtures Rotation ausentes se reportan aparte.
-3. **Un smoke MW live autorizado:** detener en primera divergencia causal, sin reconfirmar transiciones GT ni campañas por rama.
-4. **Fix mínimo de esa divergencia**, repetir sólo validación invalidada y el siguiente smoke útil. No ampliar arquitectura.
-5. **Cerrar L2/MW productivo:** completar callbacks reales pendientes Keys/Materials/Gold recovery y entrada blocker Craft→Combine→Craft, sin rutas nuevas desde Craft limpio. Validar la integración requerida, no confundir componentes standalone con producto completo ni autorizar Sell implícitamente.
-6. **Follow-ups separados:** lifecycle automático de SKIP y bug Run Session Daily/eligibility por wrapper productivo. Definir alcance cuando se aborden; Fill All con Gold insuficiente sigue UNKNOWN de baja prioridad y no bloquea MW.
-7. **Estabilización/release** cuando la integración real esté completa; checkpoint y validación amplia sólo entonces si corresponden.
+## Monster Wave — etapa cerrada 2026-10-02
 
-Después y sin bloquear lo anterior: scopes/reuse adicionales sólo con necesidad medible, landmark Lobby menos dependiente de temporada, nuevos flows (Tower/Arena) con GT y slice propio. No hay compromiso con scheduler, farming planner o framework general de navegación/recovery.
+**Estable para esta versión.** Smoke final `mw_final_native_d1e5d83e`: COMPLETED, tres CLEAR, 253/253 Sapphires, Lobby, sin flow.failed. WB→MW, Keys/Gold, Materials/Craft, Socket, Point Reward y Equipment Combine-first/Bulk tail-first/retorno al mismo pass cuentan con evidencia live. Checkpoint local único autorizado; sin push. El loop autónomo live terminó; no quedan bugs productivos conocidos pendientes dentro del alcance aceptado.
+
+## Deuda posterior aceptada
+
+1. Expansión Equipment +4 positiva live sólo ante necesidad real: mecánica adquirida y tests verdes; no provocar compras preventivas para validación.
+2. Poor/Normal visual positivo y Ethereal Enhance positivo cuando sean necesarios. Policy conocida, evidencia insuficiente falla cerrado.
+3. Perfilar el scan Sell protegido antes de optimizarlo. Implementación correcta y bounded; descartar scan/index tras cada Bulk/expansión sigue obligatorio.
+4. Lifecycle de SKIP tras pausas de diagnóstico muy largas.
+5. Portabilidad/publicación del corpus nativo local.
+6. Fill All con Gold insuficiente UNKNOWN, baja prioridad.
+
+Estos puntos no bloquean la versión ni reabren la estabilización. No hay compromiso con scheduler, farming planner, navigation graph general ni optimización de flows ajenos.

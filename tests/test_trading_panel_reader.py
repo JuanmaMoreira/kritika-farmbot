@@ -31,6 +31,7 @@ from bot.flow_contracts import FlowStatus
 
 ROOT = Path(__file__).resolve().parent.parent
 FRAMES = {
+    "bronze_pre_live": "artifacts/mw_stabilization/bronze_pre_panel.png",
     "weapon": "artifacts/hil_c5/success_panel_03.png",
     "weapon_pre": "artifacts/hil_c5/no_return_01.png",
     "weapon_after": "artifacts/hil_c5/success_result_04.png",
@@ -80,6 +81,7 @@ def _reader(snapshots=()):
 
 
 @pytest.mark.parametrize("name,item_id,have,need,quantity", [
+    ("bronze_pre_live", "silver_key", 411, 10, (1, 20)),
     ("weapon", "hero_weapon_crafting_material", 265, 40, (1, 20)),
     ("bronze_max", "silver_key", 229, 10, (20, 20)),
     ("silver_max", "gold_key", 188, 10, (18, 20)),
@@ -236,3 +238,21 @@ def test_reader_has_no_input_or_navigation_imports():
     for forbidden in ("ActionExecutor", "AdbClient", "adb.tap", ".execute(",
                       "VerifiedTransition"):
         assert forbidden not in source
+
+
+def test_normal_panel_avoids_alert_ocr_and_expires_if_reading_exhausts_age(replay):
+    snapshot = replay("weapon",11)
+    reader = _reader()
+    fact = reader.read_snapshot(snapshot)
+    assert fact is not None
+    assert set(reader.last_diagnostic["reads"]) == {"panel_title","input_title","output_title","input_pair","quantity"}
+    original = reader._read
+    elapsed = [10.1]
+    def slow(frame,name):
+        result = original(frame,name)
+        elapsed[0] += .5
+        return result
+    reader._read = slow
+    reader.clock = lambda:elapsed[0]
+    assert reader.read_snapshot(snapshot) is None
+    assert reader.last_diagnostic["reason"] == "expired_during_reader"

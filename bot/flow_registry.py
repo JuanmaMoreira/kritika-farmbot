@@ -368,6 +368,8 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
     from bot.craft_reader import CraftReader
     from bot.craft_runtime import CraftRuntime
     from bot.equipment_sell_reader import EquipmentSellReader
+    from bot.equipment_sell_runtime import EquipmentSellRuntime
+    from bot.equipment_relief import EquipmentReliefComposer
     from bot.monster_wave_board_reader import MonsterWaveBoardReader
     from bot.monster_wave_productive import ProductiveMonsterWaveFlow
     from bot.monster_wave_resource_route import (
@@ -384,6 +386,15 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
     from bot.trading_runtime import TradingRuntime
     from bot.treasure_runtime import TreasureRuntime
     from bot.keys_promotion_runtime import KeysPromotionRuntime
+    from bot.perception import (
+        MONSTER_WAVE_BOARD_ACQUISITION_SCOPE, build_trading_navigation_perception,
+    )
+    from bot.trading_key_facts_reader import (
+        execute_productive_key_trade, read_fresh_key_facts,
+    )
+    from bot.trading_panel_reader import TradingPanelReader
+    from bot.trading_row_facts import TradingRowReader
+    from bot.verified_transition import VerifiedTransition
 
     observer = dependencies.observer
     actions = dependencies.actions
@@ -412,8 +423,14 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         pass
 
     # A1 acquisition: two fresh frames after the pending barrier, no input.
+    board_observer = scoped_observer_for(
+        dependencies, observer,
+        scope=MONSTER_WAVE_BOARD_ACQUISITION_SCOPE,
+        active_event="monster_wave.board_acquisition_scope_active",
+        unavailable_event="monster_wave.board_acquisition_scope_unavailable",
+    )
     boards = MonsterWaveBoardAcquisitionRuntime(
-        observer, MonsterWaveBoardReader(engine),
+        board_observer, MonsterWaveBoardReader(engine),
         cancel_requested=cancel_requested,
     )
     snapshots = MonsterWaveSnapshotRuntime(
@@ -429,49 +446,179 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         raise ValueError("observer source must provide get_frame()")
     craft_runtime = CraftRuntime(
         source, EquipmentSellReader(engine), CraftReader(engine), actions,
-        cancel_requested=cancel_requested,
+        cancel_requested=cancel_requested, events=events,
     )
+    def _continue_mw_from_craft_lobby():
+        from bot.flow_contracts import FlowStatus
+        entered = inner.zone.enter()
+        if entered.status is not FlowStatus.COMPLETED:
+            return entered
+        return inner.activity.reenter()
+
     prereq_navigation = MonsterWavePrerequisiteNavigationRuntime(
         observer, main_transition, craft_runtime,
+        resume_mw_from_lobby=_continue_mw_from_craft_lobby,
         cancel_requested=cancel_requested,
     )
 
     # Trading / Treasure navigation owners (no policy).
+    # The default observer stays on the MW hot path. During this bounded
+    # Trading visit, the same source/resolver also sees active tabs and rows.
+    from bot.perception import (
+        TradingTabsDetector, TradingRowsDetector, TreasureContentDetector,
+        PerceptionEngine, select_detectors,
+    )
+    from bot.perception.scope import ScopeSpec
+
+    # Preserve the complete resolver vocabulary and MW caller signals while
+    # excluding unrelated slot/candidate/animation readers measured on this
+    # Trading hot path. Tabs and rows remain mandatory on every snapshot.
+    trading_scope = ScopeSpec(
+        name="monster_wave_trading",
+        spec_names=MONSTER_WAVE_BOARD_ACQUISITION_SCOPE.spec_names,
+        specialized_types=MONSTER_WAVE_BOARD_ACQUISITION_SCOPE.specialized_types
+        + (TradingTabsDetector, TradingRowsDetector),
+    )
+    trading_observer = observer.scoped(select_detectors(
+        build_trading_navigation_perception(), trading_scope))
+    trading_transition = VerifiedTransition(
+        trading_observer, actions, events,
+        getattr(main_transition, "obstruction_recovery", None),
+    )
     trading_runtime = TradingRuntime(
-        observer, main_transition, cancel_requested=cancel_requested,
+        trading_observer, trading_transition,
+        cancel_requested=cancel_requested,
+    )
+    # Default perception carries Treasure chrome only. Gold/Karat evidence
+    # belongs to this bounded visit, including its initial economic open.
+    treasure_content = TreasureContentDetector()
+    treasure_scope = ScopeSpec(
+        name="monster_wave_treasure",
+        spec_names=MONSTER_WAVE_BOARD_ACQUISITION_SCOPE.spec_names,
+        specialized_types=MONSTER_WAVE_BOARD_ACQUISITION_SCOPE.specialized_types
+        + (TreasureContentDetector,),
+    )
+    treasure_observer = observer.scoped(select_detectors(
+        PerceptionEngine((*observer.perception.detectors, treasure_content)),
+        treasure_scope,
+    ))
+    treasure_transition = VerifiedTransition(
+        treasure_observer, actions, events,
+        getattr(main_transition, "obstruction_recovery", None),
     )
     treasure_runtime = TreasureRuntime(
-        observer, main_transition, cancel_requested=cancel_requested,
+        treasure_observer, treasure_transition, cancel_requested=cancel_requested,
     )
     quick_menu_runtime = QuickMenuTradingRuntime(
         observer, main_transition, cancel_requested=cancel_requested,
     )
 
-    # Thin C2 adapters: fail closed with zero input when facts are
-    # unavailable. Empty-plan smokes never invoke them; READY plans
-    # stay bounded and never fabricate work.
+    # Keys uses the established Trading row/panel readers and C4 executor.
+    key_row_reader = TradingRowReader(engine)
+    key_panel_reader = TradingPanelReader(trading_observer, engine)
+
     def _read_key_facts(barrier):
-        raise ValueError("fresh_key_facts_unavailable")
+        return read_fresh_key_facts(
+            trading_observer, key_row_reader, after_sequence=barrier,
+            cancel_requested=cancel_requested, events=events,
+        )
 
     def _execute_key_trade(*, operation, snapshot, row_fact, quantity):
-        from bot.trading_operation import TradeOutcome, TradeResult
-
-        return TradeResult(
-            TradeOutcome.FAILED, row_fact, reason="keys_adapter_not_established",
+        return execute_productive_key_trade(
+            operation=operation, snapshot=snapshot, row_fact=row_fact,
+            quantity=quantity, observer=trading_observer, actions=actions,
+            panel_reader=key_panel_reader, read_facts=_read_key_facts,
+            cancel_requested=cancel_requested, events=events,
         )
 
     def _drain_gold_keys():
-        from bot.treasure_fast_drain import GoldKeyDrainOutcome, GoldKeyDrainResult
+        # Called only after C6b's verified initial Gold open. Keep the existing
+        # local Gold/Karat contract, immutable premium latch and finalizer.
+        from time import monotonic
+        from bot.tap_through_animation import TapThroughAnimation
+        from bot.treasure_fast_drain import drain_gold_keys_fast
+        from bot.event_log import record_best_effort
+        scoped = treasure_observer
+        latest = None
+        cursor = 0
+        dispatched_at = 0.0
 
-        return GoldKeyDrainResult(
-            outcome=GoldKeyDrainOutcome.FAILED, reason="drain_not_established",
+        def observe_fresh():
+            nonlocal latest, cursor
+            latest = scoped.wait_until(
+                lambda item: item.timestamp >= dispatched_at
+                and 0 <= monotonic() - item.timestamp <= 2.0,
+                after_sequence=cursor, timeout=6.0,
+                cancel_requested=cancel_requested,
+            )
+            cursor = latest.sequence
+            return latest
+
+        def act(intent):
+            nonlocal dispatched_at
+            if latest is None or not 0 <= monotonic()-latest.timestamp <= 2.0:
+                raise ValueError("gold_drain_dispatch_frame_stale")
+            actions.execute(intent, latest.geometry, events=events,
+                            source_sequence=latest.sequence)
+            dispatched_at = monotonic()
+
+        initial = observe_fresh()
+        result = drain_gold_keys_fast(
+            initial_snapshot=initial, observe=observe_fresh, tap=None, act=act,
+            initial_open_verified=True, allow_karat_entry=True,
+            measure_local=treasure_content.measure,
+            tap_through=TapThroughAnimation(scoped, actions, events),
+            cancel_requested=cancel_requested,
         )
+        record_best_effort(events, "trading.gold_drain.result",
+                          outcome=result.outcome.value, reason=result.reason,
+                          inputs=result.inputs_emitted, dismiss_inputs=result.dismiss_inputs,
+                          karat_boundary_seen=result.karat_boundary_seen,
+                          elapsed_seconds=result.elapsed_s)
+        return result
 
     def _acknowledge_gold_full(pending):
-        from bot.flow_contracts import FlowStatus
-        from bot.keys_promotion_runtime import GoldFullAckResult
+        from time import monotonic
+        from bot.keys_promotion_runtime import acknowledge_gold_full_boundary
+        from bot.event_log import record_best_effort
+        latest = None
+        dispatched_at = 0.0
 
-        return GoldFullAckResult(FlowStatus.FAILED, error="ack_not_established")
+        def read_panel():
+            nonlocal latest
+            found = None
+            def ready(item):
+                nonlocal found
+                found = key_panel_reader.read_snapshot(item, after_sequence=pending.before_fact.sequence)
+                return found is not None and found.shows_output_full
+            latest = trading_observer.wait_until(
+                ready, after_sequence=pending.before_fact.sequence, timeout=6.0,
+                cancel_requested=cancel_requested,
+            )
+            return found
+
+        def act(intent):
+            nonlocal dispatched_at
+            actions.execute(intent, latest.geometry, events=events,
+                            source_sequence=latest.sequence)
+            dispatched_at = monotonic()
+
+        def read_keys_context(*, after_sequence):
+            # Both complete numeric rows are required again; tabs behind the
+            # alert alone cannot prove its dismissal.
+            facts = _read_key_facts(after_sequence)
+            if facts is None or facts.snapshot.timestamp < dispatched_at:
+                return None
+            return facts.snapshot
+
+        result = acknowledge_gold_full_boundary(
+            pending, read_panel=read_panel, act=act,
+            read_keys_context=read_keys_context, cancel_requested=cancel_requested,
+        )
+        record_best_effort(events, "trading.gold_full.ack.result",
+                          status=result.status.value, error=result.error,
+                          sequence=getattr(result.final_snapshot,"sequence",None))
+        return result
 
     keys_runtime = KeysPromotionRuntime(
         trading_runtime, treasure_runtime, quick_menu_runtime,
@@ -482,46 +629,118 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         cancel_requested=cancel_requested,
     )
 
-    def _locate_material(*, target, after_sequence):
-        from bot.directed_list_scroll import (
-            DirectedScrollOutcome, DirectedScrollResult,
-        )
-
-        return DirectedScrollResult(
-            DirectedScrollOutcome.TARGET_UNKNOWN,
-            last_sequence=int(after_sequence),
-            reason="materials_adapter_not_established",
-        )
-
-    def _read_material_fact(*, target, after_sequence):
-        raise ValueError("fresh_material_fact_unavailable")
-
-    def _execute_material_trade(*, operation, snapshot, row_fact, quantity):
-        from bot.trading_operation import TradeOutcome, TradeResult
-
-        return TradeResult(
-            TradeOutcome.FAILED, row_fact, reason="materials_adapter_not_established",
-        )
-
+    from bot.trading_materials_productive import ProductiveMaterialsAdapter
+    material_adapter = ProductiveMaterialsAdapter(
+        trading_observer, actions, key_row_reader, key_panel_reader,
+        cancel_requested=cancel_requested, events=events,
+    )
     materials_runtime = TradingMaterialsRuntime(
-        trading_runtime,
-        locate_material=_locate_material,
-        read_material_fact=_read_material_fact,
-        execute_material_trade=_execute_material_trade,
+        trading_runtime, locate_material=material_adapter.locate,
+        read_material_fact=material_adapter.read,
+        execute_material_trade=material_adapter.trade,
         cancel_requested=cancel_requested,
     )
 
     # J core: one immutable plan, once, no replan. Lazy Keys budget
     # (None) derives from FreshKeyFacts via make_budget when needed.
+    # Equipment USER_GT supplies explicit per-type policy to the inventory owner.
+    from bot.flow_contracts import FlowStatus
+    from bot.equipment_sell_policy import EquipmentSellPolicy
+    from bot.equipment_relief import EquipmentReliefSellPlan
+    from bot.catalog import POPUP_EQUIPMENT_INVENTORY_FULL, SCREEN_LOBBY
+    from bot.state import ResolutionStatus
+    from bot.semantic_actions import (OpenEquipmentInventoryFromFull,
+                                     SelectQuickMenuInventory, ExitEquipmentInventory)
+    from bot.craft_runtime import CraftRouteOutcome
+    from bot.craft_semantics import consensus_craft_facts
+    from bot.monster_wave_activity import clean_mw
+    from bot.monster_wave_resource_route import FreshMonsterWaveSnapshot
+    inventory_runtime = EquipmentSellRuntime(
+        source, EquipmentSellReader(engine), actions,
+        cancel_requested=cancel_requested, events=events, sample_timeout=6.0,
+    )
+    equipment_relief = EquipmentReliefComposer(
+        dependencies.equipment_combine_relief, inventory_runtime,
+    )
+    policy = getattr(getattr(dependencies, "config", None), "equipment_sell", EquipmentSellPolicy())
+
+    def _enter_equipment_inventory(caller):
+        before = observer.observe()
+        if (before.state.status is not ResolutionStatus.AMBIGUOUS and
+            set(before.state.overlays) == {POPUP_EQUIPMENT_INVENTORY_FULL}):
+            actions.execute(OpenEquipmentInventoryFromFull(), before.geometry,
+                            events=events, source_sequence=before.sequence)
+        elif caller == "monster_wave":
+            if not clean_mw(before):
+                raise ValueError("inventory_relief_caller_not_mw")
+            anchor = snapshots.acquire(after_sequence=before.sequence)
+            if anchor.status is not FlowStatus.COMPLETED or anchor.fresh is None:
+                raise ValueError("inventory_relief_mw_context_not_fresh")
+            transitions, handoff, failed = prereq_navigation._open_mw_menu(anchor.fresh)
+            if failed is not None or handoff is None:
+                raise ValueError("inventory_relief_mw_menu_unverified")
+            opened = transitions[-1].final_snapshot
+            actions.execute(SelectQuickMenuInventory(), opened.geometry,
+                            events=events, source_sequence=opened.sequence)
+            handoff.invalidate()
+        else:
+            opened = craft_runtime.open_quick_menu_or_handoff()
+            if opened.outcome is not CraftRouteOutcome.QUICK_MENU_OPEN:
+                raise ValueError("inventory_relief_craft_menu_unverified")
+            craft_runtime.sleeper(.35)
+            ready = craft_runtime._read_consensus(
+                craft_runtime.craft_reader, "quick_menu_sample",
+                after_sequence=opened.quick_menu_fact.sequence,
+                consensus=consensus_craft_facts,
+            )
+            if ready is None or not craft_runtime._fresh(ready):
+                raise ValueError("inventory_relief_craft_menu_not_ready")
+            craft_runtime._tap(SelectQuickMenuInventory())
+        inventory_runtime._after_sequence = before.sequence
+        inventory_runtime._not_before = inventory_runtime.clock()
+
+    def _return_equipment_to_mw(result):
+        inventory_runtime._tap(ExitEquipmentInventory())
+        def returned(s):
+            return (clean_mw(s) or (s.state.status is ResolutionStatus.RESOLVED
+                    and s.state.base_context == SCREEN_LOBBY and not s.state.overlays))
+        restored = observer.wait_until(
+            returned, after_sequence=result.after.sequence, timeout=8, stable_for=.25,
+            cancel_requested=cancel_requested,
+        )
+        if restored.state.base_context == SCREEN_LOBBY:
+            resumed = _continue_mw_from_craft_lobby()
+            if resumed.status is not FlowStatus.COMPLETED:
+                raise ValueError("inventory_mw_normal_navigation_failed")
+            restored = observer.wait_until(clean_mw, after_sequence=restored.sequence,
+                                           timeout=8, stable_for=.25,
+                                           cancel_requested=cancel_requested)
+        return restored.sequence
+
+    def _return_equipment_to_craft(result):
+        inventory_runtime._tap(ExitEquipmentInventory())
+        restored = craft_runtime.observe_context(after_sequence=result.after.sequence)
+        if restored.outcome is not CraftRouteOutcome.ENTERED or restored.craft_fact is None:
+            raise ValueError("inventory_craft_return_unverified")
+        craft_runtime.note_inventory_return()
+        return restored.craft_fact.sequence
+
+    mw_sell_plan = EquipmentReliefSellPlan(
+        policy, lambda _: _enter_equipment_inventory("monster_wave"), _return_equipment_to_mw)
+    craft_sell_plan = EquipmentReliefSellPlan(
+        policy, lambda _: _enter_equipment_inventory("craft"), _return_equipment_to_craft)
     route = MonsterWaveResourceRouteRuntime(
         prereq_navigation, snapshots, craft_runtime, keys_runtime,
         materials_runtime, keys_budget_remaining=None,
+        equipment_relief=equipment_relief, equipment_sell_plan=craft_sell_plan,
         cancel_requested=cancel_requested,
     )
 
     return ProductiveMonsterWaveFlow(
         inner, boards=boards, navigation=standalone_navigation, route=route,
         planner=plan_resource_route, non_board=NonBoardResourceFacts(),
+        equipment_relief=equipment_relief, equipment_sell_plan=mw_sell_plan,
+        socket_relief=dependencies.socket_relief,
     )
 
 

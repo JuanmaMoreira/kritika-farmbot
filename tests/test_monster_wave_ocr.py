@@ -115,3 +115,38 @@ def test_default_sapphires_consumer_still_rejects_mw_context():
     result=build_runtime_fact_reader(observer,ocr_engine=engine).read_sapphires(after_sequence=10,timeout=6)
     assert result.status is FactReadStatus.CONTEXT_MISMATCH
     engine.recognize.assert_not_called()
+
+
+def test_hub_sapphires_replay_existing_captures():
+    from bot.catalog import SCREEN_BATTLE_MODE_SELECT
+    from bot.ocr_extractors import build_battle_mode_sapphires_extractor
+    entries=json.loads((ROOT/'datasets/monster_wave_ocr_manifest.json').read_text())['entries']
+    entries=[e for e in entries if e['base_context']==SCREEN_BATTLE_MODE_SELECT]
+    extractor=build_battle_mode_sapphires_extractor(RapidOcrEngine())
+    expected={'initial':183,'after-mw-back':183,'pre-tot':83,'after-tot-back':83,
+              'day2':83,'day2-close':0,'before-weekly':70}
+    for sequence,e in enumerate(entries,1):
+        frame=cv2.imread(str(ROOT/e['path']))
+        assert frame is not None, e['path']
+        state=ResolvedState(ResolutionStatus.RESOLVED,sequence,float(sequence),
+                            base_context=SCREEN_BATTLE_MODE_SELECT,overlays=tuple(e['overlays']))
+        snap=RuntimeSnapshot(FrameSnapshot(frame,float(sequence),sequence),
+                             ObservationBatch(sequence,float(sequence)),state,RuntimeFacts(),
+                             FrameGeometry.from_frame(frame))
+        extracted=extractor.extract(snap)
+        assert extracted.status is ExtractionStatus.VALUE, e['path']
+        assert extracted.value == expected[Path(e['path']).parent.name.removeprefix('battle-mode-select-')], e['path']
+
+
+@pytest.mark.parametrize('overlays',[(),('status.monster_wave_daily_active',)])
+def test_hub_reader_fresh_consensus_does_not_require_badge(overlays):
+    from bot.catalog import SCREEN_BATTLE_MODE_SELECT
+    observer=Mock(spec=RuntimeObserver)
+    observer.wait_until.side_effect=[snapshot(i,base=SCREEN_BATTLE_MODE_SELECT,overlays=overlays)
+                                    for i in (11,12)]
+    engine=Mock();engine.recognize.return_value=OcrResult('201',.99)
+    result=build_runtime_fact_reader(observer,ocr_engine=engine).read_sapphires(
+        context=SCREEN_BATTLE_MODE_SELECT,after_sequence=10,timeout=6)
+    assert result.status is FactReadStatus.CONFIRMED
+    assert result.fact.value==201
+    assert min(e.sequence for e in result.fact.evidence)>10

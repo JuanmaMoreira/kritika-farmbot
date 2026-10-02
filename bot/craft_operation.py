@@ -83,6 +83,10 @@ def execute_craft(
 
     screen_cost = before.hero_cost_for(request.family)
     screen_material = before.material_for(request.family)
+    if screen_cost is None or screen_material is None:
+        return _finish(
+            CraftOutcome.FAILED, before, inputs, evidence, "family_fact_unavailable",
+        )
     initial_target = requested_quantity(
         request,
         material=screen_material,

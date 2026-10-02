@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from bot.config import DEFAULT_CHARACTER_COUNT
+from bot.equipment_sell_policy import EquipmentSellPolicy
 from bot.event_log import EventLevel, RuntimeEvent
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowRegistry
 from bot.productive_runtime import PROJECT_ROOT
@@ -121,6 +122,7 @@ class GuiExecutionRequest:
     debug: bool = False
     dotenv_path: Path = PROJECT_ROOT / ".env"
     log_dir: Path = PROJECT_ROOT / "logs"
+    equipment_sell: EquipmentSellPolicy = EquipmentSellPolicy()
 
     @classmethod
     def flow_once(
@@ -130,22 +132,24 @@ class GuiExecutionRequest:
         debug: bool = False,
         dotenv_path: Path = PROJECT_ROOT / ".env",
         log_dir: Path = PROJECT_ROOT / "logs",
+        equipment_sell: EquipmentSellPolicy = EquipmentSellPolicy(),
     ) -> "GuiExecutionRequest":
         values = tuple(flow_ids)
         if len(values) != 1:
             raise ValueError("Run Flow Once requires exactly one active flow")
-        return cls(GuiRunMode.FLOW_ONCE, values, 1, debug, Path(dotenv_path), Path(log_dir))
+        return cls(GuiRunMode.FLOW_ONCE, values, 1, debug, Path(dotenv_path), Path(log_dir), equipment_sell)
 
     @classmethod
     def selected_flows(
         cls, flow_ids, *, debug: bool = False,
         dotenv_path: Path = PROJECT_ROOT / ".env",
         log_dir: Path = PROJECT_ROOT / "logs",
+        equipment_sell: EquipmentSellPolicy = EquipmentSellPolicy(),
     ) -> "GuiExecutionRequest":
         values = tuple(flow_ids)
         if not values:
             raise ValueError("Run Selected Flows requires at least one active flow")
-        return cls(GuiRunMode.SELECTED_FLOWS, values, 1, debug, Path(dotenv_path), Path(log_dir))
+        return cls(GuiRunMode.SELECTED_FLOWS, values, 1, debug, Path(dotenv_path), Path(log_dir), equipment_sell)
 
     @classmethod
     def session(
@@ -156,6 +160,7 @@ class GuiExecutionRequest:
         debug: bool = False,
         dotenv_path: Path = PROJECT_ROOT / ".env",
         log_dir: Path = PROJECT_ROOT / "logs",
+        equipment_sell: EquipmentSellPolicy = EquipmentSellPolicy(),
     ) -> "GuiExecutionRequest":
         values = tuple(flow_ids)
         if not values:
@@ -169,6 +174,7 @@ class GuiExecutionRequest:
             debug,
             Path(dotenv_path),
             Path(log_dir),
+            equipment_sell,
         )
 
 

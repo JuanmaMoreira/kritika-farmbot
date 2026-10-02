@@ -108,3 +108,16 @@ def test_asset_capture_reads_from_injected_frame_source():
     captured = capturar_desde_dispositivo(source)
 
     assert np.array_equal(captured, image)
+
+
+def test_roi_conversion_preserves_raw_score_and_global_match_coordinates():
+    from bot.geometry import relative_region_to_pixels
+    rng = np.random.default_rng(20261001)
+    frame = rng.integers(0, 256, (240, 540, 3), dtype=np.uint8)
+    template = cv2.cvtColor(frame[107:121, 321:339], cv2.COLOR_BGR2GRAY)
+    region = (.5, .3, .8, .6)
+    x1,y1,x2,y2 = relative_region_to_pixels(region,540,240)
+    original_search = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)[y1:y2,x1:x2]
+    expected = float(cv2.minMaxLoc(cv2.matchTemplate(original_search,template,cv2.TM_CCOEFF_NORMED))[1])
+    assert screen.template_match_score(frame,template,region) == expected
+    assert screen.find_all_on_screen(frame,template,region=region,threshold=.99) == [(330,114)]

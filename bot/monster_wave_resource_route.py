@@ -16,6 +16,12 @@ from bot.craft_operation import CraftOutcome
 from bot.craft_policy import CraftQuantityMode, CraftRequest
 from bot.craft_runtime import CraftRouteOutcome
 from bot.craft_semantics import CraftFamily, CraftTier
+from bot.equipment_combine_relief import EquipmentCombineReturnPlan
+from bot.equipment_relief import (
+    EquipmentReliefOutcome,
+    EquipmentReliefRequest,
+    FreshCallerContext,
+)
 from bot.failure_cause import FailureCause
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.keys_promotion_runtime import GoldCapacityRecoveryNavigation
@@ -30,7 +36,6 @@ from bot.monster_wave_semantics import SCREEN_MONSTER_WAVE
 from bot.quick_menu import (
     QuickMenuHandoff,
     quick_menu_matches_origin,
-    select_quick_menu_craft_action,
     select_quick_menu_trading_action,
     select_quick_menu_treasure_action,
 )
@@ -44,7 +49,7 @@ from bot.resource_route_planner import (
     TradingSessionStep,
 )
 from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
-from bot.semantic_actions import CloseTrading, ExitTreasure, OpenQuickMenu
+from bot.semantic_actions import CloseTrading, ExitCombine, ExitTreasure, OpenQuickMenu
 from bot.trading_center import clean_trading
 from bot.treasure_center import clean_treasure
 from bot.verified_transition import VerifiedTransitionPolicy
@@ -166,6 +171,7 @@ class MonsterWavePrerequisiteNavigationRuntime:
         transition,
         craft_runtime,
         *,
+        resume_mw_from_lobby=None,
         cancel_requested=lambda: False,
     ) -> None:
         if not callable(getattr(observer, "wait_until", None)):
@@ -180,6 +186,9 @@ class MonsterWavePrerequisiteNavigationRuntime:
         self.observer = observer
         self.transition = transition
         self.craft_runtime = craft_runtime
+        if resume_mw_from_lobby is not None and not callable(resume_mw_from_lobby):
+            raise ValueError("resume_mw_from_lobby must be callable")
+        self.resume_mw_from_lobby = resume_mw_from_lobby
         self.cancel_requested = cancel_requested
 
     def enter_trading_from_mw(
@@ -202,35 +211,81 @@ class MonsterWavePrerequisiteNavigationRuntime:
             expected=clean_treasure,
         )
 
-    def enter_craft_from_mw(
-        self,
-        anchor: FreshMonsterWaveSnapshot,
-    ) -> MonsterWaveNavigationResult:
+    def enter_craft_from_mw(self, anchor: FreshMonsterWaveSnapshot) -> MonsterWaveNavigationResult:
         transitions, handoff, failed = self._open_mw_menu(anchor)
         if failed is not None:
             return failed
         assert handoff is not None
         try:
-            select_quick_menu_craft_action(handoff.origin)
             entered = self.craft_runtime.enter_from_verified_quick_menu(
-                handoff,
+                handoff, transitions[-1].final_snapshot,
             )
             if entered.outcome is CraftRouteOutcome.CANCELLED:
                 return self._finish(transitions, FlowStatus.CANCELLED, entered)
             if entered.outcome is not CraftRouteOutcome.ENTERED:
-                return self._finish(
-                    transitions,
-                    FlowStatus.FAILED,
-                    entered,
-                    error=f"craft_enter_failed:{entered.reason}",
-                )
+                return self._finish(transitions, FlowStatus.FAILED, entered,
+                                    error=f"craft_enter_failed:{entered.reason}")
             return self._finish(transitions, FlowStatus.COMPLETED, entered)
         except Exception as error:
-            return self._finish(
-                transitions,
-                FlowStatus.FAILED,
-                error=str(error) or type(error).__name__,
+            return self._finish(transitions, FlowStatus.FAILED,
+                                error=str(error) or type(error).__name__)
+
+    def enter_combine_from_craft(self, capacity):
+        """One established Equipment Full -> Combine hop from this Craft visit."""
+        from bot.catalog import POPUP_EQUIPMENT_INVENTORY_FULL, SCREEN_COMBINE
+        from bot.semantic_actions import OpenHeroCraft, OpenEquipmentCombine
+        from bot.state import ResolutionStatus
+        def full(item):
+            return (item.state.status is not ResolutionStatus.AMBIGUOUS
+                    and set(item.state.overlays) == {POPUP_EQUIPMENT_INVENTORY_FULL})
+        popup = self.observer.observe()
+        if not full(popup):
+            observed = self.craft_runtime.observe_context(after_sequence=capacity.craft_fact.sequence)
+            if observed.outcome is CraftRouteOutcome.CANCELLED:
+                raise RuntimeWaitCancelled()
+            if observed.outcome is not CraftRouteOutcome.ENTERED or observed.craft_fact is None:
+                raise ValueError("craft_context_not_fresh_before_full_popup")
+            if self.cancel_requested():
+                raise RuntimeWaitCancelled()
+            self.craft_runtime._tap(OpenHeroCraft(CraftFamily.WEAPON))
+            popup = self.observer.wait_until(
+                full, after_sequence=observed.craft_fact.sequence, timeout=6.0,
+                stable_for=.25, cancel_requested=self.cancel_requested,
             )
+        if self.cancel_requested():
+            raise RuntimeWaitCancelled()
+        result = self.transition.execute(
+            "craft.equipment_full_to_combine", OpenEquipmentCombine(), popup,
+            precondition=full,
+            expected=lambda item: item.state.status is ResolutionStatus.RESOLVED
+                and item.state.base_context == SCREEN_COMBINE,
+            policy=_single_attempt_policy(), stable_for=.25,
+        )
+        if not result.succeeded or result.final_snapshot.sequence <= popup.sequence:
+            raise ValueError("craft_full_to_combine_failed")
+        return result.final_snapshot
+
+    def continue_from_craft_lobby(self, *, after_sequence: int):
+        """Normal continuation after Craft -> Inventory -> Craft -> Back."""
+        from bot.battle_mode_zone import is_lobby
+        try:
+            lobby = self.observer.wait_until(
+                is_lobby, after_sequence=after_sequence, timeout=6.0,
+                stable_for=.25, cancel_requested=self.cancel_requested,
+            )
+            if self.cancel_requested():
+                return MonsterWaveNavigationResult(FlowStatus.CANCELLED)
+            if self.resume_mw_from_lobby is None:
+                return MonsterWaveNavigationResult(FlowStatus.FAILED,
+                                                  error="craft_lobby_continuation_not_wired")
+            result = self.resume_mw_from_lobby()
+            return MonsterWaveNavigationResult(result.status, error=result.error,
+                                              after_sequence=lobby.sequence,
+                                              capability_result=result)
+        except RuntimeWaitCancelled:
+            return MonsterWaveNavigationResult(FlowStatus.CANCELLED)
+        except Exception as error:
+            return MonsterWaveNavigationResult(FlowStatus.FAILED, error=str(error))
 
     def leave_trading_to_mw(self) -> MonsterWaveNavigationResult:
         return self._leave_to_mw(
@@ -598,6 +653,8 @@ class MonsterWaveResourceRouteRuntime:
         materials_runtime,
         *,
         keys_budget_remaining: int | None = None,
+        equipment_relief=None,
+        equipment_sell_plan=None,
         cancel_requested=lambda: False,
     ) -> None:
         for owner, method in (
@@ -619,6 +676,10 @@ class MonsterWaveResourceRouteRuntime:
             or int(keys_budget_remaining) < 1
         ):
             raise ValueError("keys_budget_remaining must be a positive integer")
+        if equipment_relief is not None and not callable(
+            getattr(equipment_relief, "run", None)
+        ):
+            raise ValueError("equipment_relief must provide run() or be None")
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
         self.navigation = navigation
@@ -629,6 +690,8 @@ class MonsterWaveResourceRouteRuntime:
         self.keys_budget_remaining = (
             int(keys_budget_remaining) if keys_budget_remaining is not None else None
         )
+        self.equipment_relief = equipment_relief
+        self.equipment_sell_plan = equipment_sell_plan
         self.cancel_requested = cancel_requested
 
     def execute_plan_once(
@@ -701,6 +764,19 @@ class MonsterWaveResourceRouteRuntime:
                 return None, failed(result, step_name, returning=True)
             return result.fresh, None
 
+        def continue_after_craft(returned):
+            from bot.catalog import SCREEN_LOBBY
+            after_sequence = returned.craft_fact.sequence
+            if returned.return_base == SCREEN_LOBBY:
+                continued = self.navigation.continue_from_craft_lobby(after_sequence=after_sequence)
+                evidence.append("route:craft_inventory_back_to_lobby_then_mw")
+                if continued.status is not FlowStatus.COMPLETED:
+                    return None, failed(continued, craft.capability, returning=True)
+                after_sequence = continued.after_sequence
+            else:
+                evidence.append("route:craft_back_to_mw")
+            return fresh_mw(after_sequence, craft.capability)
+
         if craft is not None:
             entered = self.navigation.enter_craft_from_mw(anchor)
             evidence.append("route:mw_quick_menu_craft")
@@ -708,16 +784,25 @@ class MonsterWaveResourceRouteRuntime:
                 return failed(entered, craft.capability)
             craft_open = True
             capacity = self.craft_runtime.probe_equipment_capacity()
-            evidence.append("craft:fresh_equipment_capacity_probe")
+            evidence.append("craft:required_equipment_capacity")
             if capacity.outcome is CraftRouteOutcome.CAPACITY_BLOCKED:
-                return finish(ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED,
-                              failing_step=craft.capability, capability_result=capacity)
-            if capacity.outcome is not CraftRouteOutcome.ENTERED:
+                if self.equipment_relief is None:
+                    return finish(ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED,
+                                  failing_step=craft.capability, capability_result=capacity)
+                relieved = self._relieve_craft_capacity_once(
+                    craft, capacity, evidence, finish,
+                )
+                if relieved is not None:
+                    return relieved
+                # Relief success: retry already drained this CraftStep.
+                # Continue the SAME execute_plan_once (no replan, no second J).
+            elif capacity.outcome is not CraftRouteOutcome.ENTERED:
                 return failed(capacity, craft.capability)
-            drained = self.craft_runtime.drain_hero_material(max_batches=32)
-            evidence.append("craft:drain_hero_until_below_49")
-            if drained.outcome is not CraftOutcome.SUCCESS:
-                return failed(drained, craft.capability)
+            else:
+                drained = self.craft_runtime.drain_hero_material(max_batches=32)
+                evidence.append("craft:drain_hero_until_below_49")
+                if drained.outcome is not CraftOutcome.SUCCESS:
+                    return failed(drained, craft.capability)
 
         if trading is not None:
             if craft_open and has_materials:
@@ -726,10 +811,9 @@ class MonsterWaveResourceRouteRuntime:
             else:
                 if craft_open:
                     returned = self.craft_runtime.request_back_to_origin()
-                    evidence.append("route:craft_back_to_mw")
                     if returned.outcome is not CraftRouteOutcome.BACK_REQUESTED or returned.craft_fact is None:
                         return failed(returned, craft.capability, returning=True)
-                    anchor, problem = fresh_mw(returned.craft_fact.sequence, craft.capability)
+                    anchor, problem = continue_after_craft(returned)
                     if problem is not None:
                         return problem
                     craft_open = False
@@ -765,10 +849,9 @@ class MonsterWaveResourceRouteRuntime:
                 if drained.outcome is not CraftOutcome.SUCCESS:
                     return failed(drained, craft.capability)
                 returned = self.craft_runtime.request_back_to_origin()
-                evidence.append("route:craft_back_to_mw")
                 if returned.outcome is not CraftRouteOutcome.BACK_REQUESTED or returned.craft_fact is None:
                     return failed(returned, craft.capability, returning=True)
-                anchor, problem = fresh_mw(returned.craft_fact.sequence, craft.capability)
+                anchor, problem = continue_after_craft(returned)
                 if problem is not None:
                     return problem
                 craft_open = False
@@ -802,10 +885,9 @@ class MonsterWaveResourceRouteRuntime:
                     return problem
         elif craft_open:
             returned = self.craft_runtime.request_back_to_origin()
-            evidence.append("route:craft_back_to_mw")
             if returned.outcome is not CraftRouteOutcome.BACK_REQUESTED or returned.craft_fact is None:
                 return failed(returned, craft.capability, returning=True)
-            anchor, problem = fresh_mw(returned.craft_fact.sequence, craft.capability)
+            anchor, problem = continue_after_craft(returned)
             if problem is not None:
                 return problem
 
@@ -814,6 +896,138 @@ class MonsterWaveResourceRouteRuntime:
             ResourceRouteExecutionStatus.SUCCESS,
             final_snapshot=anchor.snapshot,
             final_context=anchor.context,
+        )
+
+    def _relieve_craft_capacity_once(self, craft, capacity, evidence, finish):
+        """Bounded transversal relief for one CAPACITY_BLOCKED CraftStep.
+
+        Runs EquipmentReliefComposer at most once, returns to Craft clean,
+        retries ONLY this CraftStep (probe + drain) and lets the caller
+        continue the SAME execute_plan_once. No replan, no second board,
+        no second planner, no second complete J. No Sell plan: still-full
+        after Combine fails closed as EQUIPMENT_CAPACITY_BLOCKED.
+        Returns None on relief success (drain already done, continue),
+        otherwise a finished ResourceRouteExecutionResult to return.
+        """
+        first_attempt = True
+        cached = capacity
+
+        def _cached_sequence() -> int:
+            for fact in (
+                getattr(cached, "craft_fact", None),
+                getattr(cached, "inventory_fact", None),
+            ):
+                seq = getattr(fact, "sequence", None)
+                if isinstance(seq, bool):
+                    continue
+                if isinstance(seq, Integral) and int(seq) >= 0:
+                    return int(seq)
+            return 0
+
+        def acquire(after_sequence):
+            if after_sequence is None:
+                return FreshCallerContext(cached, _cached_sequence())
+            observed = self.craft_runtime.observe_context(
+                after_sequence=int(after_sequence),
+            )
+            if (
+                getattr(observed, "outcome", None) is not CraftRouteOutcome.ENTERED
+                or getattr(observed, "craft_fact", None) is None
+            ):
+                raise ValueError("craft_context_not_fresh_after_relief")
+            seq = observed.craft_fact.sequence
+            if isinstance(seq, bool) or not isinstance(seq, Integral) or int(seq) <= int(after_sequence):
+                raise ValueError("craft_context_not_fresh_after_relief")
+            return FreshCallerContext(observed.craft_fact, int(seq))
+
+        def execute(_request, _context):
+            nonlocal first_attempt
+            if first_attempt:
+                first_attempt = False
+                return cached
+            # Retry ONLY this CraftStep: fresh probe + drain, no trading.
+            probed = self.craft_runtime.probe_equipment_capacity()
+            if getattr(probed, "outcome", None) is not CraftRouteOutcome.ENTERED:
+                return probed
+            return self.craft_runtime.drain_hero_material(max_batches=32)
+
+        def is_full(result) -> bool:
+            return (
+                getattr(result, "outcome", None) is CraftRouteOutcome.CAPACITY_BLOCKED
+            )
+
+        def enter_combine(caller_result):
+            return self.navigation.enter_combine_from_craft(caller_result)
+
+        def returned_to_craft(snapshot):
+            # Craft is read locally; the global resolver has no Craft BASE.
+            from bot.state import ResolutionStatus
+            if snapshot.state.status is ResolutionStatus.AMBIGUOUS or snapshot.state.overlays:
+                return False
+            fact = self.craft_runtime.craft_reader.context_sample(
+                snapshot.frame.image, sequence=snapshot.sequence,
+                observed_at=snapshot.timestamp,
+            )
+            return (fact is not None and fact.complete
+                    and 0 <= self.craft_runtime.clock() - fact.observed_at <= 5.0)
+
+        request = EquipmentReliefRequest(
+            operation_request=craft,
+            acquire_context=acquire,
+            execute_operation=execute,
+            is_equipment_full=is_full,
+            enter_combine=enter_combine,
+            combine_return_plan=EquipmentCombineReturnPlan(
+                ExitCombine(), "screen.craft", expected_return=returned_to_craft,
+            ),
+            sell_plan=self.equipment_sell_plan,
+            cancel_requested=self.cancel_requested,
+        )
+        evidence.append("craft:equipment_relief_once")
+        try:
+            relief = self.equipment_relief.run(request)
+        except Exception as error:
+            return finish(
+                ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED,
+                failing_step=craft.capability,
+                capability_result=capacity,
+            )
+        if relief.outcome in {
+            EquipmentReliefOutcome.CANCELLED,
+            EquipmentReliefOutcome.COMBINE_CANCELLED,
+            EquipmentReliefOutcome.SELL_CANCELLED,
+        }:
+            return finish(ResourceRouteExecutionStatus.CANCELLED)
+        if relief.outcome is EquipmentReliefOutcome.CALLER_RESULT:
+            caller_result = relief.caller_result
+            if is_full(caller_result):
+                # Still full after Combine, no Sell plan: fail closed.
+                return finish(
+                    ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED,
+                    failing_step=craft.capability,
+                    capability_result=caller_result,
+                )
+            if getattr(caller_result, "outcome", None) is CraftOutcome.SUCCESS:
+                evidence.append("craft:equipment_relief_retry_drain_success")
+                return None
+            # Probe unreadable or drain failed: preserve causal step,
+            # degrade to STEP_FAILED (not capacity) with detail.
+            if getattr(caller_result, "outcome", None) is CraftOutcome.CANCELLED or getattr(
+                caller_result, "outcome", None
+            ) is CraftRouteOutcome.CANCELLED:
+                return finish(ResourceRouteExecutionStatus.CANCELLED)
+            return finish(
+                ResourceRouteExecutionStatus.STEP_FAILED,
+                failing_step=craft.capability,
+                capability_result=caller_result,
+            )
+        # COMBINE_FAILED, NAVIGATION_FAILED, context/execution failures,
+        # SELL_REQUIRED_BUT_NO_AUTHORIZED_CANDIDATE, SELL_*, FULL_AFTER_SELL:
+        # preserve the original capacity blocker, no more input, no Sell.
+        return finish(
+            ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED,
+            failing_step=craft.capability,
+            capability_result=capacity,
         )
 
     @staticmethod

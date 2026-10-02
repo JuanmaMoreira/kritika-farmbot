@@ -1,28 +1,51 @@
 # Estado actual — Kritika FarmBot
 
-## Worktree y checkpoint
+## Checkpoint Monster Wave — 2026-10-02
 
-Inspección documental: 2026-09-25. Rama `rebuild/stable-baseline`, HEAD `22c213a` (`docs: clarify MW skip lifecycle from HIL (30/30, 140k Gold, activation)`). Checkpoint histórico V1 `04640c2`; no representa el wiring post-V1 actual. Código + tests del worktree prevalecen. Autoridad física: [GAMEPLAY_GT](docs/GAMEPLAY_GT.md); contrato/wiring de recursos: [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md).
+**MW estable para esta versión; etapa de estabilización cerrada.** El loop autónomo de debugging live terminó. Rama `rebuild/stable-baseline`; checkpoint local `feat: stabilize productive monster wave flow`, sin push. Código y tests son autoridad de implementación; [GAMEPLAY_GT](docs/GAMEPLAY_GT.md) fija la UI física y [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md) el routing económico. No repetir smokes ni provocar deuda aceptada durante el cierre.
 
-**Local sin commit, preservar:** `bot/{craft_reader,craft_runtime,flow_registry,monster_wave_productive,monster_wave_resource_route,monster_wave_standalone}.py`, tests de Craft/MW correspondientes y `tests/test_craft_reader_context.py` untracked. Contienen L2 reactivo, relief del CraftStep, handoff directo hacia Craft, diagnóstico OCR y umbral local Weapon cost 0.80. Este reset no los modifica ni declara validación nueva.
+Smoke final del código vigente: `mw_final_native_d1e5d83e` → COMPLETED → **3 CLEAR, 253/253 Sapphires, Lobby, sin flow.failed**. Runtime productivo normal, sin guards diagnósticos; recursos del runtime cerrados.
 
-También preservar la eliminación local de `Kritika_FarmBot_Plan_Preparacion_Codex_Astra.md` y `check_eval.py`, `fix_tests.py`, `test_live.py`, `test_wait.py` untracked. Los cambios documentales locales anteriores fueron retenidos en el [snapshot histórico](docs/legacy/DOC_RESET_20260925.md); la sección L2 de la reconstrucción se conserva.
+## Ramas live verificadas
 
-## Producto y límites reales
+| Evidencia | Cobertura vigente |
+| --- | --- |
+| `d1712918` | WB → MW, cuatro CLEAR, 362/362, Keys, Point Reward y Lobby |
+| `84b71faf` | Materials 852→52→12, Craft, Socket, retorno al mismo pass, dos CLEAR y 138/138 |
+| `d4b4bef4` | Craft Full → Combine, capacidad 135/128→124/128, Craft 318→24, segundo Back a Lobby esperado |
+| `mw_confirm_resume_778e091f` | Keys Full post-confirm → ACK → Gold drain → retry causal único SUCCESS; Transmute/Ethereal positivos |
+| `mw_fuse_resume_f1c75c3d` | Resultado Fuse reconciliado sin repetir confirmación; Equipment Full → Combine → fresh 162/128 → cinco Bulk → 127/128; mismo pass, Point Reward y cuatro CLEAR 396/396. Falló sólo la salida final a Lobby; no presentar este run como completamente verde |
+| `mw_exit_inventory_native_3bf4119d` | Salida corregida Inventory → MW → Lobby → hub, validación nativa sin consumo |
+| `mw_final_native_d1e5d83e` | Smoke final aceptado, código vigente, tres CLEAR 253/253 y cierre completo |
 
-- CLI/GUI comparten runtime: Black Market, World Boss, Monster Wave, Send Stamina, Summon Pet Daily, Daily Quests, Mailbox y Guild Check-In; sesión multicharacter, Rotation, Identity, Eligibility y observabilidad existentes.
-- MW ejecuta un proceso SKIP MAX por invocación; sin farming loop, Start manual ni Auto Battle MW. L1 está conectado en `_build_productive_monster_wave`: board fresco → plan único → prerequisites como máximo una vez → resume del mismo request. El builder conserva fallback al flow bare ante AttributeError/TypeError/ValueError.
-- **L2 local/in progress:** después del resume trata el blocker Equipment/Socket observado, una vez por tipo, conserva `daily` y no repite board/planner/J. Equipment usa Combine-first sin plan Sell productivo. No está cerrado físicamente de punta a punta.
-- Craft/Trading/Keys/Treasure, Equipment Sell y composer tienen capacidades standalone; eso no completa sus adapters productivos. Keys/Materials/Gold recovery aún tienen callbacks de fallo en `flow_registry.py`. Craft→Combine aún es placeholder sin input; detalle exacto en RESOURCE_ROUTING.
+Logs/capturas nativas y resultados detallados permanecen locales; manifests curados y assets runtime forman parte del checkpoint. La evidencia previa sigue válida: no hubo cambios productivos posteriores al smoke final durante el cierre documental.
 
-## Primera divergencia y pendientes inmediatos
+## Contratos vigentes
 
-**P0 Craft:** la entrada física fue confirmada por el usuario, pero la postcondición exige título/rate/expert y counts/costs de las tres familias. Logs existentes `logs/20260924T225232.947447Z_selected_flows_a578d341.jsonl` y `logs/20260924T225448.940649Z_selected_flows_7a00acd2.jsonl` registran `craft.entry_postcondition_sample` rechazado y timeout; el segundo conserva título de baja confianza y Weapon count contaminado. El cambio local de confianza de Weapon cost no desacopla identidad de economía. Title/Hero Weapon count están expuestos a CHAT; rate intersecta Heaven & Hell. No reinterpretar esto como fallo del GT de navegación.
+- MW usa precheck fresco de Sapphires en el hub, preparación SKIP una vez, MAX, board/plan nuevo por pasada y accounting sólo tras CLEAR confirmado. No usa Eligibility ni el badge Daily como gate. CLI/GUI y sesión WB→MW comparten la composición productiva.
+- Craft conserva entrada directa/caller natural, **sin MW→Inventory→MW preflight**. Capacidad se consulta sólo por necesidad real. `Craft→Inventory→Back→Craft→Back→Lobby` es una postcondition normal determinista; navegación normal restaura MW y el mismo pass sin repetir una intención consumida.
+- Equipment Full: **Combine → fresh Item Count → si sigue Full, Bulk Sell tail-first → sin candidato accesible permitido, siguiente fila +4 con Karats → fresh capacity y reinicio**. Item Count determina el prefix seleccionable, distinto de la lista total ordenada por poder. HAVE<NEED termina inmediatamente. Ningún índice/scan sobrevive a Bulk o expansión; cada compra añade sólo una fila secuencial.
+- Legendary e inferior son descartables sin policy por level/enhancement/duplicados. Ethereal configurable por nueve tipos y Enhance aparte; default protege Weapon/Earrings/Necklace/Ring y permite Helmet/Chest/Pants/Gloves/Boots. Todo Ethereal+ siempre protegido. Sólo Bulk, con panel/popup redundantes; UNKNOWN/AMBIGUOUS/contradicción no autoriza consumo.
+- Keys: CV establece identidad/geometría; OCR sólo lee pares variables. Dos lecturas completas, frescas, consecutivas y concordantes; hasta tres intentos por transitorio. Reuse sólo del consenso exacto SUCCESS válido/fresco. Perfil nativo: **40→4 OCR, 6.02→1.151 s** (snapshot 1.015 s, reader .134 s).
+- C4 y demás consumos: una confirmación por intent, barrera temporal después del dispatch y efecto fresco; frames previos/durante dispatch no prueban completion. Timeout/inconclusión no permite repetir; reconciliar antes de otro intent.
 
-Siguiente: identidad Craft con landmark seguro, economía sólo de la operación requerida; validación dirigida y un smoke MW autorizado. Después, corregir la primera divergencia siguiente y completar wiring/L2 siguiendo [ROADMAP](ROADMAP.md), sin reaperturas de GT.
+## Validación reutilizable
 
-**Bug separado Run Session:** `ProductiveRuntime.run_session` prepara por `isinstance(MonsterWaveFlow)`; `ProductiveMonsterWaveFlow` no hereda ese tipo y queda sin binding `prepared(zone, daily=True)`, aunque se asigna eligibility por nombre. No atribuir este problema a Craft ni afirmar Daily productivo integrado.
+Regresión proporcional: 71 módulos/1931 casos, 1928 verdes inicialmente y tres expectativas stale reparadas; sólo sus tres módulos repetidos, **84/84 verdes**. Equipment Sell evaluator **14/14**; Point Reward incremental **102 frames** y Fuse **213 frames**, sin wrong. Cierre: snapshot exacto del commit validado con **39/39 tests** de Flow Registry y recuperación compartida, tras separar únicamente la integración independiente de Summon Pet Daily. 35 referencias documentales válidas y sintaxis de los 89 Python cambiados correcta. Diff check limpio. Sin nuevos smokes ni cambios productivos durante el cierre.
 
-## Entorno temporal
+## Deuda aceptada, no bloqueante
 
-Cuatro fixtures Rotation ausentes bajo `artifacts/failure_evidence/` causaron FileNotFoundError en validaciones anteriores. Gap ambiental conocido, ajeno a MW/Craft; no bloquea un smoke ni obliga a repetir suite completa. Paths de Python/ADB/scrcpy en `AGENT_LOCAL.md`. No se ejecutaron tests/evaluator/HIL durante este reset; resultados previos no invalidados siguen siendo reutilizables.
+1. Expansión Equipment +4 positiva live: mecánica/fila/coste/popup adquiridos y tests verdes; no se provocó una compra innecesaria.
+2. Poor/Normal visual positivo y Ethereal Enhance positivo: policy conocida; evidencia insuficiente mantiene fail-closed.
+3. Perfil/optimización posterior del scan Sell protegido: correcto y bounded, último loop 249.94 s con cinco Bulk.
+4. Lifecycle de SKIP tras pausas de diagnóstico muy largas.
+5. Portabilidad/publicación del corpus nativo local.
+6. Fill All con Gold insuficiente sigue UNKNOWN, baja prioridad.
+
+No implementar estas deudas dentro del cierre. Otros flows y planes futuros conservan sus límites existentes; no ampliar alcance a scheduler, planner de farming o navigation graph general.
+
+## Worktree preservado
+
+El worktree ya era amplio antes de MW. El checkpoint incluye MW y dependencias causales, no todo cambio local. Se preservan fuera de él la eliminación previa de `Kritika_FarmBot_Plan_Preparacion_Codex_Astra.md`, los scripts anteriores `check_eval.py`, `fix_tests.py`, `test_live.py`, `test_wait.py`, y la integración independiente de Summon Pet Daily. No reset/clean ni borrado de evidencia. Los artefactos ignorados de diagnóstico quedan locales.
+
+Entorno machine-local en `AGENT_LOCAL.md`. Fixtures Rotation ausentes bajo `artifacts/failure_evidence/` son un gap ambiental previo ajeno a MW, no deuda nueva ni blocker de esta versión.

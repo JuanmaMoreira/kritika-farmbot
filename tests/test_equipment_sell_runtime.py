@@ -1,3 +1,4 @@
+import time
 from unittest.mock import Mock
 
 import numpy as np
@@ -29,7 +30,7 @@ class _Source:
         self.sequence += 1
         return FrameSnapshot(
             np.zeros((1220, 2712, 3), dtype=np.uint8),
-            float(self.sequence),
+            time.monotonic(),
             self.sequence,
         )
 
@@ -152,3 +153,54 @@ def test_runtime_waits_bounded_animation_frames_without_retrying_confirm():
     assert result.outcome is EquipmentSellOutcome.SUCCESS
     assert result.confirm_count == 1
     assert adb.tap.call_count == 3
+
+
+def _expansion_runtime(*, popup_cost=180, effect=True):
+    adb=Mock()
+    class ExpansionReader(_Reader):
+        def inventory_sample(self, frame, *, sequence, observed_at):
+            if adb.tap.call_count == 1:
+                return None
+            capacity=132 if effect and adb.tap.call_count >= 2 else 128
+            return EquipmentInventoryFact(130,capacity,9,22,sequence,observed_at,
+                                          sample_sequences=(sequence,))
+        def capacity_row_cost(self, frame, row):
+            assert row == 0
+            return 180
+        def expansion_sample(self, frame, *, sequence, observed_at):
+            return (popup_cost,sequence,observed_at)
+        def expansion_visible(self, frame):
+            return True
+    runtime=EquipmentSellRuntime(_Source(),ExpansionReader(adb),ActionExecutor(adb),
+                                 sample_interval=.001,sample_timeout=.04)
+    before=EquipmentInventoryFact(130,128,9,22,2,time.monotonic(),sample_sequences=(1,2))
+    return runtime,adb,before
+
+
+def test_capacity_purchase_uses_next_row_once_and_verifies_exactly_four_slots():
+    runtime,adb,before=_expansion_runtime()
+    result=runtime._expand(before)
+    assert result.succeeded
+    assert result.confirm_count == 1 and result.cost == 180
+    assert result.after.capacity == before.capacity + 4
+    assert adb.tap.call_count == 2
+    assert adb.tap.call_args_list[0].args == (int(.68*2712),int(.375*1220))
+    assert adb.tap.call_args_list[1].args == (int(.43*2712),int(.625*1220))
+
+
+def test_capacity_popup_cost_mismatch_cancels_without_confirm():
+    runtime,adb,before=_expansion_runtime(popup_cost=181)
+    result=runtime._expand(before)
+    assert not result.succeeded and result.confirm_count == 0
+    assert result.reason == "expansion_popup_unverified"
+    assert adb.tap.call_count == 2
+    assert adb.tap.call_args_list[-1].args == (int(.57*2712),int(.625*1220))
+
+
+def test_capacity_inconclusive_effect_never_repeats_purchase():
+    runtime,adb,before=_expansion_runtime(effect=False)
+    result=runtime._expand(before)
+    assert not result.succeeded and result.confirm_count == 1
+    assert result.reason == "effect_inconclusive"
+    assert result.after is None
+    assert adb.tap.call_count == 2

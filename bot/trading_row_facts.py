@@ -313,19 +313,29 @@ class TradingRowReader:
         section: str,
         row_top: float,
         row_y: float,
+        diagnostics: dict | None = None,
     ) -> RowSample | None:
-        """Parse one frame at known row geometry; fail-closed None."""
+        """Parse one frame at known row geometry; fail-closed None.
+
+        The Keys acquisition caller may collect diagnostics from these same
+        reads. Other callers do not enable it; this reader emits no events.
+        """
         if section_for(item_id) != section:
             return None
         _require_frame(frame)
         sequence = _require_sequence(sequence)
         row_top = _require_unit(row_top, "row_top")
         row_y = _require_unit(row_y, "row_y")
-        if not self.match_title(frame, row_top, item_id):
+        detail = {"diagnostics": diagnostics} if diagnostics is not None else {}
+        if not self.match_title(frame, row_top, item_id, **detail):
             return None
-        pair = self.read_pair(frame, row_top)
+        pair = self.read_pair(frame, row_top, **detail)
+        if pair is None and item_id in ("silver_key", "gold_key"):
+            pair = self._read_key_pair_cell(frame, row_top, **detail)
         if pair is None:
             return None
+        if diagnostics is not None:
+            diagnostics.update(reason=None, parse_result=pair)
         have, need = pair
         return RowSample(
             item_id=item_id,
@@ -336,7 +346,8 @@ class TradingRowReader:
             sequence=sequence,
         )
 
-    def match_title(self, frame, row_top: float, item_id: str) -> bool:
+    def match_title(self, frame, row_top: float, item_id: str, *,
+                    diagnostics: dict | None = None) -> bool:
         """Check the row's name cell against the catalog title.
 
         Names may wrap two lines, so two single-line strips are read and
@@ -352,11 +363,24 @@ class TradingRowReader:
             roi = frame[int((row_top + dy1) * height):int((row_top + dy2) * height),
                         int(0.25 * width):int(0.56 * width)]
             if roi.size == 0:
+                if diagnostics is not None:
+                    diagnostics.update(reason="empty_title_roi", identity_match=False)
                 return False
-            parts.append(self._recognize(roi, scale=2.0).text)
-        return title_matches(" ".join(parts), item_id)
+            result = self._recognize(roi, scale=2.0)
+            parts.append(result.text)
+            if diagnostics is not None:
+                diagnostics.setdefault("title_reads", []).append({
+                    "roi": (0.25, row_top + dy1, 0.56, row_top + dy2),
+                    "raw": result.text, "confidence": result.confidence,
+                })
+        matched = title_matches(" ".join(parts), item_id)
+        if diagnostics is not None:
+            diagnostics.update(title_raw=" ".join(parts), identity_match=matched,
+                               reason=None if matched else "title_mismatch")
+        return matched
 
-    def read_pair(self, frame, row_top: float) -> tuple[int, int] | None:
+    def read_pair(self, frame, row_top: float, *,
+                  diagnostics: dict | None = None) -> tuple[int, int] | None:
         """Read the have/need pair under the row's first cost icon.
 
         The pair box is segmented (dark-outlined glyphs vote a baseline)
@@ -366,11 +390,19 @@ class TradingRowReader:
         _require_frame(frame)
         row_top = _require_unit(row_top, "row_top")
         box = _localize_pair(frame, row_top)
+        detail = {"diagnostics": diagnostics} if diagnostics is not None else {}
+        if diagnostics is not None:
+            diagnostics.update(pair_method="localized", localized_roi=box)
         if box is None:
+            if diagnostics is not None:
+                diagnostics.update(localized_reason="pair_not_localized",
+                                   reason="pair_not_localized")
             return None
         height, width = frame.shape[:2]
-        first = self._parse_box(frame, box)
+        first = self._parse_box(frame, box, **detail)
         if first is None:
+            if diagnostics is not None:
+                diagnostics["localized_reason"] = diagnostics["reason"]
             return None
         x1, y1, x2, y2 = box
         wide = (
@@ -379,25 +411,81 @@ class TradingRowReader:
             min(1.0, x2 + 0.007),
             min(1.0, y2 + 0.006),
         )
-        second = self._parse_box(frame, wide)
+        second = self._parse_box(frame, wide, **detail)
         if second != first:
+            if diagnostics is not None:
+                diagnostics.update(localized_reason="localized_disagrees",
+                                   reason="localized_disagrees")
             return None
+        if diagnostics is not None:
+            diagnostics.update(localized_reason=None, parse_result=first)
         return first
 
-    def _parse_box(self, frame, box) -> tuple[int, int] | None:
+    def _parse_box(self, frame, box, *,
+                   diagnostics: dict | None = None) -> tuple[int, int] | None:
         height, width = frame.shape[:2]
         x1, y1, x2, y2 = box
         crop = frame[int(y1 * height):int(y2 * height),
                      int(x1 * width):int(x2 * width)]
+        read = {"method": diagnostics.get("pair_method"), "roi": box,
+                "raw": None, "confidence": None, "parse_result": None,
+                "reason": None} if diagnostics is not None else None
+        if diagnostics is not None:
+            diagnostics.setdefault("pair_reads", []).append(read)
         if crop.size == 0:
+            if diagnostics is not None:
+                read["reason"] = diagnostics["reason"] = "empty_pair_roi"
             return None
         result = self._recognize(crop, scale=3.0)
+        if diagnostics is not None:
+            read.update(raw=result.text, confidence=result.confidence)
         if result.confidence < 0.5:
+            if diagnostics is not None:
+                read["reason"] = diagnostics["reason"] = "ocr_low_confidence"
             return None
         import re as _re
 
         text = _re.sub(r"\s+", "", result.text)
-        return parse_pair(text)
+        parsed = parse_pair(text)
+        if diagnostics is not None:
+            read.update(parse_result=parsed,
+                        reason=None if parsed is not None else "parse_failed")
+            diagnostics["reason"] = read["reason"]
+        return parsed
+
+    def _read_key_pair_cell(self, frame, row_top: float, *,
+                            diagnostics: dict | None = None) -> tuple[int, int] | None:
+        """Recover a Keys pair when glyph segmentation clips its left digits.
+
+        Native Keys frames place the first cost in this cell. Two shifted
+        crops must parse the same complete pair; disagreement stays unreadable.
+        """
+        boxes = (
+            (0.495, row_top + 0.040, 0.550, row_top + 0.125),
+            (0.495, row_top + 0.050, 0.550, row_top + 0.135),
+        )
+        detail = {"diagnostics": diagnostics} if diagnostics is not None else {}
+        if diagnostics is not None:
+            diagnostics.update(pair_method="fallback", fallback_rois=boxes)
+        if boxes[-1][3] > 1.0:
+            if diagnostics is not None:
+                diagnostics.update(fallback_reason="fallback_out_of_frame",
+                                   reason="fallback_out_of_frame")
+            return None
+        first = self._parse_box(frame, boxes[0], **detail)
+        if first is None:
+            if diagnostics is not None:
+                diagnostics["fallback_reason"] = diagnostics["reason"]
+            return None
+        second = self._parse_box(frame, boxes[1], **detail)
+        if second != first:
+            if diagnostics is not None:
+                diagnostics.update(fallback_reason="fallback_disagrees",
+                                   reason="fallback_disagrees")
+            return None
+        if diagnostics is not None:
+            diagnostics.update(fallback_reason=None, parse_result=first)
+        return first
 
     def _recognize(self, image, scale: float):
         resized = cv2.resize(
@@ -431,7 +519,9 @@ def _localize_pair(frame, row_top: float) -> tuple[float, float, float, float] |
     for contour in contours:
         x, y, bw, bh = cv2.boundingRect(contour)
         hn, wn = bh / height, bw / width
-        if 0.006 <= hn <= 0.040 and 0.0015 <= wn <= 0.030:
+        # Native leading "1" is only ~3 px wide at 2712. The previous
+        # 4 px floor discarded it and changed 134/40 into 34/40.
+        if 0.006 <= hn <= 0.040 and 0.001 <= wn <= 0.030:
             glyphs.append(
                 (
                     0.48 + x / width,

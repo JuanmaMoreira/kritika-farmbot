@@ -13,9 +13,7 @@ from bot.flow_registry import DEFAULT_FLOW_REGISTRY
 from bot.gui_controller import _flow_status, _session_status, GuiRunStatus
 from bot.monster_wave_config import MonsterWaveConfig
 from bot.monster_wave_flow import MonsterWaveFlow
-from bot.monster_wave_eligibility import MonsterWaveDailyEligibility
 from bot.monster_wave_semantics import *
-from bot.eligibility import EligibilityStatus
 from bot.session import SessionStatus
 from bot.session_report import ReportStatus, build_session_report
 from test_monster_wave import Device, NEEDS, READY, ACTIVE
@@ -33,8 +31,8 @@ def runtime_for(monkeypatch, device, *, config=MonsterWaveConfig(), sapphires=20
         context=kwargs.get('context',SCREEN_LOBBY)
         device.trace.append(('sapphires',context))
         value=sapphires
-        if context==SCREEN_MONSTER_WAVE:
-            assert device.base==SCREEN_MONSTER_WAVE and not device.overlays
+        if context==SCREEN_BATTLE_MODE_SELECT:
+            assert device.base==SCREEN_BATTLE_MODE_SELECT and not device.overlays
             assert device.sequence>=kwargs['after_sequence']
             device.observe();device.observe()
             value=sapphires if mw_sapphires is None else mw_sapphires
@@ -60,12 +58,12 @@ def test_real_prepared_consumers_preserve_order_and_one_visit(monkeypatch,order,
     assert d.base==SCREEN_LOBBY
     assert d.intents.count('OpenBattleModeSelect')==d.intents.count('OpenQuickMenu')==1
     assert d.intents.count('SelectQuickMenuLobby')==1
-    assert d.intents.count('OpenMonsterWave')==int(daily)
+    assert d.intents.count('OpenMonsterWave')==1
     assert r.flow_names==order
     if daily:
         assert (d.intents.index('OpenMonsterWave')<d.intents.index('OpenWorldBossSelector'))==(order[0]=='monster_wave')
     mw=r.character_results[0].flow_results[order.index('monster_wave')]
-    assert mw.status is (FlowStatus.COMPLETED if daily else FlowStatus.SKIPPED_NOT_ELIGIBLE)
+    assert mw.status is FlowStatus.COMPLETED
     assert rotation.calls==1
     report=build_session_report(r)
     assert report.status is ReportStatus.COMPLETE
@@ -115,8 +113,8 @@ def test_opt_in_board_handoff_stops_session_without_next_flow_or_rotation(monkey
     runtime,records,rotation=runtime_for(monkeypatch,d)
     original=MonsterWaveFlow.prepared
     monkeypatch.setattr(MonsterWaveFlow,'prepared',
-        lambda self,zone,*,daily=False: original(
-            self,zone,daily=daily,yield_resource_board=True))
+        lambda self,zone: original(
+            self,zone,yield_resource_board=True))
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave','world_boss']),
                           character_count=1)
     assert r.status is SessionStatus.FAILED
@@ -167,72 +165,38 @@ def test_intervening_flow_closes_visit_without_reorder(monkeypatch):
 
 
 @pytest.mark.parametrize('daily',[True,False])
-def test_daily_eligibility_observes_hub_and_has_no_input(daily):
-    d=Device(daily=daily)
-    r=MonsterWaveDailyEligibility(d,cancel_requested=lambda:False).evaluate()
-    assert r.status is (EligibilityStatus.ELIGIBLE if daily else EligibilityStatus.NOT_ELIGIBLE)
-    assert not d.intents and d.sequence>=4
-
-
-def test_daily_unknown_does_not_become_absent():
-    d=Device(base=None)
-    r=MonsterWaveDailyEligibility(d,cancel_requested=lambda:False).evaluate()
-    assert r.status is EligibilityStatus.UNKNOWN and r.failure is not None
-    assert not d.intents
-
-
-@pytest.mark.parametrize('balance',range(4))
-def test_absent_daily_precedes_resource_guard_without_read_or_entry(monkeypatch,balance):
-    d=Device(base=SCREEN_LOBBY,daily=False)
-    runtime,_,_=runtime_for(monkeypatch,d,sapphires=balance)
-    r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
-    assert r.character_results[0].flow_results[0].status is FlowStatus.SKIPPED_NOT_ELIGIBLE
-    runtime.facts.read_sapphires.assert_not_called()
-    assert 'OpenMonsterWave' not in d.intents
-
-
-@pytest.mark.parametrize('balance',range(4))
 @pytest.mark.parametrize('entry',[NEEDS,READY,ACTIVE])
-def test_daily_low_balance_returns_business_before_any_skip_operation(monkeypatch,balance,entry):
-    d=Device(entry,base=SCREEN_LOBBY)
-    runtime,records,_=runtime_for(monkeypatch,d,sapphires=balance,config=MonsterWaveConfig(True,False))
+def test_zero_sapphires_skips_without_entering_mw(monkeypatch,daily,entry):
+    d=Device(entry,base=SCREEN_LOBBY,daily=daily)
+    runtime,_,_=runtime_for(monkeypatch,d,sapphires=0)
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
     assert r.status is SessionStatus.COMPLETED and d.base==SCREEN_LOBBY
-    assert d.intents==['OpenBattleModeSelect','OpenMonsterWave','ExitMonsterWave',
-                       'OpenQuickMenu','SelectQuickMenuLobby']
+    assert d.intents==['OpenBattleModeSelect','OpenQuickMenu','SelectQuickMenuLobby']
     result=r.character_results[0].flow_results[0]
-    event=result.events[0]
-    assert event.kind=='monster_wave.daily_sapphires_below_minimum'
-    assert event.fields['observed_balance']==balance
-    assert event.fields['required_sapphires']==4 and event.fields['attempt_started'] is False
-    assert result.event_count('monster_wave.insufficient_sapphires')==0
-    report=build_session_report(r)
-    assert report.status is ReportStatus.BUSINESS_INCOMPLETE and report.failure is None
-    assert report.counts.technical_failure==0
-    assert any(e.event==event.kind and e.fields['event_role']=='business' for e in records)
+    assert result.sapphires_initial==0
+    assert result.event_count('monster_wave.no_work')==1
+    runtime.facts.read_sapphires.assert_called_once()
 
 
-@pytest.mark.parametrize('balance',[4,5,100,183])
-def test_daily_sufficient_fresh_balance_allows_skip(monkeypatch,balance):
-    d=Device(base=SCREEN_LOBBY)
+@pytest.mark.parametrize('balance',[1,2,3,4,5,100,183])
+@pytest.mark.parametrize('daily',[True,False])
+def test_positive_balance_allows_skip_without_daily_gate(monkeypatch,balance,daily):
+    d=Device(base=SCREEN_LOBBY,daily=daily)
     runtime,_,_=runtime_for(monkeypatch,d,sapphires=balance)
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
     assert r.status is SessionStatus.COMPLETED
     assert 'StartMonsterWaveSkip' in d.intents
-    assert runtime.facts.read_sapphires.call_args.kwargs['context']==SCREEN_MONSTER_WAVE
+    assert runtime.facts.read_sapphires.call_args.kwargs['context']==SCREEN_BATTLE_MODE_SELECT
 
 
-def test_world_boss_old_eight_does_not_authorize_mw_after_fresh_three(monkeypatch):
+def test_world_boss_balance_is_not_reused_for_mw(monkeypatch):
     d=Device(base=SCREEN_LOBBY)
-    runtime,_,_=runtime_for(monkeypatch,d,sapphires=8,mw_sapphires=3)
+    runtime,_,_=runtime_for(monkeypatch,d,sapphires=8,mw_sapphires=0)
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['world_boss','monster_wave']),character_count=1)
     assert r.status is SessionStatus.COMPLETED
-    assert 'StartWorldBossBattle' in d.intents and 'SelectMonsterWaveMax' not in d.intents
-    assert d.trace.index(('sapphires',SCREEN_LOBBY))<d.trace.index(('intent','StartWorldBossBattle'))
-    assert d.trace.index(('intent','ExitWorldBoss'))<d.trace.index(('sapphires',SCREEN_MONSTER_WAVE))
-    event=r.character_results[0].flow_results[1].events[0]
-    assert event.fields['observed_balance']==3
-    assert build_session_report(r).status is ReportStatus.BUSINESS_INCOMPLETE
+    assert 'StartWorldBossBattle' in d.intents and 'OpenMonsterWave' not in d.intents
+    assert d.trace.index(('intent','ExitWorldBoss'))<d.trace.index(('sapphires',SCREEN_BATTLE_MODE_SELECT))
+    assert r.character_results[0].flow_results[1].event_count('monster_wave.no_work')==1
 
 
 @pytest.mark.parametrize('balance',[1,2,3])
@@ -243,23 +207,24 @@ def test_manual_low_balance_ignores_daily_minimum(monkeypatch,balance,mode):
     definition=DEFAULT_FLOW_REGISTRY.get('monster_wave')
     r=runtime.run_flows_once((definition,)) if mode=='selected' else runtime.run_flow(definition)
     assert r.status is FlowStatus.COMPLETED and 'StartMonsterWaveSkip' in d.intents
-    runtime.facts.read_sapphires.assert_not_called()
+    runtime.facts.read_sapphires.assert_called_once()
+    assert runtime.facts.read_sapphires.call_args.kwargs['context']==SCREEN_BATTLE_MODE_SELECT
 
 
 @pytest.mark.parametrize('entry,ack',[(POPUP_MW_WEEKLY,'AcknowledgeMonsterWaveWeekly'),
                                    (POPUP_MW_RANKING,'AcknowledgeMonsterWaveRanking')])
-def test_daily_normalizes_before_fresh_ocr_and_report_is_complete(monkeypatch,entry,ack):
+def test_precheck_precedes_entry_normalization_and_report_is_complete(monkeypatch,entry,ack):
     d=Device(entry,base=SCREEN_LOBBY)
     runtime,_,_=runtime_for(monkeypatch,d)
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
     assert build_session_report(r).status is ReportStatus.COMPLETE
-    assert d.trace.index(('intent',ack))<d.trace.index(('sapphires',SCREEN_MONSTER_WAVE))
-    assert d.trace.index(('sapphires',SCREEN_MONSTER_WAVE))<d.trace.index(('intent','SelectMonsterWaveMax'))
+    assert d.trace.index(('sapphires',SCREEN_BATTLE_MODE_SELECT))<d.trace.index(('intent',ack))
+    assert d.trace.index(('sapphires',SCREEN_BATTLE_MODE_SELECT))<d.trace.index(('intent','SelectMonsterWaveMax'))
 
 
 @pytest.mark.parametrize('problem',['unreadable','uncertain','failure','timeout','context_mismatch',
                                    'old_fact','lobby_fact','exception','cancelled'])
-def test_daily_failed_or_stale_ocr_never_authorizes_input(monkeypatch,problem):
+def test_failed_or_stale_precheck_never_authorizes_input(monkeypatch,problem):
     from bot.runtime_facts import FactReadResult, FactReadStatus
     d=Device(base=SCREEN_LOBBY);runtime,_,_=runtime_for(monkeypatch,d)
     def read(**kwargs):
@@ -267,36 +232,47 @@ def test_daily_failed_or_stale_ocr_never_authorizes_input(monkeypatch,problem):
         if problem in {'old_fact','lobby_fact'}:
             seq=kwargs['after_sequence'] if problem=='old_fact' else d.observe().sequence
             return fact_result('resource.sapphires',100,seq,
-                               SCREEN_LOBBY if problem=='lobby_fact' else SCREEN_MONSTER_WAVE)
+                               SCREEN_LOBBY if problem=='lobby_fact' else SCREEN_BATTLE_MODE_SELECT)
         return FactReadResult(FactReadStatus(problem))
     runtime.facts.read_sapphires.side_effect=read
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
     assert r.status is (SessionStatus.CANCELLED if problem=='cancelled' else SessionStatus.FAILED)
-    assert d.intents==['OpenBattleModeSelect','OpenMonsterWave']
+    assert d.intents==['OpenBattleModeSelect']
     if problem!='cancelled':assert build_session_report(r).status is ReportStatus.TECHNICAL_FAILURE
 
 
-@pytest.mark.parametrize('status',[EligibilityStatus.UNKNOWN,EligibilityStatus.FAILED])
-def test_daily_eligibility_failure_precedes_entry_and_ocr(monkeypatch,status):
-    from bot.eligibility import EligibilityResult
-    from bot.failure_cause import FailureCause
-    monkeypatch.setattr(MonsterWaveDailyEligibility,'evaluate',lambda self:
-                        EligibilityResult(status,'unconfirmed',FailureCause.from_error(RuntimeError('unconfirmed'))))
-    d=Device(base=SCREEN_LOBBY);runtime,_,_=runtime_for(monkeypatch,d)
-    r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
-    assert r.status is SessionStatus.FAILED and 'OpenMonsterWave' not in d.intents
-    runtime.facts.read_sapphires.assert_not_called()
-
-
-def test_daily_reobserves_skip_after_ocr_and_uses_new_state(monkeypatch):
+def test_entry_observes_skip_after_precheck_and_uses_new_state(monkeypatch):
     d=Device(ACTIVE,base=SCREEN_LOBBY)
     runtime,_,_=runtime_for(monkeypatch,d,config=MonsterWaveConfig(False,False))
     original=runtime.facts.read_sapphires.side_effect
     def read(**kwargs):
         result=original(**kwargs)
-        d.names=NEEDS
+        d.entry=NEEDS
         return result
     runtime.facts.read_sapphires.side_effect=read
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
-    assert r.status is SessionStatus.COMPLETED and 'SelectMonsterWaveMax' not in d.intents
-    assert r.character_results[0].flow_results[0].event_count('monster_wave.tickets_missing_purchase_disabled')==1
+    assert r.status is SessionStatus.COMPLETED and 'SelectMonsterWaveMax' in d.intents
+    assert r.character_results[0].flow_results[0].event_count('monster_wave.tickets_missing_purchase_disabled')==0
+    assert r.character_results[0].flow_results[0].event_count('monster_wave.tickets_purchased')==1
+
+
+@pytest.mark.parametrize('balance,passes', [(0,0),(1,1),(100,1),(101,2),(201,3)])
+def test_productive_session_uses_hub_balance_once_without_badge(monkeypatch,balance,passes):
+    from bot.monster_wave_productive import ProductiveMonsterWaveFlow
+    d=Device(base=SCREEN_LOBBY,daily=False)
+    runtime,_,_=runtime_for(monkeypatch,d,sapphires=balance)
+    inner=MonsterWaveFlow(d,d,d.events,facts=runtime.facts,sleeper=lambda _:None)
+    productive=ProductiveMonsterWaveFlow(inner,boards=Mock(),navigation=Mock(),route=Mock())
+    monkeypatch.setattr(runtime,'build_flows',lambda _: (productive,))
+    r=runtime.run_session((),character_count=1)
+    assert r.status is SessionStatus.COMPLETED, r
+    result=r.character_results[0].flow_results[0]
+    assert result.sapphires_initial==balance
+    assert result.sapphires_consumed==balance
+    assert d.intents.count('StartMonsterWaveSkip')==passes
+    assert d.intents.count('SelectMonsterWaveMax')==int(balance>0)
+    assert d.intents.count('OpenMonsterWave')==int(balance>0)
+    runtime.facts.read_sapphires.assert_called_once()
+    assert runtime.facts.read_sapphires.call_args.kwargs['context']==SCREEN_BATTLE_MODE_SELECT
+    if balance:
+        assert d.trace.index(('sapphires',SCREEN_BATTLE_MODE_SELECT))<d.trace.index(('intent','OpenMonsterWave'))

@@ -44,3 +44,16 @@ class CombineContextDetector:
 
 
 __all__ = ("CombineContextDetector",)
+
+
+def combine_controls_undimmed(frame) -> bool:
+    """Known Combine Back interior: the result veil dims unchanged chrome.
+
+    Native 2026-10-02: max-channel mean 49 under the Ethereal result and
+    186 on the recovered Random Part panel. Title matching alone sees the
+    panel through that veil. This local guard does not identify the reward.
+    """
+    height, width = frame.shape[:2]
+    crop = frame[int(.048 * height):int(.095 * height),
+                 int(.792 * width):int(.812 * width)]
+    return bool(crop.size and crop.max(axis=2).mean() >= 120.)

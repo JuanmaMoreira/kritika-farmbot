@@ -1,8 +1,9 @@
-"""One fresh, verified MAX SKIP attempt, Battle Mode hub -> hub."""
+"""Verified MW preparation and reusable SKIP pass."""
 from dataclasses import dataclass
 from enum import Enum
+import time
 
-from bot.battle_mode_zone import is_battle_mode_select
+from bot.battle_mode_zone import is_battle_mode_select, is_lobby
 from bot.catalog import (POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL,
                          SCREEN_BATTLE_MODE_SELECT, SEMANTIC_CONFIDENCE_THRESHOLD)
 from bot.component_contracts import ComponentRequirement
@@ -14,14 +15,18 @@ from bot.monster_wave_actions import (
     StartMonsterWaveSkip, RejectMonsterWaveSapphires, DeclineMonsterWaveInventory,
     AcceptMonsterWaveInventory, AcknowledgeMonsterWaveClear,
     AcknowledgeMonsterWaveWeekly, AcknowledgeMonsterWaveRanking,
+    AcknowledgeMonsterWavePointsReward,
 )
 from bot.monster_wave_config import MonsterWaveConfig
 from bot.monster_wave_semantics import *
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.runtime_facts import FactReadStatus
 from bot.ocr_extractors import RESOURCE_SAPPHIRES
+from bot.perception.monster_wave import MONSTER_WAVE_SPECS
+from bot.semantic_actions import OpenBattleModeSelect
 from bot.state import ResolutionStatus
-from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
+from bot.verified_transition import (VerifiedTransition, VerifiedTransitionPolicy,
+                                     VerifiedTransitionOutcome)
 
 
 class SkipState(str, Enum):
@@ -87,10 +92,22 @@ def entry_ready(snapshot):
             or any(popup(name)(snapshot) for name in ENTRY_ACKNOWLEDGEMENTS))
 
 
+def _entry_modal(snapshot):
+    """Recognition only; UNKNOWN needs the local effective-entry handoff to ACK."""
+    for name, landmark in ((POPUP_MW_WEEKLY, MW_WEEKLY), (POPUP_MW_RANKING, MW_RANKING)):
+        if popup(name)(snapshot):
+            return name
+        if (snapshot.state.status is ResolutionStatus.UNKNOWN
+                and set(snapshot.state.overlays) == {name} and has(snapshot, landmark)):
+            return name
+    return None
+
+
 def boundary(snapshot):
     return (mw_screen(snapshot) and len(snapshot.state.overlays) == 1
             and set(snapshot.state.overlays) <= {
-                POPUP_MW_INSUFFICIENT, POPUP_MW_BOARD, POPUP_MW_CLEAR, *HARD_BLOCKERS})
+                POPUP_MW_INSUFFICIENT, POPUP_MW_BOARD, POPUP_MW_CLEAR,
+                POPUP_MW_POINTS_REWARD, *HARD_BLOCKERS})
 
 
 @dataclass(frozen=True)
@@ -98,6 +115,8 @@ class MonsterWaveResult(FlowResult):
     transition_outcomes: tuple[tuple[str, str], ...] = ()
     transition_attempts: tuple[tuple[str, int, int], ...] = ()
     board_sequence: int | None = None
+    sapphires_initial: int | None = None
+    sapphires_consumed: int = 0
 
     def __post_init__(self):
         super().__post_init__()
@@ -106,6 +125,8 @@ class MonsterWaveResult(FlowResult):
                 raise ValueError('pending resource board requires its fresh sequence')
         elif self.board_sequence is not None:
             raise ValueError('only a pending resource board can carry board_sequence')
+        if self.sapphires_consumed < 0:
+            raise ValueError('sapphires_consumed must be non-negative')
 
 
 class _Stopped(Exception):
@@ -120,15 +141,55 @@ class MonsterWaveActivity:
                             (ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),))
 
     def __init__(self, observer, actions, events, *, config=MonsterWaveConfig(),
-                 cancel_requested=lambda: False, verified_transition=None, facts=None):
+                 cancel_requested=lambda: False, verified_transition=None, facts=None,
+                 clock=time.monotonic, sleeper=time.sleep):
         if not isinstance(config, MonsterWaveConfig):
             raise ValueError('config must be MonsterWaveConfig')
         self.observer, self.actions, self.events = observer, actions, events
         self.config, self.cancel_requested = config, cancel_requested
         self.facts = facts
+        self.clock, self.sleeper = clock, sleeper
         self.verified_transition = verified_transition or VerifiedTransition(observer, actions, events)
 
-    def run(self, *, daily_sapphires=False, yield_resource_board=False):
+    def prepare(self):
+        return self._run_phase('prepare')
+
+    def reenter(self):
+        return self._run_phase('reenter')
+
+    def run_pass(self, *, yield_resource_board=False, resume_after_relief=False):
+        return self._run_phase('pass', yield_resource_board=yield_resource_board,
+                               resume_after_relief=resume_after_relief)
+
+    def finish_pass(self, current):
+        return self._run_phase('finish', current=current)
+
+    def leave(self):
+        return self._run_phase('leave')
+
+    def run(self, *, yield_resource_board=False):
+        """Single-pass compatibility for the bare MW flow."""
+        prepared = self.prepare()
+        if not prepared.succeeded or prepared.event_count('monster_wave.no_work'):
+            return prepared
+        passed = self.run_pass(yield_resource_board=yield_resource_board)
+        combined = self._merge(prepared, passed)
+        if not passed.succeeded:
+            return combined
+        return self._merge(combined, self.leave())
+
+    @staticmethod
+    def _merge(first, second):
+        from dataclasses import replace
+        return replace(second,
+            events=first.events + second.events,
+            transition_outcomes=first.transition_outcomes + second.transition_outcomes,
+            transition_attempts=first.transition_attempts + second.transition_attempts,
+            sapphires_initial=first.sapphires_initial,
+            sapphires_consumed=first.sapphires_consumed + second.sapphires_consumed)
+
+    def _run_phase(self, phase, *, yield_resource_board=False,
+                   resume_after_relief=False, current=None):
         if not isinstance(yield_resource_board, bool):
             raise ValueError('yield_resource_board must be bool')
         transitions, events = [], []
@@ -142,11 +203,12 @@ class MonsterWaveActivity:
             if self.cancel_requested():
                 raise RuntimeWaitCancelled()
 
-        def step(name, intent, before, guard, expected):
+        def step(name, intent, before, guard, expected, *, abort_if=None):
             check_cancel()
             r = self.verified_transition.execute(
                 f'monster_wave.{name}', intent, before, precondition=guard,
-                expected=expected, policy=VerifiedTransitionPolicy(max_attempts=1), stable_for=.25)
+                expected=expected, policy=VerifiedTransitionPolicy(max_attempts=1),
+                stable_for=.25, abort_if=abort_if)
             transitions.append(r)
             check_cancel()
             if not r.succeeded:
@@ -159,108 +221,218 @@ class MonsterWaveActivity:
             events.append(FlowEvent(f'monster_wave.{kind}', fields=fields))
 
         def exit_hub(before):
-            step('exit', ExitMonsterWave(), before, clean_mw, is_battle_mode_select)
+            returned = step('exit', ExitMonsterWave(), before, clean_mw,
+                            lambda s: is_battle_mode_select(s) or is_lobby(s))
+            # Inventory lineage can make Back land normally in Lobby.
+            # Preserve the reusable activity's hub postcondition through the
+            # existing navigation, only for that fresh physical destination.
+            if is_lobby(returned):
+                step('exit_lobby_to_hub', OpenBattleModeSelect(), returned,
+                     is_lobby, is_battle_mode_select)
             return finish()
+
+        def enter(before):
+            def incompatible(s):
+                return (s.state.status is ResolutionStatus.AMBIGUOUS
+                        or (s.state.status is ResolutionStatus.RESOLVED and not mw_screen(s))
+                        or not set(s.state.overlays) <= ENTRY_ACKNOWLEDGEMENTS.keys())
+
+            # Recognition can end the passive wait without inventing a BASE.
+            check_cancel()
+            entered = self.verified_transition.execute(
+                'monster_wave.open', OpenMonsterWave(), before,
+                precondition=is_battle_mode_select,
+                expected=lambda s: entry_ready(s) or _entry_modal(s) is not None,
+                abort_if=lambda s: not is_battle_mode_select(s) and incompatible(s),
+                policy=VerifiedTransitionPolicy(max_attempts=1), stable_for=.25)
+            transitions.append(entered)
+            check_cancel()
+            source = entered.action_source_snapshot
+            if (source is None or not is_battle_mode_select(source)
+                    or entered.recovery_after_action
+                    or (not entered.succeeded and entered.outcome is not VerifiedTransitionOutcome.TIMEOUT)):
+                raise _Stopped(entered)
+            current = entered.final_snapshot
+            if current.sequence <= source.sequence:
+                raise ValueError('entry snapshot is not fresh')
+            acknowledgements = 0
+            recovered = False
+            while True:
+                check_cancel()
+                modal = _entry_modal(current)
+                if modal is not None:
+                    if acknowledgements == 2:
+                        raise ValueError('entry normalization exceeded two acknowledgements')
+                    # Only this established control inherits effective entry.
+                    # Every other popup()/UNKNOWN guard remains unchanged.
+                    guard = lambda s: s.sequence > source.sequence and _entry_modal(s) == modal
+                    changed = lambda s: (modal not in s.state.overlays
+                        and (entry_ready(s) or _entry_modal(s) is not None
+                             or (s.state.status is ResolutionStatus.UNKNOWN and not s.state.overlays)))
+                    current = step('acknowledge_entry', ENTRY_ACKNOWLEDGEMENTS[modal](),
+                                   current, guard, changed, abort_if=incompatible)
+                    acknowledgements += 1
+                    continue
+                if skip_state(current) is not None:
+                    return current
+                # Only the missing BASE landmark is a causal signal here.
+                # Unknown/foreign overlays and contradictory bases never probe.
+                recovery = self.verified_transition.obstruction_recovery
+                if (not recovered and recovery is not None
+                        and current.state.status is ResolutionStatus.UNKNOWN
+                        and not current.state.overlays and not has(current, MW_SCREEN)):
+                    regions = tuple(spec.region for spec in MONSTER_WAVE_SPECS if spec.name == MW_SCREEN)
+                    fresh = recovery.attempt(current, entry_ready, regions=regions,
+                                             monster_wave_entry_source=source)
+                    recovered = True
+                    check_cancel()
+                    if fresh is not None:
+                        if fresh.sequence <= current.sequence:
+                            raise ValueError('entry recovery snapshot is not fresh')
+                        # Post-dismiss frame can be transitional (e.g., NEEDS
+                        # placeholder before timer loads). Recovery success alone
+                        # never decides entry; require stable revalidation so a
+                        # transient first-ABSENT frame cannot trigger an
+                        # immediate NEEDS exit before MAX/first SKIP.
+                        current = self.observer.wait_until(
+                            lambda s: entry_ready(s) or _entry_modal(s) is not None,
+                            after_sequence=fresh.sequence,
+                            timeout=6, stable_for=.25,
+                            abort_if=incompatible,
+                            cancel_requested=self.cancel_requested)
+                        if current.sequence <= fresh.sequence:
+                            raise ValueError('entry recovery snapshot is not fresh')
+                        continue
+                raise ValueError('entry normalization did not reach clean MW')
 
         try:
             check_cancel()
-            initial = self.observer.observe()
-            before = self.observer.wait_until(
-                is_battle_mode_select, after_sequence=initial.sequence,
-                timeout=6, stable_for=.25, cancel_requested=self.cancel_requested)
-            entered = step('open', OpenMonsterWave(), before, is_battle_mode_select,
-                           entry_ready)
-            current = entered
-            for _ in range(2):
-                obstruction = next((name for name in ENTRY_ACKNOWLEDGEMENTS
-                                    if popup(name)(current)), None)
-                if obstruction is None:
-                    break
-                current = step('acknowledge_entry', ENTRY_ACKNOWLEDGEMENTS[obstruction](),
-                               current, popup(obstruction),
-                               lambda s: entry_ready(s) and not popup(obstruction)(s))
-            if skip_state(current) is None:
-                raise ValueError('entry normalization did not reach clean MW within two acknowledgements')
-            if daily_sapphires:
-                # Only Daily composition enables this guard. Never use Lobby's old fact.
+            if phase == 'prepare':
+                initial = self.observer.observe()
+                before = self.observer.wait_until(
+                    is_battle_mode_select, after_sequence=initial.sequence,
+                    timeout=6, stable_for=.25, cancel_requested=self.cancel_requested)
                 read = self.facts.read_sapphires(
-                    context=SCREEN_MONSTER_WAVE, after_sequence=current.sequence,
+                    context=SCREEN_BATTLE_MODE_SELECT, after_sequence=before.sequence,
                     timeout=6, cancel_requested=self.cancel_requested)
                 check_cancel()
                 if read.status is FactReadStatus.CANCELLED:
                     raise RuntimeWaitCancelled()
                 fact = read.fact
                 if (read.status is not FactReadStatus.CONFIRMED or fact is None
-                        or fact.name != RESOURCE_SAPPHIRES or fact.context != SCREEN_MONSTER_WAVE
-                        or not fact.evidence
-                        or any(e.sequence <= current.sequence for e in fact.evidence)):
-                    raise ValueError(f'fresh MW sapphires not confirmed: {read.status.value}')
-                current = self.observer.wait_until(
-                    lambda s: skip_state(s) is not None,
+                        or fact.name != RESOURCE_SAPPHIRES or fact.context != SCREEN_BATTLE_MODE_SELECT
+                        or not fact.evidence or type(fact.value) is not int or fact.value < 0
+                        or any(e.sequence <= before.sequence for e in fact.evidence)):
+                    raise ValueError(f'fresh hub sapphires not confirmed: {read.status.value}')
+                if fact.value == 0:
+                    business('no_work', sapphires=0)
+                    return finish(sapphires_initial=0)
+                before = self.observer.wait_until(
+                    is_battle_mode_select,
                     after_sequence=max(e.sequence for e in (*read.evidence, *fact.evidence)),
                     timeout=6, stable_for=.25, cancel_requested=self.cancel_requested)
-                if fact.value < 4:
-                    business('daily_sapphires_below_minimum', observed_balance=fact.value,
-                             required_sapphires=4, attempt_started=False,
-                             observation_sequence=max(e.sequence for e in fact.evidence))
-                    return exit_hub(current)
-            # All decisions are local to this run and evidence; no activation cache.
-            # Lifecycle HIL 2026-09-24: tickets are the SKIP activation requirement
-            # (30/30), not entry. Sapphires are consumption. NEEDS means <30/30
-            # (observed 0/30, Activate grey, no timer); >=1 never suffices. Fill All
-            # buys remaining*140k Gold (0/30->4.2M, 20/30->1.4M); activation is a
-            # separate tap; ACTIVE=timer+Start (1:20:57 example, no duration const);
-            # expiry is fresh loss of ACTIVE, never a clock. VIP may lower the
-            # requirement; buff is account-wide. Never Karats.
-            if skip_state(current) is SkipState.NEEDS_TICKETS:
-                if not self.config.purchase_skip_tickets:
-                    business('tickets_missing_purchase_disabled')
-                    return exit_hub(current)
-                current = step('open_tickets', OpenMonsterWaveTickets(), current,
-                               lambda s: skip_state(s) is SkipState.NEEDS_TICKETS, popup(POPUP_MW_PURCHASE))
-                full = lambda s: popup(POPUP_MW_PURCHASE)(s) and has(s, MW_PURCHASE_FULL)
-                if not full(current):
-                    # Fill All buys the game's remaining quantity once (140k/ticket;
-                    # after 30/30 both x1 and Fill show disabled with remaining cost 0).
-                    # Never x1 loop, never saldo-5, never repeat a spend.
-                    current = step('fill_tickets', FillMonsterWaveTickets(), current,
-                                   lambda s: popup(POPUP_MW_PURCHASE)(s) and not has(s, MW_PURCHASE_FULL), full)
-                    business('tickets_purchased')
-                current = step('close_tickets', CloseMonsterWaveTickets(), current, full,
-                               lambda s: skip_state(s) is SkipState.READY)
-            if skip_state(current) is SkipState.READY:
-                current = step('activate', ActivateMonsterWaveSkip(), current,
-                               lambda s: skip_state(s) is SkipState.READY, active)
-            current = step('select_max', SelectMonsterWaveMax(), current, active, max_ready)
-            current = step('start_skip', StartMonsterWaveSkip(), current, max_ready, boundary)
+                current = enter(before)
+                # USER_GT: with sapphires to spend, missing tickets never ends
+                # the flow. NEEDS always attempts Fill All once (Gold), then
+                # READY must verify before Activate; ACTIVE skips both.
+                # purchase_skip_tickets no longer gates productive preparation.
+                if skip_state(current) is SkipState.NEEDS_TICKETS:
+                    current = step('open_tickets', OpenMonsterWaveTickets(), current,
+                                   lambda s: skip_state(s) is SkipState.NEEDS_TICKETS, popup(POPUP_MW_PURCHASE))
+                    full = lambda s: popup(POPUP_MW_PURCHASE)(s) and has(s, MW_PURCHASE_FULL)
+                    if not full(current):
+                        current = step('fill_tickets', FillMonsterWaveTickets(), current,
+                                       lambda s: popup(POPUP_MW_PURCHASE)(s) and not has(s, MW_PURCHASE_FULL), full)
+                        business('tickets_purchased')
+                    current = step('close_tickets', CloseMonsterWaveTickets(), current, full,
+                                   lambda s: skip_state(s) is SkipState.READY)
+                if skip_state(current) is SkipState.READY:
+                    current = step('activate', ActivateMonsterWaveSkip(), current,
+                                   lambda s: skip_state(s) is SkipState.READY, active)
+                current = step('select_max', SelectMonsterWaveMax(), current, active, max_ready)
+                return finish(sapphires_initial=fact.value)
+
+            if phase == 'reenter':
+                initial = self.observer.observe()
+                before = self.observer.wait_until(
+                    is_battle_mode_select, after_sequence=initial.sequence,
+                    timeout=6, stable_for=.25, cancel_requested=self.cancel_requested)
+                current = enter(before)
+                if not max_ready(current):
+                    raise ValueError('mw_reentry_requires_active_max')
+                return finish()
+            if phase == 'finish':
+                if current is None:
+                    raise ValueError('mw_finish_requires_board_result')
+            else:
+                current = self.observer.observe()
+            if phase == 'leave':
+                if not clean_mw(current):
+                    raise ValueError('mw_leave_requires_clean_screen')
+                return exit_hub(current)
+            if phase not in {'pass', 'finish'} or (phase == 'pass' and not max_ready(current)):
+                raise ValueError('mw_pass_requires_active_max')
+            if phase == 'pass':
+                current = step('start_skip', StartMonsterWaveSkip(), current, max_ready, boundary)
             if popup(POPUP_MW_INSUFFICIENT)(current):
                 business('insufficient_sapphires')
                 current = step('reject_sapphires', RejectMonsterWaveSapphires(), current,
                                popup(POPUP_MW_INSUFFICIENT), clean_mw)
-                return exit_hub(current)
+                return finish()
             if popup(POPUP_MW_BOARD)(current):
                 if yield_resource_board:
                     business('resource_board_pending', board_sequence=current.sequence)
                     return finish(FlowStatus.RESOURCE_BOARD_PENDING,
                                   board_sequence=current.sequence)
-                if not self.config.continue_when_nonblocking_inventory_full:
+                if not (self.config.continue_when_nonblocking_inventory_full or resume_after_relief):
                     business('inventory_warning_declined')
                     current = step('decline_inventory', DeclineMonsterWaveInventory(), current,
                                    popup(POPUP_MW_BOARD), clean_mw)
-                    return exit_hub(current)
+                    return finish()
                 current = step('accept_inventory', AcceptMonsterWaveInventory(), current,
                                popup(POPUP_MW_BOARD),
-                               lambda s: boundary(s) and POPUP_MW_BOARD not in s.state.overlays)
-            blockers = set(current.state.overlays) & HARD_BLOCKERS
+                               lambda s: not popup(POPUP_MW_BOARD)(s))
+            blockers = {name for name in HARD_BLOCKERS if popup(name)(current)}
             if blockers:
                 business('manual_resolution', blocker=next(iter(blockers)), reason='relief_return_not_acquired')
                 return finish(FlowStatus.MANUAL_RESOLUTION)
             if not popup(POPUP_MW_CLEAR)(current):
-                raise ValueError('unexpected_skip_boundary')
+                deadline = self.clock() + 60
+                while not (popup(POPUP_MW_CLEAR)(current)
+                           or popup(POPUP_MW_INSUFFICIENT)(current)
+                           or any(popup(name)(current) for name in HARD_BLOCKERS)):
+                    if popup(POPUP_MW_POINTS_REWARD)(current):
+                        # The topmost MODAL owns interaction: ACK only its OK.
+                        # step() returns a fresh postcondition-verified snapshot
+                        # and the loop re-observes whatever the modal uncovered
+                        # (normally CLEAR) instead of assuming it.
+                        current = step('acknowledge_points_reward', AcknowledgeMonsterWavePointsReward(), current,
+                                       popup(POPUP_MW_POINTS_REWARD), lambda s: not popup(POPUP_MW_POINTS_REWARD)(s))
+                        continue
+                    check_cancel()
+                    remaining = deadline - self.clock()
+                    if remaining <= 0:
+                        raise ValueError('mw_skip_result_unobservable')
+                    self.sleeper(min(1.0, remaining))
+                    newer = self.observer.observe()
+                    if newer.sequence <= current.sequence:
+                        continue
+                    current = newer
+                if popup(POPUP_MW_INSUFFICIENT)(current):
+                    business('insufficient_sapphires')
+                    current = step('reject_sapphires', RejectMonsterWaveSapphires(), current,
+                                   popup(POPUP_MW_INSUFFICIENT), clean_mw)
+                    return finish()
+                blockers = {name for name in HARD_BLOCKERS if popup(name)(current)}
+                if blockers:
+                    business('manual_resolution', blocker=next(iter(blockers)), reason='relief_return_not_acquired')
+                    return finish(FlowStatus.MANUAL_RESOLUTION)
+                if not popup(POPUP_MW_CLEAR)(current):
+                    raise ValueError('unexpected_skip_boundary')
             business('completed')
             current = step('acknowledge_clear', AcknowledgeMonsterWaveClear(), current,
                            popup(POPUP_MW_CLEAR), clean_mw)
-            return exit_hub(current)
+            return finish()
         except RuntimeWaitCancelled:
             return finish(FlowStatus.CANCELLED)
         except _Stopped as error:

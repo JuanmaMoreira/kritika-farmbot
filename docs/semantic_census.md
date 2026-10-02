@@ -54,7 +54,7 @@ en `constants.py`, `context.py`, `actions.py` o `flows.py`).
 | 21 | `monster-wave` | `screen.monster_wave` | base | `monster-wave-id.png` | legacy / legacy-only | FUTURE | Quick Menu; dificultad `penance`. |
 | 22 | `monster-wave-results` | `screen.monster_wave_results` | internal | `monster-wave-results-id.png` | legacy / legacy-only | FUTURE | Resultado modal/full-screen; evidencia insuficiente para elegir overlay/base. |
 | 23 | `monster-wave-skip-confirmation` | `popup.monster_wave_skip` | overlay | `monster-wave-skip-confirmation-id.png` | legacy / legacy-only | FUTURE | Incluye alertas de slots llenos como subcontextos. |
-| 24 | `monster-wave-points-reward` | `popup.monster_wave_points_reward` | overlay | `monster-wave-points-reward-id.png` | legacy / legacy-only | FUTURE | Reward transitorio. |
+| 24 | `monster-wave-points-reward` | `popup.monster_wave_points_reward` | overlay | `monster-wave-points-reward-id.png` + `landmarks/monster-wave/monster_wave_points_reward.png` | current / production | MONSTER_WAVE | MODAL por USER_GT (la clase `overlay` de este censo es LEGACY_STALE); OK→CLEAR; landmark de título, recompensa variable excluida. |
 | 25 | `monster-wave-skip-completed` | `popup.monster_wave_skip_completed` | overlay | `monster-wave-skip-completed-id.png` | legacy / legacy-only | FUTURE | Resultado transitorio. |
 | 26 | `select-boss` | `overlay.world_boss_select_boss` | overlay | `select-boss-id.png` | current / production | FUTURE | Live confirmó que preserva la base atenuada y Close la restaura; el landmark productivo es current-season. |
 | 27 | `world-boss` | `screen.world_boss` | base | `world-boss-id.png` | current / production | FUTURE | Base human-confirmed; Quick Menu abierto/cerrado live con restauración de la base. |

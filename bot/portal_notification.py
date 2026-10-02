@@ -1,15 +1,15 @@
 """On-demand probe for the transversal Heaven/Hell portal notification.
 
 The probe is deliberately *not* part of the per-frame Perception pipeline:
-callers invoke it only on a fresh frame whose state already failed to satisfy
-an expected condition. It never emits observations, never touches the
+callers invoke it only for a failed necessary signal or input target that
+intersects the physical occlusion envelope. It never emits observations, never touches the
 resolver, and never authorizes input by itself -- only an explicit CONFIRMED
 outcome lets the transversal recovery tap the dismiss X.
 
 Geometry notes (ground truth and live HIL calibration):
 - fixed position below Quick Menu;
-- present on Battle Mode Select, World Boss, Guild, Pets (probably others);
-- absent on Lobby and Character Select;
+- may appear over any non-battle BASE, including Lobby (GAMEPLAY_GT);
+- battle BASE and Character Select do not inherit this rule;
 - Heaven/Hell variants change text/color and carry transparency;
 - a lateral dynamic animation must be excluded from detection.
 

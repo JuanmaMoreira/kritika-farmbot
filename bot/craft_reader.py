@@ -27,7 +27,7 @@ from bot.geometry import RelativeRegion, relative_region_to_pixels
 
 QUICK_MENU_LOBBY_ROI: RelativeRegion = (0.170, 0.200, 0.240, 0.280)
 QUICK_MENU_CRAFT_ROI: RelativeRegion = (0.360, 0.490, 0.430, 0.560)
-QUICK_MENU_GUILD_ROI: RelativeRegion = (0.360, 0.590, 0.430, 0.680)
+QUICK_MENU_GUILD_ROI: RelativeRegion = (0.360, 0.615, 0.430, 0.655)
 
 CRAFT_TITLE_ROI: RelativeRegion = (0.400, 0.070, 0.600, 0.160)
 CRAFT_RATE_ROI: RelativeRegion = (0.180, 0.120, 0.300, 0.200)
@@ -38,7 +38,7 @@ CRAFT_HERO_COUNT_ROIS: dict[CraftFamily, RelativeRegion] = {
     CraftFamily.ACCESSORY: (0.740, 0.730, 0.840, 0.810),
 }
 CRAFT_HERO_COST_ROIS: dict[CraftFamily, RelativeRegion] = {
-    CraftFamily.WEAPON: (0.735, 0.390, 0.780, 0.435),
+    CraftFamily.WEAPON: (0.738, 0.397, 0.765, 0.427),
     CraftFamily.ARMOR: (0.735, 0.640, 0.780, 0.690),
     CraftFamily.ACCESSORY: (0.735, 0.890, 0.780, 0.945),
 }
@@ -59,7 +59,7 @@ _SELECTED_RECIPE_ROIS: dict[
         (0.370, 0.420, 0.460, 0.490),
     ),
 }
-CRAFT_COST_LABEL_ROI: RelativeRegion = (0.315, 0.570, 0.510, 0.680)
+CRAFT_COST_LABEL_ROI: RelativeRegion = (0.325, 0.635, 0.460, 0.677)
 CRAFT_COST_ROI: RelativeRegion = (0.480, 0.570, 0.550, 0.680)
 CRAFT_QUANTITY_ROI: RelativeRegion = (0.430, 0.680, 0.500, 0.790)
 
@@ -144,6 +144,7 @@ class CraftReader:
         if not callable(getattr(engine, "recognize", None)):
             raise ValueError("engine must provide recognize(image)")
         self.engine = engine
+        self.last_context_diagnostic: dict[str, object] = {}
 
     def quick_menu_sample(
         self, frame: np.ndarray, *, sequence: int, observed_at: float
@@ -152,6 +153,10 @@ class CraftReader:
         lobby = self._read(frame, QUICK_MENU_LOBBY_ROI, scale=4.0)
         craft = self._read(frame, QUICK_MENU_CRAFT_ROI, scale=4.0)
         guild = self._read(frame, QUICK_MENU_GUILD_ROI, scale=4.0)
+        self.last_quick_menu_diagnostic = {
+            name: {"text": result.text, "confidence": result.confidence}
+            for name, result in (("lobby", lobby), ("craft", craft), ("guild", guild))
+        }
         if min(lobby.confidence, craft.confidence, guild.confidence) < 0.80:
             return None
         fact = QuickMenuCraftFact(
@@ -168,10 +173,40 @@ class CraftReader:
     def context_sample(
         self, frame: np.ndarray, *, sequence: int, observed_at: float
     ) -> CraftContextFact | None:
+        """Prove Craft presence; economics stay best-effort per family.
+
+        Identity rests only on the expert marker, whose ROI avoids both the
+        CHAT and Heaven & Hell envelopes.  The chat-occludable title and the
+        H&H-exposed rate are auxiliary diagnostics, and each family
+        count/cost is optional: only the operation's own family can block it.
+        A proven Quick Menu overlay also rejects, since entry postconditions
+        require the menu closed.
+        """
+
         _require_frame(frame)
         title = self._read(frame, CRAFT_TITLE_ROI, scale=3.0)
         rate = self._read(frame, CRAFT_RATE_ROI, scale=3.0)
         expert = self._read(frame, CRAFT_EXPERT_MARKER_ROI, scale=3.0)
+        self.last_context_diagnostic = {
+            "sequence": sequence,
+            "observed_at": observed_at,
+            "reads": {
+                name: {"text": result.text, "confidence": result.confidence}
+                for name, result in (
+                    ("title", title), ("rate", rate), ("expert", expert),
+                )
+            },
+        }
+        if (
+            expert.confidence < 0.85
+            or _clean(expert.text).casefold() != "expert craft"
+        ):
+            self.last_context_diagnostic["rejection"] = "identity_unproven"
+            return None
+        menu = self.quick_menu_sample(frame, sequence=sequence, observed_at=observed_at)
+        if menu is not None:
+            self.last_context_diagnostic["rejection"] = "quick_menu_overlay"
+            return None
         counts = {
             family: self._read(frame, region, scale=3.0)
             for family, region in CRAFT_HERO_COUNT_ROIS.items()
@@ -180,8 +215,13 @@ class CraftReader:
             family: self._read(frame, region, scale=4.0)
             for family, region in CRAFT_HERO_COST_ROIS.items()
         }
-        if title.confidence < 0.75 or min(rate.confidence, expert.confidence) < 0.85:
-            return None
+        self.last_context_diagnostic["reads"].update({
+            name: {"text": result.text, "confidence": result.confidence}
+            for name, result in (
+                *((f"{family.value}_count", result) for family, result in counts.items()),
+                *((f"{family.value}_cost", result) for family, result in costs.items()),
+            )
+        })
         parsed_title = (
             "Craft"
             if re.fullmatch(r"[^A-Za-z]*Craft[^A-Za-z]*", _clean(title.text), re.IGNORECASE)
@@ -192,28 +232,30 @@ class CraftReader:
             for family, result in counts.items()
         }
         parsed_costs = {
-            family: parse_positive_int(result.text) if result.confidence >= 0.85 else None
+            family: parse_positive_int(result.text)
+            if result.confidence >= (0.80 if family is CraftFamily.WEAPON else 0.85)
+            else None
             for family, result in costs.items()
         }
-        if any(value is None for value in (*parsed_counts.values(), *parsed_costs.values())):
-            return None
-        weapon_count = parsed_counts[CraftFamily.WEAPON]
-        armor_count = parsed_counts[CraftFamily.ARMOR]
-        accessory_count = parsed_counts[CraftFamily.ACCESSORY]
-        assert weapon_count is not None and armor_count is not None and accessory_count is not None
         fact = CraftContextFact(
             title=parsed_title,
             rate_label=rate.text,
-            expert_label=expert.text,
-            weapon_material=weapon_count[0],
-            armor_material=armor_count[0],
-            accessory_material=accessory_count[0],
-            weapon_capacity=weapon_count[1],
-            armor_capacity=armor_count[1],
-            accessory_capacity=accessory_count[1],
-            weapon_hero_cost=int(parsed_costs[CraftFamily.WEAPON]),
-            armor_hero_cost=int(parsed_costs[CraftFamily.ARMOR]),
-            accessory_hero_cost=int(parsed_costs[CraftFamily.ACCESSORY]),
+            expert_label=_clean(expert.text),
+            weapon_material=parsed_counts[CraftFamily.WEAPON][0]
+            if parsed_counts[CraftFamily.WEAPON] is not None else None,
+            armor_material=parsed_counts[CraftFamily.ARMOR][0]
+            if parsed_counts[CraftFamily.ARMOR] is not None else None,
+            accessory_material=parsed_counts[CraftFamily.ACCESSORY][0]
+            if parsed_counts[CraftFamily.ACCESSORY] is not None else None,
+            weapon_capacity=parsed_counts[CraftFamily.WEAPON][1]
+            if parsed_counts[CraftFamily.WEAPON] is not None else None,
+            armor_capacity=parsed_counts[CraftFamily.ARMOR][1]
+            if parsed_counts[CraftFamily.ARMOR] is not None else None,
+            accessory_capacity=parsed_counts[CraftFamily.ACCESSORY][1]
+            if parsed_counts[CraftFamily.ACCESSORY] is not None else None,
+            weapon_hero_cost=parsed_costs[CraftFamily.WEAPON],
+            armor_hero_cost=parsed_costs[CraftFamily.ARMOR],
+            accessory_hero_cost=parsed_costs[CraftFamily.ACCESSORY],
             sequence=sequence,
             observed_at=observed_at,
             sample_sequences=(sequence,),
@@ -224,6 +266,7 @@ class CraftReader:
                 *(f"{family.value}_cost:{costs[family].text}" for family in CraftFamily),
             ),
         )
+        self.last_context_diagnostic["rejection"] = None if fact.complete else "incomplete_fact"
         return fact if fact.complete else None
 
     def recipe_sample(
@@ -231,9 +274,15 @@ class CraftReader:
     ) -> CraftRecipeFact | None:
         _require_frame(frame)
         candidates = []
+        diagnostic = {"sequence": sequence, "reads": {}}
+        self.last_recipe_diagnostic = diagnostic
         for expected_family, (tier_roi, item_roi) in _SELECTED_RECIPE_ROIS.items():
             tier_read = self._read(frame, tier_roi, scale=4.0)
             item_read = self._read(frame, item_roi, scale=4.0)
+            diagnostic["reads"][expected_family.value] = {
+                "tier": {"text": tier_read.text, "confidence": tier_read.confidence},
+                "item": {"text": item_read.text, "confidence": item_read.confidence},
+            }
             if min(tier_read.confidence, item_read.confidence) < 0.85:
                 continue
             tier = parse_tier(tier_read.text)
@@ -242,10 +291,14 @@ class CraftReader:
             if tier is not CraftTier.UNKNOWN and family is expected_family:
                 candidates.append((family, tier, item_type, tier_read.text, item_read.text))
         if len(candidates) != 1:
+            diagnostic["rejection"] = "recipe_identity_unavailable"
             return None
         cost_label = self._read(frame, CRAFT_COST_LABEL_ROI, scale=3.0)
         cost = self._read(frame, CRAFT_COST_ROI, scale=4.0)
         quantity = self._read(frame, CRAFT_QUANTITY_ROI, scale=4.0)
+        diagnostic["reads"].update({name: {"text": item.text, "confidence": item.confidence}
+                                    for name, item in (("currency", cost_label), ("cost", cost),
+                                                       ("quantity", quantity))})
         parsed_cost = parse_positive_int(cost.text) if cost.confidence >= 0.80 else None
         parsed_quantity = parse_pair(quantity.text) if quantity.confidence >= 0.85 else None
         label = _clean(cost_label.text).casefold()
@@ -255,7 +308,9 @@ class CraftReader:
             else CraftCurrency.UNKNOWN
         )
         if parsed_cost is None or parsed_quantity is None or currency is CraftCurrency.UNKNOWN:
+            diagnostic["rejection"] = "recipe_economics_unavailable"
             return None
+        diagnostic["rejection"] = None
         family, tier, item_type, tier_text, item_text = candidates[0]
         return CraftRecipeFact(
             family=family,

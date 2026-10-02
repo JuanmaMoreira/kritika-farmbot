@@ -18,7 +18,9 @@ from bot.craft_semantics import (
 NOW = 100.0
 
 
-def context(*, sequence=2, weapon=325, armor=734, accessory=645, observed_at=NOW, contradictory=False):
+def context(*, sequence=2, weapon=325, armor=734, accessory=645,
+             weapon_cost=49, armor_cost=49, accessory_cost=49,
+             observed_at=NOW, contradictory=False):
     return CraftContextFact(
         title="Craft",
         rate_label="Rate",
@@ -29,9 +31,9 @@ def context(*, sequence=2, weapon=325, armor=734, accessory=645, observed_at=NOW
         weapon_capacity=999,
         armor_capacity=999,
         accessory_capacity=999,
-        weapon_hero_cost=49,
-        armor_hero_cost=49,
-        accessory_hero_cost=49,
+        weapon_hero_cost=weapon_cost,
+        armor_hero_cost=armor_cost,
+        accessory_hero_cost=accessory_cost,
         sequence=sequence,
         observed_at=observed_at,
         sample_sequences=(sequence - 1, sequence),
@@ -162,6 +164,27 @@ def test_unsupported_tier_authorizes_zero_input():
 
     assert outcome.outcome is CraftOutcome.UNSUPPORTED
     assert physical == []
+
+
+def test_weapon_operation_ignores_unreadable_armor_accessory_facts():
+    before = context(armor=None, accessory=None, armor_cost=None, accessory_cost=None)
+    after = context(sequence=8, weapon=276,
+                    armor=None, accessory=None, armor_cost=None, accessory_cost=None)
+
+    outcome, physical = run_operation(before=before, after=after)
+
+    assert outcome.outcome is CraftOutcome.SUCCESS
+    assert physical == ["open", "confirm", "dismiss"]
+    assert outcome.after_fact.weapon_material == 276
+
+
+def test_missing_weapon_family_fact_fails_closed_with_zero_input():
+    for before in (context(weapon=None), context(weapon_cost=None)):
+        outcome, physical = run_operation(before=before)
+
+        assert outcome.outcome is CraftOutcome.FAILED
+        assert outcome.reason == "family_fact_unavailable"
+        assert physical == []
 
 
 def test_unchanged_material_is_not_success_and_does_not_retry():

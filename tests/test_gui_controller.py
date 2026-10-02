@@ -201,3 +201,18 @@ def test_session_report_is_built_after_cleanup_without_changing_gui_status(tmp_p
     assert result.report.status is ReportStatus.BUSINESS_INCOMPLETE
     assert result.report.duration == 12.0
     assert result.report.characters[0].label == "Kaiserin"
+
+
+def test_gui_passes_configured_ethereal_policy_to_runtime(tmp_path):
+    from bot.equipment_sell_policy import EquipmentSellPolicy
+    from bot.equipment_sell_semantics import EquipmentType
+    policy = EquipmentSellPolicy(frozenset({EquipmentType.WEAPON,EquipmentType.RING}),True)
+    calls=[]
+    runtime=FakeRuntime(flow_result=FlowResult(FlowStatus.COMPLETED))
+    controller=GuiRuntimeController(runtime_factory=runtime_factory(runtime,calls),
+                                    log_path_factory=fixed_log_path)
+    controller.start(GuiExecutionRequest.flow_once(("monster_wave",),log_dir=tmp_path,
+                                                   equipment_sell=policy))
+    messages=wait_and_drain(controller)
+    assert calls[0]["equipment_sell_policy"] == policy
+    assert messages[-1].result.status is GuiRunStatus.COMPLETED

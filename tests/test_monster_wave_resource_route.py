@@ -153,6 +153,9 @@ class FakeNavigation:
     def enter_craft_from_mw(self, anchor):
         self.trace.append("mw_qm_craft")
         return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
+    def continue_from_craft_lobby(self, *, after_sequence):
+        self.trace.extend(["expected_lobby", "lobby_hub_mw"])
+        return MonsterWaveNavigationResult(FlowStatus.COMPLETED, after_sequence=after_sequence + 2)
     def enter_trading_from_mw(self, anchor):
         self.trace.append("mw_qm_trading")
         return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
@@ -175,6 +178,7 @@ class FakeCraft:
     def __init__(self, trace):
         self.trace = trace
         self.sequence = 20
+        self.return_base = "screen.lobby"
     def probe_equipment_capacity(self):
         self.trace.append("probe_capacity")
         return CraftRouteResult(CraftRouteOutcome.ENTERED)
@@ -188,6 +192,7 @@ class FakeCraft:
         return CraftRouteResult(
             CraftRouteOutcome.BACK_REQUESTED,
             craft_fact=_craft_fact(self.sequence),
+            return_base=self.return_base,
         )
 
 
@@ -263,13 +268,13 @@ def test_keys_only_never_enters_general():
     assert trace == ["mw_qm_trading", ("keys", 3), "trading_x_mw", ("fresh_mw", 101)]
 
 
-def test_craft_only_returns_directly_to_mw():
+def test_craft_inventory_branch_exits_to_expected_lobby_then_mw():
     trace = []
     result = _runtime(trace).execute_plan_once(
         _plan(craft=True, keys=False), _anchor(10),
     )
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
-    assert trace == ["mw_qm_craft", "probe_capacity", "drain_hero", "craft_back", ("fresh_mw", 21)]
+    assert trace == ["mw_qm_craft", "probe_capacity", "drain_hero", "craft_back", "expected_lobby", "lobby_hub_mw", ("fresh_mw", 23)]
 
 
 def test_zero_equipment_slots_surface_blocker_before_any_craft_action():
@@ -329,7 +334,7 @@ def test_craft_and_keys_return_to_mw_before_keys_only_trading():
     result = _runtime(trace).execute_plan_once(_plan(craft=True), _anchor(10))
     assert result.status is ResourceRouteExecutionStatus.SUCCESS
     assert trace == [
-        "mw_qm_craft", "probe_capacity", "drain_hero", "craft_back", ("fresh_mw", 21),
+        "mw_qm_craft", "probe_capacity", "drain_hero", "craft_back", "expected_lobby", "lobby_hub_mw", ("fresh_mw", 23),
         "mw_qm_trading", ("keys", 3), "trading_x_mw", ("fresh_mw", 101),
     ]
 
@@ -355,7 +360,7 @@ def test_trading_modal_restores_craft_and_second_drain_precedes_back():
     assert trace == [
         "mw_qm_craft", "probe_capacity", "drain_hero", "craft_qm_trading",
         ("keys", 3), "drain_weapon", "trading_x_craft",
-        "drain_hero", "craft_back", ("fresh_mw", 21),
+        "drain_hero", "craft_back", "expected_lobby", "lobby_hub_mw", ("fresh_mw", 23),
     ]
 
 
@@ -368,7 +373,7 @@ def test_combined_gold_full_defers_treasure_until_after_craft_back_to_mw():
     assert trace == [
         "mw_qm_craft", "probe_capacity", "drain_hero", "craft_qm_trading",
         ("keys", 3), "ack_gold_full", "drain_weapon", "trading_x_craft",
-        "drain_hero", "craft_back", ("fresh_mw", 21),
+        "drain_hero", "craft_back", "expected_lobby", "lobby_hub_mw", ("fresh_mw", 23),
         "mw_qm_treasure", "drain_all_gold", "treasure_back_mw",
         ("fresh_mw", 101), "mw_qm_trading", "retry_same_silver_to_gold",
         "trading_x_mw", ("fresh_mw", 102),
@@ -464,3 +469,198 @@ def test_failed_materials_keeps_deferred_pending_in_result():
     assert result.status is ResourceRouteExecutionStatus.STEP_FAILED
     assert result.pending is not None
     assert trace == ["mw_qm_trading", ("keys", 3), "ack_gold_full", "materials_failed"]
+
+
+def _blocked_craft_fact(sequence):
+    from bot.equipment_sell_semantics import EquipmentInventoryFact
+    inventory = EquipmentInventoryFact(
+        item_count=112, capacity=112, page=7, total_pages=22,
+        sequence=sequence, observed_at=float(sequence),
+        sample_sequences=(sequence - 1, sequence),
+    )
+    return CraftRouteResult(
+        CraftRouteOutcome.CAPACITY_BLOCKED,
+        inventory_fact=inventory, craft_fact=_craft_fact(sequence + 1),
+        reason="no_free_equipment_slot",
+    )
+
+
+def _free_craft_result(sequence):
+    return CraftRouteResult(CraftRouteOutcome.ENTERED, craft_fact=_craft_fact(sequence))
+
+
+def test_craft_capacity_blocked_preserved_without_relief():
+    trace = []
+    class FullCraft(FakeCraft):
+        def probe_equipment_capacity(self):
+            self.trace.append("probe_capacity")
+            return _blocked_craft_fact(20)
+    runtime = MonsterWaveResourceRouteRuntime(
+        FakeNavigation(trace), FakeSnapshots(trace), FullCraft(trace),
+        FakeKeys(trace), FakeMaterials(trace), keys_budget_remaining=3,
+    )
+    result = runtime.execute_plan_once(_plan(craft=True, keys=False), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED
+    assert result.failing_step == "craft"
+    assert result.capability_result.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
+    assert trace == ["mw_qm_craft", "probe_capacity"]
+
+
+def test_craft_blocker_invokes_composer_once_and_retries_only_craft_then_continues():
+    from bot.equipment_relief import EquipmentReliefOutcome, EquipmentReliefResult
+    trace = []
+
+    class FlakyCraft(FakeCraft):
+        def __init__(self, trace):
+            super().__init__(trace)
+            self.probes = 0
+        def probe_equipment_capacity(self):
+            self.probes += 1
+            self.trace.append("probe_capacity")
+            if self.probes == 1:
+                return _blocked_craft_fact(20)
+            return _free_craft_result(30)
+        def drain_hero_material(self, *, max_batches):
+            self.trace.append("drain_hero")
+            return SimpleNamespace(outcome=CraftOutcome.SUCCESS)
+        def observe_context(self, *, after_sequence):
+            self.trace.append("observe_craft")
+            return CraftRouteResult(
+                CraftRouteOutcome.ENTERED, craft_fact=_craft_fact(after_sequence + 1),
+            )
+
+    # Offline composition: the fake composer drives J's acquire/execute
+    # hooks (probe+drain) exactly as the real composer would after a
+    # successful Combine, proving retry-only-Craft + continue in the SAME
+    # execute_plan_once. J's production Craft->Combine entry fails closed
+    # without input until HIL proves it; the fake bypasses only that entry.
+    class SuccessComposer:
+        def __init__(self):
+            self.calls = 0
+        def run(self, request):
+            self.calls += 1
+            trace.append("composer_once")
+            assert request.sell_plan is None
+            ctx0 = request.acquire_context(None)
+            r0 = request.execute_operation(request.operation_request, ctx0.value)
+            assert request.is_equipment_full(r0) is True
+            trace.append("combine_once")
+            ctx1 = request.acquire_context(100)
+            r1 = request.execute_operation(request.operation_request, ctx1.value)
+            return EquipmentReliefResult(
+                EquipmentReliefOutcome.CALLER_RESULT, "caller.retry_after_combine",
+                caller_result=r1, caller_attempt_count=2,
+                combine_invocation_count=1,
+            )
+    composer = SuccessComposer()
+    craft = FlakyCraft(trace)
+    runtime = MonsterWaveResourceRouteRuntime(
+        FakeNavigation(trace), FakeSnapshots(trace), craft,
+        FakeKeys(trace), FakeMaterials(trace), keys_budget_remaining=3,
+        equipment_relief=composer,
+    )
+    result = runtime.execute_plan_once(_plan(craft=True, keys=False), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.SUCCESS
+    assert composer.calls == 1
+    # Retry ONLY the CraftStep (second probe + single drain), then the SAME
+    # execute_plan_once continues to Back+fresh MW. No trading, no replan.
+    assert trace == [
+        "mw_qm_craft", "probe_capacity",
+        "composer_once", "combine_once", "observe_craft",
+        "probe_capacity", "drain_hero",
+        "craft_back", "expected_lobby", "lobby_hub_mw", ("fresh_mw", 23),
+    ]
+
+
+def test_craft_relief_failure_stops_without_further_input_and_no_sell():
+    from bot.equipment_relief import EquipmentReliefOutcome, EquipmentReliefResult
+    trace = []
+    sell_calls = []
+
+    class FullCraft(FakeCraft):
+        def probe_equipment_capacity(self):
+            self.trace.append("probe_capacity")
+            return _blocked_craft_fact(20)
+        def drain_hero_material(self, *, max_batches):
+            raise AssertionError("no drain after failed relief")
+        def observe_context(self, *, after_sequence):
+            # Retry acquire after Combine still sees full Craft; exercised
+            # once by the fake composer to prove still-blocked -> fail closed.
+            self.trace.append("observe_craft")
+            return CraftRouteResult(
+                CraftRouteOutcome.ENTERED, craft_fact=_craft_fact(after_sequence + 1),
+            )
+
+    class FailingComposer:
+        def __init__(self):
+            self.calls = 0
+        def run(self, request):
+            self.calls += 1
+            trace.append("composer_once")
+            assert request.sell_plan is None
+            # Exercise J's hooks like the real composer: initial blocked,
+            # Combine once (simulated), retry still blocked -> no Sell plan.
+            ctx0 = request.acquire_context(None)
+            r0 = request.execute_operation(request.operation_request, ctx0.value)
+            assert request.is_equipment_full(r0) is True
+            trace.append("combine_once")
+            return EquipmentReliefResult(
+                EquipmentReliefOutcome.SELL_REQUIRED_BUT_NO_AUTHORIZED_CANDIDATE,
+                "sell.plan",
+            )
+
+    composer = FailingComposer()
+    runtime = MonsterWaveResourceRouteRuntime(
+        FakeNavigation(trace), FakeSnapshots(trace), FullCraft(trace),
+        FakeKeys(trace), FakeMaterials(trace), keys_budget_remaining=3,
+        equipment_relief=composer,
+    )
+    result = runtime.execute_plan_once(_plan(craft=True, keys=False), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED
+    assert result.failing_step == "craft"
+    assert composer.calls == 1
+    assert sell_calls == []
+    # No drain, no trading, no Back, no fresh MW after failed relief.
+    assert trace == ["mw_qm_craft", "probe_capacity", "composer_once", "combine_once"]
+
+
+def test_craft_missing_verified_popup_stops_before_combine_or_sell():
+    from bot.equipment_relief import EquipmentReliefComposer
+    trace = []
+    combine_calls = []
+    sell_calls = []
+
+    class FullCraft(FakeCraft):
+        def probe_equipment_capacity(self):
+            self.trace.append("probe_capacity")
+            return _blocked_craft_fact(20)
+        def drain_hero_material(self, *, max_batches):
+            raise AssertionError("no drain when entry fails closed")
+        def observe_context(self, *, after_sequence):
+            raise AssertionError("no observe when entry fails closed")
+
+    class Combine:
+        def run(self, plan, cancel_requested):
+            combine_calls.append(plan)
+            raise AssertionError("no Combine without verified Craft entry")
+
+    class Sell:
+        def execute(self, request):
+            sell_calls.append(request)
+            raise AssertionError("no authorized MW Sell plan")
+
+    composer = EquipmentReliefComposer(Combine(), Sell())
+    class MissingPopupNavigation(FakeNavigation):
+        def enter_combine_from_craft(self, capacity):
+            raise ValueError("craft_full_popup_not_verified")
+    runtime = MonsterWaveResourceRouteRuntime(
+        MissingPopupNavigation(trace), FakeSnapshots(trace), FullCraft(trace),
+        FakeKeys(trace), FakeMaterials(trace), keys_budget_remaining=3,
+        equipment_relief=composer,
+    )
+    result = runtime.execute_plan_once(_plan(craft=True, keys=False), _anchor(10))
+    assert result.status is ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED
+    assert result.failing_step == "craft"
+    assert combine_calls == []
+    assert sell_calls == []
+    assert trace == ["mw_qm_craft", "probe_capacity"]

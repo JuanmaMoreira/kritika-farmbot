@@ -194,7 +194,7 @@ from .treasure_center import (
     TreasureContentDetector,
 )
 from .scope import ScopeSpec, select_detectors
-from bot.monster_wave_semantics import MW_DAILY
+from bot.monster_wave_semantics import MW_DAILY, MW_OBSERVATIONS
 
 
 def build_default_perception(
@@ -812,6 +812,7 @@ STRONG_LOBBY_COMPLETION_SPEC_NAMES = frozenset(
         "landmark.monster_wave_clear",
         "indicator.monster_wave_daily_active",
         "landmark.monster_wave_new_ranking",
+        "landmark.monster_wave_points_reward",
         "landmark.trading_center_title",
         "landmark.treasure_title",
     }
@@ -824,6 +825,15 @@ STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES = (
     PetEpicAvailabilityDetector,
     PetCombineResultDetector,
     PetMassEvolveConfirmationDetector,
+)
+
+# A1 captures two board frames within 1 s. Keep all resolver dependencies
+# (foreign bases, ambiguity and blockers) and MW snapshot facts, but omit
+# unrelated slot/animation readers whose latency can spend that spacing.
+MONSTER_WAVE_BOARD_ACQUISITION_SCOPE = ScopeSpec(
+    name="monster_wave_board_acquisition",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES | frozenset(MW_OBSERVATIONS),
+    specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
 )
 
 FRIENDS_TO_LOBBY_SCOPE = ScopeSpec(
@@ -1221,6 +1231,7 @@ __all__ = (
     "WORLD_BOSS_SELECT_BOSS_HEADER_SPEC",
     "WORLD_BOSS_DAILY_SPEC",
     "WORLD_BOSS_ELIGIBILITY_SCOPE",
+    "MONSTER_WAVE_BOARD_ACQUISITION_SCOPE",
     "LinearGapCalibration",
     "LOBBY_TRADING_CENTER_LABEL_SPEC",
     "MAILBOX_CHARACTER_MAIL_ACTIVE_SPEC",

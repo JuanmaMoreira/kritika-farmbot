@@ -65,6 +65,12 @@ def build_gui_shell(clock):
     app = gui.KritikaFarmBotGui.__new__(gui.KritikaFarmBotGui)
     app.root = Root()
     app.controller = Controller()
+    from bot.equipment_sell_policy import EquipmentSellPolicy
+    from bot.equipment_sell_semantics import CONFIGURABLE_EQUIPMENT_TYPES
+    policy = EquipmentSellPolicy()
+    app.ethereal_type_vars = {t: Var(t in policy.ethereal_types) for t in CONFIGURABLE_EQUIPMENT_TYPES}
+    app.ethereal_enhance_var = Var(policy.ethereal_enhance)
+    app.sell_policy_checks = []
     app.progress = GuiProgress()
     app.session_timer = SessionElapsedTimer(clock=clock)
     app._active_mode = None

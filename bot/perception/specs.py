@@ -822,6 +822,7 @@ COMBINE_ANIMATION_TAPPABLE_SPEC = LocalCvSpec(
     variant_asset_paths=(
         Path("assets/ui/landmarks/combine-animation-ethereal-current.png"),
         Path("assets/ui/landmarks/combine-animation-fuse-current.png"),
+        Path("assets/ui/landmarks/combine-animation-fuse-native.png"),
     ),
     region=(0.40, 0.55, 0.60, 0.94),
     calibration=LinearGapCalibration(

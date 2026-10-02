@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 import pytest
 
-from bot.ocr import RapidOcrEngine
+from bot.ocr import OcrResult, RapidOcrEngine
 from bot.perception.trading_center import row_bands
 from bot.trading_row_facts import (
     CATALOG_TITLES,
@@ -90,6 +90,8 @@ def test_section_ownership():
     ("33/30", (33, 30)),
     ("  3,420,525,277 / 25,000,000 ", (3420525277, 25000000)),
     ("0/1", (0, 1)),
+    ("236/10", (236, 10)),
+    ("412/10", (412, 10)),
     ("5,439", None),
     ("3.420.525.27", None),
     ("99/53/22", None),
@@ -178,6 +180,16 @@ def test_row_drift_beyond_tolerance_reports_no_fact():
     assert consensus_row_samples(samples) is None
 
 
+def test_keys_local_phase_tolerance_still_rejects_another_row():
+    samples = [
+        _sample(item_id="gold_key", section=KEYS_SECTION,
+                row_y=0.57, have=412, need=10, sequence=1),
+        _sample(item_id="gold_key", section=KEYS_SECTION,
+                row_y=0.62, have=412, need=10, sequence=2),
+    ]
+    assert consensus_row_samples(samples, row_tolerance=0.04) is None
+
+
 def test_stale_sequence_reports_no_fact():
     samples = [_sample(sequence=2), _sample(sequence=2)]
     assert consensus_row_samples(samples) is None
@@ -221,6 +233,69 @@ class _FakeEngine:
     def recognize(self, image):
         from bot.ocr import OcrResult
         return OcrResult(text="", confidence=0.0)
+
+
+@pytest.mark.parametrize("texts,expected", (
+    ((("412/10", 0.98), ("412/10", 0.87)), (412, 10)),
+    ((("412/10", 0.98), ("412/", 0.87)), None),
+    ((("412/10", 0.98), ("412/9", 0.87)), None),
+    ((("412/10", 0.98), ("412/10", 0.49)), None),
+))
+def test_keys_cell_requires_two_complete_confident_agreeing_reads(texts, expected):
+    import numpy as np
+
+    class Engine:
+        def __init__(self):
+            self.values = iter(texts)
+
+        def recognize(self, _image):
+            text, confidence = next(self.values)
+            return OcrResult(text, confidence)
+
+    reader = TradingRowReader(Engine())
+    frame = np.zeros((1224, 2712, 3), dtype=np.uint8)
+    assert reader._read_key_pair_cell(frame, 0.5362) == expected
+
+
+@pytest.mark.parametrize("path,silver,gold", (
+    ("artifacts/acquisition-inventory-relief-chain/trading-keys-char2/20260910T002334_238388Z_01.png", 236, 412),
+    ("artifacts/acquisition-inventory-relief-chain/trading-keys-char2/20260910T002334_363497Z_02.png", 236, 412),
+    ("artifacts/acquisition-inventory-relief-chain/trading-keys-char2/20260910T002334_485307Z_03.png", 236, 412),
+    ("artifacts/acquisition-inventory-relief-chain/trading-keys-recheck/20260909T224443_033566Z_01.png", 229, 188),
+    ("artifacts/acquisition-inventory-relief-chain/trading-keys-recheck/20260909T224443_159830Z_02.png", 229, 188),
+    ("artifacts/acquisition-inventory-relief-chain/trading-keys-recheck/20260909T224443_286782Z_03.png", 229, 188),
+    ("screencaps/semantic/trading-center/keys-top/01.png", 5, 9),
+))
+def test_native_keys_rows_replay(path, silver, gold):
+    frame = cv2.imread(str(ROOT / path))
+    assert frame is not None
+    reader = TradingRowReader(RapidOcrEngine())
+    found = {}
+    for top, _bottom, center, complete in row_bands(frame):
+        if not complete:
+            continue
+        for item_id in ("silver_key", "gold_key"):
+            sample = reader.read_sample(
+                frame, 1, item_id=item_id, section=KEYS_SECTION,
+                row_top=top, row_y=center,
+            )
+            if sample is not None:
+                assert item_id not in found
+                found[item_id] = (sample.have, sample.need)
+    assert found == {"silver_key": (silver, 10), "gold_key": (gold, 10)}
+
+
+def test_native_gold_row_does_not_match_silver_identity():
+    frame = cv2.imread(str(ROOT / "artifacts/acquisition-inventory-relief-chain"
+                          / "trading-keys-char2/20260910T002334_238388Z_01.png"))
+    assert frame is not None
+    reader = TradingRowReader(RapidOcrEngine())
+    bands = [band for band in row_bands(frame) if band[3]]
+    gold_top, _bottom, gold_center, _complete = bands[1]
+    assert reader.read_sample(
+        frame, 1, item_id="silver_key", section=KEYS_SECTION,
+        row_top=gold_top, row_y=gold_center,
+    ) is None
 
 
 # Evaluator over the HIL pairs manifest: zero misparses allowed.

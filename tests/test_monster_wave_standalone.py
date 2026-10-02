@@ -349,7 +349,7 @@ def test_acquisition_rejects_invalid_second_capture_before_reader(second):
         MonsterWaveBoardAcquisitionRuntime(
             observer, ForbiddenReader(), clock=lambda: 10.1,
         ).acquire()
-    assert observer.calls == ["capture_first", "capture_second"]
+    assert observer.calls == ["capture_first", "capture_second"] * (3 if second.timestamp > 10.0 else 1)
 
 
 def test_acquisition_rejects_already_stale_pair_before_reader():
@@ -455,3 +455,50 @@ def test_close_adapter_uses_existing_decline_and_fresh_reacquisition():
         Transition(), Snapshots()
     ).close_board(acquired)
     assert status is FlowStatus.COMPLETED and result.context.sequence == 13
+
+
+def test_board_timing_retry_discards_pair_then_uses_only_fresh_agreement():
+    class RetryObserver(Observer):
+        def observe(self):
+            self.calls.append("capture_first")
+            return context(9 if len(self.calls) == 1 else 11, popup=True,
+                           timestamp=9.0 if len(self.calls) == 1 else 10.02)
+        def wait_until(self, *_args, **_kwargs):
+            self.calls.append("capture_second")
+            return context(10 if len(self.calls) == 2 else 12, popup=True,
+                           timestamp=10.01 if len(self.calls) == 2 else 10.04)
+    observer = RetryObserver(context(9, popup=True), context(10, popup=True))
+    board = MonsterWaveBoardAcquisitionRuntime(observer, Reader(), clock=lambda: 10.1).acquire()
+    assert board.snapshot.evidence.row_sequences == (11, 12)
+    assert observer.calls == ["capture_first", "capture_second"] * 2
+
+
+def test_fresh_board_observation_contradiction_is_not_timing_retry():
+    from dataclasses import replace
+    second = context(10, popup=True)
+    second = replace(second, observations=ObservationBatch(10, 10.0, ()))
+    observer = Observer(context(9, popup=True), second)
+    with pytest.raises(ValueError, match="fresh_mw_board_snapshot_unavailable"):
+        MonsterWaveBoardAcquisitionRuntime(observer, Reader(), clock=lambda:10.1).acquire()
+    assert observer.calls == ["capture_first", "capture_second"]
+
+
+def test_mw_back_to_fresh_lobby_opens_hub_once_without_repeating_back():
+    from bot.semantic_actions import OpenBattleModeSelect
+    clean = anchor(10)
+    destinations = [context(13,base="screen.lobby"), context(14,base="screen.battle_mode_select")]
+    class Transition:
+        def __init__(self):self.actions=[]
+        def execute(self,name,action,before,**kw):
+            assert kw["precondition"](before)
+            destination = destinations[len(self.actions)]
+            assert kw["expected"](destination)
+            self.actions.append(action)
+            return VerifiedTransitionResult(name,VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,1,0,destination)
+    class Snapshots:
+        def acquire(self,*,after_sequence):
+            return SimpleNamespace(status=FlowStatus.COMPLETED,fresh=anchor(12))
+    transition=Transition()
+    status,result=MonsterWaveStandaloneNavigationRuntime(transition,Snapshots()).exit_to_battle_mode(clean)
+    assert status is FlowStatus.COMPLETED and result.final_snapshot.sequence==14
+    assert [type(a) for a in transition.actions]==[ExitMonsterWave,OpenBattleModeSelect]

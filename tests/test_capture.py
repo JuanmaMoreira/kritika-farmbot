@@ -252,7 +252,7 @@ def test_get_frame_before_first_frame_is_explicit_error():
 def test_snapshots_have_sequence_timestamp_dimensions_and_copy_ownership():
     first = np.full((1224, 2712, 3), 10, dtype=np.uint8)
     second = np.full((1224, 2712, 3), 20, dtype=np.uint8)
-    fake_socket = FakeSocket(metadata() + packet(b"first"))
+    fake_socket = FakeSocket(metadata() + packet(b"first", pts=1_000_000))
     decoder = FakeDecoder({b"first": first, b"second": second})
     clock = Mock(side_effect=[100.5, 101.5])
     source = make_source(fake_adb(), fake_socket, decoder, clock=clock)
@@ -267,7 +267,7 @@ def test_snapshots_have_sequence_timestamp_dimensions_and_copy_ownership():
     first_snapshot.image[:] = 99
     assert np.all(source.get_frame().image == 10)
 
-    fake_socket.add(packet(b"second", pts=2))
+    fake_socket.add(packet(b"second", pts=2_000_000))
     wait_until(lambda: source.get_frame().sequence == 2)
     second_snapshot = source.get_frame()
     assert second_snapshot.sequence == 2
@@ -479,3 +479,36 @@ def test_context_manager_cleans_up_when_body_raises():
     assert fake_socket.closed
     assert process.terminated
     assert not source.is_running
+
+
+def test_buffered_packet_retains_capture_age_after_late_decode():
+    image = np.zeros((2, 3, 3), dtype=np.uint8)
+    fake_socket = FakeSocket(metadata() + packet(b"first", pts=1_000_000))
+    decoder = FakeDecoder({b"first": image, b"second": image})
+    now = [100.0]
+    source = make_source(fake_adb(), fake_socket, decoder, clock=lambda: now[0])
+    source.start()
+    try:
+        assert source.get_frame().timestamp == 100.0
+        now[0] = 105.0
+        fake_socket.add(packet(b"second", pts=2_000_000))
+        wait_until(lambda: source.get_frame().sequence == 2)
+        snapshot = source.get_frame()
+        assert snapshot.timestamp == 101.0
+        assert now[0] - snapshot.timestamp == 4.0
+    finally:
+        source.stop()
+
+
+def test_pts_mapping_does_not_create_future_capture_timestamps():
+    image = np.zeros((2, 3, 3), dtype=np.uint8)
+    fake_socket = FakeSocket(metadata() + packet(b"first", pts=1_000_000))
+    decoder = FakeDecoder({b"first": image, b"second": image})
+    source = make_source(fake_adb(), fake_socket, decoder, clock=lambda: 100.0)
+    source.start()
+    try:
+        fake_socket.add(packet(b"second", pts=2_000_000))
+        wait_until(lambda: source.get_frame().sequence == 2)
+        assert source.get_frame().timestamp == 100.0
+    finally:
+        source.stop()

@@ -10,9 +10,12 @@ from dataclasses import dataclass
 from enum import Enum
 import time
 
-from bot.battle_mode_zone import is_battle_mode_select
+from bot.battle_mode_zone import is_battle_mode_select, is_lobby
+from bot.catalog import (POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL,
+                         SCREEN_COMBINE, SCREEN_SOCKET)
 from bot.flow_contracts import FlowStatus
-from bot.monster_wave_actions import DeclineMonsterWaveInventory, ExitMonsterWave
+from bot.monster_wave_actions import (AcceptMonsterWaveInventory,
+                                      DeclineMonsterWaveInventory, ExitMonsterWave)
 from bot.monster_wave_activity import MonsterWaveResult, clean_mw, skip_state
 from bot.monster_wave_board_reader import MonsterWaveBoardReader, consensus_board_samples
 from bot.monster_wave_board_snapshot import (
@@ -28,6 +31,7 @@ from bot.resource_route_planner import (
     ResourceRouteStatus, plan_resource_route,
 )
 from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
+from bot.semantic_actions import AcceptSocketInventoryFull, OpenEquipmentCombine
 from bot.state import ResolutionStatus
 from bot.verified_transition import VerifiedTransitionPolicy, VerifiedTransitionResult
 
@@ -53,6 +57,10 @@ class FreshMonsterWaveBoard:
             raise ValueError("fresh five-row MW board required")
 
 
+class _BoardTimingWindowError(ValueError):
+    """Read-only acquisition exceeded a timing window; evidence is discarded."""
+
+
 class MonsterWaveBoardAcquisitionRuntime:
     """Read two agreeing frames of an already-open board; send no input."""
 
@@ -64,6 +72,21 @@ class MonsterWaveBoardAcquisitionRuntime:
         self.clock = clock
 
     def acquire(self, *, after_sequence: int = 0) -> FreshMonsterWaveBoard:
+        # Acquisition is read-only. Warm-up or scheduling can exhaust the
+        # strict timing window; discard that evidence, never relax its age.
+        from bot.event_log import record_best_effort
+        for attempt in range(1, 4):
+            try:
+                return self._acquire_once(after_sequence=after_sequence)
+            except _BoardTimingWindowError as error:
+                record_best_effort(getattr(self.observer, "events", None),
+                                   "monster_wave.board_acquisition.discarded",
+                                   attempt=attempt, reason=str(error))
+                if attempt == 3:
+                    raise
+        raise AssertionError("bounded board acquisition exhausted")
+
+    def _acquire_once(self, *, after_sequence: int = 0) -> FreshMonsterWaveBoard:
         from numbers import Integral
 
         if (
@@ -93,12 +116,21 @@ class MonsterWaveBoardAcquisitionRuntime:
         )
         if (not _board_open(second)
                 or second.sequence <= first.sequence
-                or second.timestamp <= first.timestamp
-                or second.timestamp - first.timestamp > 1.0):
+                or second.timestamp <= first.timestamp):
             raise ValueError("mw_board_consensus_unavailable")
+        if second.timestamp - first.timestamp > 1.0:
+            raise _BoardTimingWindowError("mw_board_consensus_unavailable")
         now = self.clock()
-        if second.timestamp > now or now - second.timestamp > 2.0:
+        from bot.event_log import record_best_effort
+        record_best_effort(getattr(self.observer, "events", None),
+                          "monster_wave.board_acquisition.timing",
+                          first_sequence=first.sequence, second_sequence=second.sequence,
+                          frame_gap=second.timestamp - first.timestamp,
+                          second_age_before_reader=now - second.timestamp)
+        if second.timestamp > now:
             raise ValueError("fresh_mw_board_snapshot_unavailable")
+        if now - second.timestamp > 2.0:
+            raise _BoardTimingWindowError("fresh_mw_board_snapshot_unavailable")
         sample1 = self.reader.read_sample(first)
         if sample1 is None:
             raise ValueError("first_mw_board_sample_unreadable")
@@ -112,7 +144,15 @@ class MonsterWaveBoardAcquisitionRuntime:
         board = build_monster_wave_board_snapshot(
             second, after_sequence=barrier, now=self.clock(), board_fact=fact,
         )
+        record_best_effort(getattr(self.observer, "events", None),
+                          "monster_wave.board_acquisition.read",
+                          second_sequence=second.sequence,
+                          reader_seconds=self.clock() - now,
+                          second_age_after_reader=self.clock() - second.timestamp,
+                          accepted=board is not None)
         if board is None:
+            if self.clock() - second.timestamp > 2.0:
+                raise _BoardTimingWindowError("fresh_mw_board_snapshot_unavailable")
             raise ValueError("fresh_mw_board_snapshot_unavailable")
         return FreshMonsterWaveBoard(second, board, barrier)
 
@@ -144,6 +184,26 @@ class MonsterWaveStandaloneNavigationRuntime:
         acquired = self.snapshots.acquire(after_sequence=result.final_snapshot.sequence)
         return acquired.status, acquired.fresh, result
 
+    def accept_board(self, board: FreshMonsterWaveBoard):
+        """Allow this clean planned SKIP; the activity polls its result."""
+        if self.cancel_requested():
+            return FlowStatus.CANCELLED, None
+        current = self.transition.observer.wait_until(
+            _board_open, after_sequence=board.context.sequence, timeout=3.0,
+            abort_if=lambda s: not _board_open(s),
+            cancel_requested=self.cancel_requested, stable_for=.25,
+        )
+        result = self.transition.execute(
+            "monster_wave.standalone.accept_board", AcceptMonsterWaveInventory(),
+            current, precondition=_board_open,
+            expected=lambda s: not _board_open(s),
+            policy=VerifiedTransitionPolicy(max_attempts=1),
+        )
+        if (not result.succeeded or result.attempt_count != 1
+                or result.final_snapshot.sequence <= current.sequence):
+            return FlowStatus.FAILED, None
+        return FlowStatus.COMPLETED, result.final_snapshot
+
     def exit_to_battle_mode(self, anchor: FreshMonsterWaveSnapshot):
         if self.cancel_requested():
             return FlowStatus.CANCELLED, None
@@ -157,14 +217,73 @@ class MonsterWaveStandaloneNavigationRuntime:
             "monster_wave.standalone.exit_to_battle_mode", ExitMonsterWave(),
             before,
             precondition=lambda s: clean_mw(s) and skip_state(s) is not None,
-            expected=is_battle_mode_select,
+            expected=lambda item: is_battle_mode_select(item) or is_lobby(item),
             policy=VerifiedTransitionPolicy(max_attempts=1), stable_for=.25,
         )
+        if (result.succeeded and result.attempt_count == 1
+                and result.final_snapshot.sequence > before.sequence
+                and is_lobby(result.final_snapshot)):
+            # Back after a capacity BASE round-trip can land on Lobby. This
+            # fresh concrete destination authorizes only the known hub input;
+            # it never repeats Back, preparation, SKIP or the resource intent.
+            from bot.semantic_actions import OpenBattleModeSelect
+            lobby = result.final_snapshot
+            if self.cancel_requested():
+                return FlowStatus.CANCELLED, result
+            result = self.transition.execute(
+                "monster_wave.standalone.open_hub_from_lobby", OpenBattleModeSelect(),
+                lobby, precondition=is_lobby, expected=is_battle_mode_select,
+                policy=VerifiedTransitionPolicy(max_attempts=1), stable_for=.25,
+            )
+            before = lobby
         if (not result.succeeded or result.attempt_count != 1
                 or result.final_snapshot.sequence <= before.sequence
                 or not is_battle_mode_select(result.final_snapshot)):
             return FlowStatus.FAILED, result
         return FlowStatus.COMPLETED, result
+
+    def enter_blocker_relief(self, blocker: str):
+        """Use the observed MW popup to enter its concrete relief surface once."""
+        if self.cancel_requested():
+            raise RuntimeWaitCancelled()
+        choices = {
+            POPUP_EQUIPMENT_INVENTORY_FULL: (OpenEquipmentCombine(), SCREEN_COMBINE),
+            POPUP_SOCKET_INVENTORY_FULL: (AcceptSocketInventoryFull(), SCREEN_SOCKET),
+        }
+        action, destination = choices[blocker]
+        before = self.transition.observer.observe()
+        expected_popup = lambda s: (s.state.status is ResolutionStatus.RESOLVED
+                                    and s.state.base_context == SCREEN_MONSTER_WAVE
+                                    and set(s.state.overlays) == {blocker})
+        if not expected_popup(before):
+            raise ValueError("mw_blocker_popup_not_fresh")
+        result = self.transition.execute(
+            "monster_wave.enter_blocker_relief", action, before,
+            precondition=expected_popup,
+            expected=lambda s: (s.state.status is ResolutionStatus.RESOLVED
+                                and s.state.base_context == destination
+                                and (not s.state.overlays if destination == SCREEN_SOCKET
+                                     else True)),
+            policy=VerifiedTransitionPolicy(max_attempts=1), stable_for=.25,
+        )
+        if not result.succeeded or result.attempt_count != 1 or result.final_snapshot.sequence <= before.sequence:
+            raise ValueError("mw_blocker_relief_entry_failed")
+        return result.final_snapshot
+
+    def exit_after_relief(self, returned: RuntimeSnapshot):
+        """Fresh clean MW is the only origin allowed for the same-request retry."""
+        if not clean_mw(returned) or skip_state(returned) is None:
+            raise ValueError("mw_relief_return_invalid")
+        acquired = self.snapshots.acquire(after_sequence=returned.sequence)
+        if acquired.status is FlowStatus.CANCELLED:
+            raise RuntimeWaitCancelled()
+        if acquired.status is not FlowStatus.COMPLETED or acquired.fresh is None:
+            raise ValueError("mw_relief_return_not_fresh")
+        status, _ = self.exit_to_battle_mode(acquired.fresh)
+        if status is FlowStatus.CANCELLED:
+            raise RuntimeWaitCancelled()
+        if status is not FlowStatus.COMPLETED:
+            raise ValueError("mw_relief_exit_failed")
 
 
 class MonsterWaveStandaloneMode(str, Enum):

@@ -89,6 +89,14 @@ def test_budget_includes_newly_generated_silver_without_deciding_order():
     assert make_budget(_facts(2, bronze=9, silver=9)) == 0
 
 
+def test_exhausted_budget_does_not_claim_relief_with_tradeable_facts():
+    harness = Harness([_facts(2, bronze=20, silver=0)], [])
+    result = harness.runtime.run(budget_remaining=0)
+    assert result.status is FlowStatus.FAILED
+    assert result.error == "keys_budget_exhausted_before_relief"
+    assert harness.trade_calls == []
+
+
 def test_lazy_budget_uses_first_fresh_facts_once_per_run():
     first = _facts(2, bronze=0, silver=20)
     harness = Harness([first, _facts(4, bronze=0, silver=0)], [TradeOutcome.SUCCESS])

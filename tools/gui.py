@@ -9,6 +9,8 @@ from tkinter import messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from bot.config import DEFAULT_CHARACTER_COUNT
+from bot.equipment_sell_policy import EquipmentSellPolicy
+from bot.equipment_sell_semantics import CONFIGURABLE_EQUIPMENT_TYPES
 from bot.event_log import format_runtime_event
 from bot.gui_controller import (
     GuiExecutionResult,
@@ -62,6 +64,12 @@ class KritikaFarmBotGui:
 
         self.characters_var = tk.StringVar(value=str(DEFAULT_CHARACTER_COUNT))
         self.debug_var = tk.BooleanVar(value=False)
+        default_sell = EquipmentSellPolicy()
+        self.ethereal_type_vars = {
+            t: tk.BooleanVar(value=t in default_sell.ethereal_types)
+            for t in sorted(CONFIGURABLE_EQUIPMENT_TYPES, key=lambda t: t.value)
+        }
+        self.ethereal_enhance_var = tk.BooleanVar(value=default_sell.ethereal_enhance)
         self.status_var = tk.StringVar(value=GuiRunStatus.IDLE.value)
         self.character_var = tk.StringVar(value="-")
         self.flow_var = tk.StringVar(value="-")
@@ -163,6 +171,24 @@ class KritikaFarmBotGui:
             row=2, column=0, columnspan=2, sticky="w",
         )
 
+        policy_frame = ttk.Frame(self.output_tabs, padding=12)
+        self.output_tabs.add(policy_frame, text="Equipment Sell")
+        ttk.Label(policy_frame, text="Ethereal: checked types may be sold with Bulk").grid(
+            row=0, column=0, columnspan=3, sticky="w", pady=(0,10))
+        self.sell_policy_checks = []
+        for index, (kind, variable) in enumerate(self.ethereal_type_vars.items()):
+            label = "Earrings" if kind.value == "earring" else kind.value.title()
+            check = ttk.Checkbutton(policy_frame, text=label, variable=variable)
+            check.grid(row=1+index//3, column=index%3, sticky="w", padx=(0,30), pady=5)
+            self.sell_policy_checks.append(check)
+        check = ttk.Checkbutton(policy_frame, text="Ethereal Enhance",
+                                variable=self.ethereal_enhance_var)
+        check.grid(row=4, column=0, columnspan=3, sticky="w", pady=5)
+        self.sell_policy_checks.append(check)
+        ttk.Label(policy_frame, text="Ethereal+ is always protected. Lower tiers use Bulk.\n"
+                  "Full: Combine first; Sell; then one +4 row with Karats if needed.").grid(
+            row=5, column=0, columnspan=3, sticky="w", pady=10)
+
         console_frame = ttk.Frame(self.output_tabs, padding=8)
         self.output_tabs.add(console_frame, text="Debug Console")
         self.console_frame = console_frame
@@ -239,11 +265,18 @@ class KritikaFarmBotGui:
             self.selection.move_down(flow_id)
         self._refresh_flow_list(flow_id)
 
+    def _equipment_sell_policy(self):
+        return EquipmentSellPolicy(
+            frozenset(kind for kind, var in self.ethereal_type_vars.items() if var.get()),
+            self.ethereal_enhance_var.get(),
+        )
+
     def _run_selected_flows(self) -> None:
         try:
             request = GuiExecutionRequest.selected_flows(
                 self.selection.active_ids,
                 debug=self.debug_var.get(),
+                equipment_sell=self._equipment_sell_policy(),
                 dotenv_path=self.dotenv_path,
                 log_dir=self.log_dir,
             )
@@ -258,6 +291,7 @@ class KritikaFarmBotGui:
                 self.selection.active_ids,
                 count,
                 debug=self.debug_var.get(),
+                equipment_sell=self._equipment_sell_policy(),
                 dotenv_path=self.dotenv_path,
                 log_dir=self.log_dir,
             )
@@ -354,6 +388,8 @@ class KritikaFarmBotGui:
         self.state_var.set(self.progress.state)
 
     def _set_running_controls(self, running: bool) -> None:
+        for check in self.sell_policy_checks:
+            check.configure(state="disabled" if running else "normal")
         configure_state = "disabled" if running else "normal"
         for widget in (
             self.flow_list,

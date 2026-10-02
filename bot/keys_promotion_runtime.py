@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from numbers import Integral
+from time import monotonic
 
 from bot.failure_cause import FailureCause
 from bot.flow_contracts import FlowResult, FlowStatus
@@ -27,6 +28,7 @@ from bot.keys_promotion import (
     PendingCausalOperation,
     decide_after_trade,
     decide_next_keys_operation,
+    is_tradeable,
 )
 from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
 from bot.trading_keys import KeyTradeOperation, is_keys_ready
@@ -68,6 +70,13 @@ class FreshKeyFacts:
             raise ValueError("both row facts must belong to snapshot.sequence")
         if not is_keys_ready(self.snapshot):
             raise ValueError("snapshot must be fresh Avatar & Keys readiness")
+
+
+@dataclass(frozen=True)
+class VerifiedKeyTradeResult(TradeResult):
+    """C4's effect and the same two-row consensus used to prove it."""
+
+    fresh_key_facts: FreshKeyFacts | None = None
 
 
 # HIL C2a: one confirmed 1/20 Bronze->Silver trade changed Bronze 40->30
@@ -216,6 +225,7 @@ class KeysPromotionRuntime:
         drain_gold_keys,
         acknowledge_gold_full=None,
         cancel_requested=lambda: False,
+        clock=monotonic,
     ) -> None:
         for owner, method in (
             (trading_runtime, "ensure_avatar_keys"),
@@ -231,6 +241,7 @@ class KeysPromotionRuntime:
             (execute_key_trade, "execute_key_trade"),
             (drain_gold_keys, "drain_gold_keys"),
             (cancel_requested, "cancel_requested"),
+            (clock, "clock"),
         ):
             if not callable(callback):
                 raise ValueError(f"{name} must be callable")
@@ -244,6 +255,7 @@ class KeysPromotionRuntime:
             raise ValueError("acknowledge_gold_full must be callable or None")
         self.acknowledge_gold_full = acknowledge_gold_full
         self.cancel_requested = cancel_requested
+        self.clock = clock
 
     def run(
         self,
@@ -300,10 +312,14 @@ class KeysPromotionRuntime:
                 budget_remaining=budget,
             )
             while True:
-                if decision.kind in (
-                    KeysPromotionKind.NO_MORE_PROMOTIONS,
-                    KeysPromotionKind.BUDGET_EXHAUSTED,
-                ):
+                if decision.kind is KeysPromotionKind.NO_MORE_PROMOTIONS:
+                    return finish(FlowStatus.COMPLETED)
+                if decision.kind is KeysPromotionKind.BUDGET_EXHAUSTED:
+                    if (facts is not None and
+                            (is_tradeable(facts.silver_fact) or
+                             is_tradeable(facts.gold_fact))):
+                        return finish(FlowStatus.FAILED,
+                                      error="keys_budget_exhausted_before_relief")
                     return finish(FlowStatus.COMPLETED)
                 if decision.kind is KeysPromotionKind.FAILED:
                     return finish(
@@ -376,9 +392,7 @@ class KeysPromotionRuntime:
                     TradeOutcome.INSUFFICIENT_INPUT,
                     TradeOutcome.NO_MORE_INPUT,
                 ):
-                    facts = self._fresh_facts(
-                        after_sequence=self._post_trade_barrier(facts, result)
-                    )
+                    facts = self._facts_after_trade(facts, result)
                     decision = decide_after_trade(
                         previous=decision,
                         result=result,
@@ -475,6 +489,23 @@ class KeysPromotionRuntime:
                 FlowStatus.FAILED, error=str(error) or type(error).__name__,
                 pending=pending, recovery_steps=tuple(steps), recovery_count=1,
             )
+
+    def _facts_after_trade(self, before: FreshKeyFacts, result: TradeResult) -> FreshKeyFacts:
+        """Use C4's freshly verified rows; otherwise acquire after its barrier."""
+        if self._cancelled():
+            raise _Cancelled()
+        if isinstance(result, VerifiedKeyTradeResult) and result.outcome is TradeOutcome.SUCCESS:
+            fresh = result.fresh_key_facts
+            if isinstance(fresh, FreshKeyFacts):
+                row = (fresh.gold_fact if result.before_fact.item_id == GOLD_ROW_ID
+                       else fresh.silver_fact)
+                age = self.clock() - fresh.snapshot.timestamp
+                if (row == result.after_fact
+                        and fresh.snapshot.sequence > before.snapshot.sequence
+                        and fresh.snapshot.sequence > result.before_fact.sequence
+                        and 0 <= age <= 2.0):
+                    return fresh
+        return self._fresh_facts(after_sequence=self._post_trade_barrier(before, result))
 
     def _fresh_facts(self, *, after_sequence: int) -> FreshKeyFacts:
         if self._cancelled():
@@ -611,6 +642,7 @@ class KeysPromotionRuntime:
 
 __all__ = (
     "FreshKeyFacts",
+    "VerifiedKeyTradeResult",
     "SILVER_PER_BRONZE_CONVERSION",
     "make_budget",
     "GoldFullAckResult",

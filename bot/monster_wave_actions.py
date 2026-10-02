@@ -59,12 +59,17 @@ class AcknowledgeMonsterWaveWeekly: pass
 class AcknowledgeMonsterWaveRanking: pass
 
 
+@dataclass(frozen=True)
+class AcknowledgeMonsterWavePointsReward: pass
+
+
 MonsterWaveAction = (
     OpenMonsterWave | ExitMonsterWave | OpenMonsterWaveTickets | FillMonsterWaveTickets
     | CloseMonsterWaveTickets | ActivateMonsterWaveSkip | SelectMonsterWaveMax
     | StartMonsterWaveSkip | RejectMonsterWaveSapphires | DeclineMonsterWaveInventory
     | AcceptMonsterWaveInventory | AcknowledgeMonsterWaveClear
     | AcknowledgeMonsterWaveWeekly | AcknowledgeMonsterWaveRanking
+    | AcknowledgeMonsterWavePointsReward
 )
 
 # Reviewed controls in the two acquisition manifests. No target for manual Start.
@@ -78,4 +83,8 @@ MONSTER_WAVE_TARGETS = {
     AcknowledgeMonsterWaveClear: (.499, .762),
     AcknowledgeMonsterWaveWeekly: (.5, .806),
     AcknowledgeMonsterWaveRanking: (.5, .674),
+    # Measured OK center on the live 2026-09-29 Points Reward dialog
+    # (red-button mask centroid (0.4995, 0.6561) in frame_3364.png); the
+    # legacy (0.5015, 0.6585) falls on the same button.
+    AcknowledgeMonsterWavePointsReward: (.500, .656),
 }

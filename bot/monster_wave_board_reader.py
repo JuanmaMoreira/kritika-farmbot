@@ -36,7 +36,11 @@ BOARD_ROWS = (
 # signal is never used as a negative classification.
 _NUMERIC_X = (0.425, 0.475)
 _RED_PRESSURE_MIN_SCORE = 0.070
-_LINE = re.compile(r"^\((\d+)/(\d+)\)\s*(.+)$")
+# The bronze ROI can catch a spurious/duplicated opening paren immediately
+# before the valid pair (live 2026-09-29: "( (233/499) Bronze Key"). Only
+# opening parens/whitespace are tolerated there; the pair itself stays strict
+# so lines with extra numbers or a broken pair still fail closed.
+_LINE = re.compile(r"^[\s(]*\((\d+)/(\d+)\)\s*(.+)$")
 
 
 @dataclass(frozen=True)

@@ -124,7 +124,15 @@ def _build_rapidocr():
         raise OcrEngineError(
             "RapidOCR is unavailable; install the pinned OCR requirements"
         ) from error
-    return RapidOCR(params={"Global.log_level": "critical"})
+    # Small causal crops must leave CPU for scrcpy decoding. Unbounded ONNX
+    # pools accumulated >13 s of video backlog under the live Craft workload.
+    # Two intra-op threads kept that stream current and reduced board OCR
+    # from ~0.44 s to ~0.30 s, preserving its strict freshness budget.
+    return RapidOCR(params={
+        "Global.log_level": "critical",
+        "EngineConfig.onnxruntime.intra_op_num_threads": 2,
+        "EngineConfig.onnxruntime.inter_op_num_threads": 1,
+    })
 
 
 __all__ = ("OcrEngine", "OcrEngineError", "OcrResult", "RapidOcrEngine")

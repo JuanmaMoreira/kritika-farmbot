@@ -329,6 +329,16 @@ def build_monster_wave_sapphires_extractor(engine: OcrEngine) -> OcrFactExtracto
     )
 
 
+def build_battle_mode_sapphires_extractor(engine: OcrEngine) -> OcrFactExtractor:
+    from dataclasses import replace
+    from bot.catalog import SCREEN_BATTLE_MODE_SELECT
+
+    # Same global HUD, verified in the existing Battle Mode captures.
+    # Daily status indicators do not obstruct this resource.
+    return replace(build_monster_wave_sapphires_extractor(engine),
+                   context=SCREEN_BATTLE_MODE_SELECT, require_clean_context=False)
+
+
 def build_timer_extractor(engine: OcrEngine) -> OcrFactExtractor:
     return OcrFactExtractor(
         name=BATTLE_TIMER_REMAINING,
@@ -381,6 +391,7 @@ __all__ = (
     "WORLD_BOSS_TIMER_ROI",
     "build_sapphires_extractor",
     "build_monster_wave_sapphires_extractor",
+    "build_battle_mode_sapphires_extractor",
     "build_socket_sell_level_extractor",
     "build_timer_extractor",
     "parse_duration_seconds",

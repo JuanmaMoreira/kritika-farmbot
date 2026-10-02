@@ -6,6 +6,7 @@ from bot.action_executor import (
     ActionExecutor,
     DEFAULT_CRAFT_ACTION_TARGETS,
     DEFAULT_ROTATION_ACTION_TARGETS,
+    FrameGeometry,
 )
 from bot.capture import FrameSnapshot
 from bot.craft_runtime import CraftRouteOutcome, CraftRuntime
@@ -23,6 +24,10 @@ from bot.craft_semantics import (
 )
 from bot.equipment_sell_semantics import EquipmentInventoryFact
 from bot.quick_menu import QuickMenuHandoff
+from bot.catalog import MENU_QUICK
+from bot.observations import ObservationBatch
+from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot
+from bot.state import ResolvedState, ResolutionStatus
 from bot.semantic_actions import QuickMenuLayout
 
 
@@ -38,17 +43,18 @@ class Clock:
 
 
 class Source:
-    def __init__(self, sequences):
+    def __init__(self, sequences, clock):
         self.items = [
             FrameSnapshot(np.zeros((100, 200, 3), dtype=np.uint8), 100.0, sequence)
             for sequence in sequences
         ]
         self.index = 0
+        self.clock = clock
 
     def get_frame(self):
         item = self.items[min(self.index, len(self.items) - 1)]
         self.index += 1
-        return item
+        return FrameSnapshot(item.image, self.clock(), item.sequence)
 
 
 class InventoryReader:
@@ -132,7 +138,7 @@ def runtime(*, sequences, inventory=None, craft=None, cancelled=lambda: False):
     adb = Mock()
     clock = Clock()
     value = CraftRuntime(
-        Source(sequences),
+        Source(sequences, clock),
         inventory or InventoryReader(),
         craft or CraftReader(),
         ActionExecutor(adb),
@@ -143,6 +149,24 @@ def runtime(*, sequences, inventory=None, craft=None, cancelled=lambda: False):
         sleeper=clock.sleep,
     )
     return value, adb
+
+
+def _menu_snapshot(
+    sequence=1, *, status=ResolutionStatus.UNKNOWN, overlays=(MENU_QUICK,),
+    base_context=None, timestamp=100.0,
+):
+    frame = FrameSnapshot(np.zeros((100, 200, 3), dtype=np.uint8), timestamp, sequence)
+    return RuntimeSnapshot(
+        frame,
+        ObservationBatch(sequence, timestamp, ()),
+        ResolvedState(
+            status, sequence, timestamp, base_context=base_context, overlays=overlays,
+            base_candidates=("screen.monster_wave", "screen.lobby")
+            if status is ResolutionStatus.AMBIGUOUS else (),
+        ),
+        RuntimeFacts(),
+        FrameGeometry.from_frame(frame.image),
+    )
 
 
 def test_one_free_slot_allows_verified_quick_menu_to_craft_entry():
@@ -276,7 +300,7 @@ def test_verified_shifted_handoff_enters_craft_once_before_capacity_probe():
         layout=QuickMenuLayout.SHIFTED,
     )
 
-    result = value.enter_from_verified_quick_menu(handoff)
+    result = value.enter_from_verified_quick_menu(handoff, _menu_snapshot())
 
     assert result.outcome is CraftRouteOutcome.ENTERED
     assert result.inputs == ("select_craft",)
@@ -294,14 +318,61 @@ def test_invalidated_handoff_emits_zero_input():
     )
 
     handoff.invalidate()
-    result = value.enter_from_verified_quick_menu(handoff)
+    result = value.enter_from_verified_quick_menu(handoff, _menu_snapshot())
 
     assert result.outcome is CraftRouteOutcome.FAILED
     adb.tap.assert_not_called()
 
 
+def test_mw_craft_handoff_rejects_missing_ambiguous_foreign_and_stale_menu():
+    for menu in (
+        _menu_snapshot(overlays=()),
+        _menu_snapshot(status=ResolutionStatus.AMBIGUOUS),
+        _menu_snapshot(overlays=(MENU_QUICK, "popup.foreign")),
+        _menu_snapshot(sequence=0),
+        _menu_snapshot(timestamp=90.0),
+        _menu_snapshot(status=ResolutionStatus.RESOLVED, base_context="screen.lobby"),
+    ):
+        value, adb = runtime(sequences=range(2, 8))
+        handoff = QuickMenuHandoff(
+            origin="screen.monster_wave", action_source_sequence=0,
+            menu_sequence=1, layout=QuickMenuLayout.SHIFTED,
+        )
+        result = value.enter_from_verified_quick_menu(handoff, menu)
+        assert result.outcome is CraftRouteOutcome.FAILED
+        adb.tap.assert_not_called()
+
+
+def test_mw_craft_handoff_requires_fresh_craft_postcondition():
+    class MissingCraft(CraftReader):
+        def context_sample(self, frame, *, sequence, observed_at):
+            return None
+
+    value, adb = runtime(sequences=range(2, 8), craft=MissingCraft())
+    handoff = QuickMenuHandoff(
+        origin="screen.monster_wave", action_source_sequence=0,
+        menu_sequence=1, layout=QuickMenuLayout.SHIFTED,
+    )
+    result = value.enter_from_verified_quick_menu(handoff, _menu_snapshot())
+    assert result.outcome is CraftRouteOutcome.FAILED
+    assert result.reason == "fresh_craft_not_verified"
+    adb.tap.assert_called_once()
+
+
+def test_mw_handoff_does_not_authorize_craft_tile_from_other_origin():
+    value, adb = runtime(sequences=range(2, 8))
+    handoff = QuickMenuHandoff(
+        origin="screen.treasure", action_source_sequence=0,
+        menu_sequence=1, layout=QuickMenuLayout.SHIFTED,
+    )
+    result = value.enter_from_verified_quick_menu(handoff, _menu_snapshot())
+    assert result.outcome is CraftRouteOutcome.FAILED
+    assert result.reason == "quick_menu_craft_target_not_authorized"
+    adb.tap.assert_not_called()
+
+
 def test_capacity_probe_reads_inventory_then_returns_to_fresh_craft():
-    value, adb = runtime(sequences=range(1, 9),
+    value, adb = runtime(sequences=range(1, 17),
                          inventory=InventoryReader(count=111, capacity=112))
     result = value.probe_equipment_capacity()
     assert result.outcome is CraftRouteOutcome.ENTERED
@@ -313,7 +384,7 @@ def test_capacity_probe_reads_inventory_then_returns_to_fresh_craft():
 
 
 def test_capacity_probe_zero_slots_returns_to_craft_without_crafting():
-    value, adb = runtime(sequences=range(1, 9),
+    value, adb = runtime(sequences=range(1, 17),
                          inventory=InventoryReader(count=112, capacity=112))
     result = value.probe_equipment_capacity()
     assert result.outcome is CraftRouteOutcome.CAPACITY_BLOCKED
@@ -323,7 +394,7 @@ def test_capacity_probe_zero_slots_returns_to_craft_without_crafting():
 
 
 def test_capacity_probe_unreadable_inventory_fails_without_back_or_craft():
-    value, adb = runtime(sequences=range(1, 7),
+    value, adb = runtime(sequences=range(1, 9),
                          inventory=InventoryReader(readable=False))
     result = value.probe_equipment_capacity()
     assert result.outcome is CraftRouteOutcome.FAILED
@@ -334,11 +405,11 @@ def test_capacity_probe_unreadable_inventory_fails_without_back_or_craft():
 def test_capacity_probe_requires_fresh_craft_after_inventory_back():
     class MissingReturn(CraftReader):
         def context_sample(self, frame, *, sequence, observed_at):
-            if sequence >= 7:
+            if sequence >= 9:
                 return None
             return super().context_sample(frame, sequence=sequence,
                                           observed_at=observed_at)
-    value, adb = runtime(sequences=range(1, 9), craft=MissingReturn())
+    value, adb = runtime(sequences=range(1, 17), craft=MissingReturn())
     result = value.probe_equipment_capacity()
     assert result.outcome is CraftRouteOutcome.FAILED
     assert result.reason == "craft_not_restored"
@@ -348,10 +419,10 @@ def test_capacity_probe_requires_fresh_craft_after_inventory_back():
 def test_capacity_probe_does_not_reuse_prior_visit_fact():
     class ChangingInventory(InventoryReader):
         def inventory_sample(self, frame, *, sequence, observed_at):
-            self.count = 111 if sequence < 13 else 112
+            self.count = 111 if sequence < 17 else 112
             return super().inventory_sample(frame, sequence=sequence,
                                             observed_at=observed_at)
-    value, adb = runtime(sequences=range(1, 17), inventory=ChangingInventory())
+    value, adb = runtime(sequences=range(1, 29), inventory=ChangingInventory())
     first = value.probe_equipment_capacity()
     second = value.probe_equipment_capacity()
     assert first.outcome is CraftRouteOutcome.ENTERED
@@ -433,3 +504,146 @@ def test_hero_drain_requires_progress_and_respects_budget():
         after_fact=replace(fact, sequence=11, weapon_material=310),
     )
     assert runtime.drain_hero_material(max_batches=1).reason == "craft_batch_budget_exhausted"
+
+
+def test_hero_drain_fails_closed_when_weapon_family_fact_unreadable():
+    from dataclasses import replace
+    base = CraftReader().context_sample(None, sequence=10, observed_at=100.0)
+    assert base is not None
+    for missing in (
+        replace(base, weapon_material=None),
+        replace(base, weapon_hero_cost=None),
+    ):
+        runtime = CraftRuntime.__new__(CraftRuntime)
+        runtime.craft_reader = CraftReader()
+        runtime.cancel_requested = lambda: False
+        runtime._fresh = lambda value: True
+        runtime._read_consensus = lambda *args, **kwargs: missing
+        def _unexpected(request):
+            raise AssertionError("drain must not operate without weapon facts")
+        runtime.execute = _unexpected
+        result = runtime.drain_hero_material(max_batches=2)
+        assert result.outcome is CraftOutcome.FAILED
+        assert result.batches == ()
+
+
+def test_capacity_probe_revalidates_menu_after_settle_without_repeating_selection():
+    class DisappearingMenu(CraftReader):
+        def quick_menu_sample(self, frame, *, sequence, observed_at):
+            if sequence > 4:
+                return None
+            return super().quick_menu_sample(frame, sequence=sequence, observed_at=observed_at)
+    value, adb = runtime(sequences=range(1, 30), craft=DisappearingMenu())
+    result = value.probe_equipment_capacity()
+    assert result.reason == "quick_menu_not_verified"
+    assert result.inputs == ("open_quick_menu",)
+    adb.tap.assert_called_once_with(38, 5)
+
+
+def test_effect_wait_survives_48_fast_animation_rejections_within_deadline():
+    class SlowAnimation(CraftReader):
+        def result_sample(self, frame, *, sequence, observed_at):
+            if sequence < 60:
+                return None
+            return super().result_sample(frame, sequence=sequence, observed_at=observed_at)
+    from bot.craft_semantics import consensus_craft_facts
+    value, adb = runtime(sequences=range(1, 150), craft=SlowAnimation())
+    fact=value._read_consensus(value.craft_reader,'result_sample',after_sequence=0,
+                               consensus=consensus_craft_facts,timeout=1.)
+    assert fact is not None and fact.sample_sequences==(60,61)
+    assert value.clock()<101.
+    adb.tap.assert_not_called()
+
+
+def test_effect_wait_still_stops_at_its_deadline_without_input():
+    class MissingResult(CraftReader):
+        def result_sample(self, *_args, **_kwargs):return None
+    from bot.craft_semantics import consensus_craft_facts
+    value, adb = runtime(sequences=range(1, 200), craft=MissingResult())
+    fact=value._read_consensus(value.craft_reader,'result_sample',after_sequence=0,
+                               consensus=consensus_craft_facts,timeout=1.)
+    assert fact is None
+    assert 101.<=value.clock()<101.02
+    adb.tap.assert_not_called()
+
+
+def test_craft_effect_waits_for_delayed_balance_without_reconfirming():
+    from dataclasses import replace
+    class DelayedBalance(CraftReader):
+        def context_sample(self, frame, *, sequence, observed_at):
+            fact=super().context_sample(frame,sequence=sequence,observed_at=observed_at)
+            return replace(fact,weapon_material=276 if sequence>=5 else 325)
+    value, adb=runtime(sequences=range(1,30),craft=DelayedBalance())
+    value._after_sequence=0
+    fact=value._read_effect_context(CraftFamily.WEAPON,276)
+    assert fact is not None and fact.weapon_material==276
+    assert fact.sample_sequences==(5,6)
+    adb.tap.assert_not_called()
+
+
+def test_craft_unchanged_balance_stays_bounded_and_never_reconfirms():
+    value, adb=runtime(sequences=range(1,100))
+    fact=value._read_effect_context(CraftFamily.WEAPON,276)
+    assert fact is not None and fact.weapon_material==325
+    assert 100.2<=value.clock()<100.22
+    adb.tap.assert_not_called()
+
+
+def test_inventory_branch_records_lobby_as_normal_second_back_destination():
+    value, adb = runtime(sequences=range(1, 25))
+    capacity = value.probe_equipment_capacity()
+    assert capacity.outcome is CraftRouteOutcome.ENTERED
+    returned = value.request_back_to_origin()
+    assert returned.return_base == "screen.lobby"
+
+
+def test_no_craft_material_skips_inventory_capacity_navigation():
+    from dataclasses import replace
+    value, adb = runtime(sequences=range(1, 5))
+    original = value.craft_reader.context_sample
+    value.craft_reader.context_sample = lambda *args, **kwargs: replace(
+        original(*args, **kwargs), weapon_material=48)
+    result = value.probe_equipment_capacity()
+    assert result.outcome is CraftRouteOutcome.ENTERED
+    assert result.inventory_fact is None
+    adb.tap.assert_not_called()
+
+
+def test_max_waits_for_effect_once_with_material_bounded_quantity():
+    from dataclasses import replace
+    from bot.craft_policy import CraftQuantityMode
+    class DelayedMax(CraftReader):
+        def recipe_sample(self, frame, *, sequence, observed_at):
+            return replace(super().recipe_sample(frame, sequence=sequence, observed_at=observed_at),
+                           quantity_cap=10, quantity=6 if sequence >= 7 else 1)
+        def context_sample(self, frame, *, sequence, observed_at):
+            return replace(super().context_sample(frame, sequence=sequence, observed_at=observed_at),
+                           weapon_material=31 if sequence >= 11 else 325)
+    value, adb=runtime(sequences=range(1,20),craft=DelayedMax())
+    result=value.execute(CraftRequest(CraftFamily.WEAPON, quantity_mode=CraftQuantityMode.MAX_AVAILABLE))
+    assert result.outcome is CraftOutcome.SUCCESS
+    assert result.recipe_fact.quantity == 6
+    assert result.recipe_fact.sample_sequences == (7,8)
+    assert result.inputs == ("open_recipe","select_max","confirm_material","dismiss_result")
+    assert adb.tap.call_count == 4
+
+
+def test_max_without_effect_never_confirms_or_repeats_max():
+    from bot.craft_policy import CraftQuantityMode
+    value, adb=runtime(sequences=range(1,100))
+    result=value.execute(CraftRequest(CraftFamily.WEAPON,quantity_mode=CraftQuantityMode.MAX_AVAILABLE))
+    assert result.outcome is CraftOutcome.FAILED
+    assert result.inputs == ("open_recipe","select_max","cancel_recipe")
+    assert adb.tap.call_count == 3
+
+
+def test_craft_rejects_higher_sequence_frame_captured_before_dispatch():
+    from bot.craft_semantics import consensus_craft_facts
+    value, adb=runtime(sequences=range(1,30))
+    value._not_before=100.05
+    fact=value._read_consensus(value.craft_reader,"recipe_sample",after_sequence=0,
+                               consensus=consensus_craft_facts)
+    assert fact is not None
+    assert fact.observed_at >= 100.05
+    assert fact.sample_sequences[0] > 1
+    adb.tap.assert_not_called()

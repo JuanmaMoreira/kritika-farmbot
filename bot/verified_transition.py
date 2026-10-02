@@ -13,6 +13,7 @@ from bot.action_executor import ActionExecutor
 from bot.event_log import EventSink
 from bot.event_context import operation_scope
 from bot.failure_cause import FailureCause
+from bot.geometry import RelativeRegion
 from bot.runtime_observer import (
     RuntimeObserver,
     RuntimeSnapshot,
@@ -21,6 +22,8 @@ from bot.runtime_observer import (
     RuntimeWaitTimeout,
 )
 from bot.semantic_actions import SemanticAction
+
+EvidenceRegions = tuple[RelativeRegion, ...] | Callable[[RuntimeSnapshot], tuple[RelativeRegion, ...]]
 
 
 class VerifiedTransitionOutcome(str, Enum):
@@ -131,10 +134,10 @@ class _Observer(Protocol):
 
 
 class ObstructionRecovery(Protocol):
-    """Generic on-demand cleanup tried before a definitive retry/failure.
+    """Generic cleanup for a declared signal or target conflict.
 
     The protocol is intentionally free of any overlay-specific vocabulary:
-    it receives the fresh snapshot that missed the caller's condition and
+    it receives the fresh snapshot and the caller's causal geometry and
     returns a fresher snapshot when it performed >= 1 cleanup tap, or None
     when it performed no tap. The caller re-evaluates its original condition
     and never repeats its productive action just because cleanup ran.
@@ -144,7 +147,12 @@ class ObstructionRecovery(Protocol):
         self,
         snapshot: RuntimeSnapshot,
         expected: Callable[[RuntimeSnapshot], bool],
+        *,
+        regions: tuple = (),
+        target=None,
     ) -> RuntimeSnapshot | None: ...
+
+    def input_conflicts(self, action: SemanticAction): ...
 
 
 class VerifiedTransition:
@@ -181,6 +189,22 @@ class VerifiedTransition:
         except Exception:
             return 0.0
 
+    def input_conflicts(self, action):
+        """Pure target check supplied by the configured obstruction owner."""
+        check = getattr(self.obstruction_recovery, "input_conflicts", None)
+        return check(action) if callable(check) else None
+
+    def recover_input(self, name, action, before, precondition, on_recovery=None):
+        """Prepare an intersecting input; its owner must revalidate the guard.
+
+        Direct operations retain their existing wait/cancellation contracts.
+        No target conflict means no observation or probe.
+        """
+        target = self.input_conflicts(action)
+        if target is None or precondition is None:
+            return None
+        return self._try_recover(before, precondition, name, on_recovery, target=target)
+
     def execute(
         self,
         name: str,
@@ -194,6 +218,8 @@ class VerifiedTransition:
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
         stable_for: float = 0.0,
         on_recovery: Callable[[], None] | None = None,
+        precondition_regions: EvidenceRegions = (),
+        expected_regions: EvidenceRegions = (),
     ) -> VerifiedTransitionResult:
         with operation_scope(name) as context:
             started = self._metrics_now()
@@ -204,6 +230,8 @@ class VerifiedTransition:
                     precondition=precondition, retryable_from=retryable_from,
                     abort_if=abort_if, stable_for=stable_for,
                     on_recovery=on_recovery, _progress=progress,
+                    precondition_regions=precondition_regions,
+                    expected_regions=expected_regions,
                 )
             except BaseException as error:
                 failure = getattr(error, "failure", None) or FailureCause.from_error(
@@ -245,6 +273,8 @@ class VerifiedTransition:
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
         stable_for: float = 0.0,
         on_recovery: Callable[[], None] | None = None,
+        precondition_regions: EvidenceRegions = (),
+        expected_regions: EvidenceRegions = (),
         _progress: dict,
     ) -> VerifiedTransitionResult:
         if not isinstance(name, str) or not name.strip():
@@ -300,6 +330,28 @@ class VerifiedTransition:
                 snapshot = settled
             return finish(name, outcome, attempt, grace_count, snapshot)
 
+        def finish_aborted(wait, attempt, grace_count):
+            nonlocal recovery_after_action
+            # A declared missing signal can explain an abort as well as a
+            # timeout. Without that declaration preserve the original abort.
+            snapshot = wait.snapshot
+            if expected_regions:
+                recovered = self._try_recover(
+                    snapshot, expected, name, on_recovery, regions=expected_regions,
+                )
+                if recovered is not None:
+                    recovery_after_action = True
+                    snapshot = recovered
+                    if expected(snapshot):
+                        return finish_late_success(
+                            VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY,
+                            attempt, grace_count, snapshot,
+                        )
+            return finish(
+                name, VerifiedTransitionOutcome.UNEXPECTED_STATE,
+                attempt, grace_count, snapshot, str(wait),
+            )
+
         self._record(
             "transition.started",
             transition=name,
@@ -309,7 +361,9 @@ class VerifiedTransition:
             max_attempts=policy.max_attempts,
         )
         if precondition is not None and not precondition(before):
-            recovered = self._try_recover(before, precondition, name, on_recovery)
+            recovered = self._try_recover(
+                before, precondition, name, on_recovery, regions=precondition_regions,
+            )
             if recovered is not None and precondition(recovered):
                 self._record(
                     "transition.obstruction_recovered",
@@ -332,6 +386,18 @@ class VerifiedTransition:
         grace_wait_count = 0
         for attempt in range(1, policy.max_attempts + 1):
             _progress["attempt"] = attempt
+            guard = precondition if attempt == 1 else retryable_from
+            recovered = self.recover_input(name, action, current, guard, on_recovery)
+            if recovered is not None:
+                recovery_after_action = action_source_snapshot is not None
+                if (not guard(recovered) or
+                        (abort_if is not None and abort_if(recovered))):
+                    return finish(
+                        name, VerifiedTransitionOutcome.PRECONDITION_REJECTED,
+                        attempt - 1, grace_wait_count, recovered,
+                        "precondition_rejected_after_recovery",
+                    )
+                current = recovered
             try:
                 self.actions.execute(action, current.geometry)
                 action_source_snapshot = current
@@ -371,14 +437,7 @@ class VerifiedTransition:
                     normal,
                 )
             if isinstance(normal, RuntimeWaitAborted):
-                return finish(
-                    name,
-                    VerifiedTransitionOutcome.UNEXPECTED_STATE,
-                    attempt,
-                    grace_wait_count,
-                    normal.snapshot,
-                    str(normal),
-                )
+                return finish_aborted(normal, attempt, grace_wait_count)
 
             self._record(
                 "transition.nominal_timeout",
@@ -416,14 +475,7 @@ class VerifiedTransition:
                     grace,
                 )
             if isinstance(grace, RuntimeWaitAborted):
-                return finish(
-                    name,
-                    VerifiedTransitionOutcome.UNEXPECTED_STATE,
-                    attempt,
-                    grace_wait_count,
-                    grace.snapshot,
-                    str(grace),
-                )
+                return finish_aborted(grace, attempt, grace_wait_count)
 
             try:
                 observed = self.observer.observe()
@@ -465,7 +517,9 @@ class VerifiedTransition:
                     observed,
                     "unexpected_state_after_grace",
                 )
-            recovered = self._try_recover(observed, expected, name, on_recovery)
+            recovered = self._try_recover(
+                observed, expected, name, on_recovery, regions=expected_regions,
+            )
             if recovered is not None:
                 recovery_after_action = True
                 if expected(recovered):
@@ -610,12 +664,20 @@ class VerifiedTransition:
         condition: Callable[[RuntimeSnapshot], bool],
         name: str,
         on_recovery: Callable[[], None] | None = None,
+        *,
+        regions: EvidenceRegions = (),
+        target=None,
     ) -> RuntimeSnapshot | None:
         recovery = self.obstruction_recovery
         if recovery is None:
             return None
+        if callable(regions):
+            regions = regions(snapshot)
         try:
-            recovered = recovery.attempt(snapshot, condition)
+            if regions or target is not None:
+                recovered = recovery.attempt(snapshot, condition, regions=regions, target=target)
+            else:
+                recovered = recovery.attempt(snapshot, condition)
         except RuntimeWaitCancelled:
             raise
         except Exception as error:

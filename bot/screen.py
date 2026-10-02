@@ -130,14 +130,15 @@ def _prepare_match(
         raise ValueError("screenshot_img must be an HxWxC NumPy frame")
     width, height = frame_dimensions(screenshot_img)
 
-    screenshot_gray = cv2.cvtColor(screenshot_img, cv2.COLOR_BGR2GRAY)
     template = _load_template(template_path)
-
     if region is None:
-        return screenshot_gray, template, 0, 0
+        return cv2.cvtColor(screenshot_img, cv2.COLOR_BGR2GRAY), template, 0, 0
 
+    # Color conversion is pixel-local: crop first to avoid converting the
+    # whole native frame again for every small template/variant in MW waits.
     x1, y1, x2, y2 = relative_region_to_pixels(region, width, height)
-    return screenshot_gray[y1:y2, x1:x2], template, x1, y1
+    search = cv2.cvtColor(screenshot_img[y1:y2, x1:x2], cv2.COLOR_BGR2GRAY)
+    return search, template, x1, y1
 
 
 def _load_template(

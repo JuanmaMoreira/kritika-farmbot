@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from numbers import Integral
+from time import monotonic
 
 from bot.adb import AdbClient
+from bot.event_log import EventSink, record_best_effort
 from bot.monster_wave_actions import MONSTER_WAVE_TARGETS, SelectMonsterWaveMax
 from bot.geometry import (
     PixelPoint,
@@ -71,6 +73,13 @@ from bot.semantic_actions import (
     OpenAwakenedTransmute,
     OpenCombineAll,
     OpenEquipmentCombine,
+    OpenEquipmentInventoryFromFull,
+    CloseEquipmentDetail,
+    NextEquipmentInventoryPage,
+    PreviousEquipmentInventoryPage,
+    OpenEquipmentCapacityRow,
+    ConfirmEquipmentCapacityExpansion,
+    CancelEquipmentCapacityExpansion,
     OpenEquipmentSell,
     OpenEtherealMassCombine,
     OpenEtherealRandomPart,
@@ -116,6 +125,7 @@ from bot.semantic_actions import (
     ToggleAutoBattle,
     TapSocketEnhanceAnimation,
     TapCombineAnimation,
+    TapEtherealResultAnimation,
     CancelPetMassEvolveSelection,
     NextPetCombinePage,
     StartWorldBossBattle,
@@ -512,6 +522,15 @@ class EquipmentActionTargets:
         for row in range(4)
         for column in range(4)
     )
+    open_inventory_from_full: RelativePoint = (0.3900, 0.6250)
+    close_detail: RelativePoint = (0.6600, 0.0750)
+    next_inventory_page: RelativePoint = (0.8020, 0.9140)
+    previous_inventory_page: RelativePoint = (0.7020, 0.9140)
+    capacity_rows: tuple[RelativePoint, ...] = tuple(
+        (0.6800, 0.3750 + row * 0.1390) for row in range(4)
+    )
+    confirm_capacity_expansion: RelativePoint = (0.4300, 0.6250)
+    cancel_capacity_expansion: RelativePoint = (0.5700, 0.6250)
     open_sell: RelativePoint = (0.7870, 0.4600)
     confirm_bulk_sale: RelativePoint = (0.3980, 0.6270)
     cancel_sale: RelativePoint = (0.6000, 0.6270)
@@ -527,12 +546,25 @@ class EquipmentActionTargets:
     confirm_ethereal_mass_combine: RelativePoint = (0.4300, 0.6200)
     acknowledge_ethereal_no_material: RelativePoint = (0.5000, 0.6200)
     animation_tap: RelativePoint = (0.5000, 0.7800)
+    # Safe void for the post-Mass-Combine Ethereal result animation (USER_GT
+    # 2026-09-28: tap outside the item and any visible button).  In the live
+    # failure frames the item card spans x~0.31-0.62/y~0.50-0.85 with the
+    # wings glow top-center and the Recombine/Mao Coins texts at x~0.66-0.82,
+    # so the left-middle void is empty black across result variants.
+    ethereal_result_animation_tap: RelativePoint = (0.1500, 0.5000)
     exit_combine: RelativePoint = (0.8000, 0.0700)
 
     def __post_init__(self) -> None:
         for point in (
             self.open_combine,
             *self.inventory_slots,
+            self.open_inventory_from_full,
+            self.close_detail,
+            self.next_inventory_page,
+            self.previous_inventory_page,
+            *self.capacity_rows,
+            self.confirm_capacity_expansion,
+            self.cancel_capacity_expansion,
             self.open_sell,
             self.confirm_bulk_sale,
             self.cancel_sale,
@@ -546,6 +578,7 @@ class EquipmentActionTargets:
             self.confirm_ethereal_mass_combine,
             self.acknowledge_ethereal_no_material,
             self.animation_tap,
+            self.ethereal_result_animation_tap,
             self.exit_combine,
         ):
             relative_point_to_pixel(point, 1, 1)
@@ -737,7 +770,8 @@ class ActionExecutor:
         self.craft_targets = craft_targets
 
     def execute(
-        self, action: SemanticAction, geometry: FrameGeometry
+        self, action: SemanticAction, geometry: FrameGeometry, *,
+        events: EventSink | None = None, source_sequence: int | None = None,
     ) -> ActionExecution | SwipeExecution:
         """Translate intent to input; MW MAX is an explicit two-tap operation."""
 
@@ -745,17 +779,52 @@ class ActionExecutor:
             raise ValueError("geometry must be FrameGeometry")
         if isinstance(action, Swipe):
             return self._execute_swipe(action, geometry)
-        target = self._target_for(action)
-        pixel = relative_point_to_pixel(target, geometry.width, geometry.height)
-        self.adb.tap(*pixel)
-        if isinstance(action, SelectMonsterWaveMax):
-            # No frame read, wait, decision or retry between the two taps.
+        action_kind = type(action).__name__
+        try:
+            target = self.target_for(action)
+            pixel = relative_point_to_pixel(target, geometry.width, geometry.height)
+        except Exception as error:
+            record_best_effort(
+                events, "action.failed", action_kind=action_kind,
+                source_sequence=source_sequence, stage="target_resolution",
+                error_type=type(error).__name__, monotonic_timestamp=monotonic(),
+            )
+            raise
+        detail = dict(
+            action_kind=action_kind, target=target, pixel_target=pixel,
+            source_sequence=source_sequence,
+        )
+        record_best_effort(
+            events, "action.started", **detail, monotonic_timestamp=monotonic(),
+        )
+        try:
             self.adb.tap(*pixel)
-        return ActionExecution(
+            if isinstance(action, SelectMonsterWaveMax):
+                # No frame read, wait, decision or retry between the two taps.
+                self.adb.tap(*pixel)
+        except Exception as error:
+            record_best_effort(
+                events, "action.failed", **detail, stage="dispatch",
+                error_type=type(error).__name__, monotonic_timestamp=monotonic(),
+            )
+            raise
+        record_best_effort(
+            events, "action.dispatched", **detail,
+            dispatch_result="adb_command_returned", monotonic_timestamp=monotonic(),
+        )
+        result = ActionExecution(
             action=action,
             normalized_target=target,
             pixel_target=pixel,
         )
+        record_best_effort(
+            events, "action.completed", **detail, monotonic_timestamp=monotonic(),
+        )
+        return result
+
+    def target_for(self, action: SemanticAction) -> RelativePoint:
+        """Resolve the existing tap target without emitting input."""
+        return self._target_for(action)
 
     def _target_for(self, action: SemanticAction) -> RelativePoint:
         if type(action) in MONSTER_WAVE_TARGETS:
@@ -944,6 +1013,20 @@ class ActionExecutor:
             return self.equipment_targets.open_combine
         if isinstance(action, SelectEquipmentInventorySlot):
             return self.equipment_targets.inventory_slots[action.slot_index]
+        if isinstance(action, OpenEquipmentInventoryFromFull):
+            return self.equipment_targets.open_inventory_from_full
+        if isinstance(action, CloseEquipmentDetail):
+            return self.equipment_targets.close_detail
+        if isinstance(action, NextEquipmentInventoryPage):
+            return self.equipment_targets.next_inventory_page
+        if isinstance(action, PreviousEquipmentInventoryPage):
+            return self.equipment_targets.previous_inventory_page
+        if isinstance(action, OpenEquipmentCapacityRow):
+            return self.equipment_targets.capacity_rows[action.row]
+        if isinstance(action, ConfirmEquipmentCapacityExpansion):
+            return self.equipment_targets.confirm_capacity_expansion
+        if isinstance(action, CancelEquipmentCapacityExpansion):
+            return self.equipment_targets.cancel_capacity_expansion
         if isinstance(action, OpenEquipmentSell):
             return self.equipment_targets.open_sell
         if isinstance(action, ConfirmEquipmentBulkSale):
@@ -970,6 +1053,8 @@ class ActionExecutor:
             return self.equipment_targets.acknowledge_ethereal_no_material
         if isinstance(action, TapCombineAnimation):
             return self.equipment_targets.animation_tap
+        if isinstance(action, TapEtherealResultAnimation):
+            return self.equipment_targets.ethereal_result_animation_tap
         if isinstance(action, ExitCombine):
             return self.equipment_targets.exit_combine
         if isinstance(action, DismissWorldBossBagFull):

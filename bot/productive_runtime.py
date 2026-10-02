@@ -81,7 +81,7 @@ from bot.verified_transition import (
 from bot.world_boss_eligibility import WorldBossDailyEligibility
 from bot.world_boss_flow import WorldBossFlow
 from bot.monster_wave_flow import MonsterWaveFlow
-from bot.monster_wave_eligibility import MonsterWaveDailyEligibility
+from bot.monster_wave_productive import ProductiveMonsterWaveFlow
 from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
 
 
@@ -358,9 +358,8 @@ class ProductiveRuntime:
         character_count: int,
     ) -> SessionResult:
         flows = self.build_flows(definitions)
-        zone = next((flow.zone for flow in flows if isinstance(flow, (WorldBossFlow, MonsterWaveFlow))), None)
-        flows = tuple(flow.prepared(zone, daily=True) if isinstance(flow, MonsterWaveFlow) else
-                      flow.prepared(zone) if isinstance(flow, WorldBossFlow) else flow
+        zone = next((flow.zone for flow in flows if isinstance(flow, (WorldBossFlow, MonsterWaveFlow, ProductiveMonsterWaveFlow))), None)
+        flows = tuple(flow.prepared(zone) if isinstance(flow, (WorldBossFlow, MonsterWaveFlow, ProductiveMonsterWaveFlow)) else flow
                       for flow in flows)
         rotation = self.build_rotation(character_count)
         plan = SessionPlan.standard(
@@ -369,8 +368,7 @@ class ProductiveRuntime:
             character_count=character_count,
             eligibility=tuple(
                 self.build_world_boss_daily_eligibility() if flow.name == "world_boss" else
-                self.build_monster_wave_daily_eligibility()
-                if flow.name == 'monster_wave' else None
+                None
                 for flow in flows
             ),
         )
@@ -412,20 +410,6 @@ class ProductiveRuntime:
             unavailable_event="world_boss.eligibility_scope_unavailable",
         )
         return WorldBossDailyEligibility(
-            observer,
-            cancel_requested=self.cancel_requested,
-        )
-
-    def build_monster_wave_daily_eligibility(self) -> MonsterWaveDailyEligibility:
-        """Only the daily session composition installs this check; same hub scope as WB."""
-
-        observer = scoped_observer_for(
-            self, self.observer,
-            scope=WORLD_BOSS_ELIGIBILITY_SCOPE,
-            active_event="monster_wave.eligibility_scope_active",
-            unavailable_event="monster_wave.eligibility_scope_unavailable",
-        )
-        return MonsterWaveDailyEligibility(
             observer,
             cancel_requested=self.cancel_requested,
         )
@@ -790,6 +774,7 @@ def open_productive_runtime(
     dotenv_path: str | Path = PROJECT_ROOT / ".env",
     log_path: str | Path,
     debug: bool = False,
+    equipment_sell_policy=None,
     cancel_token: CancellationToken | None = None,
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY,
     event_consumers: tuple[RuntimeEventConsumer, ...] = (),
@@ -810,6 +795,9 @@ def open_productive_runtime(
     events.record("runtime.started", log_path=str(log_path), debug=debug)
     try:
         config = RuntimeConfig.from_env(dotenv_path=dotenv_path)
+        if equipment_sell_policy is not None:
+            from dataclasses import replace
+            config = replace(config, equipment_sell=equipment_sell_policy)
         adb = build_adb_client(config)
         if adb.get_state() != "device":
             raise RuntimeError("ADB device is not ready")

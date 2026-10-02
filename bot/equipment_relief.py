@@ -25,6 +25,8 @@ from bot.equipment_sell_operation import (
     EquipmentSellResult,
 )
 from bot.runtime_observer import RuntimeWaitCancelled
+from bot.equipment_sell_policy import EquipmentSellPolicy
+from bot.equipment_inventory_relief import EquipmentInventoryReliefResult
 
 
 RequestT = TypeVar("RequestT")
@@ -74,13 +76,13 @@ class FreshCallerContext(Generic[ContextT]):
 class EquipmentReliefSellPlan(Generic[CallerResultT]):
     """Explicit authorized Sell request plus caller-specific verified routing."""
 
-    request: EquipmentSellRequest
+    request: EquipmentSellRequest | EquipmentSellPolicy
     enter_inventory: Callable[[CallerResultT], None]
-    return_to_caller: Callable[[EquipmentSellResult], int]
+    return_to_caller: Callable[[EquipmentSellResult | EquipmentInventoryReliefResult], int]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.request, EquipmentSellRequest):
-            raise ValueError("request must be an EquipmentSellRequest")
+        if not isinstance(self.request, (EquipmentSellRequest, EquipmentSellPolicy)):
+            raise ValueError("request must be an EquipmentSellRequest or EquipmentSellPolicy")
         if not callable(self.enter_inventory) or not callable(self.return_to_caller):
             raise ValueError("sell navigation hooks must be callable")
 
@@ -122,7 +124,7 @@ class EquipmentReliefResult(Generic[CallerResultT]):
     stage: str
     caller_result: CallerResultT | None = None
     combine_result: EquipmentCombineReliefResult | None = None
-    sell_result: EquipmentSellResult | None = None
+    sell_result: EquipmentSellResult | EquipmentInventoryReliefResult | None = None
     caller_attempt_count: int = 0
     combine_invocation_count: int = 0
     sell_invocation_count: int = 0
@@ -166,7 +168,7 @@ class EquipmentReliefComposer:
 
         caller_result: CallerResultT | None = None
         combine_result: EquipmentCombineReliefResult | None = None
-        sell_result: EquipmentSellResult | None = None
+        sell_result: EquipmentSellResult | EquipmentInventoryReliefResult | None = None
         caller_attempts = 0
         combine_invocations = 0
         sell_invocations = 0
@@ -352,15 +354,14 @@ class EquipmentReliefComposer:
                     error="combine_return_not_fresh",
                 )
 
-            context = acquire(int(combine_return.sequence), "caller.context_after_combine")
-            caller_result = execute(context, "caller.retry_after_combine")
-            if not equipment_full(caller_result, "caller.result_after_combine"):
-                return finish(
-                    EquipmentReliefOutcome.CALLER_RESULT,
-                    "caller.result_after_combine",
-                )
-
             sell_plan = request.sell_plan
+            productive_inventory = sell_plan is not None and isinstance(sell_plan.request, EquipmentSellPolicy)
+            if not productive_inventory:
+                context = acquire(int(combine_return.sequence), "caller.context_after_combine")
+                caller_result = execute(context, "caller.retry_after_combine")
+                if not equipment_full(caller_result, "caller.result_after_combine"):
+                    return finish(EquipmentReliefOutcome.CALLER_RESULT, "caller.result_after_combine")
+
             if sell_plan is None:
                 return finish(
                     EquipmentReliefOutcome.SELL_REQUIRED_BUT_NO_AUTHORIZED_CANDIDATE,
@@ -371,7 +372,10 @@ class EquipmentReliefComposer:
             ensure_not_cancelled("sell.run")
             sell_invocations = 1
             try:
-                sell_result = self.sell_runtime.execute(sell_plan.request)
+                if productive_inventory:
+                    sell_result = self.sell_runtime.execute_relief(sell_plan.request)
+                else:
+                    sell_result = self.sell_runtime.execute(sell_plan.request)
             except (KeyboardInterrupt, SystemExit):
                 raise
             except RuntimeWaitCancelled:
@@ -382,13 +386,13 @@ class EquipmentReliefComposer:
                     "sell.run",
                     error=f"{type(error).__name__}: {error}",
                 )
-            if not isinstance(sell_result, EquipmentSellResult):
+            if not isinstance(sell_result, (EquipmentSellResult, EquipmentInventoryReliefResult)):
                 return finish(
                     EquipmentReliefOutcome.SELL_FAILED,
                     "sell.run",
                     error="sell_returned_invalid_result",
                 )
-            if sell_result.outcome is EquipmentSellOutcome.CANCELLED:
+            if sell_result.outcome in (EquipmentSellOutcome.CANCELLED, "cancelled"):
                 return finish(EquipmentReliefOutcome.SELL_CANCELLED, "sell.run")
             if sell_result.outcome is EquipmentSellOutcome.DENIED:
                 return finish(
@@ -396,7 +400,7 @@ class EquipmentReliefComposer:
                     "sell.run",
                     error=sell_result.reason,
                 )
-            if sell_result.outcome is not EquipmentSellOutcome.SUCCESS:
+            if sell_result.outcome not in (EquipmentSellOutcome.SUCCESS, "success"):
                 return finish(
                     EquipmentReliefOutcome.SELL_FAILED,
                     "sell.run",
@@ -444,6 +448,10 @@ class EquipmentReliefComposer:
 
 
 def _verified_sell_success(result: EquipmentSellResult) -> bool:
+    if isinstance(result, EquipmentInventoryReliefResult):
+        return (result.succeeded and result.before is not None and result.before.confirmed
+                and all(_verified_sell_success(sale) for sale in result.sales)
+                and all(purchase.succeeded for purchase in result.expansions))
     before = result.before
     after = result.after
     return (

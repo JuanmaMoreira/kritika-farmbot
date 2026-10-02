@@ -16,12 +16,14 @@ from bot.catalog import (
     POPUP_ETHEREAL_MASS_COMBINE,
     POPUP_ETHEREAL_NO_MATERIAL,
     SCREEN_COMBINE,
+    SEMANTIC_CONFIDENCE_THRESHOLD,
     STATUS_COMBINE_ETHEREAL_AVAILABLE,
     STATUS_COMBINE_FUSE_AVAILABLE,
     STATUS_COMBINE_TRANSMUTE_AVAILABLE,
 )
 from bot.event_log import EventSink
 from bot.observations import validate_semantic_name
+from bot.perception.combine import combine_controls_undimmed
 from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.semantic_actions import (
     AcknowledgeEtherealNoMaterial,
@@ -34,6 +36,7 @@ from bot.semantic_actions import (
     SelectCombineFuse,
     SelectCombineTransmute,
     TapCombineAnimation,
+    TapEtherealResultAnimation,
 )
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import (
@@ -63,8 +66,11 @@ class EquipmentCombineStrategyOutcome(str, Enum):
 class EquipmentCombineReturnPlan:
     action: object
     expected_return_state: str
+    expected_return: Callable[[RuntimeSnapshot], bool] | None = None
 
     def __post_init__(self) -> None:
+        if self.expected_return is not None and not callable(self.expected_return):
+            raise ValueError("expected_return must be callable")
         object.__setattr__(
             self,
             "expected_return_state",
@@ -170,12 +176,15 @@ class EquipmentCombineRelief:
             )
         self._record("equipment_combine_relief.started", sequence=current.sequence)
 
+        from bot.perception.specs import COMBINE_TRANSMUTE_ACTIVE_SPEC, COMBINE_FUSE_ACTIVE_SPEC
+
         transmute_menu = self._transition(
             "equipment_combine_relief.select_transmute",
             SelectCombineTransmute(),
             current,
             expected=_is_transmute_menu,
             precondition=_is_stable_combine,
+            expected_regions=lambda item: _missing_mode_region(item, COMBINE_TRANSMUTE_ACTIVE_SPEC),
         )
         if transmute_menu is None:
             return self._failed("equipment_transmute_entry_failed", final_snapshot=current)
@@ -207,6 +216,8 @@ class EquipmentCombineRelief:
             current,
             expected=_is_fuse_menu,
             precondition=_is_transmute_menu,
+            precondition_regions=lambda item: _missing_mode_region(item, COMBINE_TRANSMUTE_ACTIVE_SPEC),
+            expected_regions=lambda item: _missing_mode_region(item, COMBINE_FUSE_ACTIVE_SPEC),
         )
         if fuse_menu is None:
             return self._failed("equipment_fuse_entry_failed", transmute=transmute, ethereal=ethereal, animation_taps=taps, final_snapshot=current)
@@ -229,7 +240,8 @@ class EquipmentCombineRelief:
             "equipment_combine_relief.return",
             return_plan.action,
             current,
-            expected=lambda item: _is_clean_base(item, return_plan.expected_return_state),
+            expected=(return_plan.expected_return or
+                      (lambda item: _is_clean_base(item, return_plan.expected_return_state))),
             precondition=_is_fuse_menu,
         )
         if returned is None:
@@ -354,7 +366,7 @@ class EquipmentCombineRelief:
             "equipment_combine_relief.ethereal.confirm_mass_combine",
             ConfirmEtherealMassCombine(),
             outcome,
-            expected=lambda item: _is_tappable_animation(item) or _is_random_part_panel(item),
+            expected=lambda item: _is_tappable_animation(item) or _is_random_part_panel(item) or _is_ethereal_result_animation(item),
             precondition=_is_ethereal_confirm,
             tolerated=_is_combine_animation_transient,
             policy=self.single_action_policy,
@@ -372,8 +384,9 @@ class EquipmentCombineRelief:
             tapped = self.tap_through.run(
                 animation_or_completion,
                 action=TapCombineAnimation(),
+                action_for=_ethereal_animation_tap,
                 expected=_is_random_part_panel,
-                tappable=_is_tappable_animation,
+                tappable=lambda item: _is_tappable_animation(item) or _is_ethereal_result_animation(item),
                 transient=_is_combine_animation_transient,
                 cancel_requested=cancel_requested,
                 policy=self.animation_policy,
@@ -411,7 +424,8 @@ class EquipmentCombineRelief:
         self._record("equipment_combine_relief.ethereal_effect", taps=tap_count)
         return EquipmentCombineStrategyOutcome.EFFECT, restored, tap_count
 
-    def _transition(self, name, action, before, *, expected, precondition, tolerated=lambda _: False, policy=None):
+    def _transition(self, name, action, before, *, expected, precondition, tolerated=lambda _: False, policy=None,
+                    precondition_regions=(), expected_regions=()):
         result = self.transition.execute(
             name,
             action,
@@ -422,6 +436,8 @@ class EquipmentCombineRelief:
             abort_if=lambda item: _known_incompatible(item, expected, precondition) and not tolerated(item),
             stable_for=self.stable_for,
             policy=policy or self.normal_policy,
+            precondition_regions=precondition_regions,
+            expected_regions=expected_regions,
         )
         self._record("equipment_combine_relief.transition", name=name, outcome=result.outcome.value, attempts=result.attempt_count)
         return result.final_snapshot if result.succeeded else None
@@ -448,6 +464,16 @@ _TRANSMUTE_STATUSES = frozenset(
     }
 )
 _FUSE_STATUSES = frozenset({STATUS_COMBINE_FUSE_AVAILABLE})
+
+
+def _missing_mode_region(snapshot, spec):
+    """Identify only the missing mode signal on the known Combine surface."""
+    if snapshot.state.base_context != SCREEN_COMBINE or _has_tappable_observation(snapshot):
+        return ()
+    observation = snapshot.observations.best(spec.name)
+    if observation is not None and observation.confidence >= SEMANTIC_CONFIDENCE_THRESHOLD:
+        return ()
+    return (spec.region,)
 
 
 def _is_clean_base(snapshot: RuntimeSnapshot, context: str) -> bool:
@@ -490,6 +516,34 @@ def _is_tappable_animation(snapshot: RuntimeSnapshot) -> bool:
     return snapshot.state.status is ResolutionStatus.RESOLVED and snapshot.state.base_context == SCREEN_COMBINE and _has_tappable_observation(snapshot)
 
 
+def _is_ethereal_result_animation(snapshot: RuntimeSnapshot) -> bool:
+    """Post-Mass-Combine Ethereal result phase under the verified confirm handoff.
+
+    USER_GT (2026-09-28): after the single effective Mass Combine confirm, a
+    result animation appears whose concrete item is irrelevant and may vary;
+    it is traversed with safe taps until the Random Part BASE is recovered.
+    Local to this handoff only: UNKNOWN, or the known Combine base with
+    veiled controls. No popup or sword signal may conflict. The panel title
+    can remain visible through the veil. Never a global input rule.
+    """
+    return (
+        (snapshot.state.status is ResolutionStatus.UNKNOWN or (
+            snapshot.state.status is ResolutionStatus.RESOLVED
+            and snapshot.state.base_context == SCREEN_COMBINE
+            and not combine_controls_undimmed(snapshot.frame.image)
+        ))
+        and not any(name.startswith("popup.") for name in snapshot.state.overlays)
+        and not _has_tappable_observation(snapshot)
+    )
+
+
+def _ethereal_animation_tap(snapshot: RuntimeSnapshot):
+    """Per-frame tap for the unified Ethereal animation drain."""
+    if _is_tappable_animation(snapshot):
+        return TapCombineAnimation()
+    return TapEtherealResultAnimation()
+
+
 def _is_combine_animation_transient(snapshot: RuntimeSnapshot) -> bool:
     return snapshot.state.status is ResolutionStatus.UNKNOWN or (
         snapshot.state.status is ResolutionStatus.RESOLVED
@@ -515,7 +569,7 @@ def _is_awakened_panel(snapshot: RuntimeSnapshot) -> bool:
 
 def _is_random_part_panel(snapshot: RuntimeSnapshot) -> bool:
     overlays = set(snapshot.state.overlays)
-    return snapshot.state.status is ResolutionStatus.RESOLVED and snapshot.state.base_context == SCREEN_COMBINE and overlays == {MODE_COMBINE_TRANSMUTE, PANEL_COMBINE_ETHEREAL_RANDOM_PART} and not _has_tappable_observation(snapshot)
+    return snapshot.state.status is ResolutionStatus.RESOLVED and snapshot.state.base_context == SCREEN_COMBINE and overlays == {MODE_COMBINE_TRANSMUTE, PANEL_COMBINE_ETHEREAL_RANDOM_PART} and not _has_tappable_observation(snapshot) and combine_controls_undimmed(snapshot.frame.image)
 
 
 def _is_ethereal_confirm(snapshot: RuntimeSnapshot) -> bool:

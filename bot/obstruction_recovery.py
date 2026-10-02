@@ -1,15 +1,15 @@
 """Transversal portal-obstruction recovery used on demand by verifiers.
 
 The recovery owns the only portal-specific policy in the runtime: probe a
-fresh frame that already failed an expected condition, tap the dismiss X
+fresh frame with an explicitly intersecting failed signal or input target, tap the dismiss X
 exactly through the normal action layer when the probe is CONFIRMED, observe
 a fresh frame, verify disappearance boundedly, and hand the freshest snapshot
 back so the caller re-evaluates its *original* condition. It never repeats
 the caller's productive action and never treats INCONCLUSIVE/ABSENT as tap
 permission.
 
-``VerifiedTransition`` stays generic: it only knows the ``attempt(snapshot,
-expected)`` protocol, never Heaven/Hell details.
+``VerifiedTransition`` supplies the failed condition's declared geometry or
+asks for an input conflict. Successful unaffected transitions never probe.
 """
 
 from __future__ import annotations
@@ -23,6 +23,53 @@ from typing import Callable
 from bot.portal_notification import PortalNotificationProbe, PortalProbeOutcome
 from bot.runtime_observer import RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.semantic_actions import DismissPortalNotification
+from bot.state import ResolutionStatus
+
+
+# Physical GT, not the detector search ROI (docs/GAMEPLAY_GT.md).
+PORTAL_OCCLUSION_ENVELOPE = (0.165, 0.105, 0.360, 0.260)
+
+# Explicit physical BASEs represented by the current resolver. Technical
+# screen.* names alone do not establish physical class. Craft's reader facts
+# need no synthetic ResolvedState here.
+_NON_BATTLE_BASES = frozenset({
+    "screen.lobby", "screen.battle_mode_select", "screen.monster_wave",
+    "screen.socket", "screen.treasure", "screen.combine", "screen.guild",
+    "screen.pets_manage", "screen.pet_summon", "screen.pet_combine",
+    "screen.world_boss",
+})
+_BASE_DETAILS = frozenset({
+    "status.world_boss_daily_active", "status.monster_wave_daily_active",
+    "status.pet_summon_daily_active", "status.pet_epic_available",
+    "status.pet_epic_unavailable", "status.pet_premium_gold",
+    "status.pet_premium_ticket_available", "status.guild_attendance_active",
+    "status.guild_attendance_completed", "status.guild_attendance_daily_active",
+    "mode.combine_fuse", "mode.combine_transmute",
+    "panel.combine_awakened_transmute", "panel.combine_ethereal_random_part",
+    "status.combine_ethereal_available", "status.combine_fuse_available",
+    "status.combine_transmute_available",
+})
+
+
+def intersects_obstruction(*, regions=(), target=None):
+    """Pure normalized geometry; no perception or input."""
+    left, top, right, bottom = PORTAL_OCCLUSION_ENVELOPE
+    if target is not None:
+        x, y = target
+        if left <= x <= right and top <= y <= bottom:
+            return True
+    return any(x1 < right and x2 > left and y1 < bottom and y2 > top
+               for x1, y1, x2, y2 in regions)
+
+
+def _compatible_surface(snapshot):
+    state = snapshot.state
+    if not set(state.overlays) <= _BASE_DETAILS:
+        return False
+    return (
+        state.status is ResolutionStatus.RESOLVED
+        and state.base_context in _NON_BATTLE_BASES
+    )
 
 
 @dataclass(frozen=True)
@@ -36,14 +83,14 @@ class ObstructionRecoveryPolicy:
     exits early on ABSENT.
     """
 
-    max_dismiss_attempts: int = 2
+    max_dismiss_attempts: int = 1
     settle_timeout: float = 5.0
     settle_poll_interval: float = 0.5
 
     def __post_init__(self) -> None:
         value = self.max_dismiss_attempts
-        if isinstance(value, bool) or not isinstance(value, Integral) or value <= 0:
-            raise ValueError("max_dismiss_attempts must be a positive integer")
+        if isinstance(value, bool) or not isinstance(value, Integral) or value != 1:
+            raise ValueError("max_dismiss_attempts must be exactly one")
         object.__setattr__(self, "max_dismiss_attempts", int(value))
         object.__setattr__(
             self,
@@ -99,20 +146,61 @@ class PortalObstructionRecovery:
         self._sleeper = sleeper or time.sleep
         self.cancel_requested = cancel_requested
 
+    def input_conflicts(self, action):
+        """Return the existing target only when it can be covered."""
+        target_for = getattr(self.actions, "target_for", None)
+        if not callable(target_for):
+            return None
+        # Swipes have no discrete tap target and are outside this recovery.
+        from bot.semantic_actions import Swipe
+        if isinstance(action, (Swipe, DismissPortalNotification)):
+            return None
+        try:
+            target = target_for(action)
+        except (TypeError, ValueError):
+            # Preserve the executor's normal validation/failure reporting.
+            return None
+        return target if intersects_obstruction(target=target) else None
+
     def attempt(
         self,
         snapshot,
         expected: Callable[[object], bool],
+        *,
+        regions=(),
+        target=None,
+        monster_wave_entry_source=None,
     ):
         """Try to clear a confirmed portal; return freshest snapshot or None.
 
-        Returns None only when the initial probe does not confirm an obstruction.
+        A failed predicate must supply its necessary signal regions. Input
+        conflicts supply the executor's actual target. No cause means no probe.
+        UNKNOWN resolution never supplies the physical authorization. Failed
+        signals within an established BASE can be recovered independently.
         Once input is attempted, failure to obtain a fresh frame raises rather
         than letting the caller reuse pre-cleanup evidence for another action.
         """
 
         if not callable(expected):
             raise ValueError("expected must be callable")
+        if not intersects_obstruction(regions=regions, target=target):
+            return None
+        if target is None and expected(snapshot):
+            return None
+        # Narrow MW entry handoff: the caller supplies the verified source of
+        # effective OpenMonsterWave, after normalizing all known entry modals.
+        # This permits only causal cleanup, never generic input from UNKNOWN.
+        entry_context = (
+            monster_wave_entry_source is not None
+            and _compatible_surface(monster_wave_entry_source)
+            and monster_wave_entry_source.state.base_context == "screen.battle_mode_select"
+            and snapshot.sequence > monster_wave_entry_source.sequence
+            and snapshot.state.status is ResolutionStatus.UNKNOWN
+            and not snapshot.state.overlays
+            and target is None
+        )
+        if not _compatible_surface(snapshot) and not entry_context:
+            return None
         self._check_cancelled()
         try:
             initial = self.probe.probe(snapshot.frame.image)
@@ -149,23 +237,25 @@ class PortalObstructionRecovery:
                     timeout=self.policy.settle_timeout,
                     last_snapshot=fresh,
                 )
+            self._check_cancelled()
             latest, outcome = self._settle(fresh)
+            self._check_cancelled()
             if outcome is PortalProbeOutcome.ABSENT:
                 self._record("obstruction_recovery.cleared")
                 return latest
-            if outcome is not PortalProbeOutcome.CONFIRMED:
-                self._record("obstruction_recovery.inconclusive_after_dismiss")
-                return latest
-            self._record("obstruction_recovery.still_present")
-        return latest
+            self._record("obstruction_recovery.not_cleared", outcome=outcome.value)
+        raise RuntimeWaitTimeout(
+            after_sequence=snapshot.sequence,
+            timeout=self.policy.settle_timeout,
+            last_snapshot=latest,
+        )
 
     def _settle(self, snapshot):
         """Passively reprobe after a tap, bounded, without any input.
 
-        Returns the freshest snapshot and its probe outcome. Only a freshly
-        probed CONFIRMED outcome authorizes the caller to spend another (at
-        most one more) tap; ABSENT ends the wait early, while INCONCLUSIVE or
-        a stalled source (no fresh frame) ends it without tap permission.
+        Returns the freshest snapshot and its probe outcome. ABSENT ends the
+        wait early. Persistence, INCONCLUSIVE or a stalled source cannot
+        authorize another tap; the caller reports a technical failure.
         """
 
         latest = snapshot
@@ -187,6 +277,8 @@ class PortalObstructionRecovery:
             self._check_cancelled()
             try:
                 fresh = self.observer.observe()
+            except RuntimeWaitCancelled:
+                raise
             except Exception:
                 return latest, PortalProbeOutcome.INCONCLUSIVE
             if fresh.sequence <= latest.sequence:

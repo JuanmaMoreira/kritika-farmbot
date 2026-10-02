@@ -18,7 +18,7 @@ from bot.monster_wave_semantics import *
 from bot.observations import Observation, ObservationSource
 from bot.runtime_observer import RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.state import ResolutionStatus
-from test_world_boss_flow import snapshot
+from test_world_boss_flow import snapshot, fact_result
 
 
 NEEDS=(MW_NEEDS_TICKETS, MW_CONTROLS_CLEAR)
@@ -88,7 +88,7 @@ class Device:
         elif isinstance(action,StartMonsterWaveSkip):self.overlays=(self.boundary,)
         elif isinstance(action,AcceptMonsterWaveInventory):self.overlays=(self.board_after,)
         elif isinstance(action,(DeclineMonsterWaveInventory,RejectMonsterWaveSapphires,AcknowledgeMonsterWaveClear)):
-            self.overlays=();self.names=ACTIVE
+            self.overlays=();self.names=(MAX if isinstance(action,AcknowledgeMonsterWaveClear) else ACTIVE)
         elif kind=='OpenWorldBossSelector':self.base=None;self.overlays=(OVERLAY_WORLD_BOSS_SELECT_BOSS,)
         elif kind in {'SelectAvailableWorldBoss','ContinueAfterWorldBossRaid'}:self.base=SCREEN_WORLD_BOSS;self.overlays=()
         elif kind=='StartWorldBossBattle':self.base=SCREEN_WORLD_BOSS_BATTLE;self.overlays=()
@@ -96,14 +96,30 @@ class Device:
         else:raise AssertionError(f'unexpected input {kind}')
         if kind==self.cancel_after:self.cancelled=True
 
+    def facts(self):
+        def read_sapphires(**kwargs):
+            self.trace.append(('sapphires', kwargs['context']))
+            self.observe(); self.observe()
+            return fact_result('resource.sapphires', 100, self.sequence, kwargs['context'])
+        return SimpleNamespace(read_sapphires=read_sapphires)
+
     def activity(self, config=MonsterWaveConfig()):
-        return MonsterWaveActivity(self,self,self.events,config=config,cancel_requested=lambda:self.cancelled)
+        return MonsterWaveActivity(self,self,self.events,config=config,
+                                   cancel_requested=lambda:self.cancelled,
+                                   facts=self.facts(),
+                                   sleeper=lambda _: None)
 
 
-def test_tickets_missing_purchase_disabled_is_business_and_returns_hub():
+def test_needs_auto_buys_fill_all_once_and_continues_without_exit():
     d=Device(NEEDS);result=d.activity().run()
-    assert result.succeeded and result.event_count('monster_wave.tickets_missing_purchase_disabled')==1
-    assert d.intents==['OpenMonsterWave','ExitMonsterWave']
+    assert result.succeeded
+    assert result.event_count('monster_wave.tickets_missing_purchase_disabled')==0
+    assert result.event_count('monster_wave.tickets_purchased')==1
+    assert result.event_count('monster_wave.completed')==1
+    assert d.intents==['OpenMonsterWave','OpenMonsterWaveTickets','FillMonsterWaveTickets',
+        'CloseMonsterWaveTickets','ActivateMonsterWaveSkip','SelectMonsterWaveMax',
+        'StartMonsterWaveSkip','AcknowledgeMonsterWaveClear','ExitMonsterWave']
+    assert d.intents.count('FillMonsterWaveTickets')==1
     assert d.base==SCREEN_BATTLE_MODE_SELECT
 
 
@@ -129,8 +145,11 @@ def test_ready_activates_but_direct_active_never_purchases_or_reactivates():
 def test_previous_active_does_not_authorize_fresh_needs_tickets():
     d=Device();activity=d.activity();assert activity.run().succeeded
     d.entry=NEEDS;d.intents.clear();r=activity.run()
-    assert r.event_count('monster_wave.tickets_missing_purchase_disabled')==1
-    assert d.intents==['OpenMonsterWave','ExitMonsterWave']
+    assert r.event_count('monster_wave.tickets_missing_purchase_disabled')==0
+    assert r.event_count('monster_wave.tickets_purchased')==1
+    assert d.intents==['OpenMonsterWave','OpenMonsterWaveTickets','FillMonsterWaveTickets',
+        'CloseMonsterWaveTickets','ActivateMonsterWaveSkip','SelectMonsterWaveMax',
+        'StartMonsterWaveSkip','AcknowledgeMonsterWaveClear','ExitMonsterWave']
 
 
 def test_max_is_two_exact_taps_then_fresh_verification_then_skip():
@@ -139,8 +158,102 @@ def test_max_is_two_exact_taps_then_fresh_verification_then_skip():
     assert tail[0][0]==tail[1][0]=='tap' and tail[0]==tail[1]
     assert tail[2][0]=='observe'
     assert tail[3][0]=='observe'
-    assert tail[4]==('intent','StartMonsterWaveSkip')
+    assert next(item for item in tail[4:] if item[0]=='intent')==('intent','StartMonsterWaveSkip')
     assert d.intents.count('SelectMonsterWaveMax')==1
+
+
+def test_preparation_and_max_are_once_for_reusable_passes():
+    d=Device(); activity=d.activity()
+    prepared=activity.prepare()
+    assert prepared.succeeded and prepared.sapphires_initial==100
+    for _ in range(3):
+        passed=activity.run_pass()
+        assert passed.succeeded and passed.event_count('monster_wave.completed')==1
+    assert activity.leave().succeeded
+    assert d.intents.count('OpenMonsterWave')==1
+    assert sum(item[0]=='sapphires' for item in d.trace)==1
+    assert d.intents.count('SelectMonsterWaveMax')==1
+    assert d.intents.count('StartMonsterWaveSkip')==3
+
+
+def test_zero_initial_sapphires_does_not_start_defensive_extra_pass():
+    d=Device()
+    def read_sapphires(**kwargs):
+        d.observe(); d.observe()
+        return fact_result('resource.sapphires', 0, d.sequence, SCREEN_BATTLE_MODE_SELECT)
+    activity=MonsterWaveActivity(d,d,d.events,
+                                 facts=SimpleNamespace(read_sapphires=read_sapphires))
+    result=activity.run()
+    assert result.succeeded and result.sapphires_initial==0
+    assert 'StartMonsterWaveSkip' not in d.intents
+    assert d.intents==[]
+
+
+def test_yes_polls_patiently_until_clear_without_fixed_five_second_wait():
+    class Delayed(Device):
+        def observe(self):
+            if self.overlays==('animation.mw_pending',) and len(sleeps)==2:
+                self.overlays=(POPUP_MW_CLEAR,)
+            return super().observe()
+
+    d=Delayed(boundary=POPUP_MW_BOARD, board_after='animation.mw_pending')
+    now=[0.0]; sleeps=[]
+    def sleep(seconds):
+        sleeps.append(seconds); now[0]+=seconds
+    activity=MonsterWaveActivity(d,d,d.events,
+        config=MonsterWaveConfig(continue_when_nonblocking_inventory_full=True),
+        facts=d.facts(), clock=lambda: now[0], sleeper=sleep)
+    result=activity.run()
+    assert result.succeeded
+    assert sleeps==[1.0,1.0]
+    assert d.intents.count('AcceptMonsterWaveInventory')==1
+    assert result.event_count('monster_wave.completed')==1
+
+
+def test_yes_waits_through_repeated_sequence_until_fresh_clear():
+    sleeps=[]; now=[0.0]
+
+    class Delayed(Device):
+        def __init__(self):
+            super().__init__(boundary=POPUP_MW_BOARD,
+                             board_after='animation.mw_pending')
+            self.last_snapshot=None
+            self.repeated=False
+
+        def observe(self):
+            if self.overlays==('animation.mw_pending',) and len(sleeps)==1 and not self.repeated:
+                self.repeated=True
+                return self.last_snapshot
+            if self.overlays==('animation.mw_pending',) and len(sleeps)==2:
+                self.overlays=(POPUP_MW_CLEAR,)
+            self.last_snapshot=super().observe()
+            return self.last_snapshot
+
+    d=Delayed()
+    def sleep(seconds):
+        sleeps.append(seconds); now[0]+=seconds
+    activity=MonsterWaveActivity(d,d,d.events,
+        config=MonsterWaveConfig(continue_when_nonblocking_inventory_full=True),
+        facts=d.facts(), clock=lambda: now[0], sleeper=sleep)
+    result=activity.run()
+    assert result.succeeded and d.repeated
+    assert sleeps==[1.0,1.0]
+    assert d.intents.count('AcceptMonsterWaveInventory')==1
+    assert result.event_count('monster_wave.completed')==1
+
+
+def test_yes_inobservable_result_stops_without_claiming_consumption():
+    d=Device(boundary=POPUP_MW_BOARD, board_after='animation.mw_pending')
+    now=[0.0]
+    activity=MonsterWaveActivity(d,d,d.events,
+        config=MonsterWaveConfig(continue_when_nonblocking_inventory_full=True),
+        facts=d.facts(), clock=lambda: now[0],
+        sleeper=lambda seconds: now.__setitem__(0,now[0]+seconds))
+    result=activity.run()
+    assert result.status is FlowStatus.FAILED
+    assert result.error=='mw_skip_result_unobservable'
+    assert result.event_count('monster_wave.completed')==0
+    assert d.intents[-1]=='AcceptMonsterWaveInventory'
 
 
 @pytest.mark.parametrize('evidence',[ACTIVE,(MW_TIMER,MW_SKIP_START,MW_MAX),(*MAX,MW_TOOLTIP),NEEDS,READY,()])
@@ -186,7 +299,7 @@ def test_opt_in_resource_board_yields_the_same_open_popup_without_answer_or_exit
 
 def test_opt_in_resource_board_stops_standalone_flow_before_zone_leave():
     d=Device(base=SCREEN_LOBBY,boundary=POPUP_MW_BOARD)
-    r=MonsterWaveFlow(d,d,d.events).run(yield_resource_board=True)
+    r=MonsterWaveFlow(d,d,d.events,facts=d.facts()).run(yield_resource_board=True)
     assert r.status is FlowStatus.RESOURCE_BOARD_PENDING
     assert d.base == SCREEN_MONSTER_WAVE and d.overlays == (POPUP_MW_BOARD,)
     assert d.intents[-1] == 'StartMonsterWaveSkip'
@@ -239,7 +352,7 @@ def test_cancellation_has_no_cleanup_or_following_action(cancel_after):
 
 def test_standalone_returns_lobby_and_ignores_daily():
     d=Device(base=SCREEN_LOBBY,daily=False)
-    flow=MonsterWaveFlow(d,d,d.events)
+    flow=MonsterWaveFlow(d,d,d.events,facts=d.facts())
     r=flow.run();assert r.succeeded and d.base==SCREEN_LOBBY
     assert d.intents[0]=='OpenBattleModeSelect'
     assert d.intents[-3:]==['ExitMonsterWave','OpenQuickMenu','SelectQuickMenuLobby']
@@ -335,5 +448,68 @@ def test_config_has_only_two_booleans_and_no_resource_bookkeeping():
     with pytest.raises(ValueError):MonsterWaveConfig(purchase_skip_tickets='false')
     with pytest.raises(ValueError):MonsterWaveConfig.from_env({'MW_PURCHASE_SKIP_TICKETS':'yes'})
     d=Device();a=d.activity();assert a.run().succeeded
-    assert set(vars(a))=={'observer','actions','events','config','cancel_requested','verified_transition','facts'}
+    assert set(vars(a))=={'observer','actions','events','config','cancel_requested','verified_transition','facts','clock','sleeper'}
     assert not any('Battle' in k or k in {'Start','SelectX1','SelectX2','SelectX3'} for k in d.intents)
+
+
+def test_needs_prepare_has_no_exit_and_verifies_ready_then_active():
+    d=Device(NEEDS);prepared=d.activity().prepare()
+    assert prepared.succeeded
+    assert prepared.sapphires_initial==100
+    assert prepared.event_count('monster_wave.tickets_missing_purchase_disabled')==0
+    assert prepared.event_count('monster_wave.tickets_purchased')==1
+    assert prepared.event_count('monster_wave.no_work')==0
+    assert 'ExitMonsterWave' not in d.intents
+    assert d.intents==['OpenMonsterWave','OpenMonsterWaveTickets','FillMonsterWaveTickets',
+        'CloseMonsterWaveTickets','ActivateMonsterWaveSkip','SelectMonsterWaveMax']
+
+
+def test_needs_never_uses_individual_ticket_purchase():
+    d=Device(NEEDS);r=d.activity().run()
+    assert r.succeeded
+    assert d.intents.count('FillMonsterWaveTickets')==1
+    assert not any('Ticket' in intent and intent!='FillMonsterWaveTickets'
+                   and intent!='OpenMonsterWaveTickets' and intent!='CloseMonsterWaveTickets'
+                   for intent in d.intents)
+    assert not any(kind in {'SelectX1','SelectX2','SelectX3'} for kind in d.intents)
+
+
+def test_unknown_or_contradictory_entry_never_purchases():
+    d=Device('popup.unacquired');r=d.activity().run()
+    assert r.status is FlowStatus.FAILED
+    assert 'FillMonsterWaveTickets' not in d.intents
+    assert 'ActivateMonsterWaveSkip' not in d.intents
+    d=Device();d.base=SCREEN_MONSTER_WAVE
+    d.names=(*ACTIVE,MW_NEEDS_TICKETS)
+    assert skip_state(d.observe()) is None
+
+
+@pytest.mark.parametrize("lobby_exit", (False, True))
+def test_leave_preserves_hub_contract_when_inventory_lineage_back_lands_lobby(lobby_exit):
+    class InventoryLineageDevice(Device):
+        def execute(self, action, geometry):
+            super().execute(action, geometry)
+            if isinstance(action, ExitMonsterWave) and lobby_exit:
+                self.base = SCREEN_LOBBY
+    d = InventoryLineageDevice(base=SCREEN_MONSTER_WAVE)
+    d.names = MAX
+    result = d.activity().leave()
+    assert result.succeeded
+    assert d.base == SCREEN_BATTLE_MODE_SELECT
+    assert d.intents == (["ExitMonsterWave", "OpenBattleModeSelect"] if lobby_exit
+                         else ["ExitMonsterWave"])
+    assert "StartMonsterWaveSkip" not in d.intents
+
+
+def test_leave_never_opens_hub_from_lobby_with_blocker():
+    class BlockedLobbyDevice(Device):
+        def execute(self, action, geometry):
+            super().execute(action, geometry)
+            if isinstance(action, ExitMonsterWave):
+                self.base = SCREEN_LOBBY
+                self.overlays = (POPUP_EQUIPMENT_INVENTORY_FULL,)
+    d = BlockedLobbyDevice(base=SCREEN_MONSTER_WAVE)
+    d.names = MAX
+    result = d.activity().leave()
+    assert result.status is FlowStatus.FAILED
+    assert d.intents == ["ExitMonsterWave"]

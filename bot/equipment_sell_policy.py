@@ -13,7 +13,6 @@ from bot.equipment_sell_semantics import (
     EquipmentSellConfirmationFact,
     EquipmentType,
     LOW_BULK_GRADES,
-    PROTECTED_ACCESSORY_TYPES,
     PROTECTED_GRADES,
 )
 
@@ -22,8 +21,7 @@ from bot.equipment_sell_semantics import (
 class EquipmentSellAuthorization:
     """Caller-owned allowlist; absence or uncertainty always denies.
 
-    ``allowed_types`` accepts exactly the six established configurable
-    non-accessory types.  ``allowed_grades`` accepts only grades below
+    ``allowed_types`` accepts all nine established equipment types.  ``allowed_grades`` accepts only grades below
     Ethereal+.  Enhance is an explicit dimension rather than an implicit
     default.  Bulk remains separately opt-in and still requires a fresh
     popup group that proves the same bounded category.
@@ -34,15 +32,18 @@ class EquipmentSellAuthorization:
     allowed_enhance_states: frozenset[bool]
     allowed_bulk_groups: frozenset[EquipmentBulkGroup] = frozenset()
     label: str = "caller"
+    require_visual_guards: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.require_visual_guards) is not bool:
+            raise ValueError("require_visual_guards must be bool")
         types = frozenset(self.allowed_types)
         grades = frozenset(self.allowed_grades)
         enhance_states = frozenset(self.allowed_enhance_states)
         bulk_groups = frozenset(self.allowed_bulk_groups)
         if not types or not types <= CONFIGURABLE_EQUIPMENT_TYPES:
             raise ValueError(
-                "allowed_types must be a non-empty subset of the six configurable types"
+                "allowed_types must be a non-empty subset of the nine configurable types"
             )
         if not grades or not grades <= DISPOSABLE_GRADES:
             raise ValueError("allowed_grades must be a non-empty below-Ethereal+ subset")
@@ -67,12 +68,13 @@ class EquipmentSellAuthorization:
             return False
         if not item.confirmed or not item.complete:
             return False
+        if self.require_visual_guards and (item.sell_available is not True or item.grade_visual is not item.grade):
+            return False
+        if item.sell_available is False:
+            return False
         if item.grade in PROTECTED_GRADES or item.grade is EquipmentGrade.UNKNOWN:
             return False
-        if (
-            item.equipment_type in PROTECTED_ACCESSORY_TYPES
-            or item.equipment_type is EquipmentType.UNKNOWN
-        ):
+        if item.equipment_type is EquipmentType.UNKNOWN:
             return False
         return (
             item.equipment_type in self.allowed_types
@@ -101,14 +103,58 @@ class EquipmentSellAuthorization:
                 else EquipmentBulkGroup.EQUIPMENT_GRADE
             )
             return confirmation.group is expected and confirmation.group_type is None
-        # Current domain rule: Ethereal bulk is type-scoped.  Candidate types
-        # remain restricted to the six non-accessories, and the popup must name
-        # that exact type, so accessories cannot be mixed into the group.
+        # Ethereal Enhance is its own configurable family, independently of type.
+        if item.grade is EquipmentGrade.ETHEREAL and item.enhance:
+            return (confirmation.group is EquipmentBulkGroup.ENHANCE_GRADE
+                    and confirmation.group_type is None)
         return (
             item.grade is EquipmentGrade.ETHEREAL
             and not item.enhance
             and confirmation.group is EquipmentBulkGroup.TYPE_GRADE
             and confirmation.group_type is item.equipment_type
+        )
+
+
+DEFAULT_ETHEREAL_SELL_TYPES = frozenset({
+    EquipmentType.HELMET, EquipmentType.CHEST, EquipmentType.PANTS,
+    EquipmentType.GLOVES, EquipmentType.BOOTS,
+})
+
+
+@dataclass(frozen=True)
+class EquipmentSellPolicy:
+    """USER_GT policy: low tiers disposable; Ethereal configurable; E+ immutable."""
+
+    ethereal_types: frozenset[EquipmentType] = DEFAULT_ETHEREAL_SELL_TYPES
+    ethereal_enhance: bool = False
+
+    def __post_init__(self):
+        values = frozenset(self.ethereal_types)
+        if not values <= CONFIGURABLE_EQUIPMENT_TYPES:
+            raise ValueError("Ethereal types must belong to the nine known types")
+        if type(self.ethereal_enhance) is not bool:
+            raise ValueError("ethereal_enhance must be bool")
+        object.__setattr__(self, "ethereal_types", values)
+
+    def authorize(self, item: EquipmentItemFact | None) -> EquipmentSellAuthorization | None:
+        if item is None or not item.confirmed or not item.complete or item.sell_available is not True:
+            return None
+        if item.grade_visual is not item.grade:
+            return None
+        if item.grade not in DISPOSABLE_GRADES:
+            return None
+        if item.grade is EquipmentGrade.ETHEREAL:
+            if item.enhance:
+                if not self.ethereal_enhance:
+                    return None
+            elif item.equipment_type not in self.ethereal_types:
+                return None
+        group = (EquipmentBulkGroup.ENHANCE_GRADE if item.enhance else
+                 EquipmentBulkGroup.TYPE_GRADE if item.grade is EquipmentGrade.ETHEREAL else
+                 EquipmentBulkGroup.EQUIPMENT_GRADE)
+        return EquipmentSellAuthorization(
+            frozenset({item.equipment_type}), frozenset({item.grade}),
+            frozenset({item.enhance}), frozenset({group}), label="equipment_full_user_gt", require_visual_guards=True,
         )
 
 
@@ -131,5 +177,7 @@ def _normalize_name(value: str) -> str:
 
 __all__ = (
     "EquipmentSellAuthorization",
+    "EquipmentSellPolicy",
+    "DEFAULT_ETHEREAL_SELL_TYPES",
     "confirmation_matches_item",
 )

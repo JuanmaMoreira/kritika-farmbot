@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bot.action_executor import FrameGeometry
+from bot.action_executor import ActionExecutor, FrameGeometry
 from bot.capture import FrameSnapshot
 from bot.geometry import relative_point_to_pixel
 from bot.obstruction_recovery import (
@@ -18,9 +18,10 @@ from bot.runtime_observer import (
     RuntimeFacts,
     RuntimeSnapshot,
     RuntimeWaitCancelled,
+    RuntimeWaitAborted,
     RuntimeWaitTimeout,
 )
-from bot.semantic_actions import DismissPortalNotification, OpenQuickMenu
+from bot.semantic_actions import DismissPortalNotification, OpenQuickMenu, SelectPetSummon
 from bot.state import ResolutionStatus, ResolvedState
 from bot.verified_transition import (
     VerifiedTransition,
@@ -28,8 +29,8 @@ from bot.verified_transition import (
     VerifiedTransitionPolicy,
 )
 
-BEFORE = "screen.before"
-EXPECTED = "screen.expected"
+BEFORE = "screen.combine"
+EXPECTED = "screen.socket"
 OTHER = "screen.other"
 
 
@@ -71,11 +72,15 @@ class ScriptedObserver:
         timeout,
         abort_if=None,
         stable_for=0.0,
+        cancel_requested=None,
     ):
         item = self.waits.pop(0)
         if isinstance(item, BaseException):
             raise item
         assert item.sequence > after_sequence
+        if abort_if is not None and abort_if(item):
+            raise RuntimeWaitAborted(item)
+        assert condition(item)
         return item
 
     def observe(self):
@@ -85,9 +90,15 @@ class ScriptedObserver:
 class Actions:
     def __init__(self):
         self.calls = []
+        self.geometries = []
+
+    def target_for(self, action):
+        from types import SimpleNamespace
+        return ActionExecutor(SimpleNamespace(tap=lambda *args: None)).target_for(action)
 
     def execute(self, action, geometry):
         self.calls.append(action)
+        self.geometries.append(geometry)
         return None
 
 
@@ -139,374 +150,298 @@ def _dismiss_calls(actions):
     ]
 
 
-@pytest.mark.parametrize("failed_source", (False, True))
-def test_settle_stalled_or_failing_source_never_authorizes_second_dismiss(failed_source):
+INSIDE = (0.20, 0.12, 0.30, 0.24)
+OUTSIDE = (0.60, 0.60, 0.80, 0.80)
+
+
+@pytest.mark.parametrize("region,should_recover", [(INSIDE, True), (OUTSIDE, False)])
+def test_failed_necessary_signal_only_recovers_when_its_roi_intersects(region, should_recover):
+    from dataclasses import replace
+    from bot.observations import Observation, ObservationSource
+
     blocked = _snapshot(1, BEFORE)
     fresh = _snapshot(2, BEFORE)
-
-    class StalledObserver:
-        calls = 0
-
-        def observe(self):
-            self.calls += 1
-            if failed_source and self.calls > 1:
-                raise RuntimeError("capture failed during fade")
-            return fresh
-
+    fresh = replace(fresh, observations=ObservationBatch(2, 2.0, (
+        Observation("landmark.required", 1.0, ObservationSource.LOCAL_CV, region=region),
+    )))
+    observer = ScriptedObserver([_snapshot(3, EXPECTED)], [fresh])
     actions = Actions()
-    clock = FakeClock()
-    recovery = PortalObstructionRecovery(
-        StalledObserver(), actions,
-        PortalNotificationProbe(scorer=lambda frame: 1.0),
-        policy=ObstructionRecoveryPolicy(settle_timeout=1.0),
-        clock=clock.clock, sleeper=clock.sleeper,
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT])
+    result = _transition(observer, actions, probe).execute(
+        "test.signal", OpenQuickMenu(), blocked,
+        precondition=lambda s: bool(s.observations.find("landmark.required")),
+        precondition_regions=(region,),
+        expected=lambda s: s.state.base_context == EXPECTED,
+        policy=VerifiedTransitionPolicy(),
     )
-    recovery.attempt(blocked, lambda item: False)
+    assert result.succeeded is should_recover
+    assert probe.calls == (2 if should_recover else 0)
+    assert len(_dismiss_calls(actions)) == int(should_recover)
+    assert len(_productive_calls(actions)) == int(should_recover)
+    if should_recover:
+        assert result.action_source_snapshot is fresh
+
+
+def test_failed_postcondition_recovers_same_intention_without_productive_retry():
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
+        [_snapshot(4, BEFORE), _snapshot(5, EXPECTED)],
+    )
+    actions = Actions()
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT])
+    result = _transition(observer, actions, probe).execute(
+        "test.postcondition", OpenQuickMenu(), _snapshot(1, BEFORE),
+        expected=lambda s: s.state.base_context == EXPECTED,
+        expected_regions=(INSIDE,), policy=VerifiedTransitionPolicy(),
+    )
+    assert result.outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY
+    assert result.recovery_after_action
+    assert len(_productive_calls(actions)) == len(_dismiss_calls(actions)) == 1
+
+
+def test_missing_causal_roi_does_not_probe_even_after_timeouts():
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
+        [_snapshot(4, BEFORE)],
+    )
+    actions = Actions()
+    probe = ScriptedProbe([])
+    result = _transition(observer, actions, probe).execute(
+        "test.no_cause", OpenQuickMenu(), _snapshot(1, BEFORE),
+        expected=lambda s: False, policy=VerifiedTransitionPolicy(),
+    )
+    assert not result.succeeded
+    assert probe.calls == 0
+    assert _dismiss_calls(actions) == []
+
+
+def test_successful_transition_recovers_only_covered_target_using_fresh_geometry():
+    from dataclasses import replace
+    before = _snapshot(1, "screen.pets_manage")
+    fresh = _snapshot(2, "screen.pets_manage")
+    image = np.zeros((200, 400, 3), dtype=np.uint8)
+    fresh = replace(fresh, frame=FrameSnapshot(image, 2.0, 2), geometry=FrameGeometry.from_frame(image))
+    observer = ScriptedObserver([_snapshot(3, "screen.pet_summon")], [fresh])
+    actions = Actions()
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT])
+    result = _transition(observer, actions, probe).execute(
+        "test.input", SelectPetSummon(), before,
+        precondition=lambda s: s.state.base_context == "screen.pets_manage",
+        expected=lambda s: s.state.base_context == "screen.pet_summon",
+        policy=VerifiedTransitionPolicy(),
+    )
+    assert result.succeeded
+    assert [type(a) for a in actions.calls] == [DismissPortalNotification, SelectPetSummon]
+    assert actions.geometries == [before.geometry, fresh.geometry]
+    assert result.action_source_snapshot is fresh
+    assert not result.recovery_after_action
+
+
+def test_unaffected_success_has_no_probe_or_extra_observation():
+    observer = ScriptedObserver([_snapshot(2, EXPECTED)])
+    actions = Actions()
+    probe = ScriptedProbe([])
+    result = _transition(observer, actions, probe).execute(
+        "test.unaffected", OpenQuickMenu(), _snapshot(1, BEFORE),
+        precondition=lambda s: True, expected=lambda s: True,
+        policy=VerifiedTransitionPolicy(),
+    )
+    assert result.succeeded
+    assert probe.calls == 0
+    assert len(actions.calls) == 1
+
+
+def test_satisfied_signal_with_intersecting_roi_never_probes():
+    actions, probe = Actions(), ScriptedProbe([])
+    recovery = _transition(ScriptedObserver([]), actions, probe).obstruction_recovery
+    assert recovery.attempt(_snapshot(1, BEFORE), lambda s: True, regions=(INSIDE,)) is None
+    assert probe.calls == 0 and actions.calls == []
+
+
+def test_precondition_is_revalidated_after_dismiss_before_original_input():
+    observer = ScriptedObserver([], [_snapshot(2, "screen.guild")])
+    actions = Actions()
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT])
+    result = _transition(observer, actions, probe).execute(
+        "test.changed_base", SelectPetSummon(), _snapshot(1, "screen.pets_manage"),
+        precondition=lambda s: s.state.base_context == "screen.pets_manage",
+        expected=lambda s: True, policy=VerifiedTransitionPolicy(),
+    )
+    assert result.outcome is VerifiedTransitionOutcome.PRECONDITION_REJECTED
+    assert [type(a) for a in actions.calls] == [DismissPortalNotification]
+
+
+@pytest.mark.parametrize("outcome", [PortalProbeOutcome.INCONCLUSIVE, PortalProbeOutcome.ABSENT, None])
+def test_unconfirmed_probe_never_authorizes_dismiss(outcome):
+    observer, actions = ScriptedObserver([]), Actions()
+    probe = ScriptedProbe([outcome])
+    recovery = _transition(observer, actions, probe).obstruction_recovery
+    assert recovery.attempt(_snapshot(1, BEFORE), lambda s: False, regions=(INSIDE,)) is None
+    assert actions.calls == []
+
+
+@pytest.mark.parametrize("base,status,overlays", [
+    (None, ResolutionStatus.UNKNOWN, ()),
+    ("screen.world_boss_battle", ResolutionStatus.RESOLVED, ()),
+    ("screen.character_select", ResolutionStatus.RESOLVED, ()),
+    ("screen.quests", ResolutionStatus.RESOLVED, ()),
+    ("screen.pet_summon_result", ResolutionStatus.RESOLVED, ()),
+    (BEFORE, ResolutionStatus.RESOLVED, ("menu.quick",)),
+    (BEFORE, ResolutionStatus.RESOLVED, ("popup.combine_all",)),
+])
+def test_invalid_physical_context_never_probes_or_dismisses(base, status, overlays):
+    from dataclasses import replace
+    before = _snapshot(1, base, status)
+    before = replace(before, state=replace(before.state, overlays=overlays))
+    actions, probe = Actions(), ScriptedProbe([])
+    recovery = _transition(ScriptedObserver([]), actions, probe).obstruction_recovery
+    assert recovery.attempt(before, lambda s: False, regions=(INSIDE,)) is None
+    assert probe.calls == 0
+    assert actions.calls == []
+
+
+@pytest.mark.parametrize("outcome", [PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.INCONCLUSIVE])
+def test_persistent_or_uncertain_portal_fails_after_one_dismiss(outcome):
+    observer = ScriptedObserver([], [_snapshot(i, BEFORE) for i in range(2, 6)])
+    actions = Actions()
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED] + [outcome] * 4)
+    recovery = _transition(observer, actions, probe,
+        policy=ObstructionRecoveryPolicy(settle_timeout=1.0)).obstruction_recovery
+    with pytest.raises(RuntimeWaitTimeout):
+        recovery.attempt(_snapshot(1, BEFORE), lambda s: False, regions=(INSIDE,))
     assert len(_dismiss_calls(actions)) == 1
 
 
-def test_cancellation_during_fade_propagates_without_a_second_tap():
-    observer = ScriptedObserver([], observes=[_snapshot(2, BEFORE)])
+def test_fade_wait_is_passive_and_stops_on_fresh_absence():
+    observer = ScriptedObserver([], [_snapshot(i, BEFORE) for i in range(2, 5)])
+    actions, clock = Actions(), FakeClock()
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED] * 3 + [PortalProbeOutcome.ABSENT])
+    recovery = _transition(observer, actions, probe, clock=clock).obstruction_recovery
+    result = recovery.attempt(_snapshot(1, BEFORE), lambda s: False, regions=(INSIDE,))
+    assert result.sequence == 4
+    assert len(_dismiss_calls(actions)) == 1
+    assert clock.now == 1.0
+
+
+def test_stale_post_dismiss_frame_cannot_be_reused():
+    before = _snapshot(1, BEFORE)
     actions = Actions()
-    clock = FakeClock()
+    recovery = _transition(ScriptedObserver([], [before]), actions,
+        ScriptedProbe([PortalProbeOutcome.CONFIRMED])).obstruction_recovery
+    with pytest.raises(RuntimeWaitTimeout):
+        recovery.attempt(before, lambda s: False, regions=(INSIDE,))
+    assert len(_dismiss_calls(actions)) == 1
+
+
+def test_cancellation_during_settle_propagates_without_more_input():
+    clock, actions = FakeClock(), Actions()
     recovery = PortalObstructionRecovery(
-        observer, actions, PortalNotificationProbe(scorer=lambda frame: 1.0),
+        ScriptedObserver([], [_snapshot(2, BEFORE)]), actions,
+        ScriptedProbe([PortalProbeOutcome.CONFIRMED] * 2),
         clock=clock.clock, sleeper=clock.sleeper,
         cancel_requested=lambda: clock.now >= 0.5,
     )
-    transition = VerifiedTransition(observer, actions, obstruction_recovery=recovery)
     with pytest.raises(RuntimeWaitCancelled):
-        transition.execute(
-            "test.cancel_recovery", OpenQuickMenu(), _snapshot(1, BEFORE),
-            precondition=lambda item: False, expected=lambda item: False,
-            policy=VerifiedTransitionPolicy(),
-        )
-    assert len(_dismiss_calls(actions)) == 1
-    assert _productive_calls(actions) == []
-
-
-def test_blocked_postcondition_with_confirmed_portal_recovers_without_productive_retry():
-    before = _snapshot(1, BEFORE)
-    blocked_after_normal = _snapshot(2, BEFORE)
-    blocked_after_grace = _snapshot(3, BEFORE)
-    blocked_fresh = _snapshot(
-        4, BEFORE, status=ResolutionStatus.UNKNOWN
-    )
-    cleared = _snapshot(5, EXPECTED)
-    observer = ScriptedObserver(
-        [_timeout(1, blocked_after_normal), _timeout(2, blocked_after_grace)],
-        observes=[blocked_fresh, cleared],
-    )
-    actions = Actions()
-    probe = ScriptedProbe(
-        [PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT]
-    )
-    transition = _transition(observer, actions, probe)
-
-    result = transition.execute(
-        "test.portal_recovery",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
-
-    assert result.succeeded
-    assert result.outcome is (
-        VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY
-    )
-    assert result.attempt_count == 1
-    assert result.final_snapshot.state.base_context == EXPECTED
-    assert len(_productive_calls(actions)) == 1
+        recovery.attempt(_snapshot(1, BEFORE), lambda s: False, regions=(INSIDE,))
     assert len(_dismiss_calls(actions)) == 1
 
 
-def test_absent_portal_keeps_existing_behavior_without_extra_taps():
+
+
+def test_declared_missing_mode_recovers_an_aborted_wait_without_repeating_action():
+    from dataclasses import replace
+    from bot.equipment_combine_relief import _missing_mode_region
+    from bot.perception.specs import COMBINE_FUSE_ACTIVE_SPEC
     before = _snapshot(1, BEFORE)
-    observer = ScriptedObserver(
-        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
-        observes=[_snapshot(4, BEFORE)],
-    )
-    actions = Actions()
-    probe = ScriptedProbe([PortalProbeOutcome.ABSENT])
-    transition = _transition(observer, actions, probe)
-
-    result = transition.execute(
-        "test.portal_absent",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
-
-    assert result.outcome is VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED
-    assert len(_productive_calls(actions)) == 1
-    assert _dismiss_calls(actions) == []
-    assert probe.calls == 1
-
-
-def test_inconclusive_probe_never_authorizes_dismiss_tap():
-    assert (
-        PortalNotificationProbe(scorer=lambda crop: 0.7).probe(
-            np.zeros((100, 200, 3), dtype=np.uint8)
-        )
-        is PortalProbeOutcome.INCONCLUSIVE
-    )
-    before = _snapshot(1, BEFORE)
-    observer = ScriptedObserver(
-        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
-        observes=[_snapshot(4, BEFORE)],
-    )
-    actions = Actions()
-    probe = ScriptedProbe([PortalProbeOutcome.INCONCLUSIVE])
-    transition = _transition(observer, actions, probe)
-
-    result = transition.execute(
-        "test.portal_inconclusive",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
-
-    assert result.outcome is VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED
-    assert _dismiss_calls(actions) == []
-    assert len(_productive_calls(actions)) == 1
-
-
-def test_recovery_clearing_without_expected_state_does_not_repeat_productive_action():
-    before = _snapshot(1, BEFORE)
-    cleared_still_before = _snapshot(5, BEFORE)
-    observer = ScriptedObserver(
-        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
-        observes=[_snapshot(4, BEFORE), cleared_still_before],
-    )
-    actions = Actions()
-    probe = ScriptedProbe(
-        [PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT]
-    )
-    transition = _transition(observer, actions, probe)
-
-    result = transition.execute(
-        "test.portal_cleared_no_state",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
-
-    assert result.outcome is VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED
-    assert len(_productive_calls(actions)) == 1
-    assert len(_dismiss_calls(actions)) == 1
-    assert result.final_snapshot.sequence == 5
-
-
-def test_dismissal_is_bounded_when_notification_persists():
-    before = _snapshot(1, BEFORE)
-    observer = ScriptedObserver(
-        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
-        observes=[_snapshot(sequence, BEFORE) for sequence in range(4, 27)],
-    )
-    actions = Actions()
-    probe = ScriptedProbe(
-        [PortalProbeOutcome.CONFIRMED] * 23
-    )
-    transition = _transition(
-        observer, actions, probe, policy=ObstructionRecoveryPolicy(max_dismiss_attempts=2)
-    )
-
-    result = transition.execute(
-        "test.portal_bounded",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
-
-    assert result.outcome is VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED
-    assert len(_dismiss_calls(actions)) == 2
-    assert len(_productive_calls(actions)) == 1
-
-
-def test_blocked_precondition_recovers_before_first_productive_input():
-    blocked_before = _snapshot(
-        1, BEFORE, status=ResolutionStatus.UNKNOWN
-    )
-    cleaned = _snapshot(2, BEFORE)
-    arrived = _snapshot(3, EXPECTED)
-    observer = ScriptedObserver([arrived], observes=[cleaned])
+    missing = _snapshot(2, BEFORE)
+    fresh = _snapshot(3, BEFORE)
+    fresh = replace(fresh, state=replace(fresh.state, overlays=("mode.combine_fuse",)))
+    observer = ScriptedObserver([missing], [fresh])
     actions = Actions()
     probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT])
-    transition = _transition(observer, actions, probe)
-
-    result = transition.execute(
-        "test.precondition_recovery",
-        OpenQuickMenu(),
-        blocked_before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        precondition=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(normal_timeout=6.0, grace_timeout=2.0),
+    result = _transition(observer, actions, probe).execute(
+        "test.missing_mode", OpenQuickMenu(), before,
+        expected=lambda s: "mode.combine_fuse" in s.state.overlays,
+        expected_regions=lambda s: _missing_mode_region(s, COMBINE_FUSE_ACTIVE_SPEC),
+        abort_if=lambda s: not s.state.overlays,
+        policy=VerifiedTransitionPolicy(),
     )
-
-    assert result.outcome is VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT
-    assert len(_productive_calls(actions)) == 1
-    assert len(_dismiss_calls(actions)) == 1
-
-
-def _policy(**overrides):
-    values = {"max_dismiss_attempts": 2, "settle_timeout": 5.0}
-    values.update(overrides)
-    return ObstructionRecoveryPolicy(**values)
+    assert result.succeeded
+    assert result.recovery_after_action
+    assert result.final_snapshot is fresh
+    assert len(_productive_calls(actions)) == len(_dismiss_calls(actions)) == 1
 
 
-def test_fade_staying_confirmed_does_not_trigger_early_second_tap():
-    before = _snapshot(1, BEFORE)
-    blocked = _snapshot(4, BEFORE, status=ResolutionStatus.UNKNOWN)
-    fade_one = _snapshot(5, BEFORE, status=ResolutionStatus.UNKNOWN)
-    fade_two = _snapshot(6, BEFORE, status=ResolutionStatus.UNKNOWN)
-    cleared = _snapshot(7, EXPECTED)
-    observer = ScriptedObserver(
-        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
-        observes=[blocked, fade_one, fade_two, cleared],
+def test_present_mode_or_foreign_base_does_not_declare_an_occluded_signal():
+    from dataclasses import replace
+    from bot.equipment_combine_relief import _missing_mode_region
+    from bot.observations import Observation, ObservationSource
+    from bot.perception.specs import COMBINE_FUSE_ACTIVE_SPEC as spec
+    current = _snapshot(1, BEFORE)
+    current = replace(current, observations=ObservationBatch(1, 1.0, (
+        Observation(spec.name, 1.0, ObservationSource.LOCAL_CV, region=spec.region),
+    )))
+    assert _missing_mode_region(current, spec) == ()
+    assert _missing_mode_region(_snapshot(2, "screen.guild"), spec) == ()
+
+
+def test_executor_dismiss_uses_existing_target_and_never_opens_quick_menu():
+    from types import SimpleNamespace
+    from bot.action_executor import DEFAULT_PORTAL_ACTION_TARGETS, DEFAULT_ROTATION_ACTION_TARGETS
+    taps = []
+    actions = ActionExecutor(SimpleNamespace(tap=lambda *xy: taps.append(xy)))
+    before, fresh = _snapshot(1, BEFORE), _snapshot(2, BEFORE)
+    recovery = PortalObstructionRecovery(ScriptedObserver([], [fresh]), actions,
+        ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT]))
+    assert recovery.attempt(before, lambda s: False, regions=(INSIDE,)) is fresh
+    assert taps == [relative_point_to_pixel(DEFAULT_PORTAL_ACTION_TARGETS.dismiss_portal_notification, 200, 100)]
+    assert taps[0] != relative_point_to_pixel(DEFAULT_ROTATION_ACTION_TARGETS.open_quick_menu, 200, 100)
+
+
+
+
+
+
+@pytest.mark.parametrize("action_name,base,detail", [
+    ("SelectCombineFuse", "screen.combine", "mode.combine_transmute"),
+    ("SelectCombineTransmute", "screen.combine", "mode.combine_fuse"),
+    ("OpenSocketEquipmentHome", "screen.socket", None),
+])
+def test_existing_covered_controls_recover_through_shared_transition(action_name, base, detail):
+    from dataclasses import replace
+    from bot import semantic_actions
+    before, clean, after = [_snapshot(i, base) for i in range(1, 4)]
+    if detail:
+        before = replace(before, state=replace(before.state, overlays=(detail,)))
+        clean = replace(clean, state=replace(clean.state, overlays=(detail,)))
+    observer, actions = ScriptedObserver([after], [clean]), Actions()
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT])
+    action = getattr(semantic_actions, action_name)()
+    result = _transition(observer, actions, probe).execute(
+        "test.covered_control", action, before,
+        precondition=lambda s: s.state.base_context == base,
+        expected=lambda s: s.state.base_context == base,
+        policy=VerifiedTransitionPolicy(),
     )
+    assert result.succeeded
+    assert actions.calls == [DismissPortalNotification(), action]
+
+
+def test_cancellation_after_dismiss_observation_prevents_continuation():
     actions = Actions()
-    probe = ScriptedProbe(
-        [
-            PortalProbeOutcome.CONFIRMED,
-            PortalProbeOutcome.CONFIRMED,
-            PortalProbeOutcome.CONFIRMED,
-            PortalProbeOutcome.ABSENT,
-        ]
-    )
-    clock = FakeClock()
-    transition = _transition(observer, actions, probe, clock=clock)
+    cancelled = False
 
-    result = transition.execute(
-        "test.portal_settle_fade",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
+    class Observer:
+        def observe(self):
+            nonlocal cancelled
+            cancelled = True
+            return _snapshot(2, BEFORE)
 
-    assert result.outcome is (
-        VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY
-    )
-    assert result.final_snapshot.sequence == 7
-    assert len(_dismiss_calls(actions)) == 1
-    assert len(_productive_calls(actions)) == 1
-    assert clock.sleeps
-
-
-def test_inconclusive_during_settle_authorizes_no_further_tap():
-    before = _snapshot(1, BEFORE)
-    blocked = _snapshot(4, BEFORE, status=ResolutionStatus.UNKNOWN)
-    fading = _snapshot(5, BEFORE)
-    observer = ScriptedObserver(
-        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
-        observes=[blocked, fading],
-    )
-    actions = Actions()
-    probe = ScriptedProbe(
-        [PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.INCONCLUSIVE]
-    )
-    transition = _transition(observer, actions, probe, clock=FakeClock())
-
-    result = transition.execute(
-        "test.portal_settle_inconclusive",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
-
-    assert result.outcome is VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED
-    assert len(_dismiss_calls(actions)) == 1
-    assert len(_productive_calls(actions)) == 1
-
-
-def test_confirmed_through_whole_settle_allows_exactly_one_second_tap():
-    before = _snapshot(1, BEFORE)
-    frames = [_snapshot(4, BEFORE, status=ResolutionStatus.UNKNOWN)]
-    frames += [_snapshot(sequence, BEFORE) for sequence in range(5, 27)]
-    observer = ScriptedObserver(
-        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE))],
-        observes=list(frames),
-    )
-    actions = Actions()
-    probe = ScriptedProbe(
-        [PortalProbeOutcome.CONFIRMED] * (1 + 11 + 11)
-    )
-    transition = _transition(observer, actions, probe, clock=FakeClock())
-
-    result = transition.execute(
-        "test.portal_settle_second_tap",
-        OpenQuickMenu(),
-        before,
-        expected=lambda item: item.state.base_context == EXPECTED,
-        retryable_from=lambda item: item.state.base_context == BEFORE,
-        policy=VerifiedTransitionPolicy(
-            normal_timeout=6.0, grace_timeout=2.0, max_attempts=1
-        ),
-    )
-
-    assert result.outcome is VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED
-    assert len(_dismiss_calls(actions)) == 2
-    assert len(_productive_calls(actions)) == 1
-
-
-def test_second_tap_never_derives_a_third():
-    blocked = _snapshot(4, BEFORE, status=ResolutionStatus.UNKNOWN)
-    frames = [_snapshot(sequence, BEFORE) for sequence in range(5, 12)]
-    observer = ScriptedObserver([], observes=list(frames))
-
-    class CountingActions:
-        def __init__(self):
-            self.calls = []
-
-        def execute(self, action, geometry):
-            self.calls.append(action)
-
-    actions = CountingActions()
-    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED] * 12)
-    clock = FakeClock()
-    recovery = PortalObstructionRecovery(
-        observer,
-        actions,
-        probe,
-        policy=_policy(settle_timeout=1.0, settle_poll_interval=0.5),
-        clock=clock.clock,
-        sleeper=clock.sleeper,
-    )
-
-    fresh = recovery.attempt(blocked, lambda item: False)
-
-    assert fresh is not None
-    assert len(actions.calls) == 2
-    assert all(
-        isinstance(call, DismissPortalNotification) for call in actions.calls
-    )
+    recovery = PortalObstructionRecovery(Observer(), actions,
+        ScriptedProbe([PortalProbeOutcome.CONFIRMED]), cancel_requested=lambda: cancelled)
+    with pytest.raises(RuntimeWaitCancelled):
+        recovery.attempt(_snapshot(1, BEFORE), lambda s: False, regions=(INSIDE,))
+    assert actions.calls == [DismissPortalNotification()]
 
 
 def test_individual_flows_contain_no_portal_specific_logic():

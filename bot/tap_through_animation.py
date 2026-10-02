@@ -91,9 +91,12 @@ class TapThroughAnimation:
         transient: Callable[[RuntimeSnapshot], bool],
         cancel_requested: Callable[[], bool] = lambda: False,
         policy: TapThroughPolicy | None = None,
+        action_for: Callable[[RuntimeSnapshot], object] | None = None,
     ) -> TapThroughResult:
         if not isinstance(initial, RuntimeSnapshot):
             raise ValueError("initial must be a RuntimeSnapshot")
+        if action_for is not None and not callable(action_for):
+            raise ValueError("action_for must be callable or None")
         for name, predicate in (
             ("expected", expected),
             ("tappable", tappable),
@@ -129,8 +132,9 @@ class TapThroughAnimation:
                         current,
                         "maximum guarded taps reached",
                     )
+                selected = action_for(current) if action_for is not None else action
                 try:
-                    self.actions.execute(action, current.geometry)
+                    self.actions.execute(selected, current.geometry)
                 except Exception as error:
                     return self._finish(
                         TapThroughOutcome.FAILED,
@@ -143,6 +147,7 @@ class TapThroughAnimation:
                     "tap_through.tap",
                     sequence=current.sequence,
                     tap_count=tap_count,
+                    action=type(selected).__name__,
                 )
                 remaining = deadline - self.clock()
                 if remaining <= 0:

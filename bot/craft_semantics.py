@@ -79,18 +79,26 @@ class QuickMenuCraftFact:
 
 @dataclass(frozen=True)
 class CraftContextFact:
+    """Proven Craft presence plus best-effort family economics.
+
+    Identity answers only "is this physically Craft" via the safe expert
+    marker.  Title/rate stay auxiliary/diagnostic (chat/H&H-exposed) and
+    every family material/capacity/cost is optional: a missing value never
+    disproves Craft, it only blocks the operation that needs it.
+    """
+
     title: str
     rate_label: str
     expert_label: str
-    weapon_material: int
-    armor_material: int
-    accessory_material: int
-    weapon_capacity: int
-    armor_capacity: int
-    accessory_capacity: int
-    weapon_hero_cost: int
-    armor_hero_cost: int
-    accessory_hero_cost: int
+    weapon_material: int | None
+    armor_material: int | None
+    accessory_material: int | None
+    weapon_capacity: int | None
+    armor_capacity: int | None
+    accessory_capacity: int | None
+    weapon_hero_cost: int | None
+    armor_hero_cost: int | None
+    accessory_hero_cost: int | None
     sequence: int
     observed_at: float
     sample_sequences: tuple[int, ...] = ()
@@ -108,22 +116,16 @@ class CraftContextFact:
             "weapon_hero_cost", "armor_hero_cost", "accessory_hero_cost",
         ):
             value = getattr(self, name)
+            if value is None:
+                continue
             if isinstance(value, bool) or not isinstance(value, Integral) or value < 0:
-                raise ValueError(f"{name} must be a non-negative integer")
+                raise ValueError(f"{name} must be a non-negative integer or None")
         _validate_common(self)
 
     @property
     def complete(self) -> bool:
         return (
-            self.title.casefold() == "craft"
-            and self.rate_label.casefold().endswith("rate")
-            and self.expert_label.casefold() == "expert craft"
-            and self.weapon_capacity == 999
-            and self.armor_capacity == 999
-            and self.accessory_capacity == 999
-            and self.weapon_hero_cost > 0
-            and self.armor_hero_cost > 0
-            and self.accessory_hero_cost > 0
+            self.expert_label.casefold() == "expert craft"
             and not self.contradictory
         )
 
@@ -131,7 +133,7 @@ class CraftContextFact:
     def confirmed(self) -> bool:
         return self.complete and _confirmed(self)
 
-    def material_for(self, family: CraftFamily) -> int:
+    def material_for(self, family: CraftFamily) -> int | None:
         if not isinstance(family, CraftFamily):
             raise ValueError("family must be CraftFamily")
         return {
@@ -140,7 +142,7 @@ class CraftContextFact:
             CraftFamily.ACCESSORY: self.accessory_material,
         }[family]
 
-    def hero_cost_for(self, family: CraftFamily) -> int:
+    def hero_cost_for(self, family: CraftFamily) -> int | None:
         if not isinstance(family, CraftFamily):
             raise ValueError("family must be CraftFamily")
         return {
@@ -305,13 +307,10 @@ def _fact_value(fact) -> tuple[object, ...]:
     if isinstance(fact, QuickMenuCraftFact):
         return (fact.lobby_label.casefold(), fact.craft_label.casefold(), fact.guild_label.casefold())
     if isinstance(fact, CraftContextFact):
-        return (
-            fact.title.casefold(), fact.rate_label.casefold(),
-            fact.expert_label.casefold(), fact.weapon_material, fact.armor_material,
-            fact.accessory_material, fact.weapon_capacity, fact.armor_capacity,
-            fact.accessory_capacity, fact.weapon_hero_cost,
-            fact.armor_hero_cost, fact.accessory_hero_cost,
-        )
+        # Consensus tracks identity only: auxiliary title/rate text and
+        # best-effort economics must not veto an agreed Craft presence.
+        # The merged fact keeps the newest sample's economics.
+        return (fact.expert_label.casefold(),)
     if isinstance(fact, CraftRecipeFact):
         return (
             fact.family, fact.tier, fact.item_type, fact.currency,

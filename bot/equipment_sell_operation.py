@@ -49,6 +49,7 @@ class EquipmentSellCandidate:
 class EquipmentSellRequest:
     authorization: EquipmentSellAuthorization
     candidate: EquipmentSellCandidate
+    expected_item: EquipmentItemFact | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.authorization, EquipmentSellAuthorization):
@@ -127,6 +128,8 @@ def execute_equipment_sell(
                 inputs,
             )
         assert isinstance(first, EquipmentItemFact)
+        if request.expected_item is not None and _item_key(first) != _item_key(request.expected_item):
+            return _result(EquipmentSellOutcome.DENIED, "scanned_candidate_changed", before, inputs, item=first)
         if not request.authorization.allows(first):
             return _result(
                 EquipmentSellOutcome.DENIED,

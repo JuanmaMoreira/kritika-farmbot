@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import numpy as np
+import pytest
 
 from bot.action_executor import FrameGeometry
 from bot.capture import FrameSnapshot
@@ -68,7 +69,7 @@ class Time:
         self.value += duration
 
 
-def run(initial, following=(), *, timeout=False, max_taps=20, cancel=lambda: False):
+def run(initial, following=(), *, timeout=False, max_taps=20, cancel=lambda: False, action_for=None):
     observer = Observer(following, timeout=timeout)
     actions = Mock()
     now = Time()
@@ -83,6 +84,7 @@ def run(initial, following=(), *, timeout=False, max_taps=20, cancel=lambda: Fal
         transient=lambda item: item.state.status is ResolutionStatus.UNKNOWN,
         cancel_requested=cancel,
         policy=TapThroughPolicy(timeout=5, tap_interval=0.5, max_taps=max_taps),
+        action_for=action_for,
     )
     return result, observer, actions
 
@@ -171,3 +173,28 @@ def test_cancellation_stops_before_input_and_completion_stops_later_input():
     assert completed.outcome is TapThroughOutcome.COMPLETED
     completed_actions.execute.assert_not_called()
     assert observer.values == []
+
+
+def test_action_for_selects_per_frame_action_without_changing_bounds():
+    first, second = object(), object()
+    selected = []
+
+    def select(current):
+        selected.append(current.sequence)
+        return first if current.sequence == 1 else second
+
+    result, _, actions = run(
+        snapshot(1, "tappable"),
+        [snapshot(2, "tappable"), snapshot(3, "complete")],
+        action_for=select,
+    )
+
+    assert result.outcome is TapThroughOutcome.COMPLETED
+    assert result.tap_count == 2
+    assert selected == [1, 2]
+    assert [call.args[0] for call in actions.execute.call_args_list] == [first, second]
+
+
+def test_action_for_must_be_callable_or_none():
+    with pytest.raises(ValueError):
+        run(snapshot(1, "tappable"), action_for=object())

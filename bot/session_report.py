@@ -83,7 +83,6 @@ class SessionReport:
 _INCOMPLETE = {
     'monster_wave.tickets_missing_purchase_disabled': 'SKIP activation tickets missing (<30/30); purchase disabled',
     'monster_wave.insufficient_sapphires': 'insufficient sapphires for SKIP',
-    'monster_wave.daily_sapphires_below_minimum': 'Daily requires 4 fresh sapphires; SKIP intentionally not started',
     'monster_wave.inventory_warning_declined': 'non-blocking inventory warning declined',
     'monster_wave.manual_resolution': 'Monster Wave requires manual resolution; acquired return unavailable',
     "black_market.low_gold": "insufficient GOLD for a purchase",

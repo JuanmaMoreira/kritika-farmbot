@@ -11,7 +11,7 @@ Sólo `BASE | MODAL | OVERLAY | EXEMPT`. Cada BASE declara `battle_surface`. Nom
 | BASE | Lobby; Battle Mode Select; Monster Wave; Craft; Equipment Inventory; Socket; Treasure; Combine; Guild; Pets Manage; Pet Summon; Pet Combine; World Boss | false |
 | BASE | World Boss Battle | true |
 | MODAL | Trading; Mailbox; Quests; Friends; Black Market; Previous Rewards | — |
-| MODAL | MW: purchase tickets; insufficient sapphires; resource board; CLEAR; New Ranking; Weekly Results | — |
+| MODAL | MW: purchase tickets; insufficient sapphires; resource board; CLEAR; Point Reward (por encima de CLEAR al cruzar ciertos conquest points; OK lo cierra y debajo queda CLEAR; tocar fuera no lo cierra); New Ranking; Weekly Results | — |
 | MODAL | Black Market: purchase dialog; insufficient Gold; inventory full | — |
 | MODAL | Equipment Full; Socket Inventory Full inicial; blocker Socket todavía lleno **después** del relief (distinto del inicial); Meteor blocker | — |
 | MODAL | Socket: Enhance All, No Material, Sell; Combine: confirmaciones | — |
@@ -34,6 +34,8 @@ Combine es **una BASE**: Transmute, Fuse, [Awakened] Transmute y [Ethereal] Rand
 - Socket todavía lleno tras Combine/Sell es el blocker **post-relief**, distinto del popup inicial. Elegir No deja la tarea incompleta y se continúa con el siguiente personaje; fuera del scope positivo de relief.
 - Equipment detail: no hay X; cerrar tocando afuera, preferentemente la región superior no interactuable entre Karats y `?` junto a Back. **No Back**: regresaría desde Equipment Inventory a su caller. No hay coordenada exacta canónica en este contrato.
 - Craft recipe/quantity: Cancel vuelve a la misma Craft BASE.
+- **USER_GT (2026-10-01):** `Craft → Inventory → Back → Craft → Back → Lobby` es una secuencia determinista. Lobby es su postcondition normal, no failure ni recovery inesperado. Craft conserva su entrada directa; no agregar `MW → Inventory → MW` preventivo. Desde ese Lobby se continúa por navegación normal a Battle Mode Select y MW.
+- **LIVE_EVIDENCE (2026-10-02):** `MW → Inventory → Back → MW → Back → Lobby` conserva esa historia de BASE. Lobby limpio es un destino normal conocido; la activity reusable restablece Battle Mode Select mediante navegación normal sólo en esta rama, sin otro Back ni consumo.
 - Pets Combine All y Mass Evolve Normal/Rare: No devuelve exactamente el parent/estado subyacente Pet Combine o Pet Summon, o Pets Manage si allí aplica esa confirmación; no inferir otras rutas.
 - Trading abierto desde Quick Menu conserva el parent; X restaura ese parent (Craft y Treasure establecidos). Treasure sí cambia de BASE.
 - MW tooltip (`overlay.monster_wave_usage_tooltip`): un tap en Sapphires abre; segundo tap sobre el tooltip cierra. Estrategia aceptada: double tap, ignorar normalmente el transitorio; si el segundo se pierde, puede reconocerse y manejarse. No requiere state machine nueva.
@@ -68,9 +70,26 @@ No es una segmentación exacta ni prueba de todo el ciclo animado. Queda incerti
 
 ## Mecánicas establecidas que afectan composición
 
-Evidencia física previa curada (procedencia en [contrato SKIP archivado](legacy/DOC_RESET_20260925.md) y [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md), no inferencia del detector): SKIP se activa con tickets completos (30/30 en el caso adquirido; VIP puede reducir el requisito). Fill All compra faltantes a 140.000 Gold por ticket; completar tickets no activa SKIP automáticamente. El estado/timer es account-wide y se debe observar fresco, sin fijar duración a partir de un ejemplo. Daily MW requiere x4; MAX es la operación productiva elegida.
+Evidencia física previa curada (procedencia en [contrato SKIP archivado](legacy/DOC_RESET_20260925.md) y [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md), no inferencia del detector): SKIP se activa con tickets completos (30/30 en el caso adquirido; VIP puede reducir el requisito). Fill All compra faltantes a 140.000 Gold por ticket; completar tickets no activa SKIP automáticamente. El estado/timer es account-wide y se debe observar fresco, sin fijar duración a partir de un ejemplo. La misión Daily MW requiere x4; eso no limita MW productivo ni autoriza un gate Daily. **USER_GT / product policy:** MW no tiene Eligibility; su objetivo es gastar Sapphires, liberar capacidad y obtener rewards incluso con Daily completada. Sapphires se observan antes de entrar, desde Battle Mode Select: 0 permite omitir MW y >0 permite entrar y ejecutar el loop MAX. El saldo inicial determina `ceil(sapphires_iniciales / 100)` y sólo CLEAR confirmado avanza el gasto.
 
 El board MW muestra balances/límites, no rewards entrantes exactos ni recetas; drops no deterministas no autorizan predicción de saldo. Capacidad Gold Keys no observable por board/Trading; el alert Silver→Gold lleno aporta el bloqueo causal. Conversiones adquiridas: 40 Weapon→10 Hero, receta Hero Weapon de 49 materiales y 10 Bronze→2 Silver. Los facts frescos siguen autorizando cada operación económica, no un saldo calculado persistente. Procedencia histórica: [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md); policy y wiring: [RESOURCE_ROUTING](RESOURCE_ROUTING.md).
+
+**USER_GT:** tras confirmar `Mass Combine` una sola vez en `[Ethereal] Random Part` aparece una animación de resultado cuyo item concreto es irrelevante y puede variar; no se modela por resultado y no requiere el landmark de espada. Se atraviesa con taps fuera del item/botón visible hasta recuperar de forma fresca y estable `Combine → Transmute → [Ethereal] Random Part`. Es la misma clase de mecánica que las demás animaciones cancelables: el contrato es recuperar el BASE, no reconocer el resultado.
+
+## Equipment Inventory / Sell — USER_GT definitivo 2026-10-02
+
+- La lista total se ordena por poder que otorgaría al equipar; su tail es el menor poder. La capacidad comprada limita cuáles slots son seleccionables: puede haber items de menor tier existentes pero inaccesibles debajo del tail adquirido. No buscar arbitrariamente el tier mínimo en la lista total.
+- `Item Count: HAVE / NEED` es la autoridad de cantidad y capacidad. Full cuando `HAVE >= NEED`; terminar inmediatamente cuando `HAVE < NEED`. Grid de 4 columnas, 4 filas por página: 16 slots/página, 4 slots/fila. Último slot accesible (índice cero): `min(HAVE, NEED)-1`; página `index//16+1`, posición `index%16`. Próxima fila comprable comienza en índice `NEED`, página `NEED//16+1`, fila `(NEED%16)//4`.
+- Cada compra con Karats agrega exactamente una fila (+4 slots). Sólo se compra la fila siguiente, secuencialmente; no se saltan filas ni se compran varias preventivamente. Leer coste/acción y confirmar una vez; verificar `capacity_new == capacity_old+4` con Item Count fresco. Efecto inconcluso no autoriza repetir.
+- Legendary, Epic, Rare, Normal y Poor son descartables sin policy por level, enhancement, duplicados, identidad o transcendence. Bulk separa las familias `equipment` y `enhance`. Un Normal lvl 5 sigue siendo descartable.
+- Ethereal equipment es configurable por tipo exacto, en ambas direcciones. Weapon: Weapon. Armor: Helmet, Chest, Pants, Gloves, Boots. Accessories: Earrings, Necklace, Ring. Default: Weapon/Earrings/Necklace/Ring protegidos; cinco Armor vendibles. Ethereal Enhance es una opción independiente; no se mezcla con la opción del tipo equipment. Su default conservador de implementación es protegido (USER_GT no fijó default).
+- Todo Ethereal+ equipment y Ethereal+ Enhance están permanentemente protegidos, sin excepción configurable. Ethereal+ constituye el límite superior del scan hacia atrás. Locked no puede venderse; Equipped no es candidato efectivo.
+- Sólo Bulk es venta productiva autorizada, nunca individual. Antes de confirmar: tier, tipo/grupo cuando corresponda y policy, con panel y popup como guards redundantes; frame/tier, nombre/color y disponibilidad Bulk aportan evidencia. Ethereal+ no permite Bulk, defensa adicional que no sustituye clasificación. UNKNOWN/contradicción/ambigüedad nunca autorizan venta.
+- Después de Combine, venta o compra no se reutiliza índice/scan. Cada nueva evaluación empieza con Item Count/capacidad frescos, tail accesible calculado y primer candidato vendible hacia atrás; detener al alcanzar cualquier Ethereal+ sin candidato. La salida y su routing se definen en RESOURCE_ROUTING.
+
+## Point Reward — USER_GT establecido
+
+`Point Reward` MW: MODAL establecido por USER_GT que puede aparecer por encima de CLEAR al cruzar ciertos conquest points (adquirido 2026-09-29: `+2 Gem` por `20000 Conquest Points`). Se cierra sólo con su botón OK; inmediatamente debajo queda CLEAR; tocar fuera o sobre otras zonas no lo cierra; no es overlay ni tap-through. Identidad productiva: rasgos estables del MODAL (título); la línea de recompensa variable queda fuera de identidad.
 
 ## UNKNOWN deliberados
 
