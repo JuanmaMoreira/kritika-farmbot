@@ -1,0 +1,1183 @@
+{
+  "date": "2026-10-04",
+  "authority": "LIVE_EVIDENCE",
+  "baseline": "baf9b6345ece4e81c945a366a7ec350f31c4f1fb",
+  "branch": "rebuild/stable-baseline",
+  "historical_v1": {
+    "date": "2026-10-04",
+    "authority": "LIVE_EVIDENCE",
+    "baseline": "baf9b6345ece4e81c945a366a7ec350f31c4f1fb",
+    "branch": "rebuild/stable-baseline",
+    "runtime_sha256": {
+      "bot/directed_list_scroll.py": "3ac5df6d4c7c731ab654e65b31d31d2a90af6afd56d76cd3d540fef1eb239f25",
+      "bot/trading_materials_productive.py": "c692ea782528ed153736a04125a160f1bf618aa151ea1e22b178216dba3ffa53",
+      "bot/trading_list_anchors.py": "6d9fba3de244bb9795ced15a16f9ea76bb1270afef7fa92f90e740723d7ef051"
+    },
+    "pipeline": "ADB native PNG; production Trading perception scope; same Keys -> General top reset; setup excluded",
+    "resolution": [
+      2712,
+      1220
+    ],
+    "runs": [
+      {
+        "id": "materials_final_old1",
+        "raw_report": "artifacts/targeted_swipe/materials_final_old1.json",
+        "baseline": true,
+        "swipes": 5,
+        "captures": 12,
+        "perception_cycles": 12,
+        "elapsed": 25.062,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "anchor_acquisition": null,
+        "directed_elapsed": null,
+        "final_verification": "two fresh agreeing complete target rows",
+        "motion": [],
+        "gestures": [],
+        "post_navigation_fact": null
+      },
+      {
+        "id": "materials_final_old2",
+        "raw_report": "artifacts/targeted_swipe/materials_final_old2.json",
+        "baseline": true,
+        "swipes": 5,
+        "captures": 12,
+        "perception_cycles": 12,
+        "elapsed": 24.032,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "anchor_acquisition": null,
+        "directed_elapsed": null,
+        "final_verification": "two fresh agreeing complete target rows",
+        "motion": [],
+        "gestures": [],
+        "post_navigation_fact": null
+      },
+      {
+        "id": "materials_accept1",
+        "raw_report": "artifacts/targeted_swipe/materials_accept1.json",
+        "baseline": false,
+        "swipes": 4,
+        "captures": 7,
+        "perception_cycles": 7,
+        "elapsed": 15.39,
+        "corrections": 1,
+        "reversals": 0,
+        "fallbacks": 0,
+        "anchor_acquisition": {
+          "swipes": 1,
+          "observations": 2,
+          "elapsed": 4.531,
+          "anchors": [
+            "lapiz_400"
+          ]
+        },
+        "directed_elapsed": 10.859,
+        "final_verification": "two fresh agreeing complete target rows",
+        "motion": [
+          {
+            "source_sequence": 6,
+            "predicted_rows": 4.112834978843441,
+            "actual_rows": 4.618557654512243
+          },
+          {
+            "source_sequence": 7,
+            "predicted_rows": 4.365696316677842,
+            "actual_rows": 4.146408009433744
+          },
+          {
+            "source_sequence": 8,
+            "predicted_rows": 3.590083007699601,
+            "actual_rows": 3.7258896159448773
+          }
+        ],
+        "gestures": [
+          {
+            "source_sequence": 5,
+            "travel": 0.54,
+            "direction": "forward",
+            "gain": 1.08
+          },
+          {
+            "source_sequence": 6,
+            "travel": 0.54,
+            "direction": "forward",
+            "gain": 1.1463995142683667
+          },
+          {
+            "source_sequence": 7,
+            "travel": 0.4555030694844354,
+            "direction": "forward",
+            "gain": 1.1176077717061323
+          }
+        ],
+        "post_navigation_fact": null
+      },
+      {
+        "id": "materials_accept2",
+        "raw_report": "artifacts/targeted_swipe/materials_accept2.json",
+        "baseline": false,
+        "swipes": 4,
+        "captures": 7,
+        "perception_cycles": 7,
+        "elapsed": 15.781,
+        "corrections": 1,
+        "reversals": 0,
+        "fallbacks": 0,
+        "anchor_acquisition": {
+          "swipes": 1,
+          "observations": 2,
+          "elapsed": 4.156,
+          "anchors": [
+            "lapiz_400"
+          ]
+        },
+        "directed_elapsed": 11.625,
+        "final_verification": "two fresh agreeing complete target rows",
+        "motion": [
+          {
+            "source_sequence": 6,
+            "predicted_rows": 4.112834978843441,
+            "actual_rows": 4.306411708941248
+          },
+          {
+            "source_sequence": 7,
+            "predicted_rows": 4.2096233438923445,
+            "actual_rows": 4.445085435501398
+          },
+          {
+            "source_sequence": 8,
+            "predicted_rows": 3.6613563319383116,
+            "actual_rows": 3.7046752526069957
+          }
+        ],
+        "gestures": [
+          {
+            "source_sequence": 5,
+            "travel": 0.54,
+            "direction": "forward",
+            "gain": 1.08
+          },
+          {
+            "source_sequence": 6,
+            "travel": 0.54,
+            "direction": "forward",
+            "gain": 1.1054159077109897
+          },
+          {
+            "source_sequence": 7,
+            "travel": 0.45689172672201345,
+            "direction": "forward",
+            "gain": 1.1363312082574377
+          }
+        ],
+        "post_navigation_fact": null
+      },
+      {
+        "id": "materials_accept3",
+        "raw_report": "artifacts/targeted_swipe/materials_accept3.json",
+        "baseline": false,
+        "swipes": 4,
+        "captures": 7,
+        "perception_cycles": 7,
+        "elapsed": 15.75,
+        "corrections": 1,
+        "reversals": 0,
+        "fallbacks": 0,
+        "anchor_acquisition": {
+          "swipes": 1,
+          "observations": 2,
+          "elapsed": 4.484,
+          "anchors": [
+            "lapiz_400"
+          ]
+        },
+        "directed_elapsed": 11.266,
+        "final_verification": "two fresh agreeing complete target rows",
+        "motion": [
+          {
+            "source_sequence": 6,
+            "predicted_rows": 4.112834978843441,
+            "actual_rows": 4.4682651622002805
+          },
+          {
+            "source_sequence": 7,
+            "predicted_rows": 4.290550070521861,
+            "actual_rows": 4.182073573955467
+          },
+          {
+            "source_sequence": 8,
+            "predicted_rows": 3.7393928183310594,
+            "actual_rows": 4.066001526046845
+          }
+        ],
+        "gestures": [
+          {
+            "source_sequence": 5,
+            "travel": 0.54,
+            "direction": "forward",
+            "gain": 1.08
+          },
+          {
+            "source_sequence": 6,
+            "travel": 0.54,
+            "direction": "forward",
+            "gain": 1.1266666666666665
+          },
+          {
+            "source_sequence": 7,
+            "travel": 0.47665804752580637,
+            "direction": "forward",
+            "gain": 1.1124241044323009
+          }
+        ],
+        "post_navigation_fact": {
+          "fact": {
+            "item_id": "hero_weapon_crafting_material",
+            "section": "materials",
+            "row_y": 0.5700836065573771,
+            "have": 366,
+            "need": 40,
+            "sequence": 12,
+            "evidence": [
+              "sample@11:366/40",
+              "sample@12:366/40"
+            ]
+          },
+          "captures": 2,
+          "elapsed": 6.203000000001339
+        }
+      }
+    ]
+  },
+  "v2": {
+    "runtime_sha256": {
+      "bot/directed_list_scroll.py": "fcb38418c46c1569cff36b5ec37cf7a565895af0cabb424a16e67133cdf88bdc",
+      "bot/trading_materials_productive.py": "617cad695c33b38dbc2aff34609a0deefa71201c34c6229fa936b6ae85202240",
+      "bot/trading_list_anchors.py": "f2ed3bb111f406e89b17872c81a7591f61bb330479b1581f18c055df3dfd9d24"
+    },
+    "pipeline": "Production ScrcpyFrameSource, native encoded geometry 2712x1224, PTS timestamps, 12fps; same production Trading scope and Keys -> General reset; setup excluded",
+    "note": "Historical native PNG wall times are not a comparable stream benchmark. Current incremental uses the same corrected local title geometry. Captures are distinct source frames consumed by RuntimeObserver, not all continuously decoded stream frames. Coarse elapsed includes initial observation/anchor acquisition; seven-offer prefix is measurement-only.",
+    "profile": {
+      "row_pitch": 0.1418,
+      "visible_rows": 4,
+      "lane_x": 0.33,
+      "top_y": 0.02,
+      "bottom_y": 0.94,
+      "overlap_factor": 0.95,
+      "row_tolerance": 0.015,
+      "consensus_required": 2,
+      "consensus_max_samples": 4,
+      "columns": 1,
+      "travel_limit": 0.92,
+      "displacement_gain": 1.0,
+      "safe_window": [
+        0.43,
+        0.87
+      ],
+      "forward_start_y": 0.94,
+      "backward_start_y": 0.36,
+      "forward_response": [
+        {
+          "travel": 0.04,
+          "duration_ms": 250,
+          "minimum": 0.005328,
+          "median": 0.008607,
+          "maximum": 0.029095
+        },
+        {
+          "travel": 0.14,
+          "duration_ms": 250,
+          "minimum": 0.167616,
+          "median": 0.173766,
+          "maximum": 0.191387
+        },
+        {
+          "travel": 0.34,
+          "duration_ms": 250,
+          "minimum": 0.443021,
+          "median": 0.45532,
+          "maximum": 0.484003
+        },
+        {
+          "travel": 0.59,
+          "duration_ms": 250,
+          "minimum": 0.838915,
+          "median": 0.841374,
+          "maximum": 0.86801
+        },
+        {
+          "travel": 0.84,
+          "duration_ms": 250,
+          "minimum": 1.124564,
+          "median": 1.127843,
+          "maximum": 1.198334
+        },
+        {
+          "travel": 0.92,
+          "duration_ms": 250,
+          "minimum": 1.2262,
+          "median": 1.229889,
+          "maximum": 1.270052
+        }
+      ],
+      "backward_response": [
+        {
+          "travel": 0.14,
+          "duration_ms": 250,
+          "minimum": 0.149997,
+          "median": 0.181964,
+          "maximum": 0.187292
+        },
+        {
+          "travel": 0.34,
+          "duration_ms": 250,
+          "minimum": 0.457367,
+          "median": 0.463515,
+          "maximum": 0.479498
+        },
+        {
+          "travel": 0.58,
+          "duration_ms": 250,
+          "minimum": 0.772938,
+          "median": 0.800052,
+          "maximum": 0.825051
+        }
+      ]
+    },
+    "coarse_profile": {
+      "direction": "forward",
+      "rows": 9,
+      "delta": 0.92,
+      "lane_x": 0.33,
+      "start_y": 0.94,
+      "end_y": 0.02,
+      "duration_ms": 250
+    },
+    "runs": [
+      {
+        "name": "v2_stream_old1",
+        "baseline": true,
+        "outcome": "target_ready",
+        "gestures": 5,
+        "captures": 21,
+        "perception_cycles": 21,
+        "elapsed": 18.7970000000023,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_stream_old1.json",
+        "observations": 7
+      },
+      {
+        "name": "v2_stream_old2",
+        "baseline": true,
+        "outcome": "target_ready",
+        "gestures": 5,
+        "captures": 22,
+        "perception_cycles": 22,
+        "elapsed": 19.062000000001717,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_stream_old2.json",
+        "observations": 7
+      },
+      {
+        "name": "v2_final1",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.28099999999904,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final1.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 9.455949187385343,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -0.5611373839615768,
+          "anchors": [
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.936999999998079,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 67,
+              "target_index": 11,
+              "anchor_offset": -0.5611373839615768,
+              "predicted_rows": 6.964652874471084,
+              "direction": "forward",
+              "travel": 0.7175999999999999,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.6393692810457516,
+              "target_expected_y": 0.6517815034457518,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 91,
+              "actual_rows": 7.322649040810495,
+              "predicted_rows": 6.964652874471084,
+              "target_actual_y": 0.6010176470588234
+            }
+          ],
+          "elapsed": 2.3440000000009604
+        },
+        "stable_target_y": 0.5977496732026143
+      },
+      {
+        "name": "v2_final2",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 6.187000000001717,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final2.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 8.31767102703799,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -1.6994155443089312,
+          "anchors": [
+            "gold_pouch_10m",
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.937000000001717,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 68,
+              "target_index": 11,
+              "anchor_offset": -1.6994155443089312,
+              "predicted_rows": 8.094090056417487,
+              "direction": "forward",
+              "travel": 0.8555999999999999,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.8007771241830064,
+              "target_expected_y": 0.6530351541830066,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 91,
+              "actual_rows": 8.31688745079602,
+              "predicted_rows": 8.094090056417487,
+              "target_actual_y": 0.6214424836601307
+            }
+          ],
+          "elapsed": 3.25
+        },
+        "stable_target_y": 0.6189915032679738
+      },
+      {
+        "name": "v2_final3",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.125,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final3.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 8.660485632899139,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -1.356600938447781,
+          "anchors": [
+            "gold_pouch_10m",
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.8440000000009604,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 69,
+              "target_index": 11,
+              "anchor_offset": -1.356600938447781,
+              "predicted_rows": 7.782443080394922,
+              "direction": "forward",
+              "travel": 0.8188,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.7521660130718955,
+              "target_expected_y": 0.6486155842718955,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 92,
+              "actual_rows": 8.21605962554274,
+              "predicted_rows": 7.782443080394922,
+              "target_actual_y": 0.5871287581699346
+            }
+          ],
+          "elapsed": 2.2809999999990396
+        },
+        "stable_target_y": 0.58549477124183
+      },
+      {
+        "name": "v2_final4",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.139999999999418,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final4.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 9.490518727472182,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -0.5265678438747381,
+          "anchors": [
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.8590000000003783,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 67,
+              "target_index": 11,
+              "anchor_offset": -0.5265678438747381,
+              "predicted_rows": 6.964652874471084,
+              "direction": "forward",
+              "travel": 0.7175999999999999,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.634467320261438,
+              "target_expected_y": 0.6468795426614381,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 90,
+              "actual_rows": 6.613973469030302,
+              "predicted_rows": 6.964652874471084,
+              "target_actual_y": 0.6966058823529411
+            }
+          ],
+          "elapsed": 2.2809999999990396
+        },
+        "stable_target_y": 0.6949718954248365
+      },
+      {
+        "name": "v2_final5",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.110000000000582,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final5.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 9.559657807645861,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -0.4574287637010599,
+          "anchors": [
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.8440000000009604,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 66,
+              "target_index": 11,
+              "anchor_offset": -0.4574287637010599,
+              "predicted_rows": 6.890308310296191,
+              "direction": "forward",
+              "travel": 0.7083999999999999,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.6246633986928103,
+              "target_expected_y": 0.6476176802928104,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 89,
+              "actual_rows": 7.120993390303934,
+              "predicted_rows": 6.890308310296191,
+              "target_actual_y": 0.6149065359477124
+            }
+          ],
+          "elapsed": 2.2659999999996217
+        },
+        "stable_target_y": 0.6132725490196078
+      },
+      {
+        "name": "v2_final6",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.172000000002299,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final6.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 9.231247176820894,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -0.785839394526028,
+          "anchors": [
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.875,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 64,
+              "target_index": 11,
+              "anchor_offset": -0.785839394526028,
+              "predicted_rows": 7.187686566995768,
+              "direction": "forward",
+              "travel": 0.7452,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.671232026143791,
+              "target_expected_y": 0.652018070943791,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 87,
+              "actual_rows": 7.011523180028946,
+              "predicted_rows": 7.187686566995768,
+              "target_actual_y": 0.6769980392156862
+            }
+          ],
+          "elapsed": 2.297000000002299
+        },
+        "stable_target_y": 0.6737300653594771
+      },
+      {
+        "name": "v2_final7",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.23399999999674,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final7.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 8.358002157139302,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -1.6590844142076193,
+          "anchors": [
+            "gold_pouch_10m",
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.8589999999967404,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 66,
+              "target_index": 11,
+              "anchor_offset": -1.6590844142076193,
+              "predicted_rows": 8.094090056417487,
+              "direction": "forward",
+              "travel": 0.8555999999999999,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.7950581699346406,
+              "target_expected_y": 0.6473161999346408,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 90,
+              "actual_rows": 8.190132470477613,
+              "predicted_rows": 8.094090056417487,
+              "target_actual_y": 0.6336973856209149
+            }
+          ],
+          "elapsed": 2.375
+        },
+        "stable_target_y": 0.6328803921568626
+      },
+      {
+        "name": "v2_final8",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.125,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final8.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 8.65184324787743,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -1.3652433234694907,
+          "anchors": [
+            "gold_pouch_10m",
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.889999999999418,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 76,
+              "target_index": 11,
+              "anchor_offset": -1.3652433234694907,
+              "predicted_rows": 7.782443080394922,
+              "direction": "forward",
+              "travel": 0.8188,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.7533915032679739,
+              "target_expected_y": 0.6498410744679739,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 99,
+              "actual_rows": 7.74072844934871,
+              "predicted_rows": 7.782443080394922,
+              "target_actual_y": 0.6557562091503267
+            }
+          ],
+          "elapsed": 2.235000000000582
+        },
+        "stable_target_y": 0.6549392156862744
+      },
+      {
+        "name": "v2_final9",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.062999999998283,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final9.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 9.513565087530075,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -0.5035214838168454,
+          "anchors": [
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.7819999999992433,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 67,
+              "target_index": 11,
+              "anchor_offset": -0.5035214838168454,
+              "predicted_rows": 6.890308310296191,
+              "direction": "forward",
+              "travel": 0.7083999999999999,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.6311993464052288,
+              "target_expected_y": 0.6541536280052289,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 90,
+              "actual_rows": 7.305364270767075,
+              "predicted_rows": 6.890308310296191,
+              "target_actual_y": 0.5952986928104574
+            }
+          ],
+          "elapsed": 2.2809999999990396
+        },
+        "stable_target_y": 0.5936647058823529
+      },
+      {
+        "name": "v2_final10",
+        "baseline": false,
+        "outcome": "target_ready",
+        "gestures": 2,
+        "captures": 6,
+        "perception_cycles": 6,
+        "elapsed": 5.171999999998661,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "raw_report": "artifacts/targeted_swipe/v2_final10.json",
+        "observations": 4,
+        "coarse": {
+          "params": {
+            "travel": 0.92,
+            "duration_ms": 250,
+            "start_y": 0.94,
+            "end_y": 0.02
+          },
+          "actual_rows_approx": 8.660485632899139,
+          "initial_session_offset": -10.01708657134692,
+          "anchor_offset": -1.356600938447781,
+          "anchors": [
+            "gold_pouch_10m",
+            "sapphire_5"
+          ],
+          "elapsed_including_initial_observation": 2.8440000000009604,
+          "observations": 2
+        },
+        "directed": {
+          "gestures": 1,
+          "plans": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "plan",
+              "source_sequence": 66,
+              "target_index": 11,
+              "anchor_offset": -1.356600938447781,
+              "predicted_rows": 7.782443080394922,
+              "direction": "forward",
+              "travel": 0.8188,
+              "gain": 1.0,
+              "duration_ms": 250,
+              "target_before_y": 1.7521660130718955,
+              "target_expected_y": 0.6486155842718955,
+              "desired_y": 0.65
+            }
+          ],
+          "motions": [
+            {
+              "event": "trading.materials.targeted.step",
+              "phase": "motion",
+              "source_sequence": 89,
+              "actual_rows": 8.463807996165086,
+              "predicted_rows": 7.782443080394922,
+              "target_actual_y": 0.5519980392156862
+            }
+          ],
+          "elapsed": 2.327999999997701
+        },
+        "stable_target_y": 0.551181045751634,
+        "post_navigation_fact": {
+          "fact": {
+            "item_id": "hero_weapon_crafting_material",
+            "section": "materials",
+            "row_y": 0.551181045751634,
+            "have": 366,
+            "need": 40,
+            "sequence": 133,
+            "evidence": [
+              "sample@105:366/40",
+              "sample@133:366/40"
+            ]
+          },
+          "captures": 2,
+          "elapsed": 3.938000000001921
+        }
+      }
+    ],
+    "acceptance": {
+      "n": 10,
+      "two_swipes": 10,
+      "three_swipes": 0,
+      "more_than_three": 0,
+      "fallbacks": 0,
+      "failures": 0,
+      "elapsed_min": 5.062999999998283,
+      "elapsed_median": 5.15599999999904,
+      "elapsed_max": 6.187000000001717
+    },
+    "other_live_cases": [
+      {
+        "name": "v2_tail",
+        "baseline": false,
+        "scope": true,
+        "outcome": "target_ready",
+        "gestures": 1,
+        "captures": 5,
+        "perception_cycles": 5,
+        "elapsed": 4.562999999998283,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "reason": "target_ready",
+        "target": "guild_commodity",
+        "records": [
+          {
+            "event": "trading.materials.targeted.step",
+            "phase": "plan",
+            "source_sequence": 11,
+            "target_index": 16,
+            "anchor_offset": 7.116213575227929,
+            "predicted_rows": 4.317435441466854,
+            "direction": "forward",
+            "travel": 0.4416,
+            "gain": 1.0,
+            "duration_ms": 250,
+            "target_before_y": 1.2597209150326798,
+            "target_expected_y": 0.6475085694326799,
+            "desired_y": 0.65
+          },
+          {
+            "event": "trading.materials.targeted.step",
+            "phase": "motion",
+            "source_sequence": 33,
+            "actual_rows": 2.864966767148797,
+            "predicted_rows": 4.317435441466854,
+            "target_actual_y": 0.8534686274509803
+          }
+        ],
+        "pipeline": "scrcpy_native_pts_12fps"
+      },
+      {
+        "name": "v2_reverse",
+        "baseline": false,
+        "scope": true,
+        "outcome": "target_ready",
+        "gestures": 1,
+        "captures": 4,
+        "perception_cycles": 4,
+        "elapsed": 5.609000000000378,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "reason": "target_ready",
+        "target": "hero_weapon_crafting_material",
+        "records": [
+          {
+            "event": "trading.materials.targeted.anchor",
+            "source_sequence": 15,
+            "anchors": [
+              "hero_accessory_crafting_material",
+              "guild_commodity"
+            ],
+            "row_centers": [
+              0.44742287581699347,
+              0.8714424836601307
+            ],
+            "acquisition_gestures": 0,
+            "observations": 1,
+            "elapsed": 1.4679999999971187
+          },
+          {
+            "event": "trading.materials.targeted.step",
+            "phase": "plan",
+            "source_sequence": 15,
+            "target_index": 11,
+            "anchor_offset": 9.84955797081409,
+            "predicted_rows": 3.4052600669957678,
+            "direction": "backward",
+            "travel": 0.35379999999999995,
+            "gain": 1.0,
+            "duration_ms": 250,
+            "target_before_y": 0.16313267973856213,
+            "target_expected_y": 0.645998557238562,
+            "desired_y": 0.65
+          },
+          {
+            "event": "trading.materials.targeted.step",
+            "phase": "motion",
+            "source_sequence": 51,
+            "actual_rows": -3.641158955354591,
+            "predicted_rows": -3.4052600669957678,
+            "target_actual_y": 0.6794490196078431
+          },
+          {
+            "event": "trading.materials.targeted.result",
+            "target": "hero_weapon_crafting_material",
+            "outcome": "target_ready",
+            "reason": "target_ready",
+            "gestures": 1,
+            "observations": 3,
+            "corrections": 0,
+            "direction_reversals": 0,
+            "elapsed": 5.609000000000378,
+            "fallbacks": 0
+          }
+        ],
+        "pipeline": "scrcpy_native_pts_12fps"
+      },
+      {
+        "name": "v2_visible",
+        "baseline": false,
+        "scope": true,
+        "outcome": "target_ready",
+        "gestures": 0,
+        "captures": 2,
+        "perception_cycles": 2,
+        "elapsed": 1.3440000000009604,
+        "corrections": 0,
+        "reversals": 0,
+        "fallbacks": 0,
+        "reason": null,
+        "target": "hero_weapon_crafting_material",
+        "records": [
+          {
+            "event": "trading.materials.located",
+            "target": "hero_weapon_crafting_material",
+            "source_sequence": 19,
+            "gestures": 0,
+            "row_y": 0.6794490196078431,
+            "observations": 2,
+            "corrections": 0,
+            "direction_reversals": 0,
+            "elapsed": 1.3440000000009604,
+            "fallbacks": 0
+          }
+        ],
+        "pipeline": "scrcpy_native_pts_12fps"
+      }
+    ]
+  }
+}

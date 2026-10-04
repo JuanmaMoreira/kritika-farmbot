@@ -26,6 +26,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
+import math
+import time
 from enum import Enum
 from numbers import Integral, Real
 
@@ -43,6 +45,8 @@ class DirectedScrollOutcome(str, Enum):
     GUARD_LOST = "guard_lost"
     TARGET_UNKNOWN = "target_unknown"
     BUDGET_EXHAUSTED = "budget_exhausted"
+    CANCELLED = "cancelled"
+    MUTATED = "mutated"
 
 
 class DirectedScrollError(ValueError):
@@ -58,6 +62,29 @@ class UnreadableViewportError(DirectedScrollError):
 
 
 @dataclass(frozen=True)
+class SwipeResponse:
+    """Surface-acquired response envelope in normalized viewport displacement.
+
+    Travel and response are physical, independent of the catalog/pitch. The
+    observed envelope ranks landing margin; it is not a statistical guarantee.
+    """
+    travel: float
+    duration_ms: int
+    minimum: float
+    median: float
+    maximum: float
+
+    def __post_init__(self):
+        _positive_fraction(self.travel, "travel")
+        _minimum_integer(self.duration_ms, "duration_ms", 1)
+        if not all(isinstance(v, Real) and not isinstance(v, bool) and math.isfinite(v)
+                   for v in (self.minimum, self.median, self.maximum)):
+            raise ValueError("response must be finite")
+        if not 0 < self.minimum <= self.median <= self.maximum:
+            raise ValueError("response must be positive and ordered")
+
+
+@dataclass(frozen=True)
 class KnownListScrollProfile:
     """Caller-owned geometry and verification bounds for one list.
 
@@ -66,6 +93,12 @@ class KnownListScrollProfile:
     to derive the overlap-safe bound. ``lane_x`` plus ``top_y``/``bottom_y``
     delimit the caller-owned safe (non-interactive) gesture zone.
     Consensus fields bound the target-stability check.
+    ``safe_window`` bounds useful target centers, independently of finger
+    endpoints. Direction-specific responses and touchdown positions require
+    that surface's physical acquisition. They are never inherited from another
+    list. ``columns`` converts item indices into rows. ``travel_limit`` is an
+    explicit calibrated override of the overlap bound; ``displacement_gain``
+    is viewport travel per finger travel, learned only within one navigation.
     """
 
     row_pitch: float
@@ -77,8 +110,21 @@ class KnownListScrollProfile:
     row_tolerance: float = 0.01
     consensus_required: int = 2
     consensus_max_samples: int = 4
+    columns: int = 1
+    travel_limit: float | None = None
+    displacement_gain: float = 1.0
+    safe_window: tuple[float, float] | None = None
+    forward_start_y: float | None = None
+    backward_start_y: float | None = None
+    forward_response: tuple[SwipeResponse, ...] = ()
+    backward_response: tuple[SwipeResponse, ...] = ()
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "columns", _minimum_integer(self.columns, "columns", 1))
+        if self.travel_limit is not None:
+            object.__setattr__(self, "travel_limit", _positive_fraction(self.travel_limit, "travel_limit"))
+        if isinstance(self.displacement_gain, bool) or not isinstance(self.displacement_gain, Real) or not math.isfinite(self.displacement_gain) or self.displacement_gain <= 0:
+            raise ValueError("displacement_gain must be positive and finite")
         object.__setattr__(
             self, "row_pitch", _positive_fraction(self.row_pitch, "row_pitch")
         )
@@ -90,6 +136,22 @@ class KnownListScrollProfile:
         object.__setattr__(self, "bottom_y", _unit(self.bottom_y, "bottom_y"))
         if not self.top_y < self.bottom_y:
             raise ValueError("top_y must be strictly below bottom_y")
+        if self.safe_window is not None:
+            low, high = self.safe_window
+            _unit(low, "safe low"); _unit(high, "safe high")
+            if not low < high:
+                raise ValueError("safe_window must be increasing")
+            object.__setattr__(self,"safe_window",(low,high))
+        for start in (self.forward_start_y, self.backward_start_y):
+            if start is not None and not self.top_y <= _unit(start, "start_y") <= self.bottom_y:
+                raise ValueError("start_y outside physical lane")
+        for name in ("forward_response", "backward_response"):
+            curve=tuple(getattr(self,name))
+            object.__setattr__(self,name,curve)
+            if any(not isinstance(point, SwipeResponse) for point in curve):
+                raise ValueError("response curve requires SwipeResponse")
+            if any(a.travel >= b.travel or a.median >= b.median for a,b in zip(curve,curve[1:])):
+                raise ValueError("response curve must increase")
         object.__setattr__(
             self,
             "overlap_factor",
@@ -113,8 +175,8 @@ class KnownListScrollProfile:
 
     @property
     def max_delta(self) -> float:
-        """Largest allowed gesture magnitude; keeps overlap for verification."""
-        return (self.visible_rows - 1) * self.row_pitch * self.overlap_factor
+        """Allowed travel; default keeps overlap, override requires surface GT."""
+        return self.travel_limit if self.travel_limit is not None else (self.visible_rows - 1) * self.row_pitch * self.overlap_factor
 
     @property
     def span(self) -> float:
@@ -138,9 +200,20 @@ class ViewportReading:
     target_row_y: float | None = None
     readable: bool = True
     guard_ok: bool = True
+    row_centers: tuple[float, ...] = ()
+    revision: Hashable = 0
+    at_top: bool = False
+    at_bottom: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "visible_ids", tuple(self.visible_ids))
+        object.__setattr__(self, "row_centers", tuple(_unit(y, "row center") for y in self.row_centers))
+        if self.row_centers and len(self.row_centers) != len(self.visible_ids):
+            raise ValueError("row_centers must correspond to visible_ids")
+        if not isinstance(self.revision, Hashable):
+            raise ValueError("revision must be hashable")
+        if type(self.at_top) is not bool or type(self.at_bottom) is not bool:
+            raise ValueError("boundaries must be bool")
         for value in self.visible_ids:
             if not isinstance(value, Hashable):
                 raise ValueError("visible_ids must contain hashable identifiers")
@@ -165,6 +238,7 @@ class PlannedGesture:
     lane_x: float
     start_y: float
     end_y: float
+    duration_ms: int = 650
 
     def __post_init__(self) -> None:
         if not isinstance(self.direction, ScrollDirection):
@@ -176,7 +250,13 @@ class PlannedGesture:
             or not 0.0 < float(self.delta)
         ):
             raise ValueError("delta must be a positive finite number")
-        object.__setattr__(self, "delta", float(self.delta))
+        object.__setattr__(self, "delta", _positive_fraction(self.delta,"delta"))
+        for name in ("lane_x","start_y","end_y"):
+            _unit(getattr(self,name),name)
+        sign=1 if self.direction is ScrollDirection.FORWARD else -1
+        if not math.isclose((self.start_y-self.end_y)*sign,self.delta,abs_tol=1e-9):
+            raise ValueError("gesture endpoints must match direction/travel")
+        _minimum_integer(self.duration_ms, "duration_ms", 1)
 
 
 @dataclass(frozen=True)
@@ -189,6 +269,11 @@ class DirectedScrollResult:
     stable_sequence: int | None = None
     last_sequence: int | None = None
     reason: str | None = None
+    observations: int = 0
+    corrections: int = 0
+    direction_reversals: int = 0
+    elapsed: float = 0.0
+    fallbacks: int = 0
 
     def __post_init__(self) -> None:
         if not isinstance(self.outcome, DirectedScrollOutcome):
@@ -480,6 +565,240 @@ def scroll_to_target(
         )
 
 
+def navigate_to_target(
+    *,
+    catalog: Sequence[Hashable],
+    target: Hashable,
+    profile: KnownListScrollProfile,
+    observe: Callable[[], ViewportReading],
+    emit: Callable[[PlannedGesture], None],
+    max_gestures: int,
+    cancel_requested: Callable[[], bool] = lambda: False,
+    max_reversals: int = 2,
+    telemetry: Callable[..., None] = lambda **kw: None,
+    clock: Callable[[], float] = time.monotonic,
+    coarse: PlannedGesture | None = None,
+) -> DirectedScrollResult:
+    """Position from identified anchors; reuse each fresh post-input reading.
+
+    Unlike the legacy overlap scan, this driver permits caller-calibrated
+    travel, measures logical motion including sub-row position and learns gain
+    only within this call. Geometry belongs to the surface; emit owns duration,
+    ActionExecutor and post-dispatch settling. No target tap or gameplay here.
+    A revision change invalidates the viewport even if the target is visible.
+    One optional coarse gesture may acquire an anchor from a positively guarded
+    list with anonymous rows. Its response never updates the directed model.
+    Missing anchors afterwards return UNREADABLE for the owner's safe fallback.
+    """
+    if not isinstance(profile, KnownListScrollProfile):
+        raise ValueError("profile required")
+    budget = _minimum_integer(max_gestures, "max_gestures", 1)
+    reversals_limit = _non_negative_integer(max_reversals, "max_reversals")
+    order = _validated_catalog(catalog)
+    if coarse is not None and not isinstance(coarse, PlannedGesture):
+        raise ValueError("coarse requires PlannedGesture")
+    started = clock()
+    gestures, observations, reversals, corrections = [], 0, 0, 0
+    last_sequence = None
+
+    def finish(outcome, reason, reading=None):
+        return DirectedScrollResult(
+            outcome, gestures=tuple(gestures), reason=reason,
+            stable_row_y=reading.target_row_y if outcome is DirectedScrollOutcome.TARGET_READY else None,
+            stable_sequence=reading.sequence if outcome is DirectedScrollOutcome.TARGET_READY else None,
+            last_sequence=last_sequence, observations=observations,
+            corrections=corrections, direction_reversals=reversals,
+            elapsed=clock()-started,
+        )
+
+    try:
+        target_index = _target_index(order, target)
+    except TargetUnknownError as error:
+        return finish(DirectedScrollOutcome.TARGET_UNKNOWN, str(error))
+
+    gain = float(profile.displacement_gain)
+    scales = {ScrollDirection.FORWARD: 1., ScrollDirection.BACKWARD: 1.}
+    revision = None
+    previous_offset = previous_gesture = previous_direction = None
+    previous_prediction = None
+    coarse_used = False
+    target_streak = 0
+    target_y = None
+    consensus_samples = 0
+    while True:
+        if cancel_requested():
+            return finish(DirectedScrollOutcome.CANCELLED, "cancelled")
+        reading = observe()
+        observations += 1
+        _check_reading_type(reading)
+        if last_sequence is not None and reading.sequence <= last_sequence:
+            return finish(DirectedScrollOutcome.NO_PROGRESS, "stale_observation")
+        last_sequence = reading.sequence
+        if cancel_requested():
+            return finish(DirectedScrollOutcome.CANCELLED, "cancelled")
+        if not reading.guard_ok:
+            return finish(DirectedScrollOutcome.GUARD_LOST, "guard_lost")
+        if revision is None:
+            revision = (reading.revision,)
+        elif reading.revision != revision[0]:
+            return finish(DirectedScrollOutcome.MUTATED, "viewport_mutated")
+        if not reading.readable:
+            return finish(DirectedScrollOutcome.UNREADABLE, "viewport_unreadable")
+        # One optional anchor-free acquisition. Context/readability/revision
+        # are required; anonymous items never receive invented catalog indices.
+        if not reading.visible_ids and coarse is not None and not coarse_used and not gestures:
+            if reading.at_bottom and coarse.direction is ScrollDirection.FORWARD or reading.at_top and coarse.direction is ScrollDirection.BACKWARD:
+                return finish(DirectedScrollOutcome.NO_PROGRESS, "boundary")
+            if cancel_requested():
+                return finish(DirectedScrollOutcome.CANCELLED, "cancelled")
+            telemetry(phase="coarse", source_sequence=last_sequence,
+                      travel=coarse.delta, duration_ms=coarse.duration_ms,
+                      start_y=coarse.start_y, end_y=coarse.end_y)
+            emit(coarse)
+            gestures.append(coarse)
+            coarse_used = True
+            continue  # Fresh observation establishes the suffix position.
+        try:
+            _visible_range(order, reading.visible_ids)
+        except UnreadableViewportError as error:
+            return finish(DirectedScrollOutcome.UNREADABLE, str(error))
+
+        if reading.row_centers:
+            offsets = [order.index(item)//profile.columns-y/profile.row_pitch
+                       for item,y in zip(reading.visible_ids, reading.row_centers)]
+            if (max(offsets)-min(offsets))*profile.row_pitch > profile.row_tolerance*2:
+                return finish(DirectedScrollOutcome.UNREADABLE, "geometry_mismatch")
+            if target in reading.visible_ids and reading.target_row_y is not None:
+                anchor_y = reading.row_centers[reading.visible_ids.index(target)]
+                if abs(anchor_y-reading.target_row_y)>profile.row_tolerance*2:
+                    return finish(DirectedScrollOutcome.UNREADABLE, "geometry_mismatch")
+
+        if target in reading.visible_ids:
+            if reading.target_row_y is None:
+                return finish(DirectedScrollOutcome.UNREADABLE, "target_row_missing")
+            if previous_gesture is not None:
+                offset = target_index//profile.columns-reading.target_row_y/profile.row_pitch
+                sign = 1 if previous_gesture.direction is ScrollDirection.FORWARD else -1
+                telemetry(phase="motion", source_sequence=last_sequence, actual_rows=offset-previous_offset,
+                          predicted_rows=sign*previous_prediction/profile.row_pitch,
+                          target_actual_y=reading.target_row_y)
+            consensus_samples += 1
+            target_streak = target_streak+1 if target_y is not None and abs(reading.target_row_y-target_y) <= profile.row_tolerance else 1
+            target_y = reading.target_row_y
+            if target_streak >= profile.consensus_required:
+                return finish(DirectedScrollOutcome.TARGET_READY, "target_ready", reading)
+            if consensus_samples >= profile.consensus_max_samples:
+                return finish(DirectedScrollOutcome.NO_PROGRESS, "target_unstable")
+            # Confirmation after the last allowed gesture is input-free.
+            previous_offset = previous_gesture = None
+            continue
+        target_streak = 0
+        target_y = None
+        if not reading.row_centers:
+            return finish(DirectedScrollOutcome.UNREADABLE, "anchor_position_missing")
+
+        offset = sum(offsets)/len(offsets)
+        if previous_gesture is not None:
+            actual = offset-previous_offset
+            sign = 1 if previous_gesture.direction is ScrollDirection.FORWARD else -1
+            telemetry(phase="motion", source_sequence=last_sequence, actual_rows=actual,
+                      predicted_rows=sign*previous_prediction/profile.row_pitch,
+                      target_actual_y=(target_index//profile.columns-offset)*profile.row_pitch)
+            if actual*sign < .10:
+                return finish(DirectedScrollOutcome.NO_PROGRESS,
+                              "wrong_direction" if actual*sign < -.10 else "stuck")
+            measured = abs(actual)*profile.row_pitch/previous_prediction
+            if not (reading.at_top or reading.at_bottom):
+                if not .4 <= measured <= 3.0:
+                    return finish(DirectedScrollOutcome.UNREADABLE, "calibration_mismatch")
+                prior_curve = profile.forward_response if previous_gesture.direction is ScrollDirection.FORWARD else profile.backward_response
+                if prior_curve:
+                    scales[previous_gesture.direction] *= (1+measured)/2
+                else:
+                    gain *= (1+measured)/2
+
+        projected_y = (target_index//profile.columns-offset)*profile.row_pitch
+        lower, upper = profile.safe_window or (profile.top_y+profile.row_pitch/2+.01,
+                                               profile.bottom_y-profile.row_pitch/2-.01)
+        if lower <= projected_y <= upper:
+            return finish(DirectedScrollOutcome.UNREADABLE, "target_expected_but_unverified")
+        direction = ScrollDirection.FORWARD if projected_y > upper else ScrollDirection.BACKWARD
+        if (direction is ScrollDirection.FORWARD and reading.at_bottom or
+                direction is ScrollDirection.BACKWARD and reading.at_top):
+            return finish(DirectedScrollOutcome.NO_PROGRESS, "boundary")
+        if len(gestures) >= budget:
+            return finish(DirectedScrollOutcome.BUDGET_EXHAUSTED, "budget_exhausted")
+        if previous_direction is not None and direction is not previous_direction:
+            if reversals >= reversals_limit:
+                return finish(DirectedScrollOutcome.NO_PROGRESS, "reversal_bound")
+        # Aim inside the viewport, not at a clipped edge. Motion remains bounded.
+        desired = abs(projected_y-(lower+upper)/2)
+        start = (profile.forward_start_y if direction is ScrollDirection.FORWARD else profile.backward_start_y)
+        if start is None:
+            start = profile.bottom_y if direction is ScrollDirection.FORWARD else profile.top_y
+        limit = min(profile.max_delta, start-profile.top_y if direction is ScrollDirection.FORWARD else profile.bottom_y-start)
+        curve = profile.forward_response if direction is ScrollDirection.FORWARD else profile.backward_response
+        duration = 650
+        if curve:
+            delta, duration, prediction = _choose_response(curve, projected_y, (lower,upper),
+                direction, limit, scales[direction])
+        else:
+            delta = min(desired/gain, limit)
+            prediction = delta*gain
+        if delta < .02:
+            return finish(DirectedScrollOutcome.NO_PROGRESS, "residual_too_small")
+        end = start-delta if direction is ScrollDirection.FORWARD else start+delta
+        gesture = PlannedGesture(direction, max(1, math.ceil(desired/profile.row_pitch)),
+                                 delta, profile.lane_x, start, end, duration)
+        telemetry(phase="plan", source_sequence=last_sequence, target_index=target_index, anchor_offset=offset,
+                  predicted_rows=prediction/profile.row_pitch, direction=direction.value,
+                  travel=delta, gain=gain, duration_ms=duration,
+                  target_before_y=projected_y, target_expected_y=projected_y-(prediction if direction is ScrollDirection.FORWARD else -prediction),
+                  desired_y=(lower+upper)/2)
+        if cancel_requested():
+            return finish(DirectedScrollOutcome.CANCELLED, "cancelled")
+        emit(gesture)
+        if previous_direction is not None:
+            reversals += int(direction is not previous_direction)
+            corrections += int(delta < limit-1e-6 or direction is not previous_direction)
+        gestures.append(gesture)
+        previous_offset, previous_gesture, previous_direction = offset, gesture, direction
+        previous_prediction = prediction
+
+
+def _choose_response(curve, projected_y, window, direction, limit, scale):
+    """Interpolate empirical envelope; prefer useful landing, then center error.
+
+    Uniform envelope overlap is a ranking surrogate, not a probability claim.
+    No extrapolation beyond the acquired maximum travel. Zero is the origin.
+    """
+    maximum = min(limit, curve[-1].travel)
+    sign = 1 if direction is ScrollDirection.FORWARD else -1
+    def response(travel):
+        low_travel = low_min = low_med = low_max = 0.
+        for point in curve:
+            if travel <= point.travel:
+                ratio = (travel-low_travel)/(point.travel-low_travel)
+                return tuple(scale*(a+ratio*(b-a)) for a,b in
+                    ((low_min,point.minimum),(low_med,point.median),(low_max,point.maximum))), point.duration_ms
+            low_travel,low_min,low_med,low_max = point.travel,point.minimum,point.median,point.maximum
+        raise AssertionError("travel outside calibration")
+    candidates = {maximum*i/100 for i in range(1,101)}
+    candidates.update(p.travel for p in curve if p.travel<=maximum)
+    best = None
+    for travel in candidates:
+        (minimum,median,maximum_response),duration = response(travel)
+        ends = sorted((projected_y-sign*minimum,projected_y-sign*maximum_response))
+        overlap = max(0.,min(window[1],ends[1])-max(window[0],ends[0]))
+        width = ends[1]-ends[0]
+        coverage = (1. if window[0]<=ends[0]<=ends[1]<=window[1] else
+                    overlap/width if width>1e-9 else float(window[0]<=ends[0]<=window[1]))
+        key = (coverage,-abs(projected_y-sign*median-sum(window)/2))
+        if best is None or key>best[0]:
+            best = (key,travel,duration,median)
+    return best[1:]
+
+
 def _confirm_target(
     *,
     observe: Callable[[], ViewportReading],
@@ -686,6 +1005,7 @@ __all__ = (
     "DirectedScrollOutcome",
     "DirectedScrollResult",
     "KnownListScrollProfile",
+    "SwipeResponse",
     "PlannedGesture",
     "ScrollDirection",
     "TargetUnknownError",
@@ -695,4 +1015,5 @@ __all__ = (
     "plan_directed_gesture",
     "range_progressed",
     "scroll_to_target",
+    "navigate_to_target",
 )

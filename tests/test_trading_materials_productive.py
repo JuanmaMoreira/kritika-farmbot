@@ -56,13 +56,15 @@ def test_unknown_target_and_cancellation_never_scroll():
 def test_bounded_scan_uses_safe_lane_and_stops_on_no_progress():
     o=Mock();o.wait_until.side_effect=[_snapshot(i) for i in range(1,5)]
     a=adapter(o);a.target_geometry=Mock(return_value=None)
-    result=a.locate(target=TARGET,after_sequence=0)
+    a.clock=lambda:o.wait_until.call_count
+    result=a.locate(target=TARGET,after_sequence=0,use_targeted=False)
     assert result.outcome is DirectedScrollOutcome.NO_PROGRESS
     assert a.actions.execute.call_count==2
     actions=[c.args[0] for c in a.actions.execute.call_args_list]
     assert all(isinstance(s,Swipe) and s.start[0]==s.end[0]==.33 for s in actions)
     assert actions[0].start[1]>actions[0].end[1]
     assert actions[1].start[1]<actions[1].end[1]
+    assert result.direction_reversals==1
 
 
 @pytest.mark.parametrize('premium',(False,True))
@@ -96,3 +98,79 @@ def test_native_materials_after_trade_preserves_leading_one():
     diagnostics={}
     assert a.reader.read_pair(frame,geometry[0],diagnostics=diagnostics) == (134,40)
     assert [read["raw"] for read in diagnostics["pair_reads"]] == ["134/40","134/40"]
+
+
+def test_targeted_anchor_loss_falls_back_with_remaining_budget():
+    o=Mock();o.wait_until.side_effect=[_snapshot(i) for i in range(1,6)]
+    a=adapter(o);a.target_geometry=Mock(return_value=None)
+    a.clock=lambda:o.wait_until.call_count
+    a.anchors.read=Mock(side_effect=[(('lapiz_400',.5),),()])
+    r=a.locate(target=TARGET,after_sequence=0,max_gestures=2)
+    assert r.fallbacks==1 and r.gesture_count==2
+    assert [c.args[0].duration_ms for c in a.actions.execute.call_args_list]==[250,900]
+    assert r.reason=='material_scan_exhausted'
+
+
+def test_unknown_prefix_coarse_then_one_calculated_gesture_and_strong_confirmation():
+    o=Mock();o.wait_until.side_effect=[_snapshot(i) for i in range(1,5)]
+    a=adapter(o);a.clock=lambda:o.wait_until.call_count
+    a.target_geometry=Mock(side_effect=[None,None,(.58,.65),(.58,.65)])
+    a.anchors.read=Mock(side_effect=[(),(('sapphire_5',.65),)])
+    r=a.locate(target=TARGET,after_sequence=0)
+    assert r.outcome is DirectedScrollOutcome.TARGET_READY and r.gesture_count==2
+    assert r.fallbacks==0 and r.stable_sequence==4
+    swipes=[c.args[0] for c in a.actions.execute.call_args_list]
+    assert swipes[0].start==(.33,.94) and swipes[0].end==(.33,.02)
+    assert swipes[0].duration_ms==swipes[1].duration_ms==250
+    assert swipes[1].end[1]>.02
+
+
+def test_missing_anchor_after_coarse_keeps_fallback_with_remaining_total_budget():
+    o=Mock();o.wait_until.side_effect=[_snapshot(i) for i in range(1,5)]
+    a=adapter(o);a.clock=lambda:o.wait_until.call_count
+    a.target_geometry=Mock(return_value=None);a.anchors.read=Mock(return_value=())
+    r=a.locate(target=TARGET,after_sequence=0,max_gestures=2)
+    assert r.fallbacks==1 and r.gesture_count==2
+    assert [c.args[0].duration_ms for c in a.actions.execute.call_args_list]==[250,900]
+
+
+def test_targeted_navigation_retains_strong_complete_target_confirmation():
+    o=Mock();o.wait_until.side_effect=[_snapshot(i) for i in range(1,4)]
+    a=adapter(o)
+    a.clock=lambda:1.
+    a.target_geometry=Mock(side_effect=[None,(.50,.57),(.50,.57)])
+    a.anchors.read=Mock(return_value=(('lapiz_400',.5),))
+    r=a.locate(target=TARGET,after_sequence=0)
+    assert r.outcome is DirectedScrollOutcome.TARGET_READY and r.gesture_count==1
+    assert r.stable_sequence==3 and r.observations==3
+    assert a.actions.execute.call_count==1
+    assert isinstance(a.actions.execute.call_args.args[0],Swipe)
+
+
+def test_targeted_emit_rejects_stale_context_before_dispatch():
+    o=Mock();o.wait_until.return_value=_snapshot(1)
+    a=adapter(o);a.clock=lambda:3.01
+    a.target_geometry=Mock(return_value=None)
+    a.anchors.read=Mock(return_value=(('lapiz_400',.5),))
+    with pytest.raises(ValueError,match='stale or lost'):
+        a.locate(target=TARGET,after_sequence=0)
+    a.actions.execute.assert_not_called()
+
+
+@pytest.mark.parametrize('budget',[0,-1,True,1.5])
+def test_invalid_navigation_budget_never_acquires_or_dispatches(budget):
+    a=adapter()
+    with pytest.raises(ValueError,match='positive integer'):
+        a.locate(target=TARGET,after_sequence=0,max_gestures=budget)
+    a.observer.wait_until.assert_not_called();a.actions.execute.assert_not_called()
+
+
+def test_failed_confirmation_never_seeds_old_target_geometry_as_fresh():
+    o=Mock();o.wait_until.side_effect=[_snapshot(i) for i in range(1,5)]
+    a=adapter(o);g=(.36,.43)
+    a.target_geometry=Mock(side_effect=[g,None,g,g])
+    a.anchors.read=Mock(return_value=((TARGET,.43),))
+    result=a.locate(target=TARGET,after_sequence=0)
+    assert result.outcome is DirectedScrollOutcome.TARGET_READY
+    assert result.last_sequence==4 and result.fallbacks==1
+    a.actions.execute.assert_not_called()

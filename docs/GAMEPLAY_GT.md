@@ -114,6 +114,46 @@ El board MW muestra balances/límites, no rewards entrantes exactos ni recetas; 
 - Sólo Bulk es venta productiva autorizada, nunca individual. Antes de confirmar: tier, tipo/grupo cuando corresponda y policy, con panel y popup como guards redundantes; frame/tier, nombre/color y disponibilidad Bulk aportan evidencia. Ethereal+ no permite Bulk, defensa adicional que no sustituye clasificación. UNKNOWN/contradicción/ambigüedad nunca autorizan venta.
 - **USER_GT corregido (2026-10-02): Bulk elimina exactamente el bloque vendido y preserva el orden relativo del resto.** Item Count antes/después permite conocer la cantidad eliminada; los items posteriores se desplazan esa cantidad y, si sigue Full, entran nuevos items al prefix accesible. Expansión +4 cambia ese prefix. El contrato de invalidación/transformación del scan está en RESOURCE_ROUTING y ARCHITECTURE.
 
+## Ordered lists — USER_GT y LIVE_EVIDENCE 2026-10-04
+
+- **USER_GT corregido:** Character Select cambia el orden según el orden de entrada
+  de personajes. No existe correspondencia persistente identidad↔índice absoluto.
+- **LIVE_EVIDENCE Trading General:** el top actual incluye seis ofertas Rune y Epic
+  Ticket temporales antes de Lapiz 400; ese prefix difiere del catálogo histórico.
+  Dentro de esta adquisición, el suffix conserva este orden: Lapiz 400 → Stamina 100
+  → 10M Gold Pouch → Gold 10M → Sapphire 5 → Brawler's Badge → Lapiz 5 → Ring Enhance
+  → Melee Badge → Accessory Material → Weapon Material → Hero Weapon Material
+  → Hero Armor Material → Hero Accessory Material → R Ticket → K Coin → Guild Commodity.
+  La longitud/identidad futura del prefix temporal no está acreditada.
+- **LIVE_EVIDENCE Trading:** lista vertical; swipe hacia arriba expone filas posteriores.
+  Frame nativo 2712×1220, pitch normalizado .1418, viewport Y .35–.95 y aproximadamente
+  cuatro filas completas. No snap-to-row observado; desplazamiento depende de travel,
+  duración/inercia y clipping. .90→.40 a 900 ms desplazó aproximadamente .54–.55 del
+  viewport; .94→.40 a 650 ms mostró variación registrada en el benchmark curado.
+- **LIVE_EVIDENCE bounds:** General retorna al top de ofertas al reseleccionar su tab;
+  Guild Commodity es el último row del suffix. Gestos extra al bottom no desplazan
+  sostenidamente la lista; el gesto que alcanza el límite se clippea.
+- **LIVE_EVIDENCE calibración coarse estabilizada:** lane X .33, inicio Y .94. Inicios
+  .945 y más bajos entran fuera del área fiable y pueden registrar sólo ≈3 filas.
+  Terminar arriba del viewport aumenta el travel útil: perfil .94→.02 a 250 ms,
+  seis muestras, desplazamiento min/med/max 8.62/8.95/9.51 filas. Extender hasta Y=0
+  a 250 ms dio 8.30/9.14/9.63 en seis muestras: mayor travel no mejoró el mínimo.
+  .94→.02 a 180 ms (33 muestras) dio 8.09/9.06/10.21; a 120 ms (3) 7.96/9.75/9.94.
+  40 ms con travel .59 fue inconsistente: 3.01–6.07 filas. No se observó que un
+  único gesto desde el top actual alcanzara Hero Weapon Materials.
+- **LIVE_EVIDENCE física dirigida:** desde anchor estabilizado, 250 ms forward con
+  travel .14/.34/.59/.84/.92 desplazó medianas 1.23/3.21/5.93/7.95/8.67 filas
+  (tres muestras por distancia); reverse desde Y=.36 con travel .14/.34/.58,
+  medianas 1.28/3.27/5.64 filas hacia top. No hay igualdad nominal travel↔desplazamiento.
+  Safe window conservadora de centro de fila completa: Y .43–.87; centro .65.
+  [Distribuciones y protocolo](../datasets/trading_swipe_calibration.json).
+  Los PNG nativos se fechan antes de adquirir pixels: fechar al final de transferencia
+  había admitido frames transitorios y queda descartado como medición estabilizada.
+- **LIVE_EVIDENCE títulos:** los nueve assets focalizados y strips de replay conservan
+  identidad, posición y procedencia. [Manifest anchors](../datasets/trading_ordered_anchors_manifest.json),
+  [replay](../datasets/ordered_navigation_replay.json), [movimiento medido](../datasets/trading_targeted_benchmark.json).
+  Currency/Stamina 50 y las dos primeras filas Avatars & Keys conservan su GT propio.
+
 ## Point Reward — USER_GT establecido
 
 `Point Reward` MW: MODAL establecido por USER_GT que puede aparecer por encima de CLEAR al cruzar ciertos conquest points (adquirido 2026-09-29: `+2 Gem` por `20000 Conquest Points`). Se cierra sólo con su botón OK; inmediatamente debajo queda CLEAR; tocar fuera o sobre otras zonas no lo cierra; no es overlay ni tap-through. Identidad productiva: rasgos estables del MODAL (título); la línea de recompensa variable queda fuera de identidad.

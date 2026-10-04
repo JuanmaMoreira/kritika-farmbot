@@ -68,7 +68,20 @@ completo; Accessories Hero Earrings adquirido sin MAX/result/effect completo; ch
 completo no adquirido (banners existentes pasan); ahorro físico final Socket 0.2 s pendiente
 natural; Ads multipart/triple post-fix y No Ads temporal full recovery no forzados end-to-end;
 smoke natural de handoff/QM chaining pendiente. Otras deudas menores conservadas en ROADMAP.
-Próximo frente: targeted swipe/ordered-list navigation, todavía sin iniciar.
+Targeted swipe/ordered-list navigation (2026-10-04): primitive transversal implementada;
+único consumidor productivo actual Trading Center / Hero Weapon Crafting Materials.
+Orden relativo del suffix/nueve anchors CV y física adquiridos. Coarse robusto .94→.02
+a 250 ms, luego un único loop dirigido con curva empírica independiente, safe-window
+.43–.87 y objetivo .65; feedback bounded, cancelación, guards frescos y fallback con
+presupuesto restante. Código final repetido diez veces: 10/10 con 2 swipes, 6 capturas,
+cero correcciones/fallbacks; 5.06–6.19 s. Incremental en el mismo source PTS: 5 swipes,
+21–22 capturas y 18.80–19.06 s. Benchmark v1 nativo 4/7 y baseline 5/12 conservados
+como historia, sin mezclar pipelines. [Informe](docs/TARGETED_SWIPE_AUDIT.md).
+Futuro previsto: ToT cuando se implemente y se adquiera su GT propio, sin auditoría/adopción
+de otras listas en este frente. Character Select es dynamic-order por USER_GT; Rotation
+intacta. 145 tests afectados verdes, replay local y live no consumptivo; C3 366/40.
+Checkpoint local independiente `feat: add directed trading list navigation`, sin push;
+teléfono en Lobby y cleanup de los sources completado.
 
 Históricos: checkpoint Stages/Ads `3f4acf3e` y MW `73313497`; smokes aceptados
 `stages_progress_smoke`/`f1c24b514e4e40128d5875a7c1ed74f4` y `mw_final_native_d1e5d83e`

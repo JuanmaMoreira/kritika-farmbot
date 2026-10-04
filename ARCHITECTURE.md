@@ -116,6 +116,42 @@ Rutas concretas respetan caller/Back de GAMEPLAY_GT. El caller posee su retorno 
 
 Configuración import-safe y explícita; paths/seriales locales fuera de código portable. Cleanup de source/proceso/socket/forward pertenece a su owner. No incorporar lifecycle frameworks, planners generales o abstracciones preventivas sin necesidad real conforme a AGENTS.
 
+## Navegación dirigida de listas ordenadas
+
+`directed_list_scroll.navigate_to_target` separa catálogo/target/posición lógica de
+geometría física del gesto. Caller aporta orden adquirido, anchors identificados y
+centros, pitch/columns, lane/bounds calibrados, revision, guard y observación fresca.
+Un perfil coarse opcional permite un único gesto sin anchor previo, exclusivamente con
+lista/contexto positivo, limpio y fresco. No estima el target ni inventa índices del
+prefix. Su respuesta no calibra el modelo dirigido; la lectura posterior fija el anchor.
+La primitive calcula offset/filas restantes y apunta al centro de una safe visibility
+window, independiente de los endpoints del dedo. El perfil puede aportar envelopes
+empíricos min/median/max por travel/duración y dirección; interpolación bounded prioriza
+margen útil y luego error al centro, sin extrapolar el travel adquirido. Esa cobertura
+es una heurística de ranking, no una garantía probabilística. Cada emit inyectado exige
+feedback fresco; el mismo loop recalcula ante undershoot/overshoot sin fases numeradas.
+Gain/escala de respuesta se ajustan dentro de esa invocación; no hay cache/persistencia.
+Los IDs pueden ser índices enteros; UNKNOWN nunca crea una posición. Consenso fuerte
+del target, budget de gestos/inversiones, progreso mínimo y mismatch/stuck acotan el
+driver. Revision distinta invalida viewport/modelo; cancel/guard/stale detienen inputs.
+Callers aportan calibración de duración/settling, freshness previa a input, ActionExecutor
+y fallback. Budgets incluyen coarse y directed; métricas cuentan sólo gestos despachados.
+La primitive no selecciona ni autoriza operaciones económicas.
+
+Consumidor actual: `ProductiveMaterialsAdapter.locate` de Trading Center. Usa el suffix
+acreditado y títulos CV; prefix temporal sin anchor usa el coarse máximo robusto adquirido.
+Cada lectura posterior se reutiliza, incluidos los facts del seed ya analizados.
+Fallback conserva el presupuesto total y readquiere contexto antes del scan anterior.
+READY conserva identidad fuerte y geometría completa desde título/pitch acreditados,
+con consenso fresco; una fase errónea de separadores no mueve la identidad. C3/C4 y Trade siguen bajo
+sus owners. Telemetry distingue adquisición, predicted/actual rows, correcciones,
+inversiones, observaciones aceptadas, elapsed y fallback; métricas reales de captura
+pertenecen al source/RuntimeObserver. No verbose frame logging nuevo en producción.
+
+Futuro previsto: ToT al implementar su flow y adquirir explícitamente su GT de lista.
+Cada nuevo consumidor exige orden/dirección/target/anchor/viewport/pitch/bounds propios;
+el GT de Trading no se generaliza a otra UI. No hay segundo consumidor actual requerido.
+
 ## AdsManager transversal
 
 AdsManager no pertenece a Stages ni selecciona contenido publicitario. `AndroidAdsObserver` reúne pixels frescos y activity/window; el adapter despacha acciones Android/semánticas y el manager mantiene el lifecycle bounded. Stages es un caller: navegación/configuración/Mao permanecen concretos, y su success exige Results y Sapphire after > before. No se crea un framework general de stages.

@@ -1,0 +1,2289 @@
+{
+  "date": "2026-10-04",
+  "authority": "LIVE_EVIDENCE",
+  "surface": "Trading General",
+  "method": "Native PNG; timestamp before capture; fresh post-capture acquisition start > dispatch completion +0.6s",
+  "note": "Acquisition guard allows <=5s PNG transfer age; production guard stays <=2s and is validated with PTS source. Session prefix count seven is measurement-only; runtime never uses it.",
+  "session_prefix_count": 7,
+  "row_pitch": 0.1418,
+  "viewport": [
+    0.35,
+    0.95
+  ],
+  "safe_target_centers": [
+    0.43,
+    0.87
+  ],
+  "desired_center": 0.65,
+  "selected_coarse": {
+    "lane_x": 0.33,
+    "start_y": 0.94,
+    "end_y": 0.02,
+    "duration_ms": 250
+  },
+  "profiles": [
+    {
+      "phase": "coarse",
+      "start_y": 0.94,
+      "end_y": 0.0,
+      "duration_ms": 180,
+      "travel": 0.94,
+      "n": 3,
+      "minimum": 7.4571435177691985,
+      "median": 9.786630904760806,
+      "maximum": 9.873314989941965,
+      "samples": [
+        {
+          "rows": 7.4571435177691985,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.6470639344262294
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 15,
+          "after_sequence": 17
+        },
+        {
+          "rows": 9.786630904760806,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6003426229508196
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 19,
+          "after_sequence": 21
+        },
+        {
+          "rows": 9.873314989941965,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.5880475409836065
+            ],
+            [
+              "lapiz_5",
+              0.8716540983606557
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 23,
+          "after_sequence": 25
+        }
+      ]
+    },
+    {
+      "phase": "coarse",
+      "start_y": 0.94,
+      "end_y": 0.0,
+      "duration_ms": 250,
+      "travel": 0.94,
+      "n": 6,
+      "minimum": 8.3010705449837,
+      "median": 9.142118892922381,
+      "maximum": 9.630557931975307,
+      "samples": [
+        {
+          "rows": 9.376216791139681,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.658539344262295
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 15,
+          "after_sequence": 17
+        },
+        {
+          "rows": 8.847325949732943,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.44952295081967214
+            ],
+            [
+              "sapphire_5",
+              0.7339491803278688
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 19,
+          "after_sequence": 21
+        },
+        {
+          "rows": 9.462923998242735,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6462442622950819
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 23,
+          "after_sequence": 25
+        },
+        {
+          "rows": 8.3010705449837,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.5273918032786885
+            ],
+            [
+              "sapphire_5",
+              0.8109983606557376
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_zero_confirmation.json",
+          "before_sequence": 3,
+          "after_sequence": 5
+        },
+        {
+          "rows": 8.908020994705081,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4413262295081967
+            ],
+            [
+              "sapphire_5",
+              0.7249327868852459
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_zero_confirmation.json",
+          "before_sequence": 7,
+          "after_sequence": 9
+        },
+        {
+          "rows": 9.630557931975307,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6224737704918032
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_zero_confirmation.json",
+          "before_sequence": 11,
+          "after_sequence": 13
+        }
+      ]
+    },
+    {
+      "phase": "coarse",
+      "start_y": 0.94,
+      "end_y": 0.02,
+      "duration_ms": 120,
+      "travel": 0.9199999999999999,
+      "n": 3,
+      "minimum": 7.957131956808251,
+      "median": 9.746167541446045,
+      "maximum": 9.942680755624409,
+      "samples": [
+        {
+          "rows": 7.957131956808251,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.5757524590163934
+            ],
+            [
+              "sapphire_5",
+              0.8601786885245901
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 39,
+          "after_sequence": 41
+        },
+        {
+          "rows": 9.746167541446045,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6060803278688525
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 43,
+          "after_sequence": 45
+        },
+        {
+          "rows": 9.942680755624409,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.578211475409836
+            ],
+            [
+              "lapiz_5",
+              0.8618180327868852
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 47,
+          "after_sequence": 49
+        }
+      ]
+    },
+    {
+      "phase": "coarse",
+      "start_y": 0.94,
+      "end_y": 0.02,
+      "duration_ms": 180,
+      "travel": 0.9199999999999999,
+      "n": 33,
+      "minimum": 8.092973247936369,
+      "median": 9.064070845568686,
+      "maximum": 10.208582857407109,
+      "samples": [
+        {
+          "rows": 9.809752826654954,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.5970639344262294
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 27,
+          "after_sequence": 29
+        },
+        {
+          "rows": 10.098753728409907,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.5560803278688524
+            ],
+            [
+              "lapiz_5",
+              0.8396868852459016
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 31,
+          "after_sequence": 33
+        },
+        {
+          "rows": 9.798191865707878,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.5987032786885246
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 35,
+          "after_sequence": 37
+        },
+        {
+          "rows": 9.71726513907836,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6101786885245901
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 3,
+          "after_sequence": 5
+        },
+        {
+          "rows": 9.68258225623714,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6150967213114754
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 7,
+          "after_sequence": 9
+        },
+        {
+          "rows": 8.977386760387525,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.43149016393442624
+            ],
+            [
+              "sapphire_5",
+              0.7150967213114754
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 11,
+          "after_sequence": 13
+        },
+        {
+          "rows": 9.014959883465515,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 5,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.42575245901639347
+            ],
+            [
+              "sapphire_5",
+              0.7101786885245901
+            ]
+          ]
+        },
+        {
+          "rows": 8.11320492959375,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 11,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.5536213114754098
+            ],
+            [
+              "sapphire_5",
+              0.8380475409836065
+            ]
+          ]
+        },
+        {
+          "rows": 10.159448773382044,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 17,
+          "after": [
+            [
+              "sapphire_5",
+              0.5470639344262295
+            ],
+            [
+              "lapiz_5",
+              0.8314901639344262
+            ]
+          ]
+        },
+        {
+          "rows": 8.858886910680017,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 23,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4478836065573771
+            ],
+            [
+              "sapphire_5",
+              0.7323098360655738
+            ]
+          ]
+        },
+        {
+          "rows": 8.887789313047701,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 29,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.44378524590163937
+            ],
+            [
+              "sapphire_5",
+              0.728211475409836
+            ]
+          ]
+        },
+        {
+          "rows": 10.139217091724666,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 35,
+          "after": [
+            [
+              "sapphire_5",
+              0.5503426229508197
+            ],
+            [
+              "lapiz_5",
+              0.8339491803278688
+            ]
+          ]
+        },
+        {
+          "rows": 9.728826100025435,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 41,
+          "after": [
+            [
+              "sapphire_5",
+              0.6085393442622951
+            ]
+          ]
+        },
+        {
+          "rows": 9.064070845568686,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 47,
+          "after": [
+            [
+              "sapphire_5",
+              0.7028016393442622
+            ]
+          ]
+        },
+        {
+          "rows": 8.809752826654952,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 53,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4552606557377049
+            ],
+            [
+              "sapphire_5",
+              0.738867213114754
+            ]
+          ]
+        },
+        {
+          "rows": 8.818423547365258,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 59,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.45362131147540985
+            ],
+            [
+              "sapphire_5",
+              0.7380475409836065
+            ]
+          ]
+        },
+        {
+          "rows": 9.02363060417582,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 65,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4249327868852459
+            ],
+            [
+              "sapphire_5",
+              0.708539344262295
+            ]
+          ]
+        },
+        {
+          "rows": 10.188351175749728,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 71,
+          "after": [
+            [
+              "sapphire_5",
+              0.5429655737704918
+            ],
+            [
+              "lapiz_5",
+              0.8273918032786884
+            ]
+          ]
+        },
+        {
+          "rows": 10.127656130777591,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 77,
+          "after": [
+            [
+              "sapphire_5",
+              0.5519819672131148
+            ],
+            [
+              "lapiz_5",
+              0.8355885245901639
+            ]
+          ]
+        },
+        {
+          "rows": 8.092973247936369,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 83,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.5569
+            ],
+            [
+              "sapphire_5",
+              0.8405065573770492
+            ]
+          ]
+        },
+        {
+          "rows": 10.208582857407109,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 89,
+          "after": [
+            [
+              "sapphire_5",
+              0.5405065573770491
+            ],
+            [
+              "lapiz_5",
+              0.8241131147540983
+            ]
+          ]
+        },
+        {
+          "rows": 9.035191565122894,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 95,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4232934426229508
+            ],
+            [
+              "sapphire_5",
+              0.7069
+            ]
+          ]
+        },
+        {
+          "rows": 9.659460334342992,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 101,
+          "after": [
+            [
+              "sapphire_5",
+              0.6183754098360655
+            ]
+          ]
+        },
+        {
+          "rows": 9.014959883465515,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 107,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.42575245901639347
+            ],
+            [
+              "sapphire_5",
+              0.7101786885245901
+            ]
+          ]
+        },
+        {
+          "rows": 8.879118592337395,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 113,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.44542459016393443
+            ],
+            [
+              "sapphire_5",
+              0.7290311475409835
+            ]
+          ]
+        },
+        {
+          "rows": 8.847325949732943,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 119,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.44952295081967214
+            ],
+            [
+              "sapphire_5",
+              0.7339491803278688
+            ]
+          ]
+        },
+        {
+          "rows": 9.630557931975307,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 125,
+          "after": [
+            [
+              "sapphire_5",
+              0.6224737704918032
+            ]
+          ]
+        },
+        {
+          "rows": 8.994728201808135,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 131,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4290311475409836
+            ],
+            [
+              "sapphire_5",
+              0.7126377049180327
+            ]
+          ]
+        },
+        {
+          "rows": 9.740387060972509,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 137,
+          "after": [
+            [
+              "sapphire_5",
+              0.6069
+            ]
+          ]
+        },
+        {
+          "rows": 9.54963120534579,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 143,
+          "after": [
+            [
+              "sapphire_5",
+              0.6339491803278688
+            ]
+          ]
+        },
+        {
+          "rows": 8.211473097643877,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 149,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.5396868852459016
+            ],
+            [
+              "sapphire_5",
+              0.8241131147540983
+            ]
+          ]
+        },
+        {
+          "rows": 9.757728502393121,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 155,
+          "after": [
+            [
+              "sapphire_5",
+              0.6044409836065573
+            ]
+          ]
+        },
+        {
+          "rows": 8.613216490554695,
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "after_sequence": 161,
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4831295081967213
+            ],
+            [
+              "sapphire_5",
+              0.7667360655737705
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "phase": "coarse",
+      "start_y": 0.94,
+      "end_y": 0.02,
+      "duration_ms": 250,
+      "travel": 0.9199999999999999,
+      "n": 6,
+      "minimum": 8.62477745150177,
+      "median": 8.945582556822124,
+      "maximum": 9.514948322504567,
+      "samples": [
+        {
+          "rows": 8.633448172212075,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.47985081967213117
+            ],
+            [
+              "sapphire_5",
+              0.7642770491803278
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 3,
+          "after_sequence": 5
+        },
+        {
+          "rows": 9.514948322504567,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.638867213114754
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 7,
+          "after_sequence": 9
+        },
+        {
+          "rows": 9.179680455039424,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6864081967213115
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_coarse.json",
+          "before_sequence": 11,
+          "after_sequence": 13
+        },
+        {
+          "rows": 9.405119193507366,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6544409836065573
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 27,
+          "after_sequence": 29
+        },
+        {
+          "rows": 8.62477745150177,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.48149016393442623
+            ],
+            [
+              "sapphire_5",
+              0.7650967213114753
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 31,
+          "after_sequence": 33
+        },
+        {
+          "rows": 8.711484658604824,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4691950819672131
+            ],
+            [
+              "sapphire_5",
+              0.7528016393442623
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 35,
+          "after_sequence": 37
+        }
+      ]
+    },
+    {
+      "phase": "coarse",
+      "start_y": 0.94,
+      "end_y": 0.35,
+      "duration_ms": 40,
+      "travel": 0.59,
+      "n": 3,
+      "minimum": 3.0057920414344848,
+      "median": 3.0057920414344848,
+      "maximum": 6.0727415662789905,
+      "samples": [
+        {
+          "rows": 6.0727415662789905,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.5601786885245901
+            ],
+            [
+              "gold_pouch_10m",
+              0.8429655737704917
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 51,
+          "after_sequence": 53
+        },
+        {
+          "rows": 3.0057920414344848,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              -2,
+              0.7110655737704918
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 55,
+          "after_sequence": 57
+        },
+        {
+          "rows": 3.0057920414344848,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              -2,
+              0.7110655737704918
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 59,
+          "after_sequence": 61
+        }
+      ]
+    },
+    {
+      "phase": "coarse",
+      "start_y": 0.94,
+      "end_y": 0.35,
+      "duration_ms": 80,
+      "travel": 0.59,
+      "n": 3,
+      "minimum": 4.624754329579876,
+      "median": 5.613216490554696,
+      "maximum": 5.7172651390783615,
+      "samples": [
+        {
+          "rows": 5.7172651390783615,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.6101786885245901
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 39,
+          "after_sequence": 41
+        },
+        {
+          "rows": 4.624754329579876,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.7650967213114753
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 43,
+          "after_sequence": 45
+        },
+        {
+          "rows": 5.613216490554696,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.6249327868852459
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 47,
+          "after_sequence": 49
+        }
+      ]
+    },
+    {
+      "phase": "coarse",
+      "start_y": 0.945,
+      "end_y": 0.02,
+      "duration_ms": 180,
+      "travel": 0.9249999999999999,
+      "n": 3,
+      "minimum": 3.0057920414344848,
+      "median": 3.0057920414344848,
+      "maximum": 3.0057920414344848,
+      "samples": [
+        {
+          "rows": 3.0057920414344848,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              -2,
+              0.7110655737704918
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 63,
+          "after_sequence": 65
+        },
+        {
+          "rows": 3.0057920414344848,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              -2,
+              0.7110655737704918
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 67,
+          "after_sequence": 69
+        },
+        {
+          "rows": 3.0057920414344848,
+          "before": [
+            [
+              -7,
+              0.42827868852459017
+            ],
+            [
+              -6,
+              0.5700819672131148
+            ],
+            [
+              -5,
+              0.7118852459016394
+            ],
+            [
+              -4,
+              0.853688524590164
+            ]
+          ],
+          "after": [
+            [
+              -2,
+              0.7110655737704918
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_max_repeat.json",
+          "before_sequence": 71,
+          "after_sequence": 73
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.36,
+      "end_y": 0.5,
+      "duration_ms": 250,
+      "travel": 0.14,
+      "n": 3,
+      "minimum": -1.3208166662813008,
+      "median": -1.2832435432033114,
+      "maximum": -1.0578048047353703,
+      "samples": [
+        {
+          "rows": -1.2832435432033114,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.44542459016393443
+            ],
+            [
+              "sapphire_5",
+              0.7290311475409835
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.6273918032786885
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 113,
+          "after_sequence": 115
+        },
+        {
+          "rows": -1.3208166662813008,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.44952295081967214
+            ],
+            [
+              "sapphire_5",
+              0.7339491803278688
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.637227868852459
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 119,
+          "after_sequence": 121
+        },
+        {
+          "rows": -1.0578048047353703,
+          "before": [
+            [
+              "sapphire_5",
+              0.6224737704918032
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.4888672131147541
+            ],
+            [
+              "sapphire_5",
+              0.7724737704918032
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 125,
+          "after_sequence": 127
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.36,
+      "end_y": 0.7,
+      "duration_ms": 250,
+      "travel": 0.33999999999999997,
+      "n": 3,
+      "minimum": -3.3815117112534394,
+      "median": -3.2687923420194682,
+      "maximum": -3.2254387384679406,
+      "samples": [
+        {
+          "rows": -3.2254387384679406,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.4290311475409836
+            ],
+            [
+              "sapphire_5",
+              0.7126377049180327
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.6028016393442622
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 131,
+          "after_sequence": 133
+        },
+        {
+          "rows": -3.3815117112534394,
+          "before": [
+            [
+              "sapphire_5",
+              0.6069
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.5191950819672131
+            ],
+            [
+              "gold_pouch_10m",
+              0.8028016393442623
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 137,
+          "after_sequence": 139
+        },
+        {
+          "rows": -3.2687923420194682,
+          "before": [
+            [
+              "sapphire_5",
+              0.6339491803278688
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.5306704918032786
+            ],
+            [
+              "gold_pouch_10m",
+              0.8134573770491803
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 143,
+          "after_sequence": 145
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.36,
+      "end_y": 0.94,
+      "duration_ms": 250,
+      "travel": 0.58,
+      "n": 3,
+      "minimum": -5.81841198640431,
+      "median": -5.6421188929223804,
+      "maximum": -5.450900598857777,
+      "samples": [
+        {
+          "rows": -5.81841198640431,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.5396868852459016
+            ],
+            [
+              "sapphire_5",
+              0.8241131147540983
+            ]
+          ],
+          "after": [
+            [
+              -2,
+              0.7979508196721311
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 149,
+          "after_sequence": 151
+        },
+        {
+          "rows": -5.450900598857777,
+          "before": [
+            [
+              "sapphire_5",
+              0.6044409836065573
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_400",
+              0.8101786885245901
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 155,
+          "after_sequence": 157
+        },
+        {
+          "rows": -5.6421188929223804,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.4831295081967213
+            ],
+            [
+              "sapphire_5",
+              0.7667360655737705
+            ]
+          ],
+          "after": [
+            [
+              -2,
+              0.715983606557377
+            ],
+            [
+              -1,
+              0.8577868852459016
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 161,
+          "after_sequence": 163
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.94,
+      "end_y": 0.02,
+      "duration_ms": 250,
+      "travel": 0.9199999999999999,
+      "n": 3,
+      "minimum": 8.647390691114246,
+      "median": 8.673402853245161,
+      "maximum": 8.956646396448471,
+      "samples": [
+        {
+          "rows": 8.673402853245161,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.4232934426229508
+            ],
+            [
+              "sapphire_5",
+              0.7069
+            ]
+          ],
+          "after": [
+            [
+              "hero_weapon_crafting_material",
+              0.4700147540983607
+            ],
+            [
+              "hero_accessory_crafting_material",
+              0.7528016393442623
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 95,
+          "after_sequence": 97
+        },
+        {
+          "rows": 8.647390691114246,
+          "before": [
+            [
+              "sapphire_5",
+              0.6183754098360655
+            ]
+          ],
+          "after": [
+            [
+              "hero_accessory_crafting_material",
+              0.6683754098360655
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 101,
+          "after_sequence": 103
+        },
+        {
+          "rows": 8.956646396448471,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.42575245901639347
+            ],
+            [
+              "sapphire_5",
+              0.7101786885245901
+            ]
+          ],
+          "after": [
+            [
+              "hero_weapon_crafting_material",
+              0.43230983606557377
+            ],
+            [
+              "hero_accessory_crafting_material",
+              0.7159163934426229
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 107,
+          "after_sequence": 109
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.94,
+      "end_y": 0.1,
+      "duration_ms": 250,
+      "travel": 0.84,
+      "n": 3,
+      "minimum": 7.930634234317557,
+      "median": 7.953756156211703,
+      "maximum": 8.450877476935883,
+      "samples": [
+        {
+          "rows": 7.953756156211703,
+          "before": [
+            [
+              "sapphire_5",
+              0.5519819672131148
+            ],
+            [
+              "lapiz_5",
+              0.8355885245901639
+            ]
+          ],
+          "after": [
+            [
+              "hero_accessory_crafting_material",
+              0.7003426229508196
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 77,
+          "after_sequence": 79
+        },
+        {
+          "rows": 8.450877476935883,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.5569
+            ],
+            [
+              "sapphire_5",
+              0.8405065573770492
+            ]
+          ],
+          "after": [
+            [
+              "hero_weapon_crafting_material",
+              0.6347688524590164
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 83,
+          "after_sequence": 85
+        },
+        {
+          "rows": 7.930634234317557,
+          "before": [
+            [
+              "sapphire_5",
+              0.5405065573770491
+            ],
+            [
+              "lapiz_5",
+              0.8241131147540983
+            ]
+          ],
+          "after": [
+            [
+              "hero_accessory_crafting_material",
+              0.6921459016393442
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 89,
+          "after_sequence": 91
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.94,
+      "end_y": 0.35,
+      "duration_ms": 250,
+      "travel": 0.59,
+      "n": 3,
+      "minimum": 5.916183033133714,
+      "median": 5.933524474554325,
+      "maximum": 6.121366968022382,
+      "samples": [
+        {
+          "rows": 5.933524474554325,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.45362131147540985
+            ],
+            [
+              "sapphire_5",
+              0.7380475409836065
+            ]
+          ],
+          "after": [
+            [
+              "accessory_crafting_material",
+              0.6052606557377048
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 59,
+          "after_sequence": 61
+        },
+        {
+          "rows": 6.121366968022382,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.4249327868852459
+            ],
+            [
+              "sapphire_5",
+              0.708539344262295
+            ]
+          ],
+          "after": [
+            [
+              "accessory_crafting_material",
+              0.5495229508196721
+            ],
+            [
+              "hero_weapon_crafting_material",
+              0.8331295081967213
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 65,
+          "after_sequence": 67
+        },
+        {
+          "rows": 5.916183033133714,
+          "before": [
+            [
+              "sapphire_5",
+              0.5429655737704918
+            ],
+            [
+              "lapiz_5",
+              0.8273918032786884
+            ]
+          ],
+          "after": [
+            [
+              "hero_weapon_crafting_material",
+              0.6970639344262295
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 71,
+          "after_sequence": 73
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.94,
+      "end_y": 0.6,
+      "duration_ms": 250,
+      "travel": 0.33999999999999997,
+      "n": 3,
+      "minimum": 3.124268769220097,
+      "median": 3.210999098245045,
+      "maximum": 3.413281231935999,
+      "samples": [
+        {
+          "rows": 3.413281231935999,
+          "before": [
+            [
+              "sapphire_5",
+              0.6085393442622951
+            ]
+          ],
+          "after": [
+            [
+              "ring_enhance",
+              0.5503426229508197
+            ],
+            [
+              "accessory_crafting_material",
+              0.8331295081967213
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 41,
+          "after_sequence": 43
+        },
+        {
+          "rows": 3.210999098245045,
+          "before": [
+            [
+              "sapphire_5",
+              0.7028016393442622
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_5",
+              0.5314901639344262
+            ],
+            [
+              "ring_enhance",
+              0.6724737704918032
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 47,
+          "after_sequence": 49
+        },
+        {
+          "rows": 3.124268769220097,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.4552606557377049
+            ],
+            [
+              "sapphire_5",
+              0.738867213114754
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_5",
+              0.5798508196721311
+            ],
+            [
+              "ring_enhance",
+              0.7208344262295081
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 53,
+          "after_sequence": 55
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.94,
+      "end_y": 0.8,
+      "duration_ms": 250,
+      "travel": 0.1399999999999999,
+      "n": 3,
+      "minimum": 1.18206201299452,
+      "median": 1.2254271775069945,
+      "maximum": 1.3496959467270924,
+      "samples": [
+        {
+          "rows": 1.18206201299452,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.4478836065573771
+            ],
+            [
+              "sapphire_5",
+              0.7323098360655738
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.5642770491803278
+            ],
+            [
+              "lapiz_5",
+              0.847883606557377
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 23,
+          "after_sequence": 25
+        },
+        {
+          "rows": 1.3496959467270924,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.44378524590163937
+            ],
+            [
+              "sapphire_5",
+              0.728211475409836
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.5364081967213115
+            ],
+            [
+              "lapiz_5",
+              0.8200147540983606
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 29,
+          "after_sequence": 31
+        },
+        {
+          "rows": 1.2254271775069945,
+          "before": [
+            [
+              "sapphire_5",
+              0.5503426229508197
+            ],
+            [
+              "lapiz_5",
+              0.8339491803278688
+            ]
+          ],
+          "after": [
+            [
+              "lapiz_5",
+              0.6601786885245902
+            ],
+            [
+              "ring_enhance",
+              0.8019819672131147
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 35,
+          "after_sequence": 37
+        }
+      ]
+    },
+    {
+      "phase": "directed",
+      "start_y": 0.94,
+      "end_y": 0.9,
+      "duration_ms": 250,
+      "travel": 0.039999999999999925,
+      "n": 3,
+      "minimum": 0.037573123077990545,
+      "median": 0.06069504497213818,
+      "maximum": 0.20518393488866815,
+      "samples": [
+        {
+          "rows": 0.20518393488866815,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.42575245901639347
+            ],
+            [
+              "sapphire_5",
+              0.7101786885245901
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.6806704918032787
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 5,
+          "after_sequence": 7
+        },
+        {
+          "rows": 0.06069504497213818,
+          "before": [
+            [
+              "gold_pouch_10m",
+              0.5536213114754098
+            ],
+            [
+              "sapphire_5",
+              0.8380475409836065
+            ]
+          ],
+          "after": [
+            [
+              "gold_pouch_10m",
+              0.5454245901639344
+            ],
+            [
+              "sapphire_5",
+              0.8290311475409835
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 11,
+          "after_sequence": 13
+        },
+        {
+          "rows": 0.037573123077990545,
+          "before": [
+            [
+              "sapphire_5",
+              0.5470639344262295
+            ],
+            [
+              "lapiz_5",
+              0.8314901639344262
+            ]
+          ],
+          "after": [
+            [
+              "sapphire_5",
+              0.5421459016393443
+            ],
+            [
+              "lapiz_5",
+              0.8257524590163934
+            ]
+          ],
+          "source": "artifacts/targeted_swipe/v2_settled_directed.json",
+          "before_sequence": 17,
+          "after_sequence": 19
+        }
+      ]
+    }
+  ],
+  "discarded_transient_protocol": "v2_coarse_* and v2_directed_*: end-of-transfer timestamps; not used as settled response calibration"
+}

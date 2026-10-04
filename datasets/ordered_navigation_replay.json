@@ -1,0 +1,306 @@
+[
+  {
+    "id": "unknown_prefix",
+    "path": "tests/fixtures/ordered_navigation/unknown_prefix.png",
+    "source": "artifacts/targeted_swipe/materials_new6_4.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "acquired_anchor",
+    "path": "tests/fixtures/ordered_navigation/acquired_anchor.png",
+    "source": "artifacts/targeted_swipe/materials_new6_5.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [
+      [
+        "lapiz_400",
+        0.8446049180327868
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "after_large",
+    "path": "tests/fixtures/ordered_navigation/after_large.png",
+    "source": "artifacts/targeted_swipe/materials_new6_6.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [
+      [
+        "gold_pouch_10m",
+        0.5232934426229507
+      ],
+      [
+        "sapphire_5",
+        0.8068934426229507
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "before_residual",
+    "path": "tests/fixtures/ordered_navigation/before_residual.png",
+    "source": "artifacts/targeted_swipe/materials_new6_7.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [
+      [
+        "lapiz_5",
+        0.47985081967213117
+      ],
+      [
+        "ring_enhance",
+        0.6208344262295081
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "target",
+    "path": "tests/fixtures/ordered_navigation/target.png",
+    "source": "artifacts/targeted_swipe/materials_new6_10.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [
+      [
+        "hero_weapon_crafting_material",
+        0.5823098360655737
+      ],
+      [
+        "hero_accessory_crafting_material",
+        0.865916393442623
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "separator_phase",
+    "path": "tests/fixtures/ordered_navigation/separator_phase.png",
+    "source": "artifacts/targeted_swipe/materials_new3_8.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [
+      [
+        "lapiz_400",
+        0.538867213114754
+      ],
+      [
+        "gold_pouch_10m",
+        0.8216540983606557
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "bottom",
+    "path": "tests/fixtures/ordered_navigation/bottom.png",
+    "source": "artifacts/targeted_swipe/trading_bottom_boundary_after.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [
+      [
+        "hero_accessory_crafting_material",
+        0.4470639344262295
+      ],
+      [
+        "guild_commodity",
+        0.8724737704918032
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "foreign_keys",
+    "path": "tests/fixtures/ordered_navigation/foreign_keys.png",
+    "source": "artifacts/targeted_swipe/trading_keys_after.png",
+    "shape": [
+      1220,
+      2712
+    ],
+    "rect": [
+      597,
+      390,
+      2115,
+      1190
+    ],
+    "expected": [],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "v2_phase_confirmation",
+    "path": "tests/fixtures/ordered_navigation/v2_phase_confirmation.png",
+    "source": "artifacts/targeted_swipe/v2_smoke1_11.png",
+    "shape": [
+      1224,
+      2712
+    ],
+    "rect": [
+      596,
+      391,
+      2115,
+      1199
+    ],
+    "expected": [
+      [
+        "hero_weapon_crafting_material",
+        0.6500372549019607
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "v2_initial",
+    "path": "tests/fixtures/ordered_navigation/v2_initial.png",
+    "source": "artifacts/targeted_swipe/v2_final1_6.png",
+    "shape": [
+      1224,
+      2712
+    ],
+    "rect": [
+      596,
+      391,
+      2115,
+      1199
+    ],
+    "expected": [],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "v2_coarse_anchor",
+    "path": "tests/fixtures/ordered_navigation/v2_coarse_anchor.png",
+    "source": "artifacts/targeted_swipe/v2_final1_8.png",
+    "shape": [
+      1224,
+      2712
+    ],
+    "rect": [
+      596,
+      391,
+      2115,
+      1199
+    ],
+    "expected": [
+      [
+        "sapphire_5",
+        0.6467692810457516
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "v2_target_first",
+    "path": "tests/fixtures/ordered_navigation/v2_target_first.png",
+    "source": "artifacts/targeted_swipe/v2_final1_10.png",
+    "shape": [
+      1224,
+      2712
+    ],
+    "rect": [
+      596,
+      391,
+      2115,
+      1199
+    ],
+    "expected": [
+      [
+        "hero_weapon_crafting_material",
+        0.6010176470588234
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  },
+  {
+    "id": "v2_target_confirm",
+    "path": "tests/fixtures/ordered_navigation/v2_target_confirm.png",
+    "source": "artifacts/targeted_swipe/v2_final1_11.png",
+    "shape": [
+      1224,
+      2712
+    ],
+    "rect": [
+      596,
+      391,
+      2115,
+      1199
+    ],
+    "expected": [
+      [
+        "hero_weapon_crafting_material",
+        0.5985666666666666
+      ]
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04"
+  }
+]

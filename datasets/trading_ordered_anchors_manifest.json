@@ -1,0 +1,164 @@
+[
+  {
+    "id": "lapiz_400",
+    "source": "artifacts/targeted_swipe/trading_general_slow2_after.png",
+    "band": 4,
+    "region": [
+      0.303,
+      0.8230131147540986,
+      0.465,
+      0.8990131147540985
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/lapiz_400.png"
+  },
+  {
+    "id": "gold_pouch_10m",
+    "source": "artifacts/targeted_swipe/trading_slow3_after.png",
+    "band": 2,
+    "region": [
+      0.303,
+      0.5656426229508198,
+      0.465,
+      0.6416426229508198
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/gold_pouch_10m.png"
+  },
+  {
+    "id": "lapiz_5",
+    "source": "artifacts/targeted_swipe/materials_new1_9.png",
+    "band": 3,
+    "region": [
+      0.303,
+      0.758255737704918,
+      0.465,
+      0.834255737704918
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/lapiz_5.png"
+  },
+  {
+    "id": "ring_enhance",
+    "source": "artifacts/targeted_swipe/trading_slow4_after.png",
+    "band": 3,
+    "region": [
+      0.303,
+      0.7287573770491804,
+      0.465,
+      0.8047573770491804
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/ring_enhance.png"
+  },
+  {
+    "id": "accessory_crafting_material",
+    "source": "artifacts/targeted_swipe/trading_slow5_after.png",
+    "band": 1,
+    "region": [
+      0.303,
+      0.46564918032786884,
+      0.465,
+      0.5416491803278688
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/accessory_crafting_material.png"
+  },
+  {
+    "id": "hero_weapon_crafting_material",
+    "source": "artifacts/targeted_swipe/trading_slow5_after.png",
+    "band": 3,
+    "region": [
+      0.303,
+      0.7492491803278689,
+      0.465,
+      0.8252491803278689
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/hero_weapon_crafting_material.png"
+  },
+  {
+    "id": "hero_accessory_crafting_material",
+    "source": "artifacts/targeted_swipe/trading_fast_tail_after.png",
+    "band": 0,
+    "region": [
+      0.303,
+      0.3910524590163934,
+      0.465,
+      0.46705245901639336
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/hero_accessory_crafting_material.png"
+  },
+  {
+    "id": "guild_commodity",
+    "source": "artifacts/targeted_swipe/trading_fast_tail_after.png",
+    "band": 3,
+    "region": [
+      0.303,
+      0.8164524590163935,
+      0.465,
+      0.8924524590163935
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/guild_commodity.png"
+  },
+  {
+    "id": "sapphire_5",
+    "source": "artifacts/targeted_swipe/v2_settled_coarse_9.png",
+    "band": 2,
+    "region": [
+      0.303,
+      0.5828557377049182,
+      0.465,
+      0.6588557377049181
+    ],
+    "shape": [
+      1220,
+      2712
+    ],
+    "authority": "LIVE_EVIDENCE",
+    "date": "2026-10-04",
+    "asset": "assets/ui/landmarks/trading-center/ordered/sapphire_5.png"
+  }
+]

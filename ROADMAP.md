@@ -14,7 +14,13 @@ anteriores permanecen rojos. No hay nuevo planner, DAG ni framework de workflow.
 
 ## Próximos frentes, en orden
 
-1. Targeted swipe / ordered-list navigation: frente separado; todavía no implementado.
+1. Targeted swipe / ordered-list navigation: **cerrado para el alcance actual**
+   ([informe](docs/TARGETED_SWIPE_AUDIT.md)): primitive reusable y Trading Center productivo,
+   Materials: coarse robusto + un loop dirigido, 10/10 repeticiones finales con 2 swipes,
+   6 capturas y cero fallback. Incremental comparable PTS: 5 swipes/21–22 capturas;
+   benchmarks nativos anteriores conservados. Calibración, fallback y replays verdes.
+   ToT reutilizará la primitive cuando se implemente y se adquiera explícitamente su GT
+   de lista. No hay requisito de segunda superficie ni adopciones inferidas de otros menús.
 2. Completar GT Craft naturalmente: Weapons tiene cadena productiva completa. Armor sólo
    Expert adquirido; faltan Hero/MAX/result/effect completos. Accessories Hero Earrings
    adquirido; faltan MAX/result/effect completos. La visita de tres familias ya existe,
