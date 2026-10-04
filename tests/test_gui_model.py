@@ -30,6 +30,7 @@ def test_selection_is_populated_only_from_registry_and_defaults_active():
         (item.id, item.display_name) for item in DEFAULT_FLOW_REGISTRY.definitions
     ]
     assert model.active_ids == (
+        "stages_daily",
         "black_market",
         "world_boss",
         "monster_wave",
@@ -46,6 +47,7 @@ def test_toggle_and_move_preserve_exact_active_order():
 
     model.move_up("world_boss")
     assert model.active_ids == (
+        "stages_daily",
         "world_boss",
         "black_market",
         "monster_wave",
@@ -57,6 +59,7 @@ def test_toggle_and_move_preserve_exact_active_order():
     )
     model.set_enabled("world_boss", False)
     assert model.active_ids == (
+        "stages_daily",
         "black_market",
         "monster_wave",
         "send_stamina",
@@ -67,6 +70,7 @@ def test_toggle_and_move_preserve_exact_active_order():
     )
     model.toggle("world_boss")
     assert model.active_ids == (
+        "stages_daily",
         "world_boss",
         "black_market",
         "monster_wave",
@@ -76,6 +80,7 @@ def test_toggle_and_move_preserve_exact_active_order():
         "mailbox",
         "guild_check_in",
     )
+    assert model.move_up("world_boss")
     assert not model.move_up("world_boss")
 
 

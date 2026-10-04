@@ -162,7 +162,8 @@ class GuiRuntimeController:
                         error=raw.error,
                     )
                 elif request.mode is GuiRunMode.SELECTED_FLOWS:
-                    raw = runtime.run_flows_once(definitions)
+                    raw = (runtime.run_routine(request.routine) if request.routine is not None
+                           else runtime.run_flows_once(definitions))
                     result = GuiExecutionResult(
                         _flow_status(raw.status),
                         max(0.0, self.clock() - started),
@@ -173,10 +174,9 @@ class GuiRuntimeController:
                         error=raw.error,
                     )
                 else:
-                    raw = runtime.run_session(
-                        definitions,
-                        character_count=request.character_count,
-                    )
+                    raw = (runtime.run_routine(request.routine, character_count=request.character_count)
+                           if request.routine is not None else runtime.run_session(
+                               definitions, character_count=request.character_count))
                     result = GuiExecutionResult(
                         _session_status(raw.status),
                         max(0.0, self.clock() - started),

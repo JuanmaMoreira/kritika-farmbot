@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass
 from bot.geometry import relative_region_to_pixels
 from bot.stages_runtime import lobby
+from bot.sapphire_pressure import sapphire_pressure_passes
 
 @dataclass(frozen=True)
 class StageBalances:
@@ -12,7 +13,8 @@ class StageBalances:
     sapphire_limit:int
     snapshot:object
     @property
-    def needs_monster_wave(self):return self.sapphires>=self.sapphire_limit
+    def needs_monster_wave(self):
+        return sapphire_pressure_passes(self.sapphires, pressure_limit=self.sapphire_limit) > 0
 
 class StagesBalanceReader:
     def __init__(self,navigation,engine):self.nav,self.engine=navigation,engine

@@ -253,34 +253,21 @@ def test_ethereal_effect_returns_to_transmute_and_clears_guard():
     assert [call[0] for call in driver.calls].index("equipment_combine_relief.ethereal.return_transmute") < [call[0] for call in driver.calls].index("equipment_combine_relief.select_fuse")
 
 
-def test_ethereal_direct_completion_still_requires_cleared_guard():
-    direct_completion = panel(6, PANEL_COMBINE_ETHEREAL_RANDOM_PART)
-    transmute_cleared = mode(7, MODE_COMBINE_TRANSMUTE)
+def test_ethereal_popup_close_before_animation_is_not_completion():
     operation, driver, tapper = build(
         mode(1, MODE_COMBINE_FUSE),
-        [
-            mode(2, MODE_COMBINE_TRANSMUTE, STATUS_COMBINE_ETHEREAL_AVAILABLE),
-            panel(3, PANEL_COMBINE_AWAKENED_TRANSMUTE),
-            panel(4, PANEL_COMBINE_ETHEREAL_RANDOM_PART),
-            panel(5, PANEL_COMBINE_ETHEREAL_RANDOM_PART, POPUP_ETHEREAL_MASS_COMBINE),
-            direct_completion,
-            transmute_cleared,
-            mode(9, MODE_COMBINE_FUSE),
-            snapshot(10, base=SCREEN_WORLD_BOSS),
-        ],
-        wait_until_results=[mode(8, MODE_COMBINE_TRANSMUTE)],
+        [mode(2, MODE_COMBINE_TRANSMUTE, STATUS_COMBINE_ETHEREAL_AVAILABLE),
+         panel(3, PANEL_COMBINE_AWAKENED_TRANSMUTE),
+         panel(4, PANEL_COMBINE_ETHEREAL_RANDOM_PART),
+         panel(5, PANEL_COMBINE_ETHEREAL_RANDOM_PART, POPUP_ETHEREAL_MASS_COMBINE),
+         panel(6, PANEL_COMBINE_ETHEREAL_RANDOM_PART)],
     )
-
     result = operation.run(plan())
-
-    assert result.outcome is EquipmentCombineReliefOutcome.RELIEVED
-    assert result.ethereal is EquipmentCombineStrategyOutcome.EFFECT
-    assert result.animation_taps == 0
+    assert result.outcome is EquipmentCombineReliefOutcome.FAILED
     assert tapper.calls == []
-    assert "equipment_combine_relief.ethereal_animation_completed_before_tappable" in {
-        name for name, _ in operation.events.records
-    }
-    assert driver.calls[5][0] == "equipment_combine_relief.ethereal.return_transmute"
+    assert driver.calls[-1][0] == "equipment_combine_relief.ethereal.confirm_mass_combine"
+    assert driver.calls[-1][3]["stable_for"] == 0.
+    assert sum("confirm_mass_combine" in c[0] for c in driver.calls) == 1
 
 
 def test_ethereal_direct_popup_close_is_not_effect_when_guard_remains():
@@ -519,8 +506,8 @@ def test_ethereal_result_animation_without_landmark_traverses_to_random_part():
     assert not kwargs["tappable"](
         snapshot(21, overlays=(MODE_COMBINE_TRANSMUTE, PANEL_COMBINE_ETHEREAL_RANDOM_PART, POPUP_ETHEREAL_MASS_COMBINE))
     )
-    assert isinstance(kwargs["action_for"](animation), TapEtherealResultAnimation)
-    assert isinstance(kwargs["action_for"](snapshot(22, tappable=True)), TapCombineAnimation)
+    assert isinstance(kwargs["action"], TapEtherealResultAnimation)
+    assert "action_for" not in kwargs
 
 
 def test_ethereal_confirm_miss_without_verified_effect_stays_failed_without_drain():

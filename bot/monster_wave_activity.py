@@ -1,5 +1,5 @@
 """Verified MW preparation and reusable SKIP pass."""
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 import time
 
@@ -22,6 +22,7 @@ from bot.monster_wave_semantics import *
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.runtime_facts import FactReadStatus
 from bot.ocr_extractors import RESOURCE_SAPPHIRES
+from bot.sapphire_pressure import sapphire_pressure_passes
 from bot.perception.monster_wave import MONSTER_WAVE_SPECS
 from bot.semantic_actions import OpenBattleModeSelect
 from bot.state import ResolutionStatus
@@ -151,8 +152,29 @@ class MonsterWaveActivity:
         self.clock, self.sleeper = clock, sleeper
         self.verified_transition = verified_transition or VerifiedTransition(observer, actions, events)
 
-    def prepare(self):
-        return self._run_phase('prepare')
+    def prepare(self, *, pressure_relief=False):
+        return self._run_phase('prepare', pressure_relief=pressure_relief)
+
+    def read_sapphires_after_clear(self):
+        """Read the existing MW HUD after the verified CLEAR dismissal."""
+        if self.cancel_requested():
+            raise RuntimeWaitCancelled()
+        before = self.observer.observe()
+        if not clean_mw(before):
+            raise ValueError('mw_effect_requires_clean_context')
+        read = self.facts.read_sapphires(
+            context=SCREEN_MONSTER_WAVE, after_sequence=before.sequence,
+            timeout=6, cancel_requested=self.cancel_requested)
+        if self.cancel_requested() or read.status is FactReadStatus.CANCELLED:
+            raise RuntimeWaitCancelled()
+        fact = read.fact
+        if (read.status is not FactReadStatus.CONFIRMED or fact is None
+                or fact.name != RESOURCE_SAPPHIRES or fact.context != SCREEN_MONSTER_WAVE
+                or type(fact.value) is not int or fact.value < 0 or not fact.evidence
+                or any(e.sequence <= before.sequence for e in fact.evidence)
+                or not 0 <= self.clock() - fact.timestamp <= 2.):
+            raise ValueError('mw_fresh_sapphire_effect_unavailable')
+        return fact
 
     def reenter(self):
         return self._run_phase('reenter')
@@ -164,10 +186,10 @@ class MonsterWaveActivity:
     def finish_pass(self, current):
         return self._run_phase('finish', current=current)
 
-    def leave(self):
-        return self._run_phase('leave')
+    def leave(self, *, return_to_lobby=False):
+        return self._run_phase('leave', return_to_lobby=return_to_lobby)
 
-    def run(self, *, yield_resource_board=False):
+    def run(self, *, yield_resource_board=False, return_to_lobby=False, keep_current=False):
         """Single-pass compatibility for the bare MW flow."""
         prepared = self.prepare()
         if not prepared.succeeded or prepared.event_count('monster_wave.no_work'):
@@ -176,7 +198,14 @@ class MonsterWaveActivity:
         combined = self._merge(prepared, passed)
         if not passed.succeeded:
             return combined
-        return self._merge(combined, self.leave())
+        if keep_current:
+            if self.cancel_requested():
+                return replace(combined, status=FlowStatus.CANCELLED)
+            final = self.observer.observe()
+            if not clean_mw(final):
+                return replace(combined, status=FlowStatus.FAILED, error='mw_completion_surface_unconfirmed')
+            return replace(combined, final_snapshot=final)
+        return self._merge(combined, self.leave(return_to_lobby=return_to_lobby))
 
     @staticmethod
     def _merge(first, second):
@@ -189,7 +218,9 @@ class MonsterWaveActivity:
             sapphires_consumed=first.sapphires_consumed + second.sapphires_consumed)
 
     def _run_phase(self, phase, *, yield_resource_board=False,
-                   resume_after_relief=False, current=None):
+                   resume_after_relief=False, current=None, return_to_lobby=False,
+                   pressure_relief=False):
+        if type(return_to_lobby) is not bool:raise ValueError('return_to_lobby must be bool')
         if not isinstance(yield_resource_board, bool):
             raise ValueError('yield_resource_board must be bool')
         transitions, events = [], []
@@ -223,10 +254,15 @@ class MonsterWaveActivity:
         def exit_hub(before):
             returned = step('exit', ExitMonsterWave(), before, clean_mw,
                             lambda s: is_battle_mode_select(s) or is_lobby(s))
-            # Inventory lineage can make Back land normally in Lobby.
-            # Preserve the reusable activity's hub postcondition through the
-            # existing navigation, only for that fresh physical destination.
-            if is_lobby(returned):
+            # Prepared activities preserve their shared-hub postcondition. A
+            # standalone caller owns Lobby completion: do not reopen that hub
+            # when this fresh exit already reached its destination.
+            from bot.event_log import record_best_effort
+            record_best_effort(self.events,'monster_wave.exit.destination',
+                physical='lobby' if is_lobby(returned) else 'battle_mode_select',
+                requested='lobby' if return_to_lobby else 'battle_mode_select',
+                source_sequence=returned.sequence)
+            if is_lobby(returned) and not return_to_lobby:
                 step('exit_lobby_to_hub', OpenBattleModeSelect(), returned,
                      is_lobby, is_battle_mode_select)
             return finish()
@@ -324,9 +360,9 @@ class MonsterWaveActivity:
                         or not fact.evidence or type(fact.value) is not int or fact.value < 0
                         or any(e.sequence <= before.sequence for e in fact.evidence)):
                     raise ValueError(f'fresh hub sapphires not confirmed: {read.status.value}')
-                if fact.value == 0:
-                    business('no_work', sapphires=0)
-                    return finish(sapphires_initial=0)
+                if (sapphire_pressure_passes(fact.value) == 0 if pressure_relief else fact.value == 0):
+                    business('no_work', sapphires=fact.value)
+                    return finish(sapphires_initial=fact.value)
                 before = self.observer.wait_until(
                     is_battle_mode_select,
                     after_sequence=max(e.sequence for e in (*read.evidence, *fact.evidence)),

@@ -52,10 +52,10 @@ def test_declared_context_has_quick_menu_capability():
     assert quick_menu_accessible(SCREEN_PET_SUMMON)
     assert quick_menu_accessible(SCREEN_TREASURE)
     assert quick_menu_accessible(SCREEN_MONSTER_WAVE)
+    assert quick_menu_accessible(SCREEN_BATTLE_MODE_SELECT)
 
 
 def test_undeclared_context_has_no_quick_menu_capability():
-    assert not quick_menu_accessible(SCREEN_BATTLE_MODE_SELECT)
     assert not quick_menu_accessible(None)
 
 
@@ -123,7 +123,7 @@ def test_j_destinations_are_only_exposed_for_verified_mw_origin():
 
 def test_geometry_is_not_selected_for_an_undeclared_context():
     with pytest.raises(ValueError, match="Quick Menu policy"):
-        open_character_select_action(SCREEN_BATTLE_MODE_SELECT)
+        open_character_select_action(None)
 
 
 def _menu_snapshot(sequence, base=None, *, status=ResolutionStatus.RESOLVED, quick=False, image=None):

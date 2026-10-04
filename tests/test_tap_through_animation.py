@@ -198,3 +198,27 @@ def test_action_for_selects_per_frame_action_without_changing_bounds():
 def test_action_for_must_be_callable_or_none():
     with pytest.raises(ValueError):
         run(snapshot(1, "tappable"), action_for=object())
+
+
+def test_terminal_stability_resets_on_a_flash_without_tapping_base_or_flash():
+    observer = Observer([snapshot(2, "flash"), snapshot(3, "complete"), snapshot(4, "complete")])
+    actions = Mock()
+    helper = TapThroughAnimation(observer, actions)
+    result = helper.run(snapshot(1, "complete"), action=object(),
+        expected=lambda item: item.state.base_context == "screen.done",
+        tappable=lambda item: bool(item.observations.find("activity.test.tappable")),
+        transient=lambda item: item.state.status is ResolutionStatus.UNKNOWN,
+        stable_for=.25)
+    assert result.succeeded and result.final_snapshot.sequence == 4
+    assert len(observer.calls) == 3
+    actions.execute.assert_not_called()
+
+
+@pytest.mark.parametrize("stability", [-1, float('nan'), float('inf'), True, None])
+def test_terminal_stability_rejects_invalid_policy_without_input(stability):
+    actions=Mock()
+    with pytest.raises(ValueError):
+        TapThroughAnimation(Observer(), actions).run(snapshot(1, "complete"),
+            action=object(), expected=lambda _:True, tappable=lambda _:False,
+            transient=lambda _:False, stable_for=stability)
+    actions.execute.assert_not_called()

@@ -140,9 +140,14 @@ def execute_inventory_relief(policy: EquipmentSellPolicy, *, read_inventory,
         if candidate is not None:
             sale = bulk_sell(candidate, authorization, item)
             sales.append(sale)
+            if sale.confirm_count==0 and sale.outcome is not EquipmentSellOutcome.SUCCESS:
+                return finish("failed", f"bulk_not_started:{sale.reason}")
             if (sale.outcome is not EquipmentSellOutcome.SUCCESS or sale.confirm_count != 1 or
                 sale.before is None or sale.after is None or not sale.before.confirmed or not sale.after.confirmed or
-                sale.before.sequence <= cursor or sale.after.sequence <= sale.before.sequence or
+                not (sale.before.sequence > cursor or (
+                    "reuse_selected_panel" in sale.inputs and sale.item==item and
+                    sale.before.sequence>=fresh.sequence and sale.item.sequence==cursor and
+                    sale.before.sequence<sale.item.sequence)) or sale.after.sequence <= sale.before.sequence or
                 sale.before.capacity != fresh.capacity or
                 sale.after.sequence <= cursor or sale.after.capacity != fresh.capacity or
                 sale.before.item_count != fresh.item_count or

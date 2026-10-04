@@ -325,3 +325,50 @@ def test_legacy_repeated_flow_failure_exposes_ambiguity_without_rewriting_succes
     report = build_session_report(raw)
     assert report.characters[0].flows[0].status is ReportStatus.COMPLETE
     assert any("occurrence unavailable" in gap for gap in report.data_gaps)
+
+
+@pytest.mark.parametrize('kind',['monster_wave.resource_board_pending','monster_wave.no_work'])
+def test_resolved_mw_phases_do_not_hide_completed_routine_character(kind):
+    raw=session(character(1,flow('stages_daily.completed'),
+        flow(kind,'monster_wave.completed'),flow('stages_daily.completed'),
+        flow('monster_wave.resource_board_pending','monster_wave.completed')),
+        names=('stages_daily','monster_wave','stages_daily','monster_wave'))
+    report=build_session_report(raw)
+    assert report.status is ReportStatus.COMPLETE and report.counts.complete==1
+    assert report.data_gaps==()
+
+
+def test_resolved_mw_phase_does_not_mask_real_failure():
+    raw=session(character(1,flow('monster_wave.resource_board_pending',
+        status=FlowStatus.FAILED),completed=False),status=SessionStatus.FAILED,
+        names=('monster_wave',))
+    assert build_session_report(raw).status is ReportStatus.TECHNICAL_FAILURE
+
+
+def test_confirmed_relief_resolution_clears_only_its_exact_manual_boundary():
+    pending=FlowEvent('monster_wave.manual_resolution',fields={'blocker':'popup.equipment_inventory_full','relief_boundary_id':'resolved-1'})
+    resolved=FlowEvent('monster_wave.relief_resolved',fields={
+        'blocker':'popup.equipment_inventory_full','relief_boundary_id':'resolved-1','resolved_event_created_at':pending.created_at.isoformat()})
+    raw=FlowResult(FlowStatus.COMPLETED,(pending,FlowEvent('monster_wave.completed'),resolved))
+    report=build_session_report(session(character(1,raw),names=('monster_wave',)))
+    assert report.status is ReportStatus.COMPLETE
+    assert pending in raw.events  # the real intermediate result is retained
+    unresolved=FlowEvent('monster_wave.manual_resolution',fields={'blocker':'popup.socket_inventory_full'})
+    raw=replace(raw,events=(*raw.events,unresolved))
+    assert build_session_report(session(character(1,raw),names=('monster_wave',))).status is ReportStatus.BUSINESS_INCOMPLETE
+    raw=replace(raw,status=FlowStatus.FAILED,error='real failure')
+    assert build_session_report(session(character(1,raw,completed=False),status=SessionStatus.FAILED,
+        names=('monster_wave',))).status is ReportStatus.TECHNICAL_FAILURE
+
+
+def test_manual_resolution_headline_preserves_stopped_execution():
+    raw = session(character(1, flow('stages_daily.ad_aborted_recovered',
+                                   status=FlowStatus.MANUAL_RESOLUTION), completed=False),
+                  status=SessionStatus.MANUAL_RESOLUTION, names=('stages_daily',), expected=3)
+    report = build_session_report(raw)
+    assert report.execution_status is SessionStatus.MANUAL_RESOLUTION
+    assert report.status is ReportStatus.BUSINESS_INCOMPLETE
+    text = render_session_report(report)
+    assert text.startswith('Session stopped for manual resolution — 0/3')
+    assert 'Ad returned without verified reward' in text
+    assert 'Session completed' not in text

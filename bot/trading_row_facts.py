@@ -566,7 +566,9 @@ def _localize_pair(frame, row_top: float) -> tuple[float, float, float, float] |
         return None
     box = _union(chain)
     return (
-        max(0.48, box[0] - 0.004),
+        # Leading 4 has a disconnected left stroke in live 40/40.
+        # Include it before the existing independent margin-perturbation read.
+        max(0.48, box[0] - 0.008),
         max(row_top, box[1] - 0.004),
         min(0.62, box[2] + 0.004),
         min(row_top + 0.1418, box[3] + 0.004),

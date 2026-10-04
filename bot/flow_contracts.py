@@ -62,6 +62,9 @@ class FlowResult:
     error: str | None = None
     failure: FailureCause | None = field(default=None, kw_only=True)
     skip_reason: str | None = field(default=None, kw_only=True)
+    # Optional final verified evidence. Navigation reclassifies before new inputs;
+    # a flow result is never a permission to reuse a stale action source.
+    final_snapshot: object | None = field(default=None, kw_only=True, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:

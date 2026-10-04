@@ -1,0 +1,418 @@
+{
+  "pre_server_broadcast": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "source": "live_04_normal_2620.png",
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "pre_server_broadcast_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.95
+        ],
+        "file": "pre_server_broadcast_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "pre_server_broadcast_2.png"
+      },
+      {
+        "roi": [
+          0.338,
+          0.25,
+          0.386,
+          0.309
+        ],
+        "file": "pre_server_broadcast_3.png"
+      }
+    ]
+  },
+  "post_clear": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "source": "live_08_normal_2726.png",
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "post_clear_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.95
+        ],
+        "file": "post_clear_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "post_clear_2.png"
+      },
+      {
+        "roi": [
+          0.338,
+          0.25,
+          0.386,
+          0.309
+        ],
+        "file": "post_clear_3.png"
+      }
+    ]
+  },
+  "pre_clear": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "source": "live_01_normal_2543.png",
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "pre_clear_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.95
+        ],
+        "file": "pre_clear_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "pre_clear_2.png"
+      },
+      {
+        "roi": [
+          0.338,
+          0.25,
+          0.386,
+          0.309
+        ],
+        "file": "pre_clear_3.png"
+      }
+    ]
+  },
+  "other_episode_elite": {
+    "shape": [
+      1220,
+      2712,
+      3
+    ],
+    "source": "elite.png",
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "other_episode_elite_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.95
+        ],
+        "file": "other_episode_elite_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "other_episode_elite_2.png"
+      },
+      {
+        "roi": [
+          0.338,
+          0.25,
+          0.386,
+          0.309
+        ],
+        "file": "other_episode_elite_3.png"
+      }
+    ]
+  },
+  "world_map_dropdown": {
+    "shape": [
+      1220,
+      2712,
+      3
+    ],
+    "source": "world_map.png",
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "world_map_dropdown_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.95
+        ],
+        "file": "world_map_dropdown_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "world_map_dropdown_2.png"
+      },
+      {
+        "roi": [
+          0.338,
+          0.25,
+          0.386,
+          0.309
+        ],
+        "file": "world_map_dropdown_3.png"
+      }
+    ]
+  },
+  "native_clear": {
+    "shape": [
+      1220,
+      2712,
+      3
+    ],
+    "source": "normal_return.png",
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "native_clear_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.95
+        ],
+        "file": "native_clear_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "native_clear_2.png"
+      },
+      {
+        "roi": [
+          0.338,
+          0.25,
+          0.386,
+          0.309
+        ],
+        "file": "native_clear_3.png"
+      }
+    ]
+  },
+  "latest_pre_claim": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "source": "live_01_normal_259.png",
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "latest_pre_claim_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.95
+        ],
+        "file": "latest_pre_claim_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "latest_pre_claim_2.png"
+      },
+      {
+        "roi": [
+          0.338,
+          0.25,
+          0.386,
+          0.309
+        ],
+        "file": "latest_pre_claim_3.png"
+      }
+    ]
+  },
+  "channel_chat": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "channel_chat_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.89
+        ],
+        "file": "channel_chat_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "channel_chat_2.png"
+      },
+      {
+        "roi": [
+          0.391,
+          0.918,
+          0.404,
+          0.95
+        ],
+        "file": "channel_chat_3.png"
+      }
+    ],
+    "source": "live_17_normal_3251.png",
+    "note": "Existing full native/stream frame visually reviewed: Channel Global Chat banner above lower title stripe."
+  },
+  "channel_chat_second": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.435,
+          0.165,
+          0.567,
+          0.189
+        ],
+        "file": "channel_chat_second_0.png"
+      },
+      {
+        "roi": [
+          0.22,
+          0.83,
+          0.425,
+          0.89
+        ],
+        "file": "channel_chat_second_1.png"
+      },
+      {
+        "roi": [
+          0.635,
+          0.63,
+          0.68,
+          0.702
+        ],
+        "file": "channel_chat_second_2.png"
+      },
+      {
+        "roi": [
+          0.391,
+          0.918,
+          0.404,
+          0.95
+        ],
+        "file": "channel_chat_second_3.png"
+      }
+    ],
+    "source": "live_13_normal_2036.png",
+    "note": "Existing full native/stream frame visually reviewed: Channel Global Chat banner above lower title stripe."
+  }
+}

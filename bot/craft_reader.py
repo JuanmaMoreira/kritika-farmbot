@@ -33,7 +33,8 @@ CRAFT_TITLE_ROI: RelativeRegion = (0.400, 0.070, 0.600, 0.160)
 CRAFT_RATE_ROI: RelativeRegion = (0.180, 0.120, 0.300, 0.200)
 CRAFT_EXPERT_MARKER_ROI: RelativeRegion = (0.440, 0.275, 0.560, 0.340)
 CRAFT_HERO_COUNT_ROIS: dict[CraftFamily, RelativeRegion] = {
-    CraftFamily.WEAPON: (0.740, 0.170, 0.840, 0.240),
+    # Exclude the Hero icon: its animated edge was read as a leading 1 live.
+    CraftFamily.WEAPON: (0.755, 0.170, 0.840, 0.240),
     CraftFamily.ARMOR: (0.740, 0.460, 0.840, 0.530),
     CraftFamily.ACCESSORY: (0.740, 0.730, 0.840, 0.810),
 }
@@ -61,13 +62,14 @@ _SELECTED_RECIPE_ROIS: dict[
 }
 CRAFT_COST_LABEL_ROI: RelativeRegion = (0.325, 0.635, 0.460, 0.677)
 CRAFT_COST_ROI: RelativeRegion = (0.480, 0.570, 0.550, 0.680)
-CRAFT_QUANTITY_ROI: RelativeRegion = (0.430, 0.680, 0.500, 0.790)
+# Text-only selector crop: broad decoration reduced live 3/10 confidence.
+CRAFT_QUANTITY_ROI: RelativeRegion = (0.438, 0.735, 0.495, 0.783)
 
 KARAT_MISSING_ROI: RelativeRegion = (0.420, 0.370, 0.580, 0.440)
 KARAT_LINE_ROI: RelativeRegion = (0.350, 0.420, 0.650, 0.500)
 KARAT_SPEND_ROI: RelativeRegion = (0.370, 0.550, 0.500, 0.660)
 KARAT_NO_ROI: RelativeRegion = (0.510, 0.550, 0.640, 0.660)
-CRAFT_RESULT_NAME_ROI: RelativeRegion = (0.360, 0.580, 0.640, 0.670)
+CRAFT_RESULT_NAME_ROI: RelativeRegion = (0.360, 0.615, 0.640, 0.665)
 CRAFT_RESULT_LEFT_DARK_ROI: RelativeRegion = (0.080, 0.200, 0.300, 0.800)
 CRAFT_RESULT_RIGHT_DARK_ROI: RelativeRegion = (0.700, 0.200, 0.920, 0.800)
 CRAFT_RESULT_CENTER_ROI: RelativeRegion = (0.380, 0.150, 0.620, 0.750)

@@ -335,14 +335,14 @@ def test_cancel_before_first_flow_is_not_failure():
 
 def test_cancel_between_flow_and_advance_preserves_flow_result():
     trace = []
-    checks = iter((False, False, True))
+    # Trigger by completed gameplay, independently of guard probe count.
     flow = Flow("black_market", [FlowResult(FlowStatus.COMPLETED)], trace)
     rotation = Rotation(1, trace)
     runner, _ = _runner(
         1,
         [flow],
         rotation,
-        cancel_requested=lambda: next(checks),
+        cancel_requested=lambda: "black_market.run" in trace,
     )
 
     result = runner.run()

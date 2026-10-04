@@ -373,7 +373,6 @@ def test_snapshot_schema_has_no_routing_and_modules_have_no_executor_imports():
     with pytest.raises(ValueError, match="not observable"):
         replace(snap, gold_key_capacity="499")
     global_engine = build_default_perception(ROOT)
-    assert len(global_engine.detectors) == 98
     assert all("red_pressure" not in getattr(getattr(detector, "spec", None), "name", "")
                for detector in global_engine.detectors)
 

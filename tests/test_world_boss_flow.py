@@ -276,14 +276,13 @@ def standalone_waits(waits):
 
 
 def standalone_transitions(frames, outcomes):
-    """Append Back -> hub -> Quick Menu -> Lobby to each scripted participation."""
+    """Append Back -> hub -> Back -> Lobby to each scripted participation."""
     result, statuses = [], []
     success = VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT
     def close():
         result.extend([snapshot(1001, base=SCREEN_BATTLE_MODE_SELECT),
-                       snapshot(1003, overlays=(MENU_QUICK,)),
                        snapshot(1004, base=SCREEN_LOBBY)])
-        statuses.extend([success] * 3)
+        statuses.extend([success] * 2)
     for i, item in enumerate(frames):
         if (
             item.state.base_context == SCREEN_BATTLE_MODE_SELECT
@@ -469,7 +468,7 @@ def test_complete_flow_handles_optional_previous_rewards_and_finishes_world_boss
                 overlays=(POPUP_WORLD_BOSS_PREVIOUS_REWARDS,),
             )
         )
-    assert driver.calls[-4][0] == "world_boss.continue_after_raid"
+    assert driver.calls[-3][0] == "world_boss.continue_after_raid"
     assert [call[0] for call in driver.calls].count(
         "world_boss.continue_after_raid"
     ) == 1
@@ -571,7 +570,7 @@ def test_raid_complete_during_auto_battle_skips_timer_and_continues():
     assert result.wait_checks == 0
     assert all(item[0] != "timer" for item in facts.trace)
     assert observer.observes == []
-    assert driver.calls[-4][0] == "world_boss.continue_after_raid"
+    assert driver.calls[-3][0] == "world_boss.continue_after_raid"
 
 
 def test_auto_battle_timeout_without_raid_evidence_continues_through_timer():
@@ -629,7 +628,7 @@ def test_auto_battle_timeout_without_raid_evidence_continues_through_timer():
         name == "world_boss.auto_battle_timeout_raid_probe"
         for name, _ in events.records
     )
-    assert driver.calls[-4][0] == "world_boss.continue_after_raid"
+    assert driver.calls[-3][0] == "world_boss.continue_after_raid"
 
 
 def test_previous_rewards_may_arrive_after_transient_world_boss_main():
@@ -743,7 +742,7 @@ def test_inventory_full_uses_one_positive_relief_then_no_and_completes_nonfatall
     assert names.count("world_boss.accept_inventory_full") == 1
     assert names.count("world_boss.reject_inventory_full") == 1
     assert isinstance(driver.calls[4][1], AcceptSocketInventoryFull)
-    assert isinstance(driver.calls[-4][1], RejectSocketInventoryFull)
+    assert isinstance(driver.calls[-3][1], RejectSocketInventoryFull)
     accept_abort = driver.calls[4][3]["abort_if"]
     assert not accept_abort(snapshot(70, base=SCREEN_WORLD_BOSS))
     assert accept_abort(snapshot(71, base=SCREEN_LOBBY))
@@ -1015,8 +1014,8 @@ def test_bag_full_after_start_closes_x_and_completes_for_character():
     assert result.bag_full
     assert result.event_count(WORLD_BOSS_BAG_FULL) == 1
     assert isinstance(driver.calls[4][1], OpenEquipmentCombine)
-    assert driver.calls[-4][0] == "world_boss.dismiss_bag_full"
-    assert isinstance(driver.calls[-4][1], DismissWorldBossBagFull)
+    assert driver.calls[-3][0] == "world_boss.dismiss_bag_full"
+    assert isinstance(driver.calls[-3][1], DismissWorldBossBagFull)
     assert all(item[0] != "timer" for item in facts.trace)
     assert observer.observes == []
     auto.ensure_on_quick.assert_not_called()
@@ -1456,7 +1455,7 @@ def test_timer_inconclusive_uses_bounded_fallback_and_completes(status):
             "detail": "scripted inconclusive timer",
         },
     ) in events.records
-    assert driver.calls[-4][0] == "world_boss.continue_after_raid"
+    assert driver.calls[-3][0] == "world_boss.continue_after_raid"
 
 
 def test_timer_context_mismatch_still_fails_before_controlled_wait():
@@ -2176,8 +2175,8 @@ def test_meteor_full_after_start_rejects_once_and_completes_for_character():
     names = [call[0] for call in driver.calls]
     assert names.count("world_boss.start") == 1
     assert names.count("world_boss.reject_meteor_full") == 1
-    assert isinstance(driver.calls[-4][1], RejectMeteorInventoryFull)
-    reject = driver.calls[-4]
+    assert isinstance(driver.calls[-3][1], RejectMeteorInventoryFull)
+    reject = driver.calls[-3]
     assert reject[3]["precondition"](meteor)
     assert reject[3]["retryable_from"](meteor)
     assert reject[3]["expected"](returned)

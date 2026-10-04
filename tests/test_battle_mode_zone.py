@@ -1,6 +1,6 @@
 """BattleModeZone.leave lobby-return waits with real VerifiedTransition.
 
-Covers the HIL false abort: after SelectQuickMenuLobby, a transient
+Covers the acquired Back return: after ExitBattleModeSelect, a transient
 RESOLVED screen.battle_mode_select + status.monster_wave_daily_active must be
 tolerated while waiting (no abort, no retry, no second tap) until clean Lobby.
 """
@@ -119,7 +119,6 @@ def run_leave(waits, observes=()):
 def test_transient_source_with_daily_badge_does_not_abort_or_retry():
     result, actions = run_leave([
         [battle(1)],
-        [menu(2)],
         [
             battle(3, (STATUS_MONSTER_WAVE_DAILY_ACTIVE,)),
             battle(4, (STATUS_MONSTER_WAVE_DAILY_ACTIVE,)),
@@ -128,20 +127,19 @@ def test_transient_source_with_daily_badge_does_not_abort_or_retry():
     ])
 
     assert result.status is FlowStatus.COMPLETED
-    assert actions.taps("OpenQuickMenu") == 1
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert actions.taps("OpenQuickMenu") == 0
+    assert actions.taps("ExitBattleModeSelect") == 1
     assert result.transition_outcomes[-1] == (
-        "battle_mode.select_lobby", "success_first_attempt",
+        "battle_mode.back_to_lobby", "success_first_attempt",
     )
-    assert result.transition_attempts[-1] == ("battle_mode.select_lobby", 1, 0)
+    assert result.transition_attempts[-1] == ("battle_mode.back_to_lobby", 1, 0)
 
 
 def test_persistent_source_fails_bounded_without_second_tap():
     result, actions = run_leave(
         [
             [battle(1)],
-            [menu(2)],
-            [
+                [
                 battle(3, (STATUS_MONSTER_WAVE_DAILY_ACTIVE,)),
                 battle(4, (STATUS_MONSTER_WAVE_DAILY_ACTIVE,)),
             ],
@@ -151,93 +149,90 @@ def test_persistent_source_fails_bounded_without_second_tap():
     )
 
     assert result.status is FlowStatus.FAILED
-    assert "retry_guard_rejected" in result.error
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert result.transition_attempts[-1][1] == 1
+    assert actions.taps("ExitBattleModeSelect") == 1
 
 
 def test_foreign_resolved_state_aborts_without_retry():
     result, actions = run_leave([
         [battle(1)],
-        [menu(2)],
         [snapshot(3, base=SCREEN_GUILD)],
     ])
 
     assert result.status is FlowStatus.FAILED
     assert "unexpected_state" in result.error
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert actions.taps("ExitBattleModeSelect") == 1
 
 
 def test_transient_unknown_waits_for_lobby_without_extra_input():
     result, actions = run_leave([
         [battle(1)],
-        [menu(2)],
         [snapshot(3), lobby(4)],
     ])
 
     assert result.status is FlowStatus.COMPLETED
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert actions.taps("ExitBattleModeSelect") == 1
 
 
 def test_persistent_unknown_fails_closed_without_retry():
     result, actions = run_leave(
-        [[battle(1)], [menu(2)], [snapshot(3)], []],
+        [[battle(1)], [snapshot(3)], []],
         observes=[snapshot(4)],
     )
 
     assert result.status is FlowStatus.FAILED
-    assert "retry_guard_rejected" in result.error
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert result.transition_attempts[-1][1] == 1
+    assert actions.taps("ExitBattleModeSelect") == 1
 
 
 def test_ambiguous_origin_frame_aborts_without_retry():
     result, actions = run_leave([
         [battle(1)],
-        [menu(2)],
         [snapshot(3, status=ResolutionStatus.AMBIGUOUS)],
     ])
 
     assert result.status is FlowStatus.FAILED
     assert "unexpected_state" in result.error
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert actions.taps("ExitBattleModeSelect") == 1
 
 
 def test_lobby_with_blocker_is_not_a_false_success():
     result, actions = run_leave([
         [battle(1)],
-        [menu(2)],
         [lobby(3, (POPUP_SOCKET_INVENTORY_FULL,))],
     ])
 
     assert result.status is FlowStatus.FAILED
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert actions.taps("ExitBattleModeSelect") == 1
 
 
-def test_source_then_menu_persistence_authorizes_exactly_one_retry():
-    result, actions = run_leave(
-        [
-            [battle(1)],
-            [menu(2)],
-            [battle(3, (STATUS_MONSTER_WAVE_DAILY_ACTIVE,)), menu(4)],
-            [],
-            [lobby(6)],
-        ],
-        observes=[menu(5)],
-    )
-
-    assert result.status is FlowStatus.COMPLETED
-    assert actions.taps("OpenQuickMenu") == 1
-    assert actions.taps("SelectQuickMenuLobby") == 2
-    assert result.transition_outcomes[-1] == (
-        "battle_mode.select_lobby", "success_after_retry",
-    )
+def test_persistent_hub_does_not_blindly_issue_a_second_back():
+    result, actions = run_leave([[battle(1)], [battle(3)], []])
+    assert result.status is FlowStatus.FAILED
+    assert actions.taps("ExitBattleModeSelect") == 1
 
 
 def test_world_boss_badge_source_is_also_tolerated():
     result, actions = run_leave([
         [battle(1)],
-        [menu(2)],
         [battle(3, (STATUS_WORLD_BOSS_DAILY_ACTIVE,)), lobby(4)],
     ])
 
     assert result.status is FlowStatus.COMPLETED
-    assert actions.taps("SelectQuickMenuLobby") == 1
+    assert actions.taps("ExitBattleModeSelect") == 1
+
+
+def test_leave_fresh_clean_lobby_is_terminal_without_any_navigation():
+    result,actions=run_leave([[lobby(17)]])
+    assert result.succeeded and result.transition_outcomes==()
+    assert actions.calls==[]
+
+
+def test_leave_lobby_covered_by_modal_never_authorizes_navigation():
+    result,actions=run_leave([[lobby(17,('popup.unknown',))]])
+    assert not result.succeeded and actions.calls==[]
+
+
+def test_leave_unknown_never_authorizes_preventive_back_or_hub_reentry():
+    result,actions=run_leave([[snapshot(17,base=None,status=ResolutionStatus.UNKNOWN)]])
+    assert not result.succeeded and actions.calls==[]

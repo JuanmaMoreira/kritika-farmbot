@@ -17,7 +17,7 @@ from test_world_boss_flow import fact_result
 WB_GAMEPLAY = ["OpenWorldBossSelector", "SelectAvailableWorldBoss", "StartWorldBossBattle",
                "auto_battle", "ContinueAfterWorldBossRaid", "ExitWorldBoss"]
 WB_STANDALONE = ["sapphires", "OpenBattleModeSelect", *WB_GAMEPLAY,
-                 "OpenQuickMenu", "SelectQuickMenuLobby"]
+                 "ExitBattleModeSelect"]
 from bot.event_log import RuntimeEventStream
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
@@ -77,6 +77,7 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
             observer.base = {"OpenBattleModeSelect": SCREEN_BATTLE_MODE_SELECT,
                              "OpenQuickMenu": MENU_QUICK,
                              "SelectQuickMenuLobby": SCREEN_LOBBY,
+                             "ExitBattleModeSelect": SCREEN_LOBBY,
                              "OpenWorldBossSelector": None,
                              "SelectAvailableWorldBoss": SCREEN_WORLD_BOSS,
                              "StartWorldBossBattle": SCREEN_WORLD_BOSS_BATTLE,
@@ -93,9 +94,9 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
 
     monkeypatch.setattr(runtime, "build_verified_transition", lambda: Transition())
     def read_sapphires(**kwargs):
-        assert observer.base == SCREEN_LOBBY
+        assert observer.base in {SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT}
         trace.append("sapphires")
-        return fact_result("resource.sapphires", sapphires, observer.sequence, SCREEN_LOBBY)
+        return fact_result("resource.sapphires", sapphires, observer.sequence, observer.base)
 
     def auto_battle(**kwargs):
         trace.append("auto_battle")
@@ -113,9 +114,12 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
         )
 
     monkeypatch.setattr(runtime, "build_flow", build_flow)
-    monkeypatch.setattr(runtime, "build_rotation", lambda count: Rotation(count, trace))
-    monkeypatch.setattr(runtime, "build_preconditions", lambda: MinimalPreconditionEnsurer(
-        lambda: observer.base if observer.base != MENU_QUICK else None))
+    def build_rotation(count):
+        rotation = Rotation(count, trace)
+        rotation.preferred_entry = WorldBossFlow.contract.precondition
+        return rotation
+    monkeypatch.setattr(runtime, "build_rotation", build_rotation)
+
     builder = Mock(wraps=runtime.build_world_boss_daily_eligibility)
     monkeypatch.setattr(runtime, "build_world_boss_daily_eligibility", builder)
     return runtime, trace, events, builder
@@ -125,9 +129,10 @@ def composed_runtime(monkeypatch, *, active=False, signal_status=ResolutionStatu
 @pytest.mark.parametrize("manual", [True, False])
 def test_productive_session_applies_daily_but_selected_flows_never_do(monkeypatch, active, manual):
     runtime, trace, events, builder = composed_runtime(monkeypatch, active=active)
-    # This fixture exercises WB and ordinary flows; real WB/MW composition has
-    # its own integration scenarios in test_monster_wave_integration.py.
-    definitions = tuple(d for d in DEFAULT_FLOW_REGISTRY.definitions if d.id != 'monster_wave')
+    # This fixture exercises WB and ordinary flows. Stages/MW composition is
+    # covered independently by test_routines and the MW integration scenarios.
+    definitions = tuple(d for d in DEFAULT_FLOW_REGISTRY.definitions
+                        if d.id not in {'monster_wave', 'stages_daily', 'gold_farming'})
     if manual:
         result = runtime.run_flows_once(definitions)
         assert result.status is FlowStatus.COMPLETED
@@ -142,7 +147,7 @@ def test_productive_session_applies_daily_but_selected_flows_never_do(monkeypatc
         assert result.status is SessionStatus.COMPLETED
         expected = ["black_market.run", "sapphires", "OpenBattleModeSelect"]
         expected += WB_GAMEPLAY if active else []
-        expected += ["OpenQuickMenu", "SelectQuickMenuLobby"]
+        expected += ["ExitBattleModeSelect"]
         expected += [f"{d.id}.run" for d in definitions[2:]]
         expected.append("rotation.advance")
         assert trace == expected * 2
@@ -188,8 +193,8 @@ def test_no_daily_policy_for_other_flows(monkeypatch):
     builder.assert_not_called()
 
 
-@pytest.mark.parametrize("failed_action", ["OpenQuickMenu", "SelectQuickMenuLobby"])
-def test_return_failure_never_commits_skip_or_starts_world_boss(monkeypatch, failed_action):
+@pytest.mark.parametrize("failed_action", ["ExitBattleModeSelect"])
+def test_handoff_failure_preserves_finalized_skip_without_gameplay_or_rotation(monkeypatch, failed_action):
     from bot.failure_cause import FailureCause
     failure = FailureCause("transition", "return failed", evidence_ref="file:///return-evidence")
     runtime, trace, events, _ = composed_runtime(monkeypatch)
@@ -208,7 +213,9 @@ def test_return_failure_never_commits_skip_or_starts_world_boss(monkeypatch, fai
     assert result.status is SessionStatus.FAILED
     assert result.failure == failure
     assert not any(name.endswith(".run") or name == "rotation.advance" for name in trace)
-    assert not any(e.event in {"flow.started", "flow.skipped_not_eligible"} for e in events)
+    assert not any(e.event == 'flow.started' for e in events)
+    assert any(e.event == 'flow.skipped_not_eligible' for e in events)
+    assert result.character_results[0].flow_results[0].status is FlowStatus.SKIPPED_NOT_ELIGIBLE
 
 
 @pytest.mark.parametrize("active", [False, True])
@@ -220,7 +227,7 @@ def test_daily_eligibility_precedes_resource_outcome_and_report(monkeypatch, act
     played = active and sapphires >= 5
     expected = ["sapphires", "OpenBattleModeSelect"]
     expected += WB_GAMEPLAY if played else []
-    expected += ["OpenQuickMenu", "SelectQuickMenuLobby", "rotation.advance"]
+    expected += ["ExitBattleModeSelect", "rotation.advance"]
     assert trace == expected
     raw = result.character_results[0].flow_results[0]
     assert raw.status is (FlowStatus.COMPLETED if active else FlowStatus.SKIPPED_NOT_ELIGIBLE)

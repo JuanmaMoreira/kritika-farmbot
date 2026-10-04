@@ -31,6 +31,10 @@ from bot.flow_contracts import FlowStatus
 
 ROOT = Path(__file__).resolve().parent.parent
 FRAMES = {
+    "bronze_240_native": "tests/fixtures/keys_panel_pair/native.png",
+    "bronze_240_stream": "tests/fixtures/keys_panel_pair/stream.png",
+    "weapon_867_native": "tests/fixtures/material_panel_pair/native.png",
+    "weapon_867_stream": "tests/fixtures/material_panel_pair/stream.png",
     "bronze_pre_live": "artifacts/mw_stabilization/bronze_pre_panel.png",
     "weapon": "artifacts/hil_c5/success_panel_03.png",
     "weapon_pre": "artifacts/hil_c5/no_return_01.png",
@@ -83,7 +87,11 @@ def _reader(snapshots=()):
 @pytest.mark.parametrize("name,item_id,have,need,quantity", [
     ("bronze_pre_live", "silver_key", 411, 10, (1, 20)),
     ("weapon", "hero_weapon_crafting_material", 265, 40, (1, 20)),
+    ("weapon_867_native", "hero_weapon_crafting_material", 867, 40, (1, 20)),
+    ("weapon_867_stream", "hero_weapon_crafting_material", 867, 40, (1, 20)),
     ("bronze_max", "silver_key", 229, 10, (20, 20)),
+    ("bronze_240_native", "silver_key", 240, 10, (20, 20)),
+    ("bronze_240_stream", "silver_key", 240, 10, (20, 20)),
     ("silver_max", "gold_key", 188, 10, (18, 20)),
 ])
 def test_real_item_trade_panel_fields(replay, name, item_id, have, need, quantity):

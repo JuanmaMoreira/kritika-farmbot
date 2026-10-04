@@ -9,7 +9,7 @@ class StageControl(str,Enum):
     PENANCE='penance'; START='start'; AUTO='auto'; MAX300='max300'; VIDEO='video'
     RESULTS_OK='results_ok'; CLOSE_CONFIG='close_config'; CLOSE_START='close_start'
     CLOSE_AUTO='close_auto'; DECLINE_AD_TICKET='decline_ad_ticket'; NO_ADS_OK='no_ads_ok'
-    CURRENCY='currency'; STAMINA_ROW='stamina_row'
+    CURRENCY='currency'; STAMINA_ROW='stamina_row'; STAMINA_INCREMENT='stamina_increment'
     LOBBY_INVENTORY='lobby_inventory'
 
 POINTS={
@@ -23,6 +23,8 @@ POINTS={
     StageControl.CLOSE_CONFIG:(.804,.166),StageControl.CLOSE_START:(.665,.09),
     StageControl.CLOSE_AUTO:(.828,.045),StageControl.CURRENCY:(.585,.24),
     StageControl.STAMINA_ROW:(.707,.424),
+    # Single > acquired in the fixed Item Trade panel (separate from >>).
+    StageControl.STAMINA_INCREMENT:(.672,.805),
     StageControl.DECLINE_AD_TICKET:(.568,.625),
     StageControl.NO_ADS_OK:(.500,.626),
     StageControl.LOBBY_INVENTORY:(.074,.35),

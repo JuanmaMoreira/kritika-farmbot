@@ -26,8 +26,17 @@ from bot.flow_contracts import (
 )
 from bot.preconditions import EnsureResult, PreconditionEnsurer
 from bot.prepared_activity import PreparedActivity
+from bot.character_resources import character_resource_scope
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.rotation import RotationResult, RotationStrategy
+
+
+def controlled_unavailable(result: FlowResult, allowed: frozenset[str]) -> bool:
+    """Only registry-declared business unavailability can follow routine policy."""
+    return (result.status is FlowStatus.MANUAL_RESOLUTION
+            and result.error is None and result.failure is None
+            and bool(result.events)
+            and all(event.kind in allowed for event in result.events))
 
 
 class SessionStatus(str, Enum):
@@ -65,7 +74,10 @@ class SessionPlan:
     character_count: int
     flows: tuple[PerCharacterFlow, ...]
     rotation_strategy: RotationStrategy
+    rotate: bool = field(default=True, kw_only=True)
     eligibility: tuple[EligibilityCheck | None, ...] = field(default=(), kw_only=True)
+    controlled_unavailable: tuple[frozenset[str], ...] = field(default=(), kw_only=True)
+    step_positions: tuple[int, ...] = field(default=(), kw_only=True)
 
     def __post_init__(self) -> None:
         count = _positive_integer(self.character_count, "character_count")
@@ -90,6 +102,8 @@ class SessionPlan:
             )
         if not isinstance(getattr(rotation, "contract", None), ComponentContract):
             raise ValueError("rotation_strategy must declare a ComponentContract")
+        if type(self.rotate) is not bool:
+            raise ValueError("rotate must be bool")
         object.__setattr__(self, "character_count", count)
         object.__setattr__(self, "flows", flows)
         checks = tuple(self.eligibility) or (None,) * len(flows)
@@ -99,6 +113,14 @@ class SessionPlan:
         ):
             raise ValueError("eligibility must contain one check or None per flow")
         object.__setattr__(self, "eligibility", checks)
+        policies = tuple(self.controlled_unavailable) or (frozenset(),) * len(flows)
+        if len(policies) != len(flows) or any(not isinstance(p, frozenset) for p in policies):
+            raise ValueError("controlled_unavailable must contain one event set per flow")
+        object.__setattr__(self, "controlled_unavailable", policies)
+        positions = tuple(self.step_positions) or tuple(range(len(flows)))
+        if len(positions) != len(flows):
+            raise ValueError("step_positions must contain one position per flow")
+        object.__setattr__(self, "step_positions", positions)
 
     @classmethod
     def standard(
@@ -107,9 +129,13 @@ class SessionPlan:
         flows: tuple[PerCharacterFlow, ...],
         rotation_strategy: RotationStrategy,
         character_count: int = DEFAULT_CHARACTER_COUNT,
+        rotate: bool = True,
         eligibility: tuple[EligibilityCheck | None, ...] = (),
+        controlled_unavailable: tuple[frozenset[str], ...] = (),
+        step_positions: tuple[int, ...] = (),
     ) -> "SessionPlan":
-        return cls(character_count, flows, rotation_strategy, eligibility=eligibility)
+        return cls(character_count, flows, rotation_strategy, rotate=rotate, eligibility=eligibility,
+                   controlled_unavailable=controlled_unavailable, step_positions=step_positions)
 
 
 @dataclass(frozen=True)
@@ -200,8 +226,10 @@ class SessionRunner:
         self.events = events
         self.cancel_requested = cancel_requested
         self.character_context_factory = character_context_factory
+        self._observation_cancelled = False
 
     def run(self) -> SessionResult:
+        self._observation_cancelled = False
         started = perf_counter()
         with event_scope(
             run_id=event_context()["run_id"] or getattr(self.events, "run_id", None) or new_correlation_id(),
@@ -225,7 +253,7 @@ class SessionRunner:
             if self._cancelled():
                 return self._cancel(character_results, advances_completed)
 
-            with event_scope(character_index=index):
+            with event_scope(character_index=index), character_resource_scope():
                 context = CharacterContext()
                 self._record(
                     "session.character.started",
@@ -234,19 +262,63 @@ class SessionRunner:
                     character_name=context.name,
                 )
                 flow_results: list[FlowResult] = []
-                active_zone = None
+                next_requested = None
                 for flow_position, flow in enumerate(self.plan.flows):
-                    with event_scope(flow=flow.name), operation_scope(flow.name):
+                    with event_scope(flow=flow.name, flow_id=flow.name,
+                                     step_index=self.plan.step_positions[flow_position] + 1,
+                                     occurrence=sum(f.name == flow.name for f in self.plan.flows[:flow_position+1])), operation_scope(flow.name):
                         if self._cancelled():
                             character_results.append(
                                 SessionCharacterResult(index, context, tuple(flow_results))
                             )
                             return self._cancel(character_results, advances_completed)
 
+                        next_requested = next_requested or flow.name
+                        # Deferred routing naturally looks through pure no-work proofs,
+                        # in literal step order. Never call Eligibility/entry readiness here.
+                        proof = (getattr(flow, 'routing_no_work', None)
+                                 if self.plan.eligibility[flow_position] is None else None)
+                        if proof is not None:
+                            try:
+                                no_work = proof()
+                                if no_work is not None and (not isinstance(no_work, FlowResult)
+                                        or no_work.status is not FlowStatus.COMPLETED
+                                        or no_work.error is not None or no_work.failure is not None):
+                                    raise ValueError('invalid_routing_no_work_proof')
+                            except RuntimeWaitCancelled:
+                                character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                                return self._cancel(character_results, advances_completed)
+                            except Exception as error:
+                                character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                                return self._fail(character_results, advances_completed, index=index,
+                                                  flow=flow.name, flow_position=flow_position, cause=str(error))
+                            if self._cancelled():
+                                character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                                return self._cancel(character_results, advances_completed)
+                            if no_work is not None:
+                                flow_results.append(no_work)
+                                self._record_flow_events(flow.name, no_work.events, index, context)
+                                self._record('routine.step.result', result=no_work.status.value, decision='no_work_proven')
+                                self._record('flow.completed', component=flow.name, flow=flow.name,
+                                             character_index=index, business_event_count=len(no_work.events),
+                                             current_surface=getattr(self.preconditions, 'last_context', None),
+                                             no_work_proven=True)
+                                continue
+
                         zone = flow.zone if isinstance(flow, PreparedActivity) else None
-                        requirement = (zone.entry_requirement if zone is not None and active_zone is None
+                        # Entry-only readiness runs before opening a visit. From an
+                        # existing hub/MW, Navigation ensures the hub directly.
+                        at_zone_entry = zone is not None and self._current_satisfies_any((zone.entry_requirement,))
+                        requirement = (zone.entry_requirement if at_zone_entry
                                        else flow.contract.precondition)
-                        ensured = self._ensure(requirement)
+                        if self._cancelled():
+                            character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                            return self._cancel(character_results, advances_completed)
+                        ensured = self._ensure(requirement, requested_flow=next_requested, useful_flow=flow.name)
+                        if self._cancelled():
+                            character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                            return self._cancel(character_results, advances_completed)
+                        next_requested = None
                         if flow_position == 0:
                             # Reuse the first precondition's observation. Identity
                             # adds no capture/navigation and never authorizes input.
@@ -261,6 +333,7 @@ class SessionRunner:
                                 index=index,
                                 flow=flow.name,
                                 flow_position=flow_position,
+                                failure=ensured.failure,
                                 cause=(
                                     "flow_precondition_failed: "
                                     f"{ensured.error or 'unknown'}"
@@ -269,16 +342,34 @@ class SessionRunner:
 
                         early_result = None
                         pending_precheck = None
-                        if zone is not None and active_zone is None:
+                        stopped_at_entry = False
+                        if at_zone_entry and flow.entry_readiness is not None:
+                            if self.plan.eligibility[flow_position] is not None:
+                                early_result = FlowResult(FlowStatus.FAILED, error="entry_readiness_conflicts_with_eligibility")
+                            else:
+                                early_result = self._observe_precheck(replace(flow, precheck=flow.entry_readiness))
+                            stopped_at_entry = early_result is not None
+                        if at_zone_entry and early_result is None:
                             pending_precheck = self._observe_precheck(flow)
-                            early_result = (pending_precheck if pending_precheck is not None
-                                            and pending_precheck.status is FlowStatus.CANCELLED
-                                            else self._enter_zone(zone))
+                            if pending_precheck is not None and self.plan.eligibility[flow_position] is None:
+                                # Without Eligibility, its terminal owner result is
+                                # already useful at the verified entry: no zone input.
+                                early_result = pending_precheck
+                                stopped_at_entry = True
+                            else:
+                                early_result = (pending_precheck if pending_precheck is not None
+                                                and pending_precheck.status is FlowStatus.CANCELLED
+                                                else self._enter_zone(zone))
                             if early_result is None:
-                                active_zone = zone
                                 if not self._current_satisfies_any((flow.contract.precondition,)):
                                     early_result = FlowResult(FlowStatus.FAILED,
                                                               error="prepared_hub_entry_unconfirmed")
+                        if zone is not None and not at_zone_entry and early_result is None:
+                            # This is the selected step's fresh entry, not lookahead.
+                            # Resource probes retain pending Eligibility precedence.
+                            pending_precheck = self._observe_precheck(flow)
+                            if pending_precheck is not None and pending_precheck.status is FlowStatus.CANCELLED:
+                                early_result = pending_precheck
                         if self._cancelled():
                             early_result = FlowResult(FlowStatus.CANCELLED)
                         check = self.plan.eligibility[flow_position]
@@ -341,9 +432,14 @@ class SessionRunner:
                             else None
                         )
                         result = early_result if early_result is not None else self._run_flow(flow, seed)
-                        postconditions = flow.contract.successful_postconditions
-                        if result.status in {FlowStatus.COMPLETED, FlowStatus.SKIPPED_NOT_ELIGIBLE}:
-                            if not self._current_satisfies_any(postconditions):
+                        controlled = controlled_unavailable(result, self.plan.controlled_unavailable[flow_position])
+                        postconditions = ((zone.entry_requirement,) if stopped_at_entry
+                                          else flow.contract.successful_postconditions)
+                        if controlled or result.status in {FlowStatus.COMPLETED, FlowStatus.SKIPPED_NOT_ELIGIBLE}:
+                            confirmed = self._current_satisfies_any(postconditions)
+                            if self._cancelled():
+                                result = replace(result, status=FlowStatus.CANCELLED, skip_reason=None)
+                            elif not confirmed:
                                 result = replace(
                                     result, status=FlowStatus.FAILED, skip_reason=None,
                                     error="flow_completed_outside_successful_postconditions",
@@ -352,22 +448,9 @@ class SessionRunner:
                                         kind="postcondition_rejected",
                                     ),
                                 )
-                            elif active_zone is not None:
-                                following = (self.plan.flows[flow_position + 1]
-                                             if flow_position + 1 < len(self.plan.flows) else None)
-                                if not isinstance(following, PreparedActivity) or following.zone is not active_zone:
-                                    closed = self._leave_zone(active_zone)
-                                    if closed.succeeded and not self._current_satisfies_any(
-                                            (active_zone.entry_requirement,)):
-                                        closed = FlowResult(FlowStatus.FAILED,
-                                                            error="prepared_zone_return_unconfirmed")
-                                    if closed.succeeded:
-                                        active_zone = None
-                                    else:
-                                        # A failed final return cannot publish a successful skip.
-                                        result = replace(result, status=closed.status,
-                                                         skip_reason=None, error=closed.error,
-                                                         failure=closed.failure)
+                        self._record("routine.step.result", result=result.status.value,
+                                     decision="continue" if controlled and result.status is FlowStatus.MANUAL_RESOLUTION
+                                     or result.status in {FlowStatus.COMPLETED, FlowStatus.SKIPPED_NOT_ELIGIBLE} else "stop")
                         if result.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
                             flow_results.append(result)
                             self._record(
@@ -389,6 +472,14 @@ class SessionRunner:
                                 index=index, flow=flow.name, flow_position=flow_position,
                                 cause='resource_board_pending',
                             )
+                        if result.status is FlowStatus.MANUAL_RESOLUTION and controlled:
+                            self._record("flow.controlled_unavailable", component=flow.name,
+                                         flow=flow.name, flow_position=flow_position,
+                                         character_index=index, continued=True)
+                            if self._cancelled():
+                                character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                                return self._cancel(character_results, advances_completed)
+                            continue
                         if result.status is FlowStatus.MANUAL_RESOLUTION:
                             self._record('flow.manual_resolution', component=flow.name,
                                          flow=flow.name, character_index=index)
@@ -441,6 +532,7 @@ class SessionRunner:
                             flow=flow.name,
                             character_index=index,
                             business_event_count=len(result.events),
+                            current_surface=getattr(self.preconditions, 'last_context', None),
                         )
                         if self._cancelled():
                             character_results.append(
@@ -448,9 +540,16 @@ class SessionRunner:
                             )
                             return self._cancel(character_results, advances_completed)
 
+                if not self.plan.rotate:
+                    character_results.append(SessionCharacterResult(index, context, tuple(flow_results), completed=True))
+                    continue
                 with event_scope(flow=None), operation_scope("rotation"):
                     rotation_contract = self.plan.rotation_strategy.contract
-                    ensured = self._ensure(rotation_contract.precondition)
+                    requirement = getattr(self.plan.rotation_strategy, 'preferred_entry', rotation_contract.precondition)
+                    ensured = self._ensure(requirement, requested_flow=next_requested or 'rotation', useful_flow='rotation')
+                    if self._cancelled():
+                        character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                        return self._cancel(character_results, advances_completed)
                     if not ensured.succeeded:
                         character_results.append(
                             SessionCharacterResult(index, context, tuple(flow_results))
@@ -459,6 +558,7 @@ class SessionRunner:
                             character_results,
                             advances_completed,
                             index=index,
+                            failure=ensured.failure,
                             cause=(
                                 "rotation_precondition_failed: "
                                 f"{ensured.error or 'unknown'}"
@@ -565,26 +665,17 @@ class SessionRunner:
             return FlowResult(FlowStatus.FAILED, error=str(error) or type(error).__name__,
                               failure=FailureCause.from_error(error, kind="exception"))
 
-    @staticmethod
-    def _enter_zone(zone) -> FlowResult | None:
+    def _enter_zone(self, zone) -> FlowResult | None:
         try:
             entered = zone.enter()
             if not isinstance(entered, FlowResult) or entered.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
                 raise TypeError("invalid zone entry result")
+            self._record('navigation.handoff', current_surface=zone.entry_requirement.name,
+                         destination=zone.hub_requirement.name if entered.succeeded else None,
+                         required_entry=zone.hub_requirement.name, route='enter_zone',
+                         next_requested_flow=event_context()['flow'], next_useful_flow=event_context()['flow'],
+                         reason='entry_requirement')
             return None if entered.succeeded else entered
-        except RuntimeWaitCancelled:
-            return FlowResult(FlowStatus.CANCELLED)
-        except Exception as error:
-            return FlowResult(FlowStatus.FAILED, error=str(error) or type(error).__name__,
-                              failure=FailureCause.from_error(error, kind="exception"))
-
-    @staticmethod
-    def _leave_zone(zone) -> FlowResult:
-        try:
-            result = zone.leave()
-            if not isinstance(result, FlowResult) or result.status is FlowStatus.SKIPPED_NOT_ELIGIBLE:
-                raise TypeError("invalid zone return result")
-            return result
         except RuntimeWaitCancelled:
             return FlowResult(FlowStatus.CANCELLED)
         except Exception as error:
@@ -656,13 +747,19 @@ class SessionRunner:
                 FailureCause.from_error(error, kind="exception"),
             )
 
-    def _ensure(self, requirement: ComponentRequirement) -> EnsureResult:
+    def _ensure(self, requirement: ComponentRequirement, *, requested_flow=None, useful_flow=None) -> EnsureResult:
         try:
             result = self.preconditions.ensure(requirement)
             if isinstance(result, EnsureResult):
+                self._record('navigation.handoff', current_surface=result.context_before,
+                             destination=result.context_after, required_entry=requirement.name,
+                             next_requested_flow=requested_flow, next_useful_flow=useful_flow,
+                             route=result.route or result.outcome.value, reason='entry_requirement')
                 return result
         except (KeyboardInterrupt, SystemExit):
             raise
+        except RuntimeWaitCancelled:
+            self._observation_cancelled = True
         except Exception:
             pass
         from bot.preconditions import EnsureOutcome
@@ -683,10 +780,14 @@ class SessionRunner:
             return self.preconditions.current_satisfies_any(requirements) is True
         except (KeyboardInterrupt, SystemExit):
             raise
+        except RuntimeWaitCancelled:
+            self._observation_cancelled = True
         except Exception:
             return False
 
     def _cancelled(self) -> bool:
+        if self._observation_cancelled:
+            return True
         try:
             return self.cancel_requested() is True
         except Exception:

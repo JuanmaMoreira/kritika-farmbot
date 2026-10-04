@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Callable
@@ -13,11 +13,12 @@ from bot.equipment_sell_policy import EquipmentSellPolicy
 from bot.event_log import EventLevel, RuntimeEvent
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowRegistry
 from bot.productive_runtime import PROJECT_ROOT
+from bot.routines import RoutineSpec
 
 
 @dataclass(frozen=True)
 class GuiFlowOption:
-    id: str
+    id: str | int
     display_name: str
     enabled: bool
 
@@ -28,7 +29,7 @@ class FlowSelectionModel:
     def __init__(self, registry: FlowRegistry = DEFAULT_FLOW_REGISTRY) -> None:
         self.registry = registry
         self._order = [item.id for item in registry.definitions]
-        self._enabled = set(self._order)
+        self._enabled = set(self._order) - {"gold_farming"}  # Composite farming is explicitly selected.
 
     @property
     def options(self) -> tuple[GuiFlowOption, ...]:
@@ -123,6 +124,16 @@ class GuiExecutionRequest:
     dotenv_path: Path = PROJECT_ROOT / ".env"
     log_dir: Path = PROJECT_ROOT / "logs"
     equipment_sell: EquipmentSellPolicy = EquipmentSellPolicy()
+    routine: RoutineSpec | None = field(default=None, kw_only=True)
+
+    @classmethod
+    def for_routine(cls, routine, registry, *, character_count=None, **kwargs):
+        from copy import deepcopy
+        from dataclasses import replace
+        ids = tuple(step.flow_id for step in routine.active_steps(registry))
+        request = (cls.selected_flows(ids, **kwargs) if character_count is None
+                   else cls.session(ids, character_count, **kwargs))
+        return replace(request, routine=deepcopy(routine))
 
     @classmethod
     def flow_once(
@@ -210,6 +221,8 @@ class GuiProgress:
             self.state = "Completed"
         elif name in {'flow.manual_resolution', 'session.manual_resolution'}:
             self.state = 'Manual resolution required'
+        elif name == 'flow.controlled_unavailable':
+            self.state = 'Unavailable (continuing)'
 
 
 def event_visible(event: RuntimeEvent, *, debug: bool) -> bool:

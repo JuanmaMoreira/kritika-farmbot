@@ -89,6 +89,8 @@ def execute_equipment_sell(
     cancel_confirmation: Callable[[], None],
     read_inventory: Callable[[], EquipmentInventoryFact | None],
     cancel_requested: Callable[[], bool] = lambda: False,
+    selected_item: EquipmentItemFact | None = None,
+    selection_current: Callable[[], bool] = lambda: False,
 ) -> EquipmentSellResult:
     """Execute at most one irreversible confirmation and verify Item Count.
 
@@ -117,9 +119,13 @@ def execute_equipment_sell(
         return _result(EquipmentSellOutcome.DENIED, precondition, before, inputs)
 
     try:
-        select_candidate(request.candidate)
-        inputs.append("select_candidate")
-        first = read_detail()
+        if selected_item is None:
+            select_candidate(request.candidate)
+            inputs.append("select_candidate")
+            first = read_detail()
+        else:
+            first=selected_item
+            inputs.append("reuse_selected_panel")
         if not _fresh_confirmed(first, after_sequence=before.sequence):
             return _result(
                 EquipmentSellOutcome.FAILED,
@@ -139,26 +145,31 @@ def execute_equipment_sell(
                 item=first,
             )
 
-        # A second complete consensus immediately before opening Sell prevents
-        # a stale selected item or detail transition from authorizing the popup.
-        second = read_detail()
-        if not _fresh_confirmed(second, after_sequence=first.sequence):
-            return _result(
-                EquipmentSellOutcome.FAILED,
-                "detail_reverification_failed",
-                before,
-                inputs,
-                item=first,
-            )
-        assert isinstance(second, EquipmentItemFact)
-        if _item_key(second) != _item_key(first) or not request.authorization.allows(second):
-            return _result(
-                EquipmentSellOutcome.DENIED,
-                "candidate_detail_mismatch",
-                before,
-                inputs,
-                item=second,
-            )
+        if selected_item is not None:
+            if not selection_current():
+                return _result(EquipmentSellOutcome.DENIED,"selected_panel_invalidated",before,inputs,item=first)
+            second=first
+        else:
+            # A second complete consensus immediately before opening Sell prevents
+            # a stale selected item or detail transition from authorizing the popup.
+            second = read_detail()
+            if not _fresh_confirmed(second, after_sequence=first.sequence):
+                return _result(
+                    EquipmentSellOutcome.FAILED,
+                    "detail_reverification_failed",
+                    before,
+                    inputs,
+                    item=first,
+                )
+            assert isinstance(second, EquipmentItemFact)
+            if _item_key(second) != _item_key(first) or not request.authorization.allows(second):
+                return _result(
+                    EquipmentSellOutcome.DENIED,
+                    "candidate_detail_mismatch",
+                    before,
+                    inputs,
+                    item=second,
+                )
         if cancel_requested():
             return _result(
                 EquipmentSellOutcome.CANCELLED,

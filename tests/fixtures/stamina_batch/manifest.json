@@ -1,0 +1,15 @@
+{
+  "source": "Halo Mage native batch selection red reproduction 2026-10-02",
+  "frame_shape": [
+    1220,
+    2712
+  ],
+  "roi": [
+    0.337,
+    0.495,
+    0.432,
+    0.62
+  ],
+  "selected": 2,
+  "output_stamina": 100
+}

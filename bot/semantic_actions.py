@@ -54,7 +54,7 @@ class ClaimDailyQuestsProgressReward:
 
 @dataclass(frozen=True)
 class CloseDailyQuests:
-    """Request the Daily Quests -> Lobby close action."""
+    """Close Daily Quests and restore its underlying BASE."""
 
 
 @dataclass(frozen=True)
@@ -209,7 +209,7 @@ class DeleteReadCharacterMail:
 
 @dataclass(frozen=True)
 class CloseMailbox:
-    """Request the Mailbox -> Lobby close action."""
+    """Close Mailbox and restore its underlying BASE."""
 
 
 @dataclass(frozen=True)
@@ -270,6 +270,21 @@ class SelectQuickMenuGuild:
     def __post_init__(self) -> None:
         if not isinstance(self.layout, QuickMenuLayout):
             raise ValueError("layout must be QuickMenuLayout")
+
+
+@dataclass(frozen=True)
+class SelectQuickMenuQuests:
+    """Quests tile in the acquired shifted Quick Menu."""
+
+
+@dataclass(frozen=True)
+class SelectQuickMenuMailbox:
+    """Mailbox tile in the acquired shifted Quick Menu."""
+
+
+@dataclass(frozen=True)
+class SelectQuickMenuPets:
+    """Pets tile in the acquired non-Lobby (shifted) Quick Menu."""
 
 
 @dataclass(frozen=True)
@@ -403,6 +418,11 @@ class ToggleAutoBattle:
 @dataclass(frozen=True)
 class OpenBattleModeSelect:
     """Request Lobby -> Survival/Battle Mode Select."""
+
+
+@dataclass(frozen=True)
+class ExitBattleModeSelect:
+    """Back from verified Battle Mode Select to Lobby (USER_GT)."""
 
 
 @dataclass(frozen=True)
@@ -807,6 +827,9 @@ SemanticAction = (
     | OpenQuickMenu
     | SelectQuickMenuLobby
     | SelectQuickMenuGuild
+    | SelectQuickMenuQuests
+    | SelectQuickMenuMailbox
+    | SelectQuickMenuPets
     | SelectQuickMenuTrading
     | SelectQuickMenuTreasure
     | SelectQuickMenuCraft
@@ -827,6 +850,7 @@ SemanticAction = (
     | ConfirmCharacterSelection
     | ToggleAutoBattle
     | OpenBattleModeSelect
+    | ExitBattleModeSelect
     | OpenWorldBossSelector
     | SelectAvailableWorldBoss
     | AcknowledgeWorldBossPreviousRewards
@@ -949,6 +973,7 @@ __all__ = (
     "OpenPetCombineAll",
     "OpenPetMassEvolve",
     "OpenBattleModeSelect",
+    "ExitBattleModeSelect",
     "OpenTreasure",
     "SelectGoldChest",
     "ConfirmSingleGoldOpen",
@@ -981,6 +1006,9 @@ __all__ = (
     "SelectPetSummon",
     "SelectQuickMenuLobby",
     "SelectQuickMenuGuild",
+    "SelectQuickMenuQuests",
+    "SelectQuickMenuMailbox",
+    "SelectQuickMenuPets",
     "SelectQuickMenuTrading",
     "SelectQuickMenuTreasure",
     "SelectQuickMenuCraft",

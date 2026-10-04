@@ -2,8 +2,8 @@
 
 from dataclasses import replace
 
-from bot.battle_mode_zone import BattleModeZone
-from bot.catalog import SCREEN_LOBBY
+from bot.battle_mode_zone import BattleModeZone, is_lobby, is_battle_mode_select
+from bot.catalog import SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT
 from bot.component_contracts import ComponentRequirement
 from bot.failure_cause import FailureCause
 from bot.flow_contracts import FlowContract, FlowEvent, FlowScope, FlowStatus
@@ -37,7 +37,7 @@ class WorldBossFlow:
         # Diagnostic observation, consumed once; never a running resource balance.
         self._sapphires_hint = None
 
-    def precheck(self):
+    def precheck(self, *, context=None):
         """Read Lobby resources; the caller decides when a terminal result applies.
 
         Standalone consumes it immediately. Daily holds it until after Eligibility;
@@ -48,12 +48,14 @@ class WorldBossFlow:
             if self.activity.cancel_requested():
                 return WorldBossFlowResult(FlowStatus.CANCELLED)
             read = self.activity.facts.read_sapphires(
+                **({'context': context} if context is not None else {}),
                 after_sequence=0, timeout=self.activity.fact_timeout,
                 cancel_requested=self.activity.cancel_requested,
             )
             if read.status is FactReadStatus.CANCELLED:
                 return WorldBossFlowResult(FlowStatus.CANCELLED)
-            if read.status is not FactReadStatus.CONFIRMED:
+            if (read.status is not FactReadStatus.CONFIRMED or read.fact is None
+                    or (context is not None and read.fact.context != context)):
                 return WorldBossFlowResult(FlowStatus.FAILED, error=(
                     f"sapphires_fact_failed: {read.status.value}: {read.detail or 'no detail'}"))
             value = read.fact.value
@@ -73,8 +75,18 @@ class WorldBossFlow:
         sapphires, self._sapphires_hint = self._sapphires_hint, None
         return self.activity.run(sapphires=sapphires)
 
+    def prepared_precheck(self):
+        """Same >=5 readiness at the verified selected entry, including shared hub."""
+        before = self.activity.observer.observe()
+        if is_lobby(before):
+            return self.precheck(context=SCREEN_LOBBY)
+        if is_battle_mode_select(before):
+            return self.precheck(context=SCREEN_BATTLE_MODE_SELECT)
+        self._sapphires_hint = None
+        return WorldBossFlowResult(FlowStatus.FAILED, error='world_boss_readiness_entry_unconfirmed')
+
     def prepared(self, zone):
-        return PreparedActivity(self.name, zone, self.run_activity, self.precheck)
+        return PreparedActivity(self.name, zone, self.run_activity, self.prepared_precheck)
 
     def run(self):
         result = self.precheck()

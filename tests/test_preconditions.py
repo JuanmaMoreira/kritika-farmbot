@@ -145,10 +145,10 @@ def test_guild_navigation_failure_is_not_accepted_without_postcondition():
     assert calls == ["direct"]
 
 
-def test_incapable_context_is_rejected_without_navigation():
+def test_uncredited_context_is_rejected_without_navigation():
     calls = []
     ensurer = MinimalPreconditionEnsurer(
-        lambda: SCREEN_BATTLE_MODE_SELECT,
+        lambda: "screen.world_boss_battle",
         navigate_to_lobby=lambda: calls.append(True) or True,
     )
 

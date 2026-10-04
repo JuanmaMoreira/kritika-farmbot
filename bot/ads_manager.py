@@ -130,6 +130,14 @@ class AdsManager:
             while True:
                 if self.cancel_requested():
                     return finish(AdsOutcome.CANCELLED, observation)
+                # A game-owned alert can arrive during the result grace window.
+                # Preserve its explicit business identity instead of ad-abort.
+                if observation.exhausted:
+                    phase('daily_exhausted', observation)
+                    return finish(AdsOutcome.EXHAUSTED, observation)
+                if observation.unavailable:
+                    phase('unavailable', observation)
+                    return finish(AdsOutcome.UNAVAILABLE, observation)
                 if active and observation.returned:
                     return finish(AdsOutcome.RETURNED, observation)
                 if self.clock() >= until:

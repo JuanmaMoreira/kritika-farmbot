@@ -170,9 +170,9 @@ class _Harness:
         self.board = _board()
         self.clean = _anchor(12)
 
-    def prepare(self):
+    def prepare(self, **kwargs):
         self.calls.append(("prepare",))
-        return MonsterWaveResult(FlowStatus.COMPLETED, sapphires_initial=100)
+        return MonsterWaveResult(FlowStatus.COMPLETED, sapphires_initial=200)
 
     def run_pass(self, *, yield_resource_board=False, resume_after_relief=False):
         self.calls.append(("pass", yield_resource_board, resume_after_relief))
@@ -237,7 +237,7 @@ class _Harness:
         inner.activity = type("A", (), {
             "prepare": self.prepare, "run_pass": self.run_pass,
             "finish_pass": self.finish_pass, "reenter": self.reenter,
-            "leave": self.leave, "_merge": staticmethod(MonsterWaveActivity._merge),
+            "leave": self.leave, "read_sapphires_after_clear": lambda _: SimpleNamespace(value=100, sequence=100), "_merge": staticmethod(MonsterWaveActivity._merge),
         })()
         inner.zone = type("Z", (), {})()
         return ProductiveMonsterWaveFlow(
@@ -281,7 +281,9 @@ def test_ready_plan_executes_preparation_exactly_once_then_resumes():
     assert result.status is FlowStatus.COMPLETED
     kinds = [c[0] for c in harness.calls]
     assert kinds == ["prepare", "pass", "acquire", "plan", "close", "J",
-                     "exit", "reenter", "pass", "leave"]
+                     "pass", "leave"]
+    assert ("pass",False,True) in harness.calls
+    assert "exit" not in kinds and "reenter" not in kinds
 
 
 def test_non_pending_never_acquires_plans_or_resumes():
@@ -396,6 +398,7 @@ def test_l2_reactive_bounds_and_same_request_without_second_preparation(blockers
         "reenter": staticmethod(harness.reenter),
         "leave": staticmethod(harness.leave),
         "_merge": staticmethod(MonsterWaveActivity._merge),
+        "read_sapphires_after_clear": staticmethod(lambda: SimpleNamespace(value=100, sequence=100)),
         "observer": Observer(),
         "cancel_requested": staticmethod(lambda: False),
     })()
@@ -492,6 +495,7 @@ def test_l2_equipment_relief_success_retries_same_pass_without_battle_mode_round
 
     flow = ProductiveMonsterWaveFlow.__new__(ProductiveMonsterWaveFlow)
     flow.activity = type("Activity", (), {
+        "read_sapphires_after_clear": staticmethod(lambda: SimpleNamespace(value=100, sequence=100)),
         "observer": Observer(),
         "cancel_requested": staticmethod(lambda: False),
         "run_pass": staticmethod(run_pass),
@@ -507,6 +511,12 @@ def test_l2_equipment_relief_success_retries_same_pass_without_battle_mode_round
     flow.socket_relief = None
 
     result = flow._relieve_blockers(_blocked(POPUP_EQUIPMENT_INVENTORY_FULL))
+    pending=next(e for e in result.events if e.kind=='monster_wave.manual_resolution')
+    resolved=next(e for e in result.events if e.kind=='monster_wave.relief_resolved')
+    assert resolved.fields['resolved_event_created_at']==pending.created_at.isoformat()
+    assert resolved.fields['relief_boundary_id']==pending.fields['relief_boundary_id']
+    assert result.event_count('monster_wave.completed')==1
+
 
     assert result.status is FlowStatus.COMPLETED
     assert ("enter", POPUP_EQUIPMENT_INVENTORY_FULL) in calls
@@ -561,8 +571,8 @@ def test_j_capacity_blocked_preserves_failing_step_without_replan_or_second_j():
     assert "exit" not in kinds
 
 
-@pytest.mark.parametrize('balance,passes', [(0, 0), (1, 1), (100, 1),
-                                            (101, 2), (250, 3)])
+@pytest.mark.parametrize('balance,passes', [(0,0),(1,0),(99,0),(101,0),(102,1),
+                                            (199,1),(200,1),(201,1),(299,2),(300,2)])
 def test_productive_loop_uses_initial_balance_and_fresh_board_each_pass(balance, passes):
     calls = []
     boards = []
@@ -570,7 +580,7 @@ def test_productive_loop_uses_initial_balance_and_fresh_board_each_pass(balance,
     clear = MonsterWaveResult(FlowStatus.COMPLETED,
                               events=(FlowEvent('monster_wave.completed'),))
 
-    def prepare():
+    def prepare(**kwargs):
         calls.append(('prepare',))
         return MonsterWaveResult(FlowStatus.COMPLETED, sapphires_initial=balance)
 
@@ -612,6 +622,8 @@ def test_productive_loop_uses_initial_balance_and_fresh_board_each_pass(balance,
         reenter=lambda: MonsterWaveResult(FlowStatus.COMPLETED),
         leave=lambda: MonsterWaveResult(FlowStatus.COMPLETED),
         _merge=MonsterWaveActivity._merge,
+        read_sapphires_after_clear=lambda: SimpleNamespace(
+            value=balance - 100 * sum(c[0] == "pass" and c[1] for c in calls), sequence=100),
     )
     inner = MonsterWaveFlow.__new__(MonsterWaveFlow)
     inner.activity, inner.zone = activity, object()
@@ -628,7 +640,7 @@ def test_productive_loop_uses_initial_balance_and_fresh_board_each_pass(balance,
     result = flow._run_activity_l1()
     assert result.succeeded, result.error
     assert result.sapphires_initial == balance
-    assert result.sapphires_consumed == balance
+    assert result.sapphires_consumed == passes * 100
     assert result.event_count('monster_wave.completed') == passes
     assert calls.count(('prepare',)) == 1
     assert len(boards) == len({id(board) for board in boards}) == passes

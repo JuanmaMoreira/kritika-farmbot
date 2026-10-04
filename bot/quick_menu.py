@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable
 
 from bot.catalog import (
     MENU_QUICK,
+    SCREEN_BATTLE_MODE_SELECT,
+    STATUS_WORLD_BOSS_DAILY_ACTIVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE,
+    STATUS_GUILD_ATTENDANCE_ACTIVE, STATUS_GUILD_ATTENDANCE_COMPLETED,
+    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE, STATUS_PET_SUMMON_DAILY_ACTIVE,
+    STATUS_PET_EPIC_AVAILABLE, STATUS_PET_EPIC_UNAVAILABLE,
+    STATUS_PET_PREMIUM_GOLD, STATUS_PET_PREMIUM_TICKET_AVAILABLE,
     SCREEN_GUILD,
     SCREEN_LOBBY,
     SCREEN_PET_SUMMON,
@@ -15,14 +21,16 @@ from bot.catalog import (
 )
 from bot.component_contracts import QUICK_MENU_ACCESSIBLE
 from bot.observations import validate_semantic_name
-from bot.runtime_observer import RuntimeSnapshot
+from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
 from bot.state import ResolutionStatus
-from bot.verified_transition import VerifiedTransitionResult
+from bot.verified_transition import VerifiedTransitionResult, VerifiedTransitionOutcome
 from bot.semantic_actions import (
-    OpenCharacterSelect,
+    OpenCharacterSelect, OpenQuickMenu,
+    SelectQuickMenuQuests, SelectQuickMenuMailbox,
     QuickMenuLayout,
     SelectQuickMenuCraft,
     SelectQuickMenuGuild,
+    SelectQuickMenuPets,
     SelectQuickMenuTrading,
     SelectQuickMenuTreasure,
 )
@@ -46,11 +54,12 @@ class QuickMenuPolicy:
         return semantic_context in self.accessible_from
 
 
-# These contexts opened the same Quick Menu overlay live using the shared header
-# target. Every non-Lobby origin uses the acquired shifted layout.
+# Acquired evidence and USER_GT credit these contexts (Battle Mode Select:
+# USER_GT 2026-10-04). Every non-Lobby origin uses the acquired shifted layout.
 DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(
     frozenset(
         {
+            SCREEN_BATTLE_MODE_SELECT,
             SCREEN_GUILD,
             SCREEN_LOBBY,
             SCREEN_PET_SUMMON,
@@ -61,6 +70,109 @@ DEFAULT_QUICK_MENU_POLICY = QuickMenuPolicy(
         }
     )
 )
+
+
+def is_clean_quick_menu_base(
+    snapshot: RuntimeSnapshot, policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
+) -> bool:
+    """Explicitly credited BASE with no modal or active gameplay above it."""
+    state = snapshot.state
+    if (state.status is not ResolutionStatus.RESOLVED
+            or not policy.allows(state.base_context)):
+        return False
+    overlays = set(state.overlays)
+    if state.base_context == SCREEN_BATTLE_MODE_SELECT:
+        return overlays <= {STATUS_WORLD_BOSS_DAILY_ACTIVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE}
+    if state.base_context == SCREEN_GUILD:
+        attendance = {STATUS_GUILD_ATTENDANCE_ACTIVE, STATUS_GUILD_ATTENDANCE_COMPLETED}
+        return (len(overlays & attendance) == 1
+                and overlays <= attendance | {STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE})
+    if state.base_context == SCREEN_PETS_MANAGE:
+        return overlays <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
+    if state.base_context == SCREEN_PET_SUMMON:
+        epic = {STATUS_PET_EPIC_AVAILABLE, STATUS_PET_EPIC_UNAVAILABLE}
+        return len(overlays & epic) == 1 and overlays <= epic | {
+            STATUS_PET_PREMIUM_GOLD, STATUS_PET_PREMIUM_TICKET_AVAILABLE,
+            STATUS_PET_SUMMON_DAILY_ACTIVE,
+        }
+    return not overlays
+
+
+def open_quick_menu_destination(initial, transition, policy, *, action,
+                                selection, expected, source_guard=None,
+                                destination_guard=None, destination_transition=None,
+                                stable_for=0.25, cancel_requested=lambda: False,
+                                prefix='navigation'):
+    """Execute a known QM route through the shared executor and local lineage.
+
+    The destination owner supplies its panel/content guard. Navigation owns
+    menu inputs; neither an unknown BASE nor a discovered menu authorizes them.
+    """
+    if cancel_requested():
+        raise RuntimeWaitCancelled('quick_menu_handoff_cancelled')
+    origin = initial.state.base_context
+    source_guard = source_guard or (
+        lambda s: s.state.base_context == origin and is_clean_quick_menu_base(s)
+    )
+    destination_guard = destination_guard or expected
+    if not is_clean_quick_menu_base(initial) or not source_guard(initial):
+        raise ValueError('quick_menu_source_unverified')
+
+    def incompatible_open(s):
+        if source_guard(s) or quick_menu_matches_origin(s, origin):
+            return False
+        return (s.state.status in {ResolutionStatus.RESOLVED, ResolutionStatus.AMBIGUOUS}
+                or bool(s.state.overlays))
+    opened = transition.execute(
+        f'{prefix}.open_quick_menu', OpenQuickMenu(), initial,
+        expected=lambda s: quick_menu_matches_origin(s, origin),
+        precondition=lambda s: not cancel_requested() and source_guard(s),
+        retryable_from=lambda s: not cancel_requested() and source_guard(s),
+        abort_if=incompatible_open, policy=policy,
+    )
+    if cancel_requested():
+        raise RuntimeWaitCancelled('quick_menu_handoff_cancelled')
+    if not opened.succeeded:
+        return opened
+    handoff = QuickMenuHandoff.from_open_result(opened, source_guard)
+    if handoff is None:
+        return replace(opened, outcome=VerifiedTransitionOutcome.PRECONDITION_REJECTED,
+                       error='quick_menu_origin_handoff_invalid')
+
+    def incompatible_destination(s):
+        if destination_guard(s):
+            handoff.invalidate()
+            return False
+        if source_guard(s):
+            handoff.invalidate()
+            return False  # passive wait is safe; lineage can no longer send inputs
+        return handoff.observe(s, destination_guard)
+    event_sink = getattr(transition, 'events', None)
+    if event_sink is not None:
+        try:
+            event_sink.record('navigation.handoff', current_surface=origin,
+                underlying_base=origin, route='quick_menu', destination=selection,
+                reason='rotation' if selection == 'character_select' else 'entry_requirement')
+        except Exception:
+            pass
+    return (destination_transition or transition).execute(
+        f'{prefix}.select_{selection}', action, opened.final_snapshot,
+        expected=expected,
+        precondition=lambda s: not cancel_requested() and handoff.allows(s),
+        retryable_from=lambda s: not cancel_requested() and handoff.allows(s),
+        on_recovery=handoff.invalidate, abort_if=incompatible_destination,
+        stable_for=stable_for, policy=policy,
+    )
+
+
+def select_quick_menu_panel_action(origin, destination):
+    if _layout_for(origin, DEFAULT_QUICK_MENU_POLICY) is not QuickMenuLayout.SHIFTED:
+        raise ValueError('Lobby uses its existing direct panel shortcuts')
+    if destination == 'daily_quests':
+        return SelectQuickMenuQuests()
+    if destination == 'mailbox':
+        return SelectQuickMenuMailbox()
+    raise ValueError('unsupported Quick Menu panel')
 
 
 @dataclass
@@ -187,6 +299,12 @@ def select_quick_menu_guild_action(
     return SelectQuickMenuGuild(_layout_for(origin_context, policy))
 
 
+def select_quick_menu_pets_action(origin_context: str) -> SelectQuickMenuPets:
+    if _layout_for(origin_context, DEFAULT_QUICK_MENU_POLICY) is not QuickMenuLayout.SHIFTED:
+        raise ValueError('pets_quick_menu_requires_shifted_origin')
+    return SelectQuickMenuPets()
+
+
 def select_quick_menu_trading_action(
     origin_context: str | None,
     *,
@@ -249,6 +367,9 @@ def _layout_for(
 __all__ = (
     "DEFAULT_QUICK_MENU_POLICY",
     "QUICK_MENU_ACCESSIBLE",
+    "is_clean_quick_menu_base",
+    "open_quick_menu_destination",
+    "select_quick_menu_panel_action",
     "QuickMenuPolicy",
     "QuickMenuHandoff",
     "quick_menu_matches_origin",
@@ -256,6 +377,7 @@ __all__ = (
     "quick_menu_accessible",
     "select_quick_menu_craft_action",
     "select_quick_menu_guild_action",
+    "select_quick_menu_pets_action",
     "select_quick_menu_trading_action",
     "select_quick_menu_treasure_action",
 )

@@ -92,6 +92,7 @@ class TapThroughAnimation:
         cancel_requested: Callable[[], bool] = lambda: False,
         policy: TapThroughPolicy | None = None,
         action_for: Callable[[RuntimeSnapshot], object] | None = None,
+        stable_for: float = 0.0,
     ) -> TapThroughResult:
         if not isinstance(initial, RuntimeSnapshot):
             raise ValueError("initial must be a RuntimeSnapshot")
@@ -109,6 +110,10 @@ class TapThroughAnimation:
         if not isinstance(policy, TapThroughPolicy):
             raise ValueError("policy must be a TapThroughPolicy")
 
+        if (isinstance(stable_for, bool) or not isinstance(stable_for, Real)
+                or not math.isfinite(stable_for) or stable_for < 0):
+            raise ValueError("stable_for must be a non-negative finite number")
+        stable_since = None
         started = self.clock()
         deadline = started + policy.timeout
         current = initial
@@ -120,11 +125,17 @@ class TapThroughAnimation:
                 return self._finish(
                     TapThroughOutcome.CANCELLED, tap_count, current
                 )
-            if expected(current):
-                return self._finish(
-                    TapThroughOutcome.COMPLETED, tap_count, current
-                )
-            if tappable(current):
+            completed = expected(current)
+            if completed:
+                if stable_since is None:
+                    stable_since = current.timestamp
+                if current.timestamp - stable_since >= stable_for:
+                    return self._finish(
+                        TapThroughOutcome.COMPLETED, tap_count, current
+                    )
+            else:
+                stable_since = None
+            if not completed and tappable(current):
                 if tap_count >= policy.max_taps:
                     return self._finish(
                         TapThroughOutcome.MAX_TAPS,
@@ -155,7 +166,7 @@ class TapThroughAnimation:
                         TapThroughOutcome.TIMEOUT, tap_count, current
                     )
                 self.sleeper(min(policy.tap_interval, remaining))
-            elif not transient(current):
+            elif not completed and not transient(current):
                 return self._finish(
                     TapThroughOutcome.INCOMPATIBLE_STATE,
                     tap_count,

@@ -69,7 +69,7 @@ class Device:
         if kind=='OpenBattleModeSelect' or isinstance(action,ExitMonsterWave):
             self.base=SCREEN_BATTLE_MODE_SELECT;self.overlays=();self.names=()
         elif kind=='OpenQuickMenu':self.base=None;self.overlays=(MENU_QUICK,)
-        elif kind=='SelectQuickMenuLobby':self.base=SCREEN_LOBBY;self.overlays=();self.names=()
+        elif kind in {'SelectQuickMenuLobby','ExitBattleModeSelect'}:self.base=SCREEN_LOBBY;self.overlays=();self.names=()
         elif isinstance(action,OpenMonsterWave):
             self.base=SCREEN_MONSTER_WAVE
             if isinstance(self.entry,str):self.overlays=(self.entry,)
@@ -299,7 +299,7 @@ def test_opt_in_resource_board_yields_the_same_open_popup_without_answer_or_exit
 
 def test_opt_in_resource_board_stops_standalone_flow_before_zone_leave():
     d=Device(base=SCREEN_LOBBY,boundary=POPUP_MW_BOARD)
-    r=MonsterWaveFlow(d,d,d.events,facts=d.facts()).run(yield_resource_board=True)
+    r=MonsterWaveFlow(d,d,d.events,facts=d.facts(),clock=lambda:float(d.sequence)).run(yield_resource_board=True)
     assert r.status is FlowStatus.RESOURCE_BOARD_PENDING
     assert d.base == SCREEN_MONSTER_WAVE and d.overlays == (POPUP_MW_BOARD,)
     assert d.intents[-1] == 'StartMonsterWaveSkip'
@@ -350,12 +350,12 @@ def test_cancellation_has_no_cleanup_or_following_action(cancel_after):
     else:assert d.intents==[]
 
 
-def test_standalone_returns_lobby_and_ignores_daily():
+def test_standalone_retains_verified_mw_and_ignores_daily():
     d=Device(base=SCREEN_LOBBY,daily=False)
-    flow=MonsterWaveFlow(d,d,d.events,facts=d.facts())
-    r=flow.run();assert r.succeeded and d.base==SCREEN_LOBBY
+    flow=MonsterWaveFlow(d,d,d.events,facts=d.facts(),clock=lambda:float(d.sequence))
+    r=flow.run();assert r.succeeded and d.base==SCREEN_MONSTER_WAVE
     assert d.intents[0]=='OpenBattleModeSelect'
-    assert d.intents[-3:]==['ExitMonsterWave','OpenQuickMenu','SelectQuickMenuLobby']
+    assert 'ExitMonsterWave' not in d.intents and 'ExitBattleModeSelect' not in d.intents
 
 
 @pytest.mark.parametrize('state',[ResolutionStatus.UNKNOWN,ResolutionStatus.AMBIGUOUS])
@@ -513,3 +513,43 @@ def test_leave_never_opens_hub_from_lobby_with_blocker():
     result = d.activity().leave()
     assert result.status is FlowStatus.FAILED
     assert d.intents == ["ExitMonsterWave"]
+
+
+def test_standalone_leave_accepts_clean_lobby_without_any_hub_reopen():
+    class InventoryLineageDevice(Device):
+        def execute(self,action,geometry):
+            if type(action).__name__=='OpenBattleModeSelect':
+                pytest.fail('redundant hub reopen')
+            super().execute(action,geometry)
+            if isinstance(action,ExitMonsterWave):self.base=SCREEN_LOBBY
+    d=InventoryLineageDevice(base=SCREEN_MONSTER_WAVE);d.names=MAX
+    r=d.activity().leave(return_to_lobby=True)
+    assert r.succeeded and d.base==SCREEN_LOBBY
+    assert d.intents==['ExitMonsterWave']
+
+
+def test_standalone_full_mw_pass_does_not_emit_exit_even_with_lobby_back_lineage():
+    class InventoryLineageDevice(Device):
+        def execute(self,action,geometry):
+            super().execute(action,geometry)
+            if isinstance(action,ExitMonsterWave):self.base=SCREEN_LOBBY
+    d=InventoryLineageDevice(base=SCREEN_LOBBY)
+    f=MonsterWaveFlow(d,d,d.events,facts=d.facts(),sleeper=lambda _:None)
+    f.entry_readiness=lambda:None  # Readiness freshness has dedicated tests.
+    r=f.run()
+    assert r.succeeded and r.event_count('monster_wave.completed')==1
+    assert d.base==SCREEN_MONSTER_WAVE
+    assert d.intents.count('OpenBattleModeSelect')==1
+    assert d.intents[-1]=='AcknowledgeMonsterWaveClear'
+    assert 'OpenQuickMenu' not in d.intents and 'SelectQuickMenuLobby' not in d.intents
+
+
+def test_standalone_lobby_exit_with_blocker_is_not_terminal_success():
+    class BlockedLobbyDevice(Device):
+        def execute(self,action,geometry):
+            super().execute(action,geometry)
+            if isinstance(action,ExitMonsterWave):
+                self.base=SCREEN_LOBBY;self.overlays=(POPUP_EQUIPMENT_INVENTORY_FULL,)
+    d=BlockedLobbyDevice(base=SCREEN_MONSTER_WAVE);d.names=MAX
+    assert d.activity().leave(return_to_lobby=True).status is FlowStatus.FAILED
+    assert d.intents==['ExitMonsterWave']

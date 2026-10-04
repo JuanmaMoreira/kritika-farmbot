@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from bot.battle_mode_zone import is_battle_mode_select
-from bot.catalog import MENU_QUICK, SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, SCREEN_WORLD_BOSS
+from bot.catalog import SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY, SCREEN_WORLD_BOSS
 from bot.eligibility import EligibilityResult, EligibilityStatus
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
@@ -13,7 +13,7 @@ from bot.prepared_activity import PreparedActivity
 from bot.session import SessionPlan, SessionRunner, SessionStatus
 from bot.state import ResolutionStatus
 from bot.runtime_observer import RuntimeWaitCancelled
-from bot.world_boss_flow import WorldBossFlowResult
+from bot.world_boss_flow import WorldBossFlowResult, WorldBossFlow
 from bot.verified_transition import VerifiedTransitionResult, VerifiedTransitionOutcome
 from test_eligibility_integration import composed_runtime, WB_GAMEPLAY, WB_STANDALONE
 from test_session import Flow, Rotation
@@ -31,8 +31,10 @@ def setup(monkeypatch, **kwargs):
 
 
 def run(runtime, flows, trace, checks=(), count=1):
+    rotation = Rotation(count, trace)
+    rotation.preferred_entry = WorldBossFlow.contract.precondition
     return SessionRunner(
-        SessionPlan.standard(flows=tuple(flows), rotation_strategy=Rotation(count, trace),
+        SessionPlan.standard(flows=tuple(flows), rotation_strategy=rotation,
                              character_count=count, eligibility=checks),
         preconditions=runtime.build_preconditions(), events=runtime.events,
     ).run()
@@ -44,9 +46,9 @@ def test_adjacent_activities_share_one_visit_in_exact_selected_order(monkeypatch
     activities = [second, wb.prepared(wb.zone)] if reverse else [wb.prepared(wb.zone), second]
     result = run(runtime, activities, trace, count=2)
     assert result.status is SessionStatus.COMPLETED
-    expected = (["OpenBattleModeSelect", "second.activity", *WB_GAMEPLAY] if reverse else
+    expected = (["OpenBattleModeSelect", "second.activity", "sapphires", *WB_GAMEPLAY] if reverse else
                 ["sapphires", "OpenBattleModeSelect", *WB_GAMEPLAY, "second.activity"])
-    assert trace == (expected + ["OpenQuickMenu", "SelectQuickMenuLobby", "rotation.advance"]) * 2
+    assert trace == (expected + ["ExitBattleModeSelect", "rotation.advance"]) * 2
     assert result.flow_names == tuple(item.name for item in activities)
     assert all(c.flow_results[0].succeeded and c.flow_results[1].succeeded
                for c in result.character_results)
@@ -58,7 +60,7 @@ def test_non_adjacent_selection_closes_and_reopens_without_reorder(monkeypatch):
     result = run(runtime, [wb.prepared(wb.zone), ordinary, second], trace)
     assert result.status is SessionStatus.COMPLETED
     assert trace == [*WB_STANDALONE, "ordinary.run", "OpenBattleModeSelect",
-                     "second.activity", "OpenQuickMenu", "SelectQuickMenuLobby", "rotation.advance"]
+                     "second.activity", "ExitBattleModeSelect", "rotation.advance"]
 
 
 @pytest.mark.parametrize("skip_position", [0, 1])
@@ -69,7 +71,7 @@ def test_skips_keep_zone_until_last_selected_position(monkeypatch, skip_position
         EligibilityStatus.NOT_ELIGIBLE, "selected card absent")))
     result = run(runtime, [wb.prepared(wb.zone), second], trace, tuple(checks))
     assert result.status is SessionStatus.COMPLETED
-    assert trace.count("OpenBattleModeSelect") == trace.count("SelectQuickMenuLobby") == 1
+    assert trace.count("OpenBattleModeSelect") == trace.count("ExitBattleModeSelect") == 1
     assert ("StartWorldBossBattle" in trace) is (skip_position != 0)
     assert ("second.activity" in trace) is (skip_position != 1)
     assert result.character_results[0].flow_results[skip_position].status is FlowStatus.SKIPPED_NOT_ELIGIBLE
@@ -84,7 +86,7 @@ def test_low_sapphires_does_not_block_shared_visit_or_second_activity(monkeypatc
     assert result.status is SessionStatus.COMPLETED
     check.evaluate.assert_called_once_with()
     assert trace == ["sapphires", "OpenBattleModeSelect", "second.activity",
-                     "OpenQuickMenu", "SelectQuickMenuLobby", "rotation.advance"]
+                     "ExitBattleModeSelect", "rotation.advance"]
     first, second_result = result.character_results[0].flow_results
     assert first.event_count("world_boss.insufficient_sapphires") == int(active)
     assert first.status is (FlowStatus.COMPLETED if active else FlowStatus.SKIPPED_NOT_ELIGIBLE)
@@ -115,7 +117,10 @@ def test_zone_rejects_unknown_return_without_any_input(monkeypatch):
 @pytest.mark.parametrize("stage", ["enter", "leave"])
 def test_runner_independently_rejects_false_zone_postconditions(monkeypatch, stage):
     runtime, wb, second, trace, _ = setup(monkeypatch)
-    monkeypatch.setattr(wb.zone, stage, lambda: FlowResult(FlowStatus.COMPLETED))
+    if stage == 'enter':
+        monkeypatch.setattr(wb.zone, stage, lambda: FlowResult(FlowStatus.COMPLETED))
+    else:
+        monkeypatch.setattr(runtime, '_navigate_to_lobby', lambda: True)
     result = run(runtime, [second], trace)
     assert result.status is SessionStatus.FAILED
     assert "rotation.advance" not in trace
@@ -177,21 +182,22 @@ def test_unverified_world_boss_back_preserves_failed_transition_and_no_cleanup(m
     assert "OpenQuickMenu" not in trace
 
 
-def test_battle_mode_return_does_not_select_tile_without_action_anchor(monkeypatch):
+def test_battle_mode_back_rejects_a_success_with_wrong_terminal_surface(monkeypatch):
     from test_world_boss_flow import snapshot
 
     runtime, wb, _, trace, _ = setup(monkeypatch)
     assert wb.zone.enter().succeeded
-    def unanchored_open(name, action, before, **kwargs):
-        assert type(action).__name__ == "OpenQuickMenu"
-        menu = snapshot(before.sequence + 1, overlays=(MENU_QUICK,))
-        assert kwargs["expected"](menu)
+    def wrong_return(name, action, before, **kwargs):
+        assert type(action).__name__ == "ExitBattleModeSelect"
+        assert kwargs["precondition"](before)
+        assert kwargs["policy"].max_attempts == 1
+        final = snapshot(before.sequence + 1, base=SCREEN_WORLD_BOSS)
         return VerifiedTransitionResult(
             name, VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT,
-            1, 0, menu,
+            1, 0, final,
         )
-    monkeypatch.setattr(wb.zone.transition, "execute", unanchored_open)
+    monkeypatch.setattr(wb.zone.lobby_transition, "execute", wrong_return)
     result = wb.zone.leave()
     assert result.status is FlowStatus.FAILED
-    assert result.error == "quick_menu_origin_handoff_invalid"
+    assert result.error == "zone_postcondition_failed"
     assert "SelectQuickMenuLobby" not in trace

@@ -1,0 +1,27 @@
+{
+  "geometry": [
+    2712,
+    1224
+  ],
+  "regions": [
+    [
+      0.514,
+      0.255,
+      0.731,
+      0.31
+    ],
+    [
+      0.56,
+      0.315,
+      0.75,
+      0.365
+    ],
+    [
+      0.765,
+      0.452,
+      0.817,
+      0.503
+    ]
+  ],
+  "source": "Steam Walker same open Ethereal Boots panel; original native stream frames; no input between frames"
+}

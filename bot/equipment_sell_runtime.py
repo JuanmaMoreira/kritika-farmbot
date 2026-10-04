@@ -8,6 +8,9 @@ operation, and translates its four physical intents through ActionExecutor.
 from __future__ import annotations
 
 import time
+import numpy as np
+import cv2
+from dataclasses import dataclass
 from collections.abc import Callable
 
 from bot.action_executor import ActionExecutor, FrameGeometry
@@ -32,6 +35,15 @@ from bot.semantic_actions import (
     OpenEquipmentSell,
     SelectEquipmentInventorySlot,
 )
+
+
+@dataclass(frozen=True)
+class _SelectedSalePanel:
+    candidate: object
+    inventory: object
+    item: object
+    frame: object
+    input_barrier: float
 
 
 class EquipmentSellRuntime:
@@ -69,6 +81,7 @@ class EquipmentSellRuntime:
         self.cancel_requested = cancel_requested
         self.clock = clock
         self.sleeper = sleeper
+        self._selected_sale=None;self._scan_policy=None
         self._latest = None
         self._after_sequence = 0
         self._not_before = 0.0
@@ -79,7 +92,8 @@ class EquipmentSellRuntime:
             self.block_matcher = None
         self._block_reference = None
         self._block_stats = dict(comparisons=0,cv_slots_skipped=0,blocks_skipped=0,
-                                 discovery_panels=0,panels_opened=0,fallback_count=0,logical_slots_skipped=0)
+                                 discovery_panels=0,panels_opened=0,fallback_count=0,logical_slots_skipped=0,
+                                 protected_panel_opens=0,sellable_panel_opens=0,same_item_reopens=0)
 
     def _block_crop(self, image, center):
         try:
@@ -87,12 +101,12 @@ class EquipmentSellRuntime:
         except Exception:
             return None
 
-    def execute(self, request: EquipmentSellRequest) -> EquipmentSellResult:
+    def execute(self, request: EquipmentSellRequest, *, selected=None) -> EquipmentSellResult:
         """Execute at most one confirm; never navigate, scan or retry input."""
 
         if not isinstance(request, EquipmentSellRequest):
             raise ValueError("request must be EquipmentSellRequest")
-        before = self._read_consensus("inventory_sample", after_sequence=self._after_sequence)
+        before = selected.inventory if selected is not None else self._read_consensus("inventory_sample", after_sequence=self._after_sequence)
         if before is None:
             return EquipmentSellResult(
                 outcome=(
@@ -106,7 +120,7 @@ class EquipmentSellRuntime:
                     else "initial_inventory_unreadable"
                 ),
             )
-        self._after_sequence = before.sequence
+        if selected is None:self._after_sequence = before.sequence
 
         return execute_equipment_sell(
             request=request,
@@ -121,14 +135,18 @@ class EquipmentSellRuntime:
             cancel_confirmation=lambda: self._tap(CancelEquipmentSale()),
             read_inventory=lambda: self._read_next("inventory_sample", predicate=lambda v: v.item_count < before.item_count),
             cancel_requested=self.cancel_requested,
+            selected_item=selected.item if selected is not None else None,
+            selection_current=lambda:self._selected_panel_current(selected),
         )
 
     def execute_relief(self, policy):
         from bot.equipment_inventory_relief import execute_inventory_relief
         started = self.clock()
+        self._scan_policy=policy;self._selected_sale=None
         self._block_reference = None
         self._block_stats = dict(comparisons=0,cv_slots_skipped=0,blocks_skipped=0,
-                                 discovery_panels=0,panels_opened=0,fallback_count=0,logical_slots_skipped=0)
+                                 discovery_panels=0,panels_opened=0,fallback_count=0,logical_slots_skipped=0,
+                                 protected_panel_opens=0,sellable_panel_opens=0,same_item_reopens=0)
         result = execute_inventory_relief(
             policy, read_inventory=self._inventory_after,
             inspect=self._inspect, bulk_sell=self._bulk_candidate,
@@ -144,7 +162,7 @@ class EquipmentSellRuntime:
                           elapsed_seconds=self.clock()-started)
         record_best_effort(self.events, 'equipment.sell.scan.summary',
                           **self._block_stats,elapsed_seconds=self.clock()-started)
-        self._block_reference = None
+        self._block_reference = None;self._selected_sale=None;self._scan_policy=None
         return result
 
     def _scan_telemetry(self, **fields):
@@ -180,19 +198,28 @@ class EquipmentSellRuntime:
         raise RuntimeError("inventory_page_bound")
 
     def _inspect(self, candidate, inventory):
-        self._navigate_page(candidate.page, inventory)
+        selected_inventory=self._navigate_page(candidate.page, inventory)
         center=self.actions.equipment_targets.inventory_slots[candidate.slot]
         first=self._block_crop(self._latest.image,center)
         self._tap(SelectEquipmentInventorySlot(candidate.slot))
         detail = self._read_next("detail_sample")
-        self._tap(CloseEquipmentDetail())
-        # Prove closing the detail preserved Inventory and the scan list.
-        closed = self._inventory_after(0)
-        if closed is None or (closed.item_count,closed.capacity,closed.page) != (
-                inventory.item_count,inventory.capacity,candidate.page):
-            raise RuntimeError("detail_close_unverified")
-        second=self._block_crop(self._latest.image,center)
-        self._block_reference=(candidate,(inventory.item_count,inventory.capacity),(first,second))
+        allowed=self._scan_policy.authorize(detail) if self._scan_policy is not None else None
+        selected=bool(allowed is not None and self._latest is not None and
+            self._latest.sequence==detail.sequence and 0<=self.clock()-detail.observed_at<=2.)
+        if selected:
+            self._selected_sale=_SelectedSalePanel(candidate,selected_inventory,detail,self._latest,self._not_before)
+            self._block_reference=None
+            self._block_stats['sellable_panel_opens']+=1
+        else:
+            self._block_stats['protected_panel_opens']+=1
+            self._tap(CloseEquipmentDetail())
+            # Prove closing the detail preserved Inventory and the scan list.
+            closed = self._inventory_after(0)
+            if closed is None or (closed.item_count,closed.capacity,closed.page) != (
+                    inventory.item_count,inventory.capacity,candidate.page):
+                raise RuntimeError("detail_close_unverified")
+            second=self._block_crop(self._latest.image,center)
+            self._block_reference=(candidate,(inventory.item_count,inventory.capacity),(first,second))
         if self._block_stats:
             self._block_stats['discovery_panels']+=1
         record_best_effort(self.events, "equipment.sell.scan.item", page=candidate.page,
@@ -244,10 +271,54 @@ class EquipmentSellRuntime:
                           reference_phase_count=len(refs))
         return next_index
 
+    def _selected_panel_current(self,selected):
+        # Strong fresh panel + unchanged input lineage authorize the item.
+        # Correlation only invalidates continuity; it never authorizes Sell.
+        def reject(reason, **fields):
+            record_best_effort(self.events,"equipment.sell.selected_panel.continuity",
+                              outcome="invalidated",reason=reason,**fields)
+            return False
+        if (selected is None or self._selected_sale is not selected or
+                self._after_sequence!=selected.item.sequence or self._not_before!=selected.input_barrier or
+                self._latest is not selected.frame):
+            return reject("input_or_candidate_changed")
+        if not 0<=self.clock()-selected.item.observed_at<=2.:
+            return reject("strong_panel_stale")
+        frame=self.source.get_frame()
+        if (frame.sequence<selected.item.sequence or frame.image.shape!=selected.frame.image.shape or
+                not 0<=self.clock()-frame.timestamp<=2.):
+            return reject("current_frame_stale_or_geometry_changed")
+        h,w=frame.image.shape[:2];scores={}
+        # Live codec/faint inventory glow changes pixels of an unchanged panel.
+        # Thresholds retain the real item-change negative separation; policy
+        # and Bulk popup remain the destructive authorization boundaries.
+        for name,region,threshold in (
+                ("title",(.514,.255,.731,.310),.999),
+                ("grade_type",(.560,.315,.750,.365),.995),
+                ("sell",(.765,.452,.817,.503),.999)):
+            x1,y1,x2,y2=region
+            a=frame.image[round(y1*h):round(y2*h),round(x1*w):round(x2*w)]
+            b=selected.frame.image[round(y1*h):round(y2*h),round(x1*w):round(x2*w)]
+            if a.size==0:return reject("empty_panel_region",region=name)
+            if np.array_equal(a,b):score=1.
+            elif np.std(a)==0 or np.std(b)==0:score=0.
+            else:score=float(cv2.matchTemplate(a,b,cv2.TM_CCOEFF_NORMED).max())
+            scores[name]=score
+            if not np.isfinite(score) or score<threshold:
+                return reject("panel_region_changed",region=name,score=score,threshold=threshold)
+        self._latest=frame
+        record_best_effort(self.events,"equipment.sell.selected_panel.continuity",
+                          outcome="retained",source_sequence=frame.sequence,scores=scores)
+        return True
+
     def _bulk_candidate(self, candidate, authorization, item):
         self._block_reference=None
         from bot.equipment_sell_operation import EquipmentSellRequest
-        result = self.execute(EquipmentSellRequest(authorization, candidate, expected_item=item))
+        selected=self._selected_sale
+        if selected is not None and (selected.candidate!=candidate or selected.item!=item):
+            return EquipmentSellResult(EquipmentSellOutcome.DENIED,'selected_candidate_changed')
+        if selected is None:self._block_stats['same_item_reopens']+=1
+        result = self.execute(EquipmentSellRequest(authorization, candidate, expected_item=item),selected=selected)
         record_best_effort(self.events, "equipment.sell.bulk.result", outcome=result.outcome.value,
                           reason=result.reason, confirms=result.confirm_count,
                           logical_index=(candidate.page-1)*16+candidate.slot,
@@ -363,6 +434,7 @@ class EquipmentSellRuntime:
         return None
 
     def _tap(self, action) -> None:
+        self._selected_sale=None
         if self.cancel_requested():
             raise RuntimeError("equipment_action_cancelled")
         if self._latest is None or not 0 <= self.clock() - self._latest.timestamp <= 2.0:

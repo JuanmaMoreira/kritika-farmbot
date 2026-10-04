@@ -2,7 +2,7 @@
 from bot.ads_manager import AdsManager, AndroidAdsObserver
 from bot.perception import ScopeSpec, select_detectors, STRONG_LOBBY_COMPLETION_SPEC_NAMES, STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES
 from bot.perception.engine import PerceptionEngine
-from bot.perception.stages import StagesDetector, surface
+from bot.perception.stages import StagesDetector, StagesClaimDetector, surface
 from bot.stages_actions import CloseAdAffordance, StageControl
 from bot.stages_runtime import StagesNavigation
 from bot.stages_balances import StagesBalanceReader
@@ -15,11 +15,21 @@ import re
 def is_no_ads_alert(snapshot, balances):
     if surface(snapshot)=='no_ads':return True
     if surface(snapshot)!='alert':return False
-    # Provisional: native positive absent. Called only after Android verifies
+    # Literal No Ads text fallback; acquired Loading/Select Character uses CV.
+    # Called only after Android verifies
     # main activity/window; the acquired single-OK alert supplies the body ROI.
     try:text=balances.text(snapshot,(.350,.385,.650,.565))
     except ValueError:return False
     return re.sub(r'[^a-z]','',text.casefold()).startswith('noadsavailable')
+
+def ensure_lobby_entry(dependencies):
+    """The economic caller requests its next required entry from Navigation."""
+    from bot.component_contracts import ComponentRequirement
+    result = dependencies.build_preconditions().ensure(ComponentRequirement.exact_state('screen.lobby'))
+    if not result.succeeded:
+        raise ValueError(result.error or 'lobby_entry_unconfirmed')
+    return result
+
 
 def build_stages_daily(dependencies, monster_wave):
     scope = ScopeSpec('stages_daily', STRONG_LOBBY_COMPLETION_SPEC_NAMES,
@@ -28,7 +38,8 @@ def build_stages_daily(dependencies, monster_wave):
     detector = next(d for d in observer.perception.detectors if isinstance(d, StagesDetector))
     nav = StagesNavigation(observer, dependencies.actions, events=dependencies.events,
                            cancel_requested=dependencies.cancel_requested)
-    balances = StagesBalanceReader(nav, RapidOcrEngine())
+    nav.claim_observer=observer.scoped(PerceptionEngine((StagesClaimDetector(detector),)))
+    balances = StagesBalanceReader(nav, getattr(dependencies,"ocr_engine",None) or RapidOcrEngine())
     # Ad content never goes through the game's full landmark family or OCR.
     ads_scope = ScopeSpec('ads_android_return',
         frozenset({'landmark.lobby_trading_center_label'}), (StagesDetector,))
@@ -52,4 +63,5 @@ def build_stages_daily(dependencies, monster_wave):
     from bot.stages_reliefs import StagesReliefs
     nav.relief = StagesReliefs(nav, dependencies, monster_wave.equipment_relief)
     return StagesDailyFlow(nav, balances, StaminaPurchase(nav,balances,detector),ads,
-        monster_wave=monster_wave, reenter_same_character=SameCharacterReentry(nav,balances))
+        monster_wave=monster_wave, reenter_same_character=SameCharacterReentry(nav,balances),
+        ensure_lobby=lambda: ensure_lobby_entry(dependencies))

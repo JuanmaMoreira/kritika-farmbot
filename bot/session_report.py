@@ -81,6 +81,9 @@ class SessionReport:
 # Explicit projection of existing business contracts, not a failure taxonomy.
 # Do not infer causal explanations from detail/error text or diagnostic events.
 _INCOMPLETE = {
+    "stages_daily.ad_aborted_recovered": "Ad returned without verified reward; bounded recovery exhausted",
+    "stages_daily.ads_unavailable": "Ads unavailable after bounded retries and same-character reentry; manual entry disabled",
+    "stages_daily.ads_exhausted": "No Stage ad remaining",
     'monster_wave.tickets_missing_purchase_disabled': 'SKIP activation tickets missing (<30/30); purchase disabled',
     'monster_wave.insufficient_sapphires': 'insufficient sapphires for SKIP',
     'monster_wave.inventory_warning_declined': 'non-blocking inventory warning declined',
@@ -103,7 +106,13 @@ _NOOPS = frozenset(f"{name}.noop" for name in (
     "send_stamina", "summon_pet_daily", "daily_quests", "guild_check_in", "mailbox",
 ))
 _INFORMATIONAL = _NOOPS | frozenset({
+    "gold_farming.completed", "gold_farming.attempt.skipped",
+    "stages_daily.completed",
+    # The productive adapter retains these resolved internal phases in a
+    # COMPLETED result. They do not make its report unassessed.
     'monster_wave.completed', 'monster_wave.tickets_purchased',
+    'monster_wave.resource_board_pending', 'monster_wave.no_work',
+    'monster_wave.relief_resolved',
     "send_stamina.all_executed", "send_stamina.completed",
     "summon_pet_daily.completed", "guild_check_in.tap_executed",
     "guild_check_in.attendance_completed", "daily_quests.claim_all_executed",
@@ -114,6 +123,8 @@ _INFORMATIONAL = _NOOPS | frozenset({
     "world_boss.previous_rewards",
 })
 _LABELS = {
+    'gold_farming': 'Gold Farming Cycle',
+    'stages_daily': 'Stages Ads',
     'monster_wave': 'Monster Wave',
     "black_market": "Black Market", "world_boss": "World Boss",
     "send_stamina": "Send Stamina Daily", "summon_pet_daily": "Summon Pet Daily",
@@ -128,9 +139,15 @@ def _flow_report(raw: FlowResult, name: str | None, label: str) -> FlowReport:
             name, label, ReportStatus.SKIPPED_NOT_ELIGIBLE, False,
             (ReportReason("eligibility.not_eligible", raw.skip_reason),),
         )
+    resolved_reliefs = {
+        event.fields.get('relief_boundary_id') for event in raw.events
+        if event.kind == 'monster_wave.relief_resolved' and event.fields.get('relief_boundary_id')
+    }
     kinds = tuple(
         event.kind if "." in event.kind or name is None else f"{name}.{event.kind}"
         for event in raw.events
+        if not (event.kind == 'monster_wave.manual_resolution'
+                and event.fields.get('relief_boundary_id') in resolved_reliefs)
     )
     # Black Market's historical unprefixed identifiers are unambiguous.
     kinds = tuple(f"black_market.{kind}" if kind in {"low_gold", "inventory_full"}
@@ -305,6 +322,9 @@ def render_session_report(report: SessionReport) -> str:
         ReportStatus.CANCELLED: "Session cancelled",
         None: "Session assessment unavailable",
     }
+    title = ("Session stopped for manual resolution"
+             if report.execution_status is SessionStatus.MANUAL_RESOLUTION
+             else titles[report.status])
     expected = report.expected_character_count
     duration = "unavailable"
     if report.duration is not None:
@@ -313,7 +333,7 @@ def render_session_report(report: SessionReport) -> str:
         minutes, seconds = divmod(remainder, 60)
         duration = f"{hours:02}:{minutes:02}:{seconds:02}"
     lines = [
-        f"{titles[report.status]} — {report.characters_processed}/{expected if expected is not None else '?'}",
+        f"{title} — {report.characters_processed}/{expected if expected is not None else '?'}",
         f"Duration: {duration}", f"Flows completed: {report.flows_completed}",
         f"Advances / rotation: {report.advances_completed}", "",
         "Characters:", f"{report.counts.complete} complete",

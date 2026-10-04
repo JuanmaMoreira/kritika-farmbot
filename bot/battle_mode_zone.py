@@ -2,15 +2,14 @@
 
 from dataclasses import dataclass
 from bot.catalog import (
-    MENU_QUICK, SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY,
+    SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY,
     STATUS_WORLD_BOSS_DAILY_ACTIVE,
 )
 from bot.component_contracts import ComponentRequirement
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.failure_cause import FailureCause
 from bot.runtime_observer import RuntimeWaitCancelled
-from bot.semantic_actions import OpenBattleModeSelect, OpenQuickMenu, SelectQuickMenuLobby
-from bot.quick_menu import QuickMenuHandoff, QuickMenuPolicy, quick_menu_matches_origin
+from bot.semantic_actions import OpenBattleModeSelect, ExitBattleModeSelect
 from bot.state import ResolutionStatus
 from bot.verified_transition import VerifiedTransitionPolicy
 from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
@@ -27,11 +26,6 @@ def is_lobby(snapshot):
     return (snapshot.state.status is ResolutionStatus.RESOLVED
             and snapshot.state.base_context == SCREEN_LOBBY
             and not snapshot.state.overlays)
-
-
-def _quick_menu(snapshot):
-    return (snapshot.state.status in {ResolutionStatus.RESOLVED, ResolutionStatus.UNKNOWN}
-            and set(snapshot.state.overlays) == {MENU_QUICK})
 
 
 @dataclass(frozen=True)
@@ -62,6 +56,42 @@ class BattleModeZone:
     def enter(self):
         return self._navigate(False)
 
+    def ensure_hub(self):
+        """Reach the shared hub from a fresh known source, preserving Back guards."""
+        from bot.monster_wave_activity import clean_mw
+        from bot.monster_wave_actions import ExitMonsterWave
+        if self.cancel_requested():
+            return BattleModeZoneResult(FlowStatus.CANCELLED)
+        try:
+            before = self.observer.observe()
+            if is_battle_mode_select(before):
+                return BattleModeZoneResult(FlowStatus.COMPLETED)
+            if clean_mw(before):
+                exited = self.transition.execute(
+                    'battle_mode.exit_monster_wave', ExitMonsterWave(), before,
+                    precondition=clean_mw, retryable_from=clean_mw,
+                    expected=lambda s: is_battle_mode_select(s) or is_lobby(s),
+                    abort_if=lambda s: s.state.status is ResolutionStatus.AMBIGUOUS
+                    or (s.state.status is ResolutionStatus.RESOLVED and not clean_mw(s)
+                        and not is_battle_mode_select(s) and not is_lobby(s)),
+                    stable_for=.25, policy=VerifiedTransitionPolicy(max_attempts=1),
+                )
+                if self.cancel_requested():
+                    return BattleModeZoneResult(FlowStatus.CANCELLED)
+                if not exited.succeeded:
+                    return BattleModeZoneResult(FlowStatus.FAILED, error=exited.error or 'mw_handoff_failed', failure=exited.failure)
+                if is_battle_mode_select(exited.final_snapshot):
+                    return BattleModeZoneResult(FlowStatus.COMPLETED)
+                if not is_lobby(exited.final_snapshot):
+                    return BattleModeZoneResult(FlowStatus.FAILED, error='mw_handoff_surface_unconfirmed')
+            elif not is_lobby(before):
+                return BattleModeZoneResult(FlowStatus.FAILED, error='battle_mode_entry_surface_unknown')
+            return self._navigate(False)
+        except RuntimeWaitCancelled:
+            return BattleModeZoneResult(FlowStatus.CANCELLED)
+        except Exception as error:
+            return BattleModeZoneResult(FlowStatus.FAILED, error=str(error) or type(error).__name__)
+
     def leave(self):
         return self._navigate(True)
 
@@ -80,13 +110,16 @@ class BattleModeZone:
             if self.cancel_requested():
                 return finish(FlowStatus.CANCELLED)
             origin = is_battle_mode_select if leaving else is_lobby
+            # A standalone MW exit may already have reached the final Lobby.
+            # Recognize that clean terminal destination before any zone input.
             before = self.observer.wait_until(
-                origin, after_sequence=0, timeout=6.0, stable_for=0.25,
+                (lambda s: origin(s) or is_lobby(s)) if leaving else origin, after_sequence=0, timeout=6.0, stable_for=0.25,
                 cancel_requested=self.cancel_requested,
             )
+            if leaving and is_lobby(before):
+                return finish(FlowStatus.COMPLETED)
             steps = (
-                (("open_quick_menu", OpenQuickMenu(), origin, _quick_menu),
-                 ("select_lobby", SelectQuickMenuLobby(), _quick_menu, is_lobby))
+                (("back_to_lobby", ExitBattleModeSelect(), origin, is_lobby),)
                 if leaving else
                 (("open_battle_mode_select", OpenBattleModeSelect(), origin, is_battle_mode_select),)
             )
@@ -94,48 +127,16 @@ class BattleModeZone:
                 if self.cancel_requested():
                     return finish(FlowStatus.CANCELLED)
                 extra = {}
-                if leaving and name == "select_lobby":
-                    handoff = QuickMenuHandoff.from_open_result(
-                        transitions[-1], is_battle_mode_select,
-                        policy=QuickMenuPolicy(frozenset({SCREEN_BATTLE_MODE_SELECT})),
-                    )
-                    if handoff is None:
-                        return finish(
-                            FlowStatus.FAILED, error="quick_menu_origin_handoff_invalid"
-                        )
-                    guard = handoff.allows
-                    extra = {
-                        "on_recovery": handoff.invalidate,
-                        # The source hub may still be visible right after the
-                        # tile input while the transition is in flight. That
-                        # is tolerated while waiting: not success, not abort,
-                        # not a retry on its own. Skipping observe() here also
-                        # keeps the handoff valid so a later menu frame can
-                        # still authorize exactly one bounded retry.
-                        "abort_if": lambda item: (
-                            not is_battle_mode_select(item)
-                            and handoff.observe(item, is_lobby)
-                        ),
-                    }
-                elif leaving and name == "open_quick_menu":
-                    extra = {
-                        "abort_if": lambda item: (
-                            item.state.status is ResolutionStatus.AMBIGUOUS
-                            or (
-                                item.state.status is ResolutionStatus.RESOLVED
-                                and item.state.base_context != SCREEN_BATTLE_MODE_SELECT
-                            )
-                        ),
-                    }
-                executor = (
-                    self.lobby_transition
-                    if leaving and name == "select_lobby"
-                    else self.transition
-                )
+                if leaving:
+                    extra['abort_if'] = lambda item: (
+                        item.state.status is ResolutionStatus.AMBIGUOUS
+                        or (item.state.status is ResolutionStatus.RESOLVED
+                            and not is_battle_mode_select(item) and not is_lobby(item)))
+                executor = self.lobby_transition if leaving else self.transition
                 result = executor.execute(
                     f"battle_mode.{name}", action, before,
                     expected=expected, precondition=guard, retryable_from=guard,
-                    stable_for=0.25, policy=VerifiedTransitionPolicy(max_attempts=2),
+                    stable_for=0.25, policy=VerifiedTransitionPolicy(max_attempts=1 if leaving else 2),
                     **extra,
                 )
                 transitions.append(result)

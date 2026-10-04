@@ -36,32 +36,45 @@ class StagesDetector:
 
     def present(self,frame,name):return name in self._templates and self.score(frame,name)>=.94
 
-    def detect(self,frame):
+    def detect(self,frame,*,claim_only=False):
         def obs(name,value=None):return Observation('stages.'+name,1.,ObservationSource.LOCAL_CV,value=value)
         if self.present(frame,'loading'):return (obs('loading'),)
         # Upper layers first. Only the exposed modal supplies actionable facts.
-        for name in ('no_ads','daily_exhausted','skip_ticket','support_purchase','results','auto','start','config'):
+        for name in ('no_ads','daily_exhausted','skip_ticket','support_purchase','results'):
+            if self.present(frame,name):
+                found=[obs('surface',name),obs(name),obs('base')]
+                if name=='support_purchase' and self.present(frame,'support_full'):found.append(obs('support_full'))
+                return tuple(found)
+        # A shared OK button needs underlying Stages chrome; another owner
+        # (e.g. Socket No Material) must retain its own modal. No Ads is checked only
+        # after Android confirms the main game activity, outside this CV pass.
+        if self.present(frame,'alert_ok') and any(
+            self.score(frame,name,undimmed=False)>=.94
+            for name in ('auto','start','config','normal','elite')
+        ):
+            return (obs('surface','alert'),obs('alert'),obs('base'))
+        # Single-OK upper alerts capture input even when the Auto title remains
+        # exposed outside their rectangle. Never classify that lower panel first.
+        for name in ('auto','start','config'):
             if self.present(frame,name):
                 found=[obs('surface',name),obs(name),obs('base')]
                 if name=='config':
                     for flag in ('support_active','support_ready','support_needs','penance'):
                         if self.present(frame,flag):found.append(obs(flag))
-                if name=='support_purchase' and self.present(frame,'support_full'):found.append(obs('support_full'))
                 if name=='auto':
                     for flag in ('max300','video2','video1','video0'):
                         if self.present(frame,flag):found.append(obs(flag))
                 return tuple(found)
-        # Acquired single-OK game alert. Identity of No Ads is checked only
-        # after Android confirms the main game activity, outside this CV pass.
-        if self.present(frame,'alert_ok'):
-            return (obs('surface','alert'),obs('alert'),obs('base'))
         if self.present(frame,'world_map'):return (obs('surface','world_map'),obs('world_map'))
         for mode in ('normal','elite'):
             if self.present(frame,mode):
                 found=[obs('surface',mode),obs(mode),obs('base')]
                 if mode=='normal':
-                    for flag in ('abyssal','stage8'):
-                        if self.present(frame,flag):found.append(obs(flag))
+                    if not claim_only:
+                        score=self.score(frame,'abyssal')
+                        found.append(obs('abyssal_score',score))
+                        if score>=.94:found.append(obs('abyssal'))
+                        if self.present(frame,'stage8'):found.append(obs('stage8'))
                     h,w=frame.shape[:2]
                     hsv=cv2.cvtColor(frame[round(.918*h):round(.95*h),round(.391*w):round(.404*w)],cv2.COLOR_BGR2HSV)
                     cyan=np.mean((hsv[:,:,0]>75)&(hsv[:,:,0]<100)&(hsv[:,:,1]>100)&(hsv[:,:,2]>90))
@@ -77,3 +90,8 @@ def has(snapshot,name):
 def surface(snapshot):
     o=snapshot.observations.best('stages.surface')
     return o.value if o is not None and o.confidence>=.8 else None
+
+class StagesClaimDetector:
+    """Same upper-layer/Normal guards and Claim signal; omit episode/Stage8 work."""
+    def __init__(self,detector):self.detector=detector
+    def detect(self,frame):return self.detector.detect(frame,claim_only=True)

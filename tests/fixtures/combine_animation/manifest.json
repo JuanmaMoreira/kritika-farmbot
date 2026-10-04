@@ -1,0 +1,175 @@
+{
+  "ethereal_pre_animation": {
+    "source": "failure_6570df7de6874b8bbe562caca9c28d80",
+    "sequence": 3163,
+    "stored_evidence_geometry": [
+      960,
+      433
+    ],
+    "original_geometry": {
+      "height": 1224,
+      "width": 2712
+    },
+    "crop_pixels": [
+      760,
+      20,
+      779,
+      41
+    ],
+    "state": {
+      "base_candidates": [],
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "sequence": 3163,
+      "status": "resolved",
+      "subcontext": null,
+      "timestamp": 106327.468
+    },
+    "observations": [
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_fuse_tab",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_transmute_active",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_ethereal_random_part_title",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_context",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      }
+    ],
+    "note": "Exact Back chrome pixels from retained resized evidence; control-contract replay, not a native template-score replay."
+  },
+  "ethereal_animation": {
+    "source": "failure_6570df7de6874b8bbe562caca9c28d80",
+    "sequence": 3172,
+    "stored_evidence_geometry": [
+      960,
+      433
+    ],
+    "original_geometry": {
+      "height": 1224,
+      "width": 2712
+    },
+    "crop_pixels": [
+      760,
+      20,
+      779,
+      41
+    ],
+    "state": {
+      "base_candidates": [],
+      "base_context": "screen.combine",
+      "overlays": [
+        "mode.combine_transmute",
+        "panel.combine_ethereal_random_part"
+      ],
+      "sequence": 3172,
+      "status": "resolved",
+      "subcontext": null,
+      "timestamp": 106328.25
+    },
+    "observations": [
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_fuse_tab",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_transmute_active",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 0.0027172258042214735,
+        "name": "landmark.combine_awakened_transmute_title",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_ethereal_random_part_title",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 1.0,
+        "name": "landmark.combine_context",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      }
+    ],
+    "note": "Exact Back chrome pixels from retained resized evidence; control-contract replay, not a native template-score replay."
+  },
+  "fuse_animation": {
+    "source": "failure_b02fa2ec8e4c4f9aa948bcae2a568a79",
+    "sequence": 496,
+    "stored_evidence_geometry": [
+      960,
+      433
+    ],
+    "original_geometry": {
+      "height": 1224,
+      "width": 2712
+    },
+    "crop_pixels": [
+      760,
+      20,
+      779,
+      41
+    ],
+    "state": {
+      "base_candidates": [],
+      "base_context": "screen.combine",
+      "overlays": [],
+      "sequence": 496,
+      "status": "resolved",
+      "subcontext": null,
+      "timestamp": 106814.14
+    },
+    "observations": [
+      {
+        "confidence": 0.8274288670460425,
+        "name": "activity.combine_animation_tappable",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      },
+      {
+        "confidence": 0.8274288670460425,
+        "name": "landmark.combine_context",
+        "region": null,
+        "source": "local_cv",
+        "value": null
+      }
+    ],
+    "note": "Exact Back chrome pixels from retained resized evidence; control-contract replay, not a native template-score replay."
+  }
+}

@@ -1,4 +1,4 @@
-"""Productive Lobby-to-Lobby Character Mail flow."""
+"""Character Mail restores its verified underlying BASE."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from bot.catalog import (
     STATUS_MAILBOX_CLAIMABLE,
     STATUS_MAILBOX_READ_MAIL_PRESENT,
 )
-from bot.component_contracts import ComponentRequirement
+from bot.component_contracts import ComponentRequirement, QUICK_MENU_ACCESS_REQUIREMENT
 from bot.event_log import EventSink
 from bot.flow_contracts import FlowContract, FlowEvent, FlowResult, FlowScope, FlowStatus
 from bot.runtime_observer import (
@@ -34,6 +34,11 @@ from bot.semantic_actions import (
     SelectCharacterMail,
 )
 from bot.state import ResolutionStatus
+from bot.quick_menu import (
+    DEFAULT_QUICK_MENU_POLICY, is_clean_quick_menu_base,
+    open_quick_menu_destination, select_quick_menu_panel_action,
+)
+from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 
 
 MAILBOX_NOOP = "mailbox.noop"
@@ -73,14 +78,15 @@ class _Observer(Protocol):
 
 
 class MailboxFlow:
-    """Claim Character Mail once, delete read mail, and return to Lobby."""
+    """Claim Character Mail once, delete read mail, and restore the entry BASE."""
 
     name = "mailbox"
     scope = FlowScope.PER_CHARACTER
     contract = FlowContract(
-        precondition=ComponentRequirement.exact_state(SCREEN_LOBBY),
-        successful_postconditions=(
-            ComponentRequirement.exact_state(SCREEN_LOBBY),
+        precondition=QUICK_MENU_ACCESS_REQUIREMENT,
+        successful_postconditions=tuple(
+            ComponentRequirement.exact_state(base)
+            for base in sorted(DEFAULT_QUICK_MENU_POLICY.accessible_from)
         ),
     )
 
@@ -92,6 +98,7 @@ class MailboxFlow:
         *,
         claim_observer: RuntimeObserver | None = None,
         lobby_observer: RuntimeObserver | None = None,
+        verified_transition: VerifiedTransition | None = None,
         navigation_timeout: float = 6.0,
         activity_onset_timeout: float = 2.0,
         processing_timeout: float = 30.0,
@@ -129,6 +136,7 @@ class MailboxFlow:
         self.observer: _Observer = observer
         self.claim_observer: _Observer = claim_observer
         self.lobby_observer: _Observer = lobby_observer
+        self.verified_transition = verified_transition or VerifiedTransition(observer, actions, events)
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -161,7 +169,7 @@ class MailboxFlow:
     def run_with_initial(self, snapshot: RuntimeSnapshot | None) -> MailboxFlowResult:
         """Run on a freshly verified precondition snapshot when usable.
 
-        The seed must already show the clean Lobby this flow starts from;
+        The seed must already show a clean Quick Menu capable BASE;
         anything else falls back to a normal fresh observation, preserving
         the baseline behavior exactly.
         """
@@ -180,16 +188,36 @@ class MailboxFlow:
         try:
             if self._cancelled():
                 return self._cancel(events)
-            lobby = self._initial_lobby(seed)
-            mailbox = self._act_and_wait(
-                OpenMailbox(),
-                lobby,
-                expected=_is_mailbox,
-                abort_if=_has_incompatible_mailbox_navigation,
-                timeout=self.navigation_timeout,
-                stable_for=self.navigation_stable_for,
-                observer=self.claim_observer,
-            )
+            entry = self._initial_base(seed)
+            origin = entry.state.base_context
+            restored = lambda s: s.state.base_context == origin and is_clean_quick_menu_base(s)
+            if origin == SCREEN_LOBBY:
+                mailbox = self._act_and_wait(
+                    OpenMailbox(),
+                    entry,
+                    expected=_is_mailbox,
+                    abort_if=_has_incompatible_mailbox_navigation,
+                    timeout=self.navigation_timeout,
+                    stable_for=self.navigation_stable_for,
+                    observer=self.claim_observer,
+                )
+            else:
+                arrived = open_quick_menu_destination(
+                    entry, self.verified_transition,
+                    VerifiedTransitionPolicy(normal_timeout=self.navigation_timeout),
+                    action=select_quick_menu_panel_action(origin, self.name),
+                    selection=self.name,
+                    expected=_is_mailbox,
+                    destination_guard=_is_mailbox,
+                    destination_transition=VerifiedTransition(self.claim_observer, self.actions, self.events),
+                    stable_for=self.navigation_stable_for,
+                    cancel_requested=self.cancel_requested, prefix=self.name,
+                )
+                if self._cancelled():
+                    raise RuntimeWaitCancelled('mailbox cancelled')
+                if not arrived.succeeded:
+                    raise RuntimeError(arrived.error or 'quick_menu_destination_failed')
+                mailbox = arrived.final_snapshot
             if not _is_character_mail(mailbox):
                 mailbox = self._act_and_wait(
                     SelectCharacterMail(),
@@ -285,19 +313,21 @@ class MailboxFlow:
             if no_op:
                 self._append_event(events, MAILBOX_NOOP)
 
-            lobby = self._act_and_wait(
+            returned = self._act_and_wait(
                 CloseMailbox(),
                 mailbox,
-                expected=_is_clean_lobby,
-                abort_if=_has_incompatible_close_state,
+                expected=restored,
+                abort_if=lambda s: not (restored(s) or _is_character_mail(s) or _is_passive_unknown(s)),
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
-                observer=self.lobby_observer,
+                observer=self.lobby_observer if origin == SCREEN_LOBBY else self.observer,
             )
-            assert _is_clean_lobby(lobby)
+            assert restored(returned)
+            self._record('mailbox.base_restored', restored_base=origin, current_surface=origin)
             return MailboxFlowResult(
                 FlowStatus.COMPLETED,
                 tuple(events),
+                final_snapshot=returned,
                 no_op=no_op,
                 claim_all_executed=claim_all_executed,
                 processing_observed=processing_observed,
@@ -315,19 +345,19 @@ class MailboxFlow:
         except Exception as error:
             return self._failed(events, f"{type(error).__name__}: {error}")
 
-    def _initial_lobby(self, seed: RuntimeSnapshot | None = None) -> RuntimeSnapshot:
-        if isinstance(seed, RuntimeSnapshot) and _is_clean_lobby(seed):
+    def _initial_base(self, seed: RuntimeSnapshot | None = None) -> RuntimeSnapshot:
+        if isinstance(seed, RuntimeSnapshot) and is_clean_quick_menu_base(seed):
             return seed
         initial = self.observer.observe()
-        if _is_clean_lobby(initial):
+        if is_clean_quick_menu_base(initial):
             return initial
         if not _is_passive_unknown(initial):
-            raise RuntimeError("precondition_lobby_failed")
+            raise RuntimeError("precondition_quick_menu_base_failed")
         return self.observer.wait_until(
-            _is_clean_lobby,
+            is_clean_quick_menu_base,
             after_sequence=initial.sequence,
             timeout=self.navigation_timeout,
-            abort_if=_has_incompatible_lobby_state,
+            abort_if=lambda s: not (is_clean_quick_menu_base(s) or _is_passive_unknown(s)),
             cancel_requested=self.cancel_requested,
             stable_for=self.navigation_stable_for,
         )
@@ -393,15 +423,6 @@ def _has_claim_processing_activity(snapshot: RuntimeSnapshot) -> bool:
     )
 
 
-def _is_clean_lobby(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.RESOLVED
-        and state.base_context == SCREEN_LOBBY
-        and not state.overlays
-    )
-
-
 def _is_mailbox(snapshot: RuntimeSnapshot) -> bool:
     state = snapshot.state
     return (
@@ -441,18 +462,6 @@ def _is_passive_unknown(snapshot: RuntimeSnapshot) -> bool:
     return (
         snapshot.state.status is ResolutionStatus.UNKNOWN
         and not snapshot.state.overlays
-    )
-
-
-def _has_incompatible_lobby_state(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.AMBIGUOUS
-        or bool(state.overlays)
-        or (
-            state.status is ResolutionStatus.RESOLVED
-            and state.base_context != SCREEN_LOBBY
-        )
     )
 
 
@@ -512,25 +521,6 @@ def _has_incompatible_delete_state(snapshot: RuntimeSnapshot) -> bool:
         or (
             state.status is ResolutionStatus.RESOLVED
             and state.base_context != SCREEN_MAILBOX
-        )
-        or bool(
-            set(state.overlays)
-            - {
-                MODE_MAILBOX_CHARACTER_MAIL,
-                STATUS_MAILBOX_CLAIMABLE,
-                STATUS_MAILBOX_READ_MAIL_PRESENT,
-            }
-        )
-    )
-
-
-def _has_incompatible_close_state(snapshot: RuntimeSnapshot) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.AMBIGUOUS
-        or (
-            state.status is ResolutionStatus.RESOLVED
-            and state.base_context not in {SCREEN_MAILBOX, SCREEN_LOBBY}
         )
         or bool(
             set(state.overlays)

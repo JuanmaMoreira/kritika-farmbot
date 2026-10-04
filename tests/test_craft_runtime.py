@@ -602,7 +602,7 @@ def test_no_craft_material_skips_inventory_capacity_navigation():
     value, adb = runtime(sequences=range(1, 5))
     original = value.craft_reader.context_sample
     value.craft_reader.context_sample = lambda *args, **kwargs: replace(
-        original(*args, **kwargs), weapon_material=48)
+        original(*args, **kwargs), weapon_material=48, armor_material=48, accessory_material=48)
     result = value.probe_equipment_capacity()
     assert result.outcome is CraftRouteOutcome.ENTERED
     assert result.inventory_fact is None

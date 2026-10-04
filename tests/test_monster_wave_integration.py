@@ -23,6 +23,13 @@ from test_session import Rotation
 
 
 def runtime_for(monkeypatch, device, *, config=MonsterWaveConfig(), sapphires=20, mw_sapphires=None):
+    # Device facts use sequence time. The new Lobby gate also requires a
+    # fresh read after its observation barrier, not the previously current frame.
+    from bot.monster_wave_activity import MonsterWaveActivity
+    original_init=MonsterWaveActivity.__init__
+    def init(activity,*args,**kwargs):
+        original_init(activity,*args,**kwargs);activity.clock=lambda:float(device.sequence)
+    monkeypatch.setattr(MonsterWaveActivity,'__init__',init)
     records=[];stream=RuntimeEventStream(consumers=(records.append,))
     runtime=_runtime(device,stream);runtime.actions=device
     runtime.socket_relief=Mock();runtime.equipment_combine_relief=Mock()
@@ -31,11 +38,18 @@ def runtime_for(monkeypatch, device, *, config=MonsterWaveConfig(), sapphires=20
         context=kwargs.get('context',SCREEN_LOBBY)
         device.trace.append(('sapphires',context))
         value=sapphires
+        if context==SCREEN_LOBBY:
+            assert device.base==SCREEN_LOBBY
+            device.observe();device.observe()
         if context==SCREEN_BATTLE_MODE_SELECT:
             assert device.base==SCREEN_BATTLE_MODE_SELECT and not device.overlays
             assert device.sequence>=kwargs['after_sequence']
             device.observe();device.observe()
             value=sapphires if mw_sapphires is None else mw_sapphires
+        if context==SCREEN_MONSTER_WAVE:
+            assert device.base==SCREEN_MONSTER_WAVE and not device.overlays
+            device.observe();device.observe()
+            value=max(0, sapphires - 100 * device.intents.count('AcknowledgeMonsterWaveClear'))
         return fact_result('resource.sapphires',value,device.sequence,context)
     runtime.facts=Mock(read_sapphires=Mock(side_effect=read_sapphires))
     def auto(**kwargs):
@@ -44,6 +58,7 @@ def runtime_for(monkeypatch, device, *, config=MonsterWaveConfig(), sapphires=20
     runtime.auto_battle=Mock(ensure_on_quick=auto)
     monkeypatch.setattr(runtime,'_shared_obstruction_recovery',lambda:None)
     rotation=Rotation(1,[])
+    rotation.preferred_entry=MonsterWaveFlow.contract.precondition
     monkeypatch.setattr(runtime,'build_rotation',lambda count:rotation)
     return runtime,records,rotation
 
@@ -56,8 +71,11 @@ def test_real_prepared_consumers_preserve_order_and_one_visit(monkeypatch,order,
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(order),character_count=1)
     assert r.status is SessionStatus.COMPLETED, r
     assert d.base==SCREEN_LOBBY
-    assert d.intents.count('OpenBattleModeSelect')==d.intents.count('OpenQuickMenu')==1
-    assert d.intents.count('SelectQuickMenuLobby')==1
+    assert d.intents.count('OpenBattleModeSelect')==1
+    # Final MW retains MW for the Lobby request; final WB already returns hub.
+    assert d.intents.count('ExitBattleModeSelect')==int(order[-1]=='world_boss')
+    assert d.intents.count('OpenQuickMenu')==int(order[-1]=='monster_wave')
+    assert d.intents.count('SelectQuickMenuLobby')==int(order[-1]=='monster_wave')
     assert d.intents.count('OpenMonsterWave')==1
     assert r.flow_names==order
     if daily:
@@ -76,7 +94,7 @@ def test_manual_runtime_never_applies_daily(monkeypatch,mode):
     definition=DEFAULT_FLOW_REGISTRY.get('monster_wave')
     r=runtime.run_flows_once((definition,)) if mode=='selected' else runtime.run_flow(definition)
     assert r.status is FlowStatus.COMPLETED
-    assert 'StartMonsterWaveSkip' in d.intents and d.base==SCREEN_LOBBY
+    assert 'StartMonsterWaveSkip' in d.intents and d.base==SCREEN_MONSTER_WAVE
     assert not any(e.event=='flow.skipped_not_eligible' for e in records)
 
 
@@ -171,7 +189,7 @@ def test_zero_sapphires_skips_without_entering_mw(monkeypatch,daily,entry):
     runtime,_,_=runtime_for(monkeypatch,d,sapphires=0)
     r=runtime.run_session(DEFAULT_FLOW_REGISTRY.select(['monster_wave']),character_count=1)
     assert r.status is SessionStatus.COMPLETED and d.base==SCREEN_LOBBY
-    assert d.intents==['OpenBattleModeSelect','OpenQuickMenu','SelectQuickMenuLobby']
+    assert d.intents==[]
     result=r.character_results[0].flow_results[0]
     assert result.sapphires_initial==0
     assert result.event_count('monster_wave.no_work')==1
@@ -207,7 +225,8 @@ def test_manual_low_balance_ignores_daily_minimum(monkeypatch,balance,mode):
     definition=DEFAULT_FLOW_REGISTRY.get('monster_wave')
     r=runtime.run_flows_once((definition,)) if mode=='selected' else runtime.run_flow(definition)
     assert r.status is FlowStatus.COMPLETED and 'StartMonsterWaveSkip' in d.intents
-    runtime.facts.read_sapphires.assert_called_once()
+    assert runtime.facts.read_sapphires.call_count==2
+    assert runtime.facts.read_sapphires.call_args_list[0].kwargs['context']==SCREEN_LOBBY
     assert runtime.facts.read_sapphires.call_args.kwargs['context']==SCREEN_BATTLE_MODE_SELECT
 
 
@@ -227,7 +246,9 @@ def test_precheck_precedes_entry_normalization_and_report_is_complete(monkeypatc
 def test_failed_or_stale_precheck_never_authorizes_input(monkeypatch,problem):
     from bot.runtime_facts import FactReadResult, FactReadStatus
     d=Device(base=SCREEN_LOBBY);runtime,_,_=runtime_for(monkeypatch,d)
+    original=runtime.facts.read_sapphires.side_effect
     def read(**kwargs):
+        if kwargs.get('context')==SCREEN_LOBBY:return original(**kwargs)
         if problem=='exception':raise RuntimeError('OCR failed')
         if problem in {'old_fact','lobby_fact'}:
             seq=kwargs['after_sequence'] if problem=='old_fact' else d.observe().sequence
@@ -256,7 +277,7 @@ def test_entry_observes_skip_after_precheck_and_uses_new_state(monkeypatch):
     assert r.character_results[0].flow_results[0].event_count('monster_wave.tickets_purchased')==1
 
 
-@pytest.mark.parametrize('balance,passes', [(0,0),(1,1),(100,1),(101,2),(201,3)])
+@pytest.mark.parametrize('balance,passes', [(0,0),(1,0),(99,0),(101,0),(102,1),(199,1),(200,1),(201,1),(299,2),(300,2)])
 def test_productive_session_uses_hub_balance_once_without_badge(monkeypatch,balance,passes):
     from bot.monster_wave_productive import ProductiveMonsterWaveFlow
     d=Device(base=SCREEN_LOBBY,daily=False)
@@ -268,11 +289,12 @@ def test_productive_session_uses_hub_balance_once_without_badge(monkeypatch,bala
     assert r.status is SessionStatus.COMPLETED, r
     result=r.character_results[0].flow_results[0]
     assert result.sapphires_initial==balance
-    assert result.sapphires_consumed==balance
+    assert result.sapphires_consumed==passes*100
     assert d.intents.count('StartMonsterWaveSkip')==passes
-    assert d.intents.count('SelectMonsterWaveMax')==int(balance>0)
-    assert d.intents.count('OpenMonsterWave')==int(balance>0)
-    runtime.facts.read_sapphires.assert_called_once()
-    assert runtime.facts.read_sapphires.call_args.kwargs['context']==SCREEN_BATTLE_MODE_SELECT
-    if balance:
+    assert d.intents.count('SelectMonsterWaveMax')==int(passes>0)
+    assert d.intents.count('OpenMonsterWave')==int(passes>0)
+    assert runtime.facts.read_sapphires.call_count==(1 if passes==0 else 2+passes)
+    assert runtime.facts.read_sapphires.call_args_list[0].kwargs['context']==SCREEN_LOBBY
+    assert runtime.facts.read_sapphires.call_args.kwargs['context']==(SCREEN_LOBBY if passes==0 else SCREEN_MONSTER_WAVE)
+    if passes:
         assert d.trace.index(('sapphires',SCREEN_BATTLE_MODE_SELECT))<d.trace.index(('intent','OpenMonsterWave'))

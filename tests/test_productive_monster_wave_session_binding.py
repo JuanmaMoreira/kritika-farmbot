@@ -89,7 +89,7 @@ def test_productive_monster_wave_prepared_with_shared_zone_without_eligibility(m
     assert prepared.zone is zone
     assert plan.eligibility == (None,)
     prepared.run()
-    flow._run_activity_l1.assert_called_once_with()
+    flow._run_activity_l1.assert_called_once_with(keep_current=True)
 
 
 def test_bare_monster_wave_keeps_same_binding(monkeypatch):
@@ -103,7 +103,7 @@ def test_bare_monster_wave_keeps_same_binding(monkeypatch):
     prepared.run()
     flow.activity.run.assert_called_once()
     _, kwargs = flow.activity.run.call_args
-    assert kwargs == {"yield_resource_board": False}
+    assert kwargs == {"yield_resource_board": False, "keep_current": True}
     assert plan.eligibility == (None,)
 
 
@@ -138,3 +138,14 @@ def test_productive_prepared_activity_keeps_zone_identity_for_runner_ordering():
     bare = _bare(zone)
     bare_prepared = bare.prepared(zone)
     assert type(prepared.contract.precondition) is type(bare_prepared.contract.precondition)
+
+
+def test_productive_standalone_retains_surface_without_exit_inputs():
+    from bot.monster_wave_activity import MonsterWaveResult
+    zone=_zone();zone.enter.return_value=MonsterWaveResult(FlowStatus.COMPLETED)
+    zone.leave.return_value=MonsterWaveResult(FlowStatus.COMPLETED)
+    flow=_productive(zone);flow.entry_readiness=Mock(return_value=None)
+    flow._run_activity_l1=Mock(return_value=MonsterWaveResult(FlowStatus.COMPLETED))
+    assert flow.run().succeeded
+    flow._run_activity_l1.assert_called_once_with(keep_current=True)
+    zone.leave.assert_not_called()

@@ -280,19 +280,20 @@ class EquipmentCombineRelief:
             f"equipment_combine_relief.{label}.confirm_combine_all",
             ConfirmCombineAll(),
             popup,
-            expected=_is_tappable_animation,
+            expected=lambda item: _is_tappable_animation(item) or _is_ethereal_result_animation(item),
             precondition=lambda item: _is_combine_all_popup(item, mode),
             tolerated=_is_combine_animation_transient,
             policy=self.single_action_policy,
+            stable_for=0.,
         )
         if animation is None:
             self._record(f"equipment_combine_relief.{label}_contradiction", reason="no_verified_animation")
             return EquipmentCombineStrategyOutcome.FAILED, popup, 0
         tapped = self.tap_through.run(
             animation,
-            action=TapCombineAnimation(),
+            action=TapEtherealResultAnimation(),
             expected=lambda item: expected_menu(item) and status not in item.state.overlays,
-            tappable=_is_tappable_animation,
+            tappable=lambda item: _is_tappable_animation(item) or _is_ethereal_result_animation(item),
             transient=_is_combine_animation_transient,
             cancel_requested=cancel_requested,
             policy=self.animation_policy,
@@ -366,38 +367,33 @@ class EquipmentCombineRelief:
             "equipment_combine_relief.ethereal.confirm_mass_combine",
             ConfirmEtherealMassCombine(),
             outcome,
-            expected=lambda item: _is_tappable_animation(item) or _is_random_part_panel(item) or _is_ethereal_result_animation(item),
+            expected=lambda item: _is_tappable_animation(item) or _is_ethereal_result_animation(item),
             precondition=_is_ethereal_confirm,
             tolerated=_is_combine_animation_transient,
             policy=self.single_action_policy,
+            stable_for=0.,
         )
         if animation_or_completion is None:
             self._record("equipment_combine_relief.ethereal_failed", step="confirm_mass_combine")
             return EquipmentCombineStrategyOutcome.FAILED, outcome, 0
-        if _is_random_part_panel(animation_or_completion):
-            completion = animation_or_completion
-            tap_count = 0
-            self._record(
-                "equipment_combine_relief.ethereal_animation_completed_before_tappable"
-            )
-        else:
-            tapped = self.tap_through.run(
-                animation_or_completion,
-                action=TapCombineAnimation(),
-                action_for=_ethereal_animation_tap,
-                expected=_is_random_part_panel,
-                tappable=lambda item: _is_tappable_animation(item) or _is_ethereal_result_animation(item),
-                transient=_is_combine_animation_transient,
-                cancel_requested=cancel_requested,
-                policy=self.animation_policy,
-            )
-            if tapped.outcome is TapThroughOutcome.CANCELLED:
-                return EquipmentCombineStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
-            if not tapped.succeeded:
-                self._record("equipment_combine_relief.ethereal_failed", step="tap_through", reason=tapped.outcome.value)
-                return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
-            completion = tapped.final_snapshot
-            tap_count = tapped.tap_count
+        # Popup close can expose the panel before the reward animation starts.
+        # Only an observed result phase arms completion; no early panel shortcut.
+        tapped = self.tap_through.run(
+            animation_or_completion,
+            action=TapEtherealResultAnimation(),
+            expected=_is_random_part_panel,
+            tappable=lambda item: _is_tappable_animation(item) or _is_ethereal_result_animation(item),
+            transient=_is_combine_animation_transient,
+            cancel_requested=cancel_requested,
+            policy=self.animation_policy,
+        )
+        if tapped.outcome is TapThroughOutcome.CANCELLED:
+            return EquipmentCombineStrategyOutcome.CANCELLED, tapped.final_snapshot, tapped.tap_count
+        if not tapped.succeeded:
+            self._record("equipment_combine_relief.ethereal_failed", step="tap_through", reason=tapped.outcome.value)
+            return EquipmentCombineStrategyOutcome.FAILED, tapped.final_snapshot, tapped.tap_count
+        completion = tapped.final_snapshot
+        tap_count = tapped.tap_count
         restored = self._transition(
             "equipment_combine_relief.ethereal.return_transmute",
             SelectCombineTransmute(),
@@ -425,7 +421,7 @@ class EquipmentCombineRelief:
         return EquipmentCombineStrategyOutcome.EFFECT, restored, tap_count
 
     def _transition(self, name, action, before, *, expected, precondition, tolerated=lambda _: False, policy=None,
-                    precondition_regions=(), expected_regions=()):
+                    precondition_regions=(), expected_regions=(), stable_for=None):
         result = self.transition.execute(
             name,
             action,
@@ -434,7 +430,7 @@ class EquipmentCombineRelief:
             precondition=precondition,
             retryable_from=precondition,
             abort_if=lambda item: _known_incompatible(item, expected, precondition) and not tolerated(item),
-            stable_for=self.stable_for,
+            stable_for=self.stable_for if stable_for is None else stable_for,
             policy=policy or self.normal_policy,
             precondition_regions=precondition_regions,
             expected_regions=expected_regions,
@@ -493,6 +489,7 @@ def _is_stable_mode(snapshot: RuntimeSnapshot, mode: str) -> bool:
         and mode in overlays
         and overlays <= (allowed_statuses | {mode})
         and not _has_tappable_observation(snapshot)
+        and combine_controls_undimmed(snapshot.frame.image)
     )
 
 
@@ -517,9 +514,9 @@ def _is_tappable_animation(snapshot: RuntimeSnapshot) -> bool:
 
 
 def _is_ethereal_result_animation(snapshot: RuntimeSnapshot) -> bool:
-    """Post-Mass-Combine Ethereal result phase under the verified confirm handoff.
+    """Local Combine result phase under a verified single confirm handoff.
 
-    USER_GT (2026-09-28): after the single effective Mass Combine confirm, a
+    USER_GT (2026-10-02): after the single effective Combine confirm, a
     result animation appears whose concrete item is irrelevant and may vary;
     it is traversed with safe taps until the Random Part BASE is recovered.
     Local to this handoff only: UNKNOWN, or the known Combine base with

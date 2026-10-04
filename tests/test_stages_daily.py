@@ -97,12 +97,12 @@ def test_ad_return_without_sapphire_increase_fails_without_second_ad():
     assert f.run().status is FlowStatus.FAILED
     assert n.calls.count(C.VIDEO)==1 and n.calls[-1]=='exit'
 
-def test_unavailable_has_five_launches_one_identity_reset_and_controlled_terminal():
-    f,n,resets=flow([balance(),balance(),balance()], [AdsOutcome.UNAVAILABLE]*5)
+def test_unavailable_has_four_launches_two_delays_one_identity_reset_and_controlled_terminal():
+    f,n,resets=flow([balance(),balance(),balance()], [AdsOutcome.UNAVAILABLE]*4)
     assert f.run().status is FlowStatus.MANUAL_RESOLUTION
-    assert n.calls.count(C.VIDEO)==5 and n.calls.count(C.NO_ADS_OK)==5
+    assert n.calls.count(C.VIDEO)==4 and n.calls.count(C.NO_ADS_OK)==4
     assert resets==['same'] and n.calls[-1]=='exit'
-    assert n.clock.now==15.
+    assert n.clock.now==10.
 
 def test_inconclusive_ad_never_relaunches_or_resets():
     f,n,resets=flow([balance(),balance()], [AdsOutcome.RECOVERY_FAILED])
@@ -270,10 +270,11 @@ def test_stamina_purchase_uses_fixed_offer_cv_without_coin_ocr():
     queue=iter(panels);actions=[]
     def wait(predicate):
         s=next(queue);assert predicate(s);return s
-    nav=S(wait=wait,act=lambda a,s:actions.append(a),events=None)
+    nav=S(wait=wait,act=lambda a,s:actions.append(a),events=None,clock=lambda:10.)
     after=balance(10,300)
     balances=S(read=lambda:after,
-               text=lambda *a:pytest.fail('coin OCR'),pair=lambda *a:pytest.fail('coin OCR'))
+               text=lambda *a:pytest.fail('coin OCR'),
+               pair=lambda s,roi:(1,20) if roi==(.592,.78,.66,.84) else pytest.fail('coin OCR'))
     detector=S(present=lambda frame,key:key in frame.flags)
     result=StaminaPurchase(nav,balances,detector).ensure(balance(10,250))
     assert result is after
@@ -405,3 +406,53 @@ def test_continuous_progress_is_still_bounded():
         clock=c,sleeper=c.sleep,deadline=6,max_duration=10,progress_grace=2)
     assert m.complete_requested_launch().outcome is AdsOutcome.RECOVERY_FAILED
     assert seen==[10.,11.]
+
+
+def test_reused_stages_binding_resets_relief_bound_for_each_invocation():
+    from bot.stages_reliefs import StagesReliefs
+    f,n,_=flow([balance(),balance(),balance(300),balance(),balance(),balance(300)],
+               [AdsOutcome.RETURNED,AdsOutcome.RETURNED])
+    relief=StagesReliefs(n,None,None)
+    n.relief=relief
+    calls=[]
+    def enter():
+        assert not relief.used
+        relief.used.add('popup.socket_inventory_full')
+        calls.append('relief');return S(sequence=1)
+    n.enter_target=enter
+    assert f.run().status is FlowStatus.COMPLETED
+    assert f.run().status is FlowStatus.COMPLETED
+    assert calls==['relief','relief']
+
+
+def test_relief_duplicate_still_stops_within_one_invocation():
+    from bot.stages_reliefs import StagesReliefs
+    relief=StagesReliefs(None,None,None)
+    relief.used.add('popup.socket_inventory_full')
+    with pytest.raises(ValueError,match='bound exhausted'):
+        relief(C.START,S(state=S(overlays=('popup.socket_inventory_full',))),{'start'})
+
+
+def test_explicit_unavailable_arriving_during_return_grace_preserves_identity():
+    m,seen=manager([AdObservation(1,active=True),AdObservation(2,game_present=True),
+                   AdObservation(3,game_present=True,unavailable=True)])
+    assert m.complete_requested_launch().outcome is AdsOutcome.UNAVAILABLE
+    assert seen==[]
+
+
+def test_daily_exhaustion_arriving_during_return_grace_stays_distinct():
+    m,seen=manager([AdObservation(1,active=True),AdObservation(2,game_present=True),
+                   AdObservation(3,game_present=True,exhausted=True)])
+    assert m.complete_requested_launch().outcome is AdsOutcome.EXHAUSTED
+    assert seen==[]
+
+
+@pytest.mark.parametrize('returned_at',[1,2,3,4])
+def test_no_ads_retry_can_recover_at_each_authorized_launch(returned_at):
+    outcomes=[AdsOutcome.UNAVAILABLE]*(returned_at-1)+[AdsOutcome.RETURNED]
+    balances=[balance(),balance()]+([balance()] if returned_at==4 else [])+[balance(300)]
+    f,n,resets=flow(balances,outcomes)
+    assert f.run().succeeded
+    assert n.calls.count(C.VIDEO)==returned_at
+    assert n.clock.now==min(returned_at-1,2)*5.
+    assert resets==(['same'] if returned_at==4 else [])

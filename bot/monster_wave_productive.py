@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from functools import partial
 import time
+from uuid import uuid4
 
 from bot.catalog import POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL
 from bot.equipment_combine_relief import EquipmentCombineReturnPlan
 from bot.equipment_relief import (EquipmentReliefOutcome, EquipmentReliefRequest,
                                   FreshCallerContext)
-from bot.flow_contracts import FlowResult, FlowStatus
+from bot.flow_contracts import FlowEvent, FlowResult, FlowStatus
 from bot.monster_wave_activity import MonsterWaveResult, clean_mw, popup, skip_state
 from bot.monster_wave_flow import MonsterWaveFlow
+from bot.sapphire_pressure import sapphire_pressure_passes
+from bot.event_log import record_best_effort
 from bot.monster_wave_resource_route import (
     FreshMonsterWaveSnapshot,
     ResourceRouteExecutionStatus,
@@ -85,11 +89,17 @@ class ProductiveMonsterWaveFlow:
 
     def prepared(self, zone, *, yield_resource_board=False):
         return PreparedActivity(
-            self.name, zone, self._run_activity_l1,
+            self.name, zone, partial(self._run_activity_l1, keep_current=True),
+            entry_readiness=self.entry_readiness, exit_postconditions=self.contract.successful_postconditions,
         )
 
+    def entry_readiness(self):
+        return self.inner.entry_readiness(pressure_relief=True)
+
     def run(self, *, yield_resource_board=False):
-        # Standalone path (Lobby -> Lobby): same productive loop in one visit.
+        # Enter once, finish gameplay on a verified reusable surface.
+        ready=self.entry_readiness()
+        if ready is not None:return ready
         entered = self.zone.enter()
         if not entered.succeeded:
             return MonsterWaveResult(
@@ -97,18 +107,13 @@ class ProductiveMonsterWaveFlow:
                 transition_outcomes=entered.transition_outcomes,
                 transition_attempts=entered.transition_attempts,
             )
-        result = self._run_activity_l1()
+        result = self._run_activity_l1(keep_current=True)
         result = replace(result,
             transition_outcomes=entered.transition_outcomes + result.transition_outcomes,
             transition_attempts=entered.transition_attempts + result.transition_attempts)
         if not result.succeeded:
             return result
-        closed = self.zone.leave()
-        return replace(
-            result, status=closed.status, error=closed.error, failure=closed.failure,
-            transition_outcomes=result.transition_outcomes + closed.transition_outcomes,
-            transition_attempts=result.transition_attempts + closed.transition_attempts,
-        )
+        return result
 
     def _first_leg(self) -> MonsterWaveResult:
         return self.activity.run_pass(yield_resource_board=True)
@@ -120,10 +125,10 @@ class ProductiveMonsterWaveFlow:
         passed = self.activity.run_pass(resume_after_relief=True)
         return self.activity._merge(entered, passed)
 
-    def _run_activity_l1(self) -> FlowResult:
-        """One preparation and the expected number of fresh SKIP passes."""
+    def _run_activity_l1(self, *, return_to_lobby=False, keep_current=False) -> FlowResult:
+        """Prepare once; reevaluate pressure after each verified CLEAR effect."""
         try:
-            prepared = self.activity.prepare()
+            prepared = self.activity.prepare(pressure_relief=True)
         except RuntimeWaitCancelled:
             return MonsterWaveResult(FlowStatus.CANCELLED)
         except Exception as error:
@@ -132,14 +137,28 @@ class ProductiveMonsterWaveFlow:
             )
         if not prepared.succeeded or prepared.event_count('monster_wave.no_work'):
             return prepared
+        def finish_surface():
+            if not keep_current:
+                return (self.activity.leave(return_to_lobby=True)
+                        if return_to_lobby else self.activity.leave())
+            if self.activity.cancel_requested():
+                return MonsterWaveResult(FlowStatus.CANCELLED)
+            final = self.activity.observer.observe()
+            if not clean_mw(final):
+                return MonsterWaveResult(FlowStatus.FAILED, error='mw_completion_surface_unconfirmed')
+            return MonsterWaveResult(FlowStatus.COMPLETED, final_snapshot=final)
+
         initial = prepared.sapphires_initial
         if type(initial) is not int or initial < 0:
             return MonsterWaveResult(FlowStatus.FAILED, error='mw_initial_sapphires_unavailable',
                                      events=prepared.events)
-        total = (initial + 99) // 100
+        balance = initial
+        pass_budget = max(32, sapphire_pressure_passes(initial))
         result = prepared
         consumed = 0
-        for _ in range(total):
+        for _ in range(pass_budget):
+            if sapphire_pressure_passes(balance) == 0:
+                break
             try:
                 first = self._first_leg()
             except RuntimeWaitCancelled:
@@ -149,8 +168,6 @@ class ProductiveMonsterWaveFlow:
             passed = (self._consume_pending(first)
                       if first.status is FlowStatus.RESOURCE_BOARD_PENDING
                       else self._relieve_blockers(first))
-            if passed.event_count('monster_wave.completed') == 1:
-                consumed += min(100, initial - consumed)
             result = replace(passed,
                 events=result.events + passed.events,
                 transition_outcomes=result.transition_outcomes + passed.transition_outcomes,
@@ -159,7 +176,16 @@ class ProductiveMonsterWaveFlow:
             if not passed.succeeded:
                 return result
             if passed.event_count('monster_wave.insufficient_sapphires'):
-                left = self.activity.leave()
+                # The popup alone cannot prove the pressure postcondition.
+                try:
+                    fact = self.activity.read_sapphires_after_clear()
+                    if sapphire_pressure_passes(fact.value):
+                        raise ValueError('mw_pressure_remaining_after_insufficient_sapphires')
+                except RuntimeWaitCancelled:
+                    return replace(result, status=FlowStatus.CANCELLED)
+                except Exception as error:
+                    return replace(result, status=FlowStatus.FAILED, error=str(error))
+                left = finish_surface()
                 return replace(left,
                     events=result.events + left.events,
                     transition_outcomes=result.transition_outcomes + left.transition_outcomes,
@@ -168,7 +194,23 @@ class ProductiveMonsterWaveFlow:
             if passed.event_count('monster_wave.completed') != 1:
                 return replace(result, status=FlowStatus.FAILED,
                                error='mw_pass_without_confirmed_clear')
-        left = self.activity.leave()
+            try:
+                fact = self.activity.read_sapphires_after_clear()
+            except RuntimeWaitCancelled:
+                return replace(result, status=FlowStatus.CANCELLED)
+            except Exception as error:
+                return replace(result, status=FlowStatus.FAILED, error=str(error))
+            record_best_effort(getattr(self.activity, 'events', None),
+                'monster_wave.sapphire_effect', before=balance, after=fact.value,
+                source_sequence=fact.sequence, passes_needed=sapphire_pressure_passes(fact.value))
+            consumed += max(0, balance - fact.value)
+            balance = fact.value
+            result = replace(result, sapphires_consumed=consumed,
+                events=result.events + (FlowEvent('monster_wave.sapphire_effect', fields={
+                    'after':balance, 'source_sequence':fact.sequence}),))
+        if sapphire_pressure_passes(balance):
+            return replace(result, status=FlowStatus.FAILED, error='mw_pressure_pass_budget_exhausted')
+        left = finish_surface()
         return replace(left,
             events=result.events + left.events,
             transition_outcomes=result.transition_outcomes + left.transition_outcomes,
@@ -314,27 +356,14 @@ class ProductiveMonsterWaveFlow:
                     FlowStatus.FAILED, error="unexpected_plan_status",
                     events=first.events,
                 )
-            # Exit MW clean to Battle Mode once before the causal resume.
+            # The route returns a verified fresh MW anchor after closing its
+            # modal or resolving its real return destination. Resume the SAME
+            # pass on MW; Back/reentry would discard this valid parent context.
+            record_best_effort(getattr(self.activity,"events",None),
+                "monster_wave.prerequisite.resume",context=SCREEN_MONSTER_WAVE,
+                source_sequence=anchor.context.sequence,back_count=0,mw_reentry=0)
             try:
-                exit_status, _exit_result = self.navigation.exit_to_battle_mode(anchor)
-            except RuntimeWaitCancelled:
-                return MonsterWaveResult(FlowStatus.CANCELLED, events=first.events)
-            except Exception as error:
-                return MonsterWaveResult(
-                    FlowStatus.FAILED,
-                    error=str(error) or type(error).__name__,
-                    events=first.events,
-                )
-            if exit_status is FlowStatus.CANCELLED:
-                return MonsterWaveResult(FlowStatus.CANCELLED, events=first.events)
-            if exit_status is not FlowStatus.COMPLETED:
-                return MonsterWaveResult(
-                    FlowStatus.FAILED, error=f"exit_failed:{exit_status.value}",
-                    events=first.events,
-                )
-            # Causal resume: SAME request + yield=False.
-            try:
-                second = self._resume_leg()
+                second = self.activity.run_pass(resume_after_relief=True)
             except RuntimeWaitCancelled:
                 return MonsterWaveResult(FlowStatus.CANCELLED, events=first.events)
             except Exception as error:
@@ -470,6 +499,18 @@ class ProductiveMonsterWaveFlow:
                     result = retry()
                 else:
                     raise ValueError("mw_blocker_result_ambiguous")
+            if result.succeeded and result.event_count('monster_wave.completed') == 1:
+                # Retain the real intermediate manual boundary, and explicitly
+                # resolve only this pass's blockers after its confirmed CLEAR.
+                for index,pending in enumerate(tuple(events)):
+                    if pending.kind == 'monster_wave.manual_resolution':
+                        boundary_id=uuid4().hex
+                        events[index]=replace(pending,fields={**pending.fields,'relief_boundary_id':boundary_id})
+                        events.append(FlowEvent('monster_wave.relief_resolved', fields={
+                            'blocker': pending.fields.get('blocker'),
+                            'relief_boundary_id':boundary_id,
+                            'resolved_event_created_at': pending.created_at.isoformat(),
+                        }))
             return replace(result, events=tuple(events))
         except RuntimeWaitCancelled:
             return MonsterWaveResult(FlowStatus.CANCELLED, events=tuple(events))

@@ -1,0 +1,22 @@
+{
+  "source_run": "77d1ee48c5174bbf966c4fbc0ef6e3f2",
+  "failure": "failure_8fdb639c8516499e8970e73b30a91e17",
+  "saved_geometry": [
+    960,
+    433
+  ],
+  "original_geometry": [
+    2712,
+    1224
+  ],
+  "note": "Failure evidence is downscaled; never use saved dimensions as native input geometry.",
+  "positive_frames": [
+    2147,
+    2153
+  ],
+  "transient_frame": 2159,
+  "clean_after_native": [
+    2712,
+    1220
+  ]
+}

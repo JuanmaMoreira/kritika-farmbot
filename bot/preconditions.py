@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from bot.failure_cause import FailureCause
+from bot.runtime_observer import RuntimeWaitCancelled
 from enum import Enum
 from typing import Any, Callable, Protocol, runtime_checkable
 
-from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY, SCREEN_PETS_MANAGE
+from bot.catalog import SCREEN_GUILD, SCREEN_LOBBY, SCREEN_PETS_MANAGE, SCREEN_BATTLE_MODE_SELECT
+from bot.monster_wave_semantics import SCREEN_MONSTER_WAVE
 from bot.component_contracts import (
     ComponentRequirement,
     QUICK_MENU_ACCESSIBLE,
@@ -29,6 +32,8 @@ class EnsureResult:
     context_after: str | None
     error: str | None = None
     snapshot: Any = None
+    route: str | None = None
+    failure: FailureCause | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -45,7 +50,7 @@ class PreconditionEnsurer(Protocol):
 
 
 class MinimalPreconditionEnsurer:
-    """Normalize exact Lobby or Guild using only acquired transitions.
+    """Ensure existing surface contracts with explicit acquired routes.
 
     The navigation callbacks are interaction boundaries. A production
     adapter must implement observed, verified transitions; the runner never
@@ -65,6 +70,7 @@ class MinimalPreconditionEnsurer:
         current_context: Callable[[], str | None | tuple[str | None, Any]],
         *,
         navigate_to_lobby: Callable[[], bool] | None = None,
+        navigate_to_battle_mode: Callable[[], bool] | None = None,
         navigate_to_pets_manage: Callable[[], bool] | None = None,
         navigate_lobby_to_guild: Callable[[], bool] | None = None,
         navigate_to_guild: Callable[[], bool] | None = None,
@@ -74,6 +80,8 @@ class MinimalPreconditionEnsurer:
             raise ValueError("current_context must be callable")
         if navigate_to_lobby is not None and not callable(navigate_to_lobby):
             raise ValueError("navigate_to_lobby must be callable or None")
+        if navigate_to_battle_mode is not None and not callable(navigate_to_battle_mode):
+            raise ValueError("navigate_to_battle_mode must be callable or None")
         if navigate_to_pets_manage is not None and not callable(
             navigate_to_pets_manage
         ):
@@ -87,6 +95,8 @@ class MinimalPreconditionEnsurer:
         if not isinstance(quick_menu_policy, QuickMenuPolicy):
             raise ValueError("quick_menu_policy must be QuickMenuPolicy")
         self.current_context = current_context
+        self.last_context = None
+        self.navigate_to_battle_mode = navigate_to_battle_mode
         self.navigate_to_lobby = navigate_to_lobby
         self.navigate_to_pets_manage = navigate_to_pets_manage
         self.navigate_lobby_to_guild = navigate_lobby_to_guild
@@ -107,6 +117,19 @@ class MinimalPreconditionEnsurer:
             )
 
         if requirement.kind is RequirementKind.EXACT_STATE:
+            if requirement.name == SCREEN_BATTLE_MODE_SELECT and (
+                before in {SCREEN_LOBBY, SCREEN_MONSTER_WAVE}
+                or self.quick_menu_policy.allows(before)
+            ):
+                return self._navigate_and_verify(
+                    requirement, before, self.navigate_to_battle_mode,
+                    'back_battle_mode' if before == SCREEN_MONSTER_WAVE else
+                    'enter_battle_mode' if before == SCREEN_LOBBY else 'quick_menu_lobby_then_battle_mode',
+                )
+            if requirement.name == SCREEN_LOBBY and before == SCREEN_BATTLE_MODE_SELECT:
+                return self._navigate_and_verify(
+                    requirement, before, self.navigate_to_lobby, 'back_lobby',
+                )
             if (
                 requirement.name == SCREEN_LOBBY
                 and self.quick_menu_policy.allows(before)
@@ -127,15 +150,15 @@ class MinimalPreconditionEnsurer:
             if (
                 requirement.name == SCREEN_PETS_MANAGE
                 and (
-                    before == SCREEN_LOBBY
-                    or self.quick_menu_policy.allows(before)
+                    self.quick_menu_policy.allows(before)
                 )
             ):
                 return self._navigate_and_verify(
                     requirement,
                     before,
                     self.navigate_to_pets_manage,
-                    "pets_manage",
+                    "direct_pets" if before == SCREEN_LOBBY else
+                    "quick_menu_pets",
                 )
             if (
                 requirement.name == SCREEN_GUILD
@@ -164,6 +187,7 @@ class MinimalPreconditionEnsurer:
         ):
             raise ValueError("requirements must contain ComponentRequirement values")
         context = self._current_context()
+        self.last_context = context
         return any(self._satisfies(context, requirement) for requirement in values)
 
     def _current_context(self) -> str | None:
@@ -182,6 +206,8 @@ class MinimalPreconditionEnsurer:
         try:
             value = self.current_context()
         except (KeyboardInterrupt, SystemExit):
+            raise
+        except RuntimeWaitCancelled:
             raise
         except Exception:
             return None, None
@@ -221,14 +247,12 @@ class MinimalPreconditionEnsurer:
             navigated = callback() is True
         except (KeyboardInterrupt, SystemExit):
             raise
+        except RuntimeWaitCancelled:
+            raise
         except Exception as error:
-            return self._failed(
-                requirement,
-                before,
-                None,
-                f"{navigation}_navigation_failed: "
-                f"{type(error).__name__}: {error}",
-            )
+            return EnsureResult(EnsureOutcome.FAILED, requirement, before, None,
+                f"{navigation}_navigation_failed: {type(error).__name__}: {error}",
+                route=navigation, failure=getattr(error, 'failure', None))
         after, after_snapshot = self._current_entry()
         if navigated and self._satisfies(after, requirement):
             return EnsureResult(
@@ -237,6 +261,7 @@ class MinimalPreconditionEnsurer:
                 before,
                 after,
                 snapshot=after_snapshot,
+                route=navigation,
             )
         return self._failed(
             requirement,

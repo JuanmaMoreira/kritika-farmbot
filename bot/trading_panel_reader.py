@@ -22,6 +22,7 @@ _ROIS = {
     "panel_title": (.42, .18, .59, .23),
     "input_title": (.54, .30, .70, .35),
     "input_pair": (.54, .34, .65, .385),
+    "input_pair_material": (.54, .343, .65, .38),
     "output_title": (.30, .505, .48, .55),
     "quantity": (.592, .78, .66, .84),
     "alert_first": (.35, .43, .65, .49),
@@ -105,12 +106,15 @@ class TradingPanelReader:
 
         incoming = self._read(frame, "input_title")
         outgoing = self._read(frame, "output_title")
-        pair = self._read(frame, "input_pair")
+        item_id = _KNOWN_TRADES.get((_plain(incoming.text), _plain(outgoing.text)))
+        # Materials red glyphs need tighter vertical padding. Keep the acquired
+        # Keys crop: narrowing it makes parchment texture a spurious underscore.
+        pair = self._read(frame, "input_pair_material" if item_id ==
+                          "hero_weapon_crafting_material" else "input_pair")
         quantity = self._read(frame, "quantity")
         if min(incoming.confidence, outgoing.confidence,
                pair.confidence, quantity.confidence) < .85:
             return self._unavailable("ocr_confidence")
-        item_id = _KNOWN_TRADES.get((_plain(incoming.text), _plain(outgoing.text)))
         displayed = parse_pair(pair.text.strip().strip("()"))
         selected_pair = parse_pair(quantity.text)
         if item_id is None or displayed is None or selected_pair is None:
@@ -136,7 +140,8 @@ class TradingPanelReader:
                               interpolation=cv2.INTER_CUBIC)
         started = time.perf_counter()
         result = self.engine.recognize(enlarged)
-        self.last_diagnostic.setdefault("reads", {})[name] = {
+        diagnostic_name = "input_pair" if name == "input_pair_material" else name
+        self.last_diagnostic.setdefault("reads", {})[diagnostic_name] = {
             "raw": result.text, "confidence": result.confidence,
             "ocr_seconds": time.perf_counter() - started,
         }

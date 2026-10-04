@@ -40,6 +40,7 @@ class FlowDefinition:
     scope: FlowScope
     contract: FlowContract
     factory: FlowFactory
+    controlled_unavailable_events: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not self.id.strip():
@@ -52,6 +53,10 @@ class FlowDefinition:
             raise ValueError("contract must be FlowContract")
         if not callable(self.factory):
             raise ValueError("factory must be callable")
+        if not isinstance(self.controlled_unavailable_events, frozenset) or any(
+            not isinstance(event, str) or not event.strip() for event in self.controlled_unavailable_events
+        ):
+            raise ValueError("controlled_unavailable_events must be a frozenset of event names")
 
     def build(self, dependencies: FlowDependencies) -> PerCharacterFlow:
         flow = self.factory(dependencies)
@@ -411,7 +416,8 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         raise ValueError("cancel_requested must be callable")
 
     inner = bare_factory()
-    engine = RapidOcrEngine()
+    # Repeated bindings share the runtime recognition backend, not reader state.
+    engine = getattr(dependencies,"ocr_engine",None) or RapidOcrEngine()
     # Warm the OCR backend outside the acquisition window: A1 keeps the
     # 1.0 s spacing / 2.0 s final age / 3.0 s waits unchanged, and a cold
     # first board read (≈2 s) would otherwise exhaust the final age.
@@ -806,6 +812,7 @@ def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
             active_event="daily_quests.lobby_return_scope_active",
             unavailable_event="daily_quests.lobby_return_scope_unavailable",
         ),
+        verified_transition=_verified_transition_for(dependencies),
         cancel_requested=dependencies.cancel_requested,
     )
 
@@ -932,6 +939,7 @@ def _build_mailbox(dependencies: FlowDependencies) -> PerCharacterFlow:
             active_event="mailbox.lobby_return_scope_active",
             unavailable_event="mailbox.lobby_return_scope_unavailable",
         ),
+        verified_transition=_verified_transition_for(dependencies),
         cancel_requested=dependencies.cancel_requested,
     )
 
@@ -974,9 +982,20 @@ def _build_stages_daily(dependencies):
     return build_stages_daily(dependencies, _build_monster_wave(dependencies))
 
 
+def _build_gold_farming(dependencies):
+    from bot.gold_farming_flow import GoldFarmingFlow
+    from bot.stages_wiring import build_stages_daily, ensure_lobby_entry
+    mw=_build_monster_wave(dependencies)
+    stages=build_stages_daily(dependencies,mw)
+    return GoldFarmingFlow(stages,mw,ensure_lobby=lambda:ensure_lobby_entry(dependencies),
+        events=dependencies.events,cancel_requested=dependencies.cancel_requested,
+        continue_on_unavailable=getattr(dependencies,"routine_continue_on_unavailable",True))
+
+
 DEFAULT_FLOW_REGISTRY = FlowRegistry((
-    FlowDefinition('stages_daily', 'Stages Daily', StagesDailyFlow.scope,
-                   StagesDailyFlow.contract, _build_stages_daily),
+    FlowDefinition('stages_daily', 'Stages Ads', StagesDailyFlow.scope,
+                   StagesDailyFlow.contract, _build_stages_daily,
+                   controlled_unavailable_events=frozenset({'stages_daily.ads_unavailable'})),
     FlowDefinition(
         "black_market",
         "Black Market",
@@ -1028,6 +1047,8 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
         GuildCheckInFlow.contract,
         _build_guild_check_in,
     ),
+    FlowDefinition('gold_farming', 'Gold Farming Cycle', StagesDailyFlow.scope,
+                   StagesDailyFlow.contract, _build_gold_farming),
 ))
 
 

@@ -527,3 +527,27 @@ def test_fact_cancellation_uses_safe_cancel_cleanup_and_propagates_cancelled():
 
     assert result.outcome is SocketReliefOutcome.CANCELLED
     assert any(isinstance(call[1], CancelSocketSell) for call in transitions.calls)
+
+
+def test_transient_animation_handoff_does_not_require_stable_window():
+    initial = snapshot(1, base=SCREEN_SOCKET)
+    animation = snapshot(3, tappable=True)
+    clean = snapshot(4, base=SCREEN_SOCKET)
+    operation, _, _, _, _, transitions, tap = build(
+        initial,
+        [snapshot(2, base=SCREEN_SOCKET, overlays=(POPUP_SOCKET_ENHANCE_ALL,)),
+         animation, snapshot(5, base=SCREEN_WORLD_BOSS)],
+        tap_result=TapThroughResult(TapThroughOutcome.COMPLETED, 2, clean),
+        waits=(snapshot(6, base=SCREEN_SOCKET),),
+    )
+    operation.stable_for = 0.25
+    result = operation.run(plan())
+    assert result.outcome is SocketReliefOutcome.RELIEVED
+    gold = next(call for call in transitions.calls if isinstance(call[1], SelectSocketEnhanceGold))
+    assert gold[3]['stable_for'] == 0.0
+    assert gold[3]['policy'].max_attempts == 1
+    assert transitions.calls[0][3]['stable_for'] == 0.25
+    assert transitions.calls[-1][3]['stable_for'] == 0.25
+    assert len(tap.calls) == 1 and tap.calls[0][0] is animation
+    assert not tap.calls[0][1]['tappable'](snapshot(6))
+    assert tap.calls[0][1]['transient'](snapshot(6))

@@ -205,12 +205,15 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     monkeypatch.setattr(productive, "build_runtime_event_stream", lambda *a, **k: events)
     monkeypatch.setattr(productive.RuntimeConfig, "from_env", lambda **kwargs: config)
     monkeypatch.setattr(productive, "build_adb_client", lambda value: adb)
-    monkeypatch.setattr(productive, "build_frame_source", lambda *a, **k: source)
+    def build_source(*args, **kwargs):
+        assert kwargs["max_fps"] == 10  # Live repeated-flow composition must not backlog capture.
+        return source
+    monkeypatch.setattr(productive, "build_frame_source", build_source)
     monkeypatch.setattr(productive, "ActionExecutor", lambda value: actions)
     monkeypatch.setattr(productive, "build_default_perception", lambda root: object())
     monkeypatch.setattr(productive, "build_default_resolver", lambda: object())
     monkeypatch.setattr(productive, "RuntimeObserver", lambda *args, **kwargs: observer)
-    monkeypatch.setattr(productive, "build_runtime_fact_reader", lambda value, events: facts)
+    monkeypatch.setattr(productive, "build_runtime_fact_reader", lambda value, events, ocr_engine: facts)
     monkeypatch.setattr(productive, "AutoBattleDetector", lambda value: object())
     monkeypatch.setattr(productive, "AutoBattleEnsurer", lambda detector, action: auto)
     monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: transition)
@@ -555,7 +558,7 @@ def test_productive_precondition_opens_pet_manage_from_lobby(monkeypatch):
         ),
     ),
 )
-def test_productive_precondition_closes_pet_exit_directly_to_lobby(
+def test_productive_precondition_routes_pet_exit_to_lobby_without_assuming_back_parent(
     monkeypatch, origin, overlays
 ):
     pet = _snapshot(
@@ -564,7 +567,8 @@ def test_productive_precondition_closes_pet_exit_directly_to_lobby(
         base=origin,
         overlays=overlays,
     )
-    lobby = _snapshot(2, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
+    menu = _snapshot(2, status=ResolutionStatus.UNKNOWN, overlays=(MENU_QUICK,))
+    lobby = _snapshot(3, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY)
     runtime = _runtime(Observer(pet, lobby), Events())
     calls = []
 
@@ -572,13 +576,17 @@ def test_productive_precondition_closes_pet_exit_directly_to_lobby(
         def execute(self, name, action, before, **kwargs):
             calls.append((name, action))
             assert kwargs["precondition"](before)
-            assert kwargs["expected"](lobby)
-            return SimpleNamespace(succeeded=True, final_snapshot=lobby)
+            final = menu if len(calls) == 1 else lobby
+            assert kwargs["expected"](final)
+            return SimpleNamespace(succeeded=True, final_snapshot=final,
+                action_source_snapshot=before if len(calls) == 1 else None,
+                recovery_after_action=False)
 
     monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
 
     assert runtime._navigate_to_lobby()
-    assert calls == [("precondition.close_pets", ClosePets())]
+    assert calls == [("precondition.open_quick_menu", OpenQuickMenu()),
+                     ("precondition.select_lobby", SelectQuickMenuLobby())]
 
 
 def test_productive_precondition_navigates_lobby_directly_to_verified_guild(

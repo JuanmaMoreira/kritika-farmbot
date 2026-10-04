@@ -49,6 +49,7 @@ from bot.runtime_observer import (
     RuntimeWaitTimeout,
 )
 from bot.quick_menu import (
+    is_clean_quick_menu_base,
     DEFAULT_QUICK_MENU_POLICY,
     QuickMenuPolicy,
     open_character_select_action,
@@ -269,6 +270,12 @@ class StandardRotation:
                 )
 
         origin = initial.state.base_context
+        try:
+            self.events.record('navigation.handoff', current_surface=origin,
+                underlying_base=origin, route='quick_menu', destination='character_select',
+                reason='rotation')
+        except Exception:
+            pass
         same_origin = lambda snapshot: (
             snapshot.state.base_context == origin and capable(snapshot)
         )
@@ -572,12 +579,7 @@ def _is_clean_quick_menu_capable(
     snapshot: RuntimeSnapshot,
     policy: QuickMenuPolicy = DEFAULT_QUICK_MENU_POLICY,
 ) -> bool:
-    state = snapshot.state
-    return (
-        state.status is ResolutionStatus.RESOLVED
-        and _has_compatible_origin_overlays(state.base_context, state.overlays)
-        and quick_menu_accessible(state.base_context, policy=policy)
-    )
+    return is_clean_quick_menu_base(snapshot, policy)
 
 
 def _has_quick_menu(
@@ -632,19 +634,6 @@ def _has_unexpected_quick_menu_state(
         state.status is ResolutionStatus.AMBIGUOUS
         or bool(state.overlays)
     )
-
-
-def _has_compatible_origin_overlays(
-    base_context: str | None,
-    overlays,
-) -> bool:
-    values = set(overlays)
-    if base_context == SCREEN_GUILD:
-        return len(values) == 1 and values <= {
-            STATUS_GUILD_ATTENDANCE_ACTIVE,
-            STATUS_GUILD_ATTENDANCE_COMPLETED,
-        }
-    return not values
 
 
 def _has_unexpected_character_select_transition(

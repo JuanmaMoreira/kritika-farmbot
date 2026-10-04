@@ -28,6 +28,8 @@ Combine es **una BASE**: Transmute, Fuse, [Awakened] Transmute y [Ethereal] Rand
 
 ## Caller, Back y cierres — USER_GT
 
+**USER_GT 2026-10-02, retorno Trading:** Trading Center es MODAL sobre la superficie caller. Desde MW, X normalmente restaura MW; close → snapshot fresco → reclasificar. MW confirmado continúa el mismo flow sin Back ni re-entry. Sólo Lobby confirmado habilita recovery/re-entry bounded; otro contexto lo resuelve su owner. UNKNOWN/AMBIGUOUS espera/reclasifica o usa recovery seguro existente, nunca Back preventivo.
+
 - Back recuerda la BASE inmediatamente anterior. Encadenar BASE→Quick Menu→otra BASE cambia el retorno. Un relief productivo restaura su caller BASE antes de navegar a otra; no encadenar BASEs extra si importa ese retorno.
 - MODAL/OVERLAY no crean caller BASE. Close/Cancel vuelve al parent subyacente donde esté establecido; no generalizar gestos de cierre no verificados.
 - Craft bloqueado: `Craft → Equipment Full → acceso directo a Combine desde el blocker → relief → Back → Craft`. No existe motivo productivo para Craft limpio→Combine en este relief; no inventar ruta Quick Menu.
@@ -37,8 +39,32 @@ Combine es **una BASE**: Transmute, Fuse, [Awakened] Transmute y [Ethereal] Rand
 - **USER_GT (2026-10-01):** `Craft → Inventory → Back → Craft → Back → Lobby` es una secuencia determinista. Lobby es su postcondition normal, no failure ni recovery inesperado. Craft conserva su entrada directa; no agregar `MW → Inventory → MW` preventivo. Desde ese Lobby se continúa por navegación normal a Battle Mode Select y MW.
 - **LIVE_EVIDENCE (2026-10-02):** `MW → Inventory → Back → MW → Back → Lobby` conserva esa historia de BASE. Lobby limpio es un destino normal conocido; la activity reusable restablece Battle Mode Select mediante navegación normal sólo en esta rama, sin otro Back ni consumo.
 - Pets Combine All y Mass Evolve Normal/Rare: No devuelve exactamente el parent/estado subyacente Pet Combine o Pet Summon, o Pets Manage si allí aplica esa confirmación; no inferir otras rutas.
+- **USER_GT (2026-10-03):** desde Select Battle Mode limpio un Back vuelve directamente a Lobby. En la secuencia `MW → Back → Select Battle Mode → Back → Lobby` es el segundo Back; no se autoriza Back sobre UNKNOWN/modal.
 - Trading abierto desde Quick Menu conserva el parent; X restaura ese parent (Craft y Treasure establecidos). Treasure sí cambia de BASE.
 - MW tooltip (`overlay.monster_wave_usage_tooltip`): un tap en Sapphires abre; segundo tap sobre el tooltip cierra. Estrategia aceptada: double tap, ignorar normalmente el transitorio; si el segundo se pierde, puede reconocerse y manejarse. No requiere state machine nueva.
+
+## Entradas entre flows — USER_GT corregido 2026-10-04
+
+- Mailbox y Daily Quests son destinos Quick Menu; cerrar cualquiera restaura la BASE que
+  estaba debajo. No requieren Lobby: MW→QM→Quests→close→MW→QM→Mailbox→close→MW es válido.
+- Rotation/Character Select puede iniciarse por QM desde una BASE verificada que lo permita.
+  Lobby sigue válido sin ser obligatorio ni preferido. La entrada a Character Select no requiere Lobby previo.
+- Battle Mode Select tiene Quick Menu. Para Lobby gana Back directo (un tap); para
+  Pets/Quests/Mailbox/Character Select el destino QM directo evita Lobby.
+- Availability depende de la BASE/contexto, no es universal. Catálogo acreditado:
+  Lobby, Guild, Pet Summon, Pets Manage, Treasure, World Boss BASE, Monster Wave BASE,
+  Battle Mode Select. MODAL superior, UNKNOWN/AMBIGUOUS y batalla/gameplay activo no autorizan QM.
+- Las coordenadas shifted de Quests (.395, .205) y Mailbox (.267, .205) están visibles en
+  la captura existente `artifacts/hil_j_navigation/20260922/01_mw_quick_menu.png`. Evidencia adquirida previamente; USER_GT confirma la ruta y el retorno al origen.
+- World Boss, Monster Wave y Tower of Tribulation comparten Battle Mode Select como parent.
+- MW limpio admite Quick Menu→Pets y Quick Menu→Lobby directos. Quick Menu es un router de
+  destinos, no implica pasar por Lobby. Tile Pets shifted visible en evidencia existente
+  `artifacts/hil_j_navigation/20260922/01_mw_quick_menu.png`; target normalizado (.395, .350)
+  medido offline. La ruta fue aportada por USER_GT; nuevo tap no se readquirió live.
+- La historia BASE/Back se conserva: entrar a Pets por Quick Menu no demuestra parent Lobby.
+- Composición económica futura aportada: WB→MW→ToT; WB no se supone elegible después de MW.
+  MW productivo alivia hasta <102; ToT daily requiere su propio ≥1, incluso si MW fue NO_WORK.
+  Estas relaciones no agregan ToT daily ni reordenan rutinas.
 
 ## Oclusión y layering
 
@@ -70,7 +96,7 @@ No es una segmentación exacta ni prueba de todo el ciclo animado. Queda incerti
 
 ## Mecánicas establecidas que afectan composición
 
-Evidencia física previa curada (procedencia en [contrato SKIP archivado](legacy/DOC_RESET_20260925.md) y [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md), no inferencia del detector): SKIP se activa con tickets completos (30/30 en el caso adquirido; VIP puede reducir el requisito). Fill All compra faltantes a 140.000 Gold por ticket; completar tickets no activa SKIP automáticamente. El estado/timer es account-wide y se debe observar fresco, sin fijar duración a partir de un ejemplo. La misión Daily MW requiere x4; eso no limita MW productivo ni autoriza un gate Daily. **USER_GT / product policy:** MW no tiene Eligibility; su objetivo es gastar Sapphires, liberar capacidad y obtener rewards incluso con Daily completada. Sapphires se observan antes de entrar, desde Battle Mode Select: 0 permite omitir MW y >0 permite entrar y ejecutar el loop MAX. El saldo inicial determina `ceil(sapphires_iniciales / 100)` y sólo CLEAR confirmado avanza el gasto.
+Evidencia física previa curada (procedencia en [contrato SKIP archivado](legacy/DOC_RESET_20260925.md) y [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md), no inferencia del detector): SKIP se activa con tickets completos (30/30 en el caso adquirido; VIP puede reducir el requisito). Fill All compra faltantes a 140.000 Gold por ticket; completar tickets no activa SKIP automáticamente. El estado/timer es account-wide y se debe observar fresco, sin fijar duración a partir de un ejemplo. La misión Daily MW requiere x4; eso no limita MW productivo ni autoriza un gate Daily. **USER_GT / product policy:** MW no tiene Eligibility; su objetivo es gastar Sapphires, liberar capacidad y obtener rewards incluso con Daily completada. USER_GT actualizado (2026-10-03): capacidad/base relevante102; Stages sólo necesita saldo <102. MW productivo aplica el mínimo número de entradas para salir de pressure, no vacía por objetivo. Saldo fresco <102 omite navegación; saldo >=102 autoriza inversión. Ejemplos aceptados sin nuevos ingresos: 101→0 entradas; 102→1; 201→1→101; 299→2→99; 300→2→100. Cada CLEAR requiere saldo fresco: no acreditar el efecto aritméticamente.
 
 El board MW muestra balances/límites, no rewards entrantes exactos ni recetas; drops no deterministas no autorizan predicción de saldo. Capacidad Gold Keys no observable por board/Trading; el alert Silver→Gold lleno aporta el bloqueo causal. Conversiones adquiridas: 40 Weapon→10 Hero, receta Hero Weapon de 49 materiales y 10 Bronze→2 Silver. Los facts frescos siguen autorizando cada operación económica, no un saldo calculado persistente. Procedencia histórica: [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md); policy y wiring: [RESOURCE_ROUTING](RESOURCE_ROUTING.md).
 
@@ -101,10 +127,10 @@ Ante una nueva superficie real: describirla aquí como UNKNOWN, sin asignar clas
 
 ## Stages Daily ads-only — USER_GT y adquisición 2026-10-02
 
-- **USER_GT:** Stages se accede sólo desde Lobby → Stage, encima de Survival; no existe Quick Menu → Stages. Entrada productiva con Stamina ≥300 y Sapphires <102 (espacio/no rojo). Esta versión termina tras un ad exitoso y regreso a Lobby; combate/manual están fuera del alcance.
-- **USER_GT / LIVE_EVIDENCE:** Trading Center → Currency → primera fila Stamina: 50 por 200 K Coins. Pool K Coins intencionalmente amplio, se asume disponible. Oferta, moneda y selección son visibles; Stamina fresca tras compra permite verificar el efecto.
-- Normal/Elite tiene memoria por personaje. Panel inferior izquierdo fijo `Stamina Use Event (Normal/Elite)`. Portal rojo debajo de Back dice Normal al estar en Elite. Claim cyan activo entrega reward; después de cada tap observar otra vez hasta gray/inactivo. Puede haber popup de recompensa por encima.
-- Objetivo único Abyssal Rion; título centrado arriba debajo de Karats. World Map a la izquierda del portal abre dropdown; objetivo en tail con tres estrellas. Seleccionar y cerrar dropdown con World Map si sigue tapando título. Stage 8, anteúltimo, abre MODAL de configuración.
+- **USER_GT:** Stages se accede sólo desde Lobby → Stage, encima de Survival; no existe Quick Menu → Stages. Entrada productiva con Stamina ≥300 y Sapphires <102 (espacio/no rojo). Después de un ad exitoso: Results/config close/Back permiten volver a Lobby; combate/manual no forman parte del GT adquirido de este flow.
+- **USER_GT / LIVE_EVIDENCE:** Trading Center → Currency → primera fila Stamina: 50 por trade, coste 200 K Coins. Selector inicial 1/20; cada `>` incrementa un trade. Pool K Coins intencionalmente amplio. Una cantidad N confirmada entrega N×50 Stamina; cap/currency/efecto deben corresponder al panel adquirido. La fórmula/bounds del batch pertenecen a RESOURCE_ROUTING.
+- Normal/Elite tiene memoria por personaje. Panel inferior izquierdo `Stamina Use Event (Normal/Elite)`; portal rojo dice Normal cuando se está en Elite. Claim cyan activo entrega reward; puede aparecer popup de reward. **USER_GT 2026-10-02:** tocar Claim inactivo es harmless y Claims no cambia el episodio. Los bounds/percepción del loop pertenecen a ARCHITECTURE/RESOURCE_ROUTING.
+- Objetivo único Abyssal Rion; título centrado arriba debajo de Karats. **USER_GT:** verificar primero el episodio con template CV fresco en Normal (también tras Elite→Normal). **LIVE_EVIDENCE 2026-10-02:** el broadcast global cubre la mitad superior del título, causando PRE NCC0.783/score0 vs POST0.9997. El template conserva el ancho de la frase completa y usa su franja inferior libre (y0.169–0.184), threshold0.94 y guard de brillo sin cambios: PRE0.9882, POST1.0; episodio ajeno0.1148 y dropdown0.2335 raw, ambos negativos. Si Abyssal Rion está confirmado, ir directamente a Stage8 sin World Map. Identidad desconocida usa la resolución bounded vigente y exige confirmación fresca posterior. World Map a la izquierda del portal abre dropdown; objetivo en tail con tres estrellas. Seleccionar y cerrar dropdown con World Map si sigue tapando título. Stage 8, anteúltimo, abre MODAL de configuración.
 - Mao tiene 30 tickets. `Support Activated` = ACTIVE. NEEDS_TICKETS → Get Support → MODAL superior → Fill All → tickets30/30 READY → cerrar → Get Support verde → ACTIVE. Comprar tickets no activa buff. Adquirido20→30 por300000 Gold (30000/ticket).
 - Penance es la dificultad máxima requerida. Start abre MODAL Select Striker; Auto Repeat/Continue abre MODAL SKIP. `300(MAX)` y `Video(2)/(1)/(0)` son visibles. x4 manual equivale a60 Stamina: primer tap abre overlay, segundo selecciona/cierra. Esa interacción no se usa en ads-only.
 - Optional Video Pass Ticket: siempre No; No inicia el ad automáticamente. Adquirido popup con cinco tickets, nunca Yes. Tras ad: breve carga → Results → OK → configuración → X → Normal Abyssal → Back → Lobby. Saldo Sapphire after > before prueba producción, sin delta fijo adquirido.
@@ -116,3 +142,10 @@ Ante una nueva superficie real: describirla aquí como UNKNOWN, sin asignar clas
 - Back temprano live abortó y devolvió main sin results. Back con chrome SDK `Reward granted` cerró y produjo results. Una variante abrió Finsky/Play Store automáticamente; Back permitió recuperar superficie ad, sin tocar CTA. Package/activity no prueban reward ni que ya se pueda cerrar.
 - **USER_GT posterior:** un ad triple aún avanzaba al cierre prematuro de60 s y tenía barra de progreso visible. **LIVE_EVIDENCE:** barra amarilla superior SDK avanzó .264→.918 en cinco capturas; después desapareció y apareció Reward granted. Una barra puede resetear entre etapas. Progreso visible prueba actividad, no finalización; desaparecida/estática/fragmentada no prueba reward. El antiguo supuesto60s=terminado queda stale. Bounds y policy son contrato de software en ARCHITECTURE.
 - **USER_GT:** No Ads Available normalmente admite retry temporal (~5 s) o salir a Character Select y reentrar al MISMO personaje; no es automáticamente daily exhaustion. **LIVE_EVIDENCE:** reset aislado conservó identidad antes/selección/Lobby. No apareció No Ads temporal nativo ni se ejercitó su cadena completa; límites de retry y fallback provisional constan en RESOURCE_ROUTING.
+
+USER_GT (2026-10-02/03), Combine result animations: after the one effective confirmation, use bounded lateral taps on the existing noninteractive safe point (0.15, 0.50) under the result overlay until the known panel/menu is recovered. No animation stability requirement before starting TapThroughAnimation; a popup-close frame before animation onset is not completion. Never repeat confirmation because an effect/animation wait is inconclusive.
+
+### No Ads Available: recovery confirmado 2026-10-03
+
+- **USER_GT:** al aparecer indisponibilidad temporal, hacer al menos dos retries separados por 5–6 segundos. Si persiste, salir a Character Select y reentrar al mismo personaje; un intento final. Esta transición no es Rotation. Si persiste después del recovery, registrar indisponibilidad y continuar al siguiente personaje; no hacer entrada manual sin ads.
+- **LIVE_EVIDENCE:** el alert adquirido muestra `Loading... (If the video does not load, please visit the [Select Character] screen and try again.)` sobre Auto con botón OK. Es el caso de indisponibilidad observado por el usuario; no contiene Video0 ni el alert diario. No se adquirió aún un frame nativo con texto literal `No Ads Available`.

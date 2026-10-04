@@ -66,6 +66,7 @@ from bot.semantic_actions import (
     OpenQuests,
     OpenMailbox,
     OpenBattleModeSelect,
+    ExitBattleModeSelect,
     OpenCharacterSelect,
     OpenQuickMenu,
     OpenSocketEnhanceAll,
@@ -103,6 +104,8 @@ from bot.semantic_actions import (
     SelectPetSummon,
     SelectQuickMenuLobby,
     SelectQuickMenuGuild,
+    SelectQuickMenuQuests, SelectQuickMenuMailbox,
+    SelectQuickMenuPets,
     SelectQuickMenuTrading,
     SelectQuickMenuTreasure,
     SelectQuickMenuCraft,
@@ -351,6 +354,12 @@ class RotationActionTargets:
     select_guild: RelativePoint = (0.2650, 0.6500)
     select_guild_shifted: RelativePoint = (0.3946, 0.6500)
     # HIL C6b 2026-09-22: Treasure Quick Menu -> Trading Center.
+    # USER_GT route + existing MW menu capture hil_j_navigation/20260922/01_mw_quick_menu.png:
+    # Pets is column 4, row 2 of the shifted menu. No live acquisition needed.
+    # USER_GT 2026-10-04 + existing MW Quick Menu capture: row 1.
+    select_quests_shifted: RelativePoint = (0.3950, 0.2050)
+    select_mailbox_shifted: RelativePoint = (0.2670, 0.2050)
+    select_pets_shifted: RelativePoint = (0.3950, 0.3500)
     select_trading_shifted: RelativePoint = (0.3320, 0.6500)
     # HIL J 2026-09-22: MW Quick Menu -> Treasure.
     select_treasure_shifted: RelativePoint = (0.2670, 0.4950)
@@ -365,6 +374,9 @@ class RotationActionTargets:
             self.select_lobby,
             self.select_guild,
             self.select_guild_shifted,
+            self.select_quests_shifted,
+            self.select_mailbox_shifted,
+            self.select_pets_shifted,
             self.select_trading_shifted,
             self.select_treasure_shifted,
             self.open_character_select,
@@ -926,6 +938,12 @@ class ActionExecutor:
                 if action.layout is QuickMenuLayout.LOBBY
                 else self.rotation_targets.select_guild_shifted
             )
+        if isinstance(action, SelectQuickMenuQuests):
+            return self.rotation_targets.select_quests_shifted
+        if isinstance(action, SelectQuickMenuMailbox):
+            return self.rotation_targets.select_mailbox_shifted
+        if isinstance(action, SelectQuickMenuPets):
+            return self.rotation_targets.select_pets_shifted
         if isinstance(action, SelectQuickMenuTrading):
             return self.rotation_targets.select_trading_shifted
         if isinstance(action, SelectQuickMenuTreasure):
@@ -972,6 +990,8 @@ class ActionExecutor:
             return self.battle_targets.toggle_auto_battle
         if isinstance(action, OpenBattleModeSelect):
             return self.battle_targets.open_battle_mode_select
+        if isinstance(action, ExitBattleModeSelect):
+            return self.battle_targets.exit_world_boss
         if isinstance(action, OpenWorldBossSelector):
             return self.battle_targets.open_world_boss_selector
         if isinstance(action, SelectAvailableWorldBoss):

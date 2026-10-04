@@ -26,7 +26,8 @@ from bot.failure_cause import FailureCause
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.keys_promotion_runtime import GoldCapacityRecoveryNavigation
 from bot.keys_promotion import PendingCausalOperation
-from bot.monster_wave_activity import clean_mw, skip_state
+from bot.monster_wave_activity import (clean_mw, skip_state, entry_ready,
+    ENTRY_ACKNOWLEDGEMENTS, popup)
 from bot.monster_wave_board_snapshot import (
     BoardPopup,
     MonsterWaveBoardSnapshot,
@@ -247,7 +248,8 @@ class MonsterWavePrerequisiteNavigationRuntime:
                 raise ValueError("craft_context_not_fresh_before_full_popup")
             if self.cancel_requested():
                 raise RuntimeWaitCancelled()
-            self.craft_runtime._tap(OpenHeroCraft(CraftFamily.WEAPON))
+            family = getattr(capacity, "work_family", None) or CraftFamily.WEAPON
+            self.craft_runtime._tap(OpenHeroCraft(family))
             popup = self.observer.wait_until(
                 full, after_sequence=observed.craft_fact.sequence, timeout=6.0,
                 stable_for=.25, cancel_requested=self.cancel_requested,
@@ -471,6 +473,7 @@ class MonsterWavePrerequisiteNavigationRuntime:
             )
 
     def _leave_to_mw(self, *, name, action, precondition):
+        from bot.battle_mode_zone import is_lobby
         transitions = []
         try:
             if self.cancel_requested():
@@ -486,8 +489,7 @@ class MonsterWavePrerequisiteNavigationRuntime:
                 f"monster_wave.prerequisite.leave_{name}",
                 action,
                 before,
-                expected=lambda item: clean_mw(item)
-                and skip_state(item) is not None,
+                expected=lambda item: entry_ready(item) or is_lobby(item),
                 precondition=precondition,
                 retryable_from=None,
                 stable_for=0.25,
@@ -499,6 +501,42 @@ class MonsterWavePrerequisiteNavigationRuntime:
                 return self._finish(
                     transitions, FlowStatus.CANCELLED, final_snapshot=final
                 )
+            # Returning from a relief may expose MW's existing Ranking/Weekly
+            # modal. Resolve that owner before demanding a clean actionable MW.
+            if result.succeeded and final.sequence > before.sequence:
+                for _ in range(2):
+                    modal = next((name for name in ENTRY_ACKNOWLEDGEMENTS
+                                  if popup(name)(final)), None)
+                    if modal is None:
+                        break
+                    if self.cancel_requested():
+                        return self._finish(transitions, FlowStatus.CANCELLED, final_snapshot=final)
+                    modal_source = final
+                    acknowledged = self.transition.execute(
+                        "monster_wave.prerequisite.acknowledge_return_modal",
+                        ENTRY_ACKNOWLEDGEMENTS[modal](), modal_source,
+                        expected=entry_ready, precondition=popup(modal),
+                        retryable_from=None, stable_for=.25,
+                        policy=_single_attempt_policy(),
+                    )
+                    transitions.append(acknowledged)
+                    final = acknowledged.final_snapshot
+                    if not acknowledged.succeeded or final.sequence <= modal_source.sequence:
+                        return self._finish(transitions, FlowStatus.FAILED, final_snapshot=final,
+                                            error=f"{name}_return_modal_failed:{modal}")
+            if result.succeeded and final.sequence>before.sequence and is_lobby(final):
+                # Close is the modal transition. Only a fresh concrete Lobby
+                # destination can authorize the existing bounded MW reentry.
+                if self.resume_mw_from_lobby is None:
+                    return self._finish(transitions,FlowStatus.FAILED,
+                        final_snapshot=final,error=f"{name}_lobby_continuation_not_wired")
+                resumed=self.resume_mw_from_lobby()
+                if resumed.status is not FlowStatus.COMPLETED:
+                    return self._finish(transitions,resumed.status,resumed,error=resumed.error)
+                final=self.observer.wait_until(
+                    lambda item: clean_mw(item) and skip_state(item) is not None,
+                    after_sequence=final.sequence,timeout=6.,stable_for=.25,
+                    cancel_requested=self.cancel_requested)
             if (
                 not result.succeeded
                 or final.sequence <= before.sequence
@@ -662,7 +700,7 @@ class MonsterWaveResourceRouteRuntime:
             (navigation, "enter_trading_from_mw"),
             (navigation, "leave_trading_to_mw"),
             (snapshots, "acquire"),
-            (craft_runtime, "drain_hero_material"),
+            (craft_runtime, "drain_hero_materials"),
             (craft_runtime, "probe_equipment_capacity"),
             (craft_runtime, "request_back_to_origin"),
             (keys_runtime, "run"),
@@ -799,8 +837,8 @@ class MonsterWaveResourceRouteRuntime:
             elif capacity.outcome is not CraftRouteOutcome.ENTERED:
                 return failed(capacity, craft.capability)
             else:
-                drained = self.craft_runtime.drain_hero_material(max_batches=32)
-                evidence.append("craft:drain_hero_until_below_49")
+                drained = self.craft_runtime.drain_hero_materials(max_batches=32)
+                evidence.append("craft:drain_eligible_hero_families")
                 if drained.outcome is not CraftOutcome.SUCCESS:
                     return failed(drained, craft.capability)
 
@@ -844,8 +882,8 @@ class MonsterWaveResourceRouteRuntime:
                 evidence.append("route:trading_x_restores_craft")
                 if left.status is not FlowStatus.COMPLETED:
                     return failed(left, trading.capability, returning=True)
-                drained = self.craft_runtime.drain_hero_material(max_batches=32)
-                evidence.append("craft:drain_new_hero_until_below_49")
+                drained = self.craft_runtime.drain_hero_materials(max_batches=32)
+                evidence.append("craft:drain_new_eligible_hero_families")
                 if drained.outcome is not CraftOutcome.SUCCESS:
                     return failed(drained, craft.capability)
                 returned = self.craft_runtime.request_back_to_origin()
@@ -949,7 +987,7 @@ class MonsterWaveResourceRouteRuntime:
             probed = self.craft_runtime.probe_equipment_capacity()
             if getattr(probed, "outcome", None) is not CraftRouteOutcome.ENTERED:
                 return probed
-            return self.craft_runtime.drain_hero_material(max_batches=32)
+            return self.craft_runtime.drain_hero_materials(max_batches=32)
 
         def is_full(result) -> bool:
             return (

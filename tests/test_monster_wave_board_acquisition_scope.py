@@ -153,6 +153,9 @@ def test_session_completed_wb_then_mw_board_matches_standalone(monkeypatch, afte
     flow.boards.acquire = remember
     # Economic input and CLEAR remain scripted; A1 and the planner are real.
     flow.navigation = harness
+    # This harness scripts economic preparation; Lobby readiness has dedicated
+    # real owner/binding tests in test_gold_farming.
+    flow.entry_readiness = lambda: None
     trace = []
     zone = SimpleNamespace(
         entry_requirement=ComponentRequirement.exact_state(SCREEN_LOBBY),

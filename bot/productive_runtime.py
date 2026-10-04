@@ -23,15 +23,6 @@ from bot.catalog import (
     SCREEN_PET_SUMMON,
     SCREEN_PETS_MANAGE,
     SCREEN_WORLD_BOSS,
-    STATUS_PET_EPIC_AVAILABLE,
-    STATUS_PET_EPIC_UNAVAILABLE,
-    STATUS_PET_PREMIUM_GOLD,
-    STATUS_PET_PREMIUM_TICKET_AVAILABLE,
-    STATUS_PET_SUMMON_DAILY_ACTIVE,
-    STATUS_GUILD_ATTENDANCE_ACTIVE,
-    STATUS_GUILD_ATTENDANCE_COMPLETED,
-    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE,
-    STATUS_WORLD_BOSS_DAILY_ACTIVE,
     build_default_resolver,
 )
 from bot.config import RuntimeConfig
@@ -48,7 +39,6 @@ from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowDefinition, FlowRegistr
 from bot.perception import (
     GUILD_NAVIGATE_SCOPE,
     PETS_MANAGE_NAVIGATE_SCOPE,
-    PETS_TO_LOBBY_SCOPE,
     QUICK_MENU_TO_LOBBY_SCOPE,
     ROTATION_CHARACTER_SELECTION_SCOPE,
     ROTATION_TO_LOBBY_SCOPE,
@@ -58,17 +48,16 @@ from bot.perception import (
 from bot.pet_summon_space_relief import PetSummonSpaceRelief
 from bot.preconditions import MinimalPreconditionEnsurer
 from bot.quick_menu import (
-    QuickMenuHandoff, quick_menu_accessible, quick_menu_matches_origin,
+    quick_menu_accessible, quick_menu_matches_origin,
+    is_clean_quick_menu_base, open_quick_menu_destination, DEFAULT_QUICK_MENU_POLICY,
     select_quick_menu_guild_action,
 )
 from bot.rotation import StandardRotation
 from bot.runtime import build_adb_client, build_frame_source, build_runtime_fact_reader
 from bot.runtime_observer import RuntimeObserver, RuntimeSnapshot, RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.semantic_actions import (
-    ClosePets,
     OpenGuild,
     OpenPets,
-    OpenQuickMenu,
     SelectQuickMenuLobby,
 )
 from bot.session import CharacterContext, SessionPlan, SessionResult, SessionRunner
@@ -76,41 +65,19 @@ from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughAnimation
 from bot.verified_transition import (
-    VerifiedTransition, VerifiedTransitionOutcome, VerifiedTransitionPolicy,
+    VerifiedTransition, VerifiedTransitionPolicy,
 )
 from bot.world_boss_eligibility import WorldBossDailyEligibility
 from bot.world_boss_flow import WorldBossFlow
 from bot.monster_wave_flow import MonsterWaveFlow
 from bot.monster_wave_productive import ProductiveMonsterWaveFlow
-from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
+from bot.monster_wave_semantics import SCREEN_MONSTER_WAVE
+from bot.monster_wave_activity import clean_mw
+from bot.battle_mode_zone import BattleModeZone
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-_CLEAN_CONTEXTS = frozenset(
-    {
-        SCREEN_BATTLE_MODE_SELECT,
-        SCREEN_GUILD,
-        SCREEN_LOBBY,
-        SCREEN_PET_SUMMON,
-        SCREEN_PETS_MANAGE,
-        SCREEN_WORLD_BOSS,
-    }
-)
-_GUILD_ATTENDANCE_STATES = frozenset(
-    {STATUS_GUILD_ATTENDANCE_ACTIVE, STATUS_GUILD_ATTENDANCE_COMPLETED}
-)
-_GUILD_COMPATIBLE_OVERLAYS = _GUILD_ATTENDANCE_STATES | {
-    STATUS_GUILD_ATTENDANCE_DAILY_ACTIVE
-}
-_PET_SUMMON_STATUSES = frozenset(
-    {
-        STATUS_PET_EPIC_AVAILABLE,
-        STATUS_PET_EPIC_UNAVAILABLE,
-        STATUS_PET_PREMIUM_GOLD,
-        STATUS_PET_PREMIUM_TICKET_AVAILABLE,
-        STATUS_PET_SUMMON_DAILY_ACTIVE,
-    }
-)
+_CLEAN_CONTEXTS = DEFAULT_QUICK_MENU_POLICY.accessible_from
 _CLEAN_CONTEXT_TIMEOUT = 5.0
 _CLEAN_CONTEXT_STABLE_FOR = 0.25
 
@@ -159,6 +126,10 @@ class ProductiveRuntime:
     events: RuntimeEventStream
     cancel_token: CancellationToken
     registry: FlowRegistry = DEFAULT_FLOW_REGISTRY
+    # Stateless recognition backend shared by sequential occurrence bindings.
+    # Readers keep their own facts/cursors/configs; no result cache is shared.
+    ocr_engine: object | None = field(default=None, kw_only=True, repr=False)
+    routine_continue_on_unavailable: bool = field(default=True, kw_only=True)
     _identity_snapshot: RuntimeSnapshot | None = field(default=None, init=False, repr=False)
     _identity_active: bool = field(default=False, init=False, repr=False)
 
@@ -178,6 +149,7 @@ class ProductiveRuntime:
         return MinimalPreconditionEnsurer(
             lambda: self._clean_context_entry(),
             navigate_to_lobby=self._navigate_to_lobby,
+            navigate_to_battle_mode=self._navigate_to_battle_mode,
             navigate_to_pets_manage=self._navigate_to_pets_manage,
             navigate_lobby_to_guild=self._navigate_lobby_to_guild,
             navigate_to_guild=self._navigate_to_guild,
@@ -328,46 +300,86 @@ class ProductiveRuntime:
         publish_flow_events(self.events, flow.name, result.events, character_index=1, character_name=None)
         return replace(result, failure=failure)
 
-    def run_flows_once(self, definitions: tuple[FlowDefinition, ...]) -> FlowsOnceResult:
-        """Compose the standalone contract without session or Rotation policy."""
+    def run_routine(self, routine, *, character_count: int | None = None):
+        """Resolve ordinary steps through the single registry and existing runners."""
+        from bot.routines import RoutineSpec, config_overrides
+        if not isinstance(routine, RoutineSpec):
+            raise ValueError("routine must be RoutineSpec")
+        available = {d.id for d in self.registry.definitions}
+        for position, step in enumerate(routine.steps):
+            if step.enabled and step.flow_id not in available:
+                self.events.record("routine.step.unavailable", flow=step.flow_id,
+                                   step_position=position, routine=routine.name)
+        steps = routine.active_steps(self.registry)
+        for step in steps:
+            config_overrides(step.config)
+        definitions = self.registry.select(tuple(s.flow_id for s in steps))
+        positions = tuple(i for i, step in enumerate(routine.steps) if step.enabled and step.flow_id in available)
+        with event_scope(routine_id=routine.id, routine_name=routine.name):
+            self.events.record("routine.started", step_count=len(steps))
+            if character_count is None:
+                return self.run_flows_once(definitions, routine_steps=steps, routine_positions=positions)
+            return self.run_session(definitions, character_count=character_count,
+                                    routine_steps=steps, routine_positions=positions)
+
+    def _step_runtime(self, step):
+        from bot.routines import config_overrides
+        overrides = config_overrides(step.config)
+        if not overrides and self.routine_continue_on_unavailable == step.continue_on_unavailable:
+            return self
+        return replace(self, config=replace(self.config, **overrides),
+                       routine_continue_on_unavailable=step.continue_on_unavailable)
+
+    def run_flows_once(self, definitions: tuple[FlowDefinition, ...], *, routine_steps=None, routine_positions=()) -> FlowsOnceResult:
+        """Use the same ordered handoff owner, without Rotation or Daily policy."""
         if not definitions:
             raise ValueError("at least one flow is required")
-        results = []
-        for definition in definitions:
-            if self.cancel_requested():
-                return FlowsOnceResult(FlowStatus.CANCELLED, tuple(results))
-            try:
-                result = self.run_flow(definition)
-            except RuntimeWaitCancelled:
-                result = FlowResult(FlowStatus.CANCELLED)
-            except Exception as error:
-                # run_flow already published the terminal cause and evidence.
-                result = FlowResult(
-                    FlowStatus.FAILED, error=f"{type(error).__name__}: {error}",
-                    failure=getattr(error, "failure", None),
-                )
-            results.append(result)
-            if result.status is not FlowStatus.COMPLETED:
-                return FlowsOnceResult(result.status, tuple(results), result.error, result.failure)
-        return FlowsOnceResult(FlowStatus.COMPLETED, tuple(results))
+        if routine_steps is not None and len(routine_steps) != len(definitions):
+            raise ValueError("one routine step is required per definition")
+        try:
+            result = self.run_session(definitions, character_count=1,
+                routine_steps=routine_steps, routine_positions=routine_positions, rotate=False)
+            status = FlowStatus(result.status.value)
+            flows = tuple(r for c in result.character_results for r in c.flow_results)
+            if flows and flows[-1].status is FlowStatus.RESOURCE_BOARD_PENDING:
+                status = FlowStatus.RESOURCE_BOARD_PENDING
+            return FlowsOnceResult(status, flows, result.failure_cause, result.failure)
+        except RuntimeWaitCancelled:
+            return FlowsOnceResult(FlowStatus.CANCELLED, ())
+        except Exception as error:
+            return FlowsOnceResult(FlowStatus.FAILED, (), str(error), getattr(error, 'failure', None))
 
     def run_session(
         self,
         definitions: tuple[FlowDefinition, ...],
         *,
         character_count: int,
+        routine_steps=None,
+        routine_positions=(),
+        rotate=True,
     ) -> SessionResult:
-        flows = self.build_flows(definitions)
+        if routine_steps is not None and len(routine_steps) != len(definitions):
+            raise ValueError("one routine step is required per definition")
+        flows = (tuple(self._step_runtime(step).build_flow(definition)
+                       for definition, step in zip(definitions, routine_steps))
+                 if routine_steps else self.build_flows(definitions))
         zone = next((flow.zone for flow in flows if isinstance(flow, (WorldBossFlow, MonsterWaveFlow, ProductiveMonsterWaveFlow))), None)
-        flows = tuple(flow.prepared(zone) if isinstance(flow, (WorldBossFlow, MonsterWaveFlow, ProductiveMonsterWaveFlow)) else flow
+        flows = tuple(flow.prepared(zone)
+                      if isinstance(flow, (WorldBossFlow, MonsterWaveFlow, ProductiveMonsterWaveFlow)) else flow
                       for flow in flows)
         rotation = self.build_rotation(character_count)
         plan = SessionPlan.standard(
             flows=flows,
+            rotate=rotate,
             rotation_strategy=rotation,
             character_count=character_count,
+            step_positions=tuple(routine_positions),
+            controlled_unavailable=tuple(
+                definition.controlled_unavailable_events if step.continue_on_unavailable else frozenset()
+                for definition, step in zip(definitions, routine_steps or ())
+            ),
             eligibility=tuple(
-                self.build_world_boss_daily_eligibility() if flow.name == "world_boss" else
+                self.build_world_boss_daily_eligibility() if rotate and flow.name == "world_boss" else
                 None
                 for flow in flows
             ),
@@ -503,12 +515,37 @@ class ProductiveRuntime:
         except Exception:
             return None
 
+    @staticmethod
+    def _navigation_succeeded(result) -> bool:
+        if result.status is FlowStatus.CANCELLED:
+            raise RuntimeWaitCancelled()
+        if not result.succeeded:
+            error = RuntimeError(result.error or 'navigation_failed')
+            error.failure = result.failure
+            raise error
+        return True
+
+    def _navigate_to_battle_mode(self) -> bool:
+        initial = self.observer.observe()
+        if _is_clean_base(initial, SCREEN_BATTLE_MODE_SELECT):
+            return True
+        if not (_is_clean_base(initial, SCREEN_LOBBY) or clean_mw(initial)):
+            origin = initial.state.base_context
+            if (not _is_clean_known_context(initial) or not quick_menu_accessible(origin)
+                    or not self._navigate_to_lobby()):
+                return False
+        return self._navigation_succeeded(BattleModeZone(self.observer, self.build_verified_transition(),
+                              cancel_requested=self.cancel_requested).ensure_hub())
+
     def _navigate_to_lobby(self) -> bool:
         """Normalize an acquired origin to Lobby with its verified direct route."""
 
         initial = self.observer.observe()
         if _is_clean_base(initial, SCREEN_LOBBY):
             return True
+        if _is_clean_base(initial, SCREEN_BATTLE_MODE_SELECT):
+            return self._navigation_succeeded(BattleModeZone(self.observer, self.build_verified_transition(),
+                                  cancel_requested=self.cancel_requested).leave())
         origin = initial.state.base_context
         if (
             origin is None
@@ -522,96 +559,32 @@ class ProductiveRuntime:
             grace_timeout=2.0,
             max_attempts=2,
         )
-        if origin in {SCREEN_PETS_MANAGE, SCREEN_PET_SUMMON}:
-            lobby_transition = scoped_transition_for(
-                self,
-                transition,
-                scope=PETS_TO_LOBBY_SCOPE,
-                active_event="precondition.pets_lobby_return_scope_active",
-                unavailable_event="precondition.pets_lobby_return_scope_unavailable",
-            )
-            lobby = lobby_transition.execute(
-                "precondition.close_pets",
-                ClosePets(),
-                initial,
-                expected=lambda snapshot: _is_clean_base(
-                    snapshot, SCREEN_LOBBY
-                ),
-                precondition=lambda snapshot: _is_clean_base(
-                    snapshot, origin
-                ),
-                retryable_from=lambda snapshot: _is_clean_base(
-                    snapshot, origin
-                ),
-                abort_if=lambda snapshot: _has_incompatible_destination_state(
-                    snapshot, origin, SCREEN_LOBBY
-                ),
-                stable_for=_CLEAN_CONTEXT_STABLE_FOR,
-                policy=policy,
-            )
-            return lobby.succeeded and not self.cancel_requested()
+        # Pets reached via Quick Menu need not have Lobby as Back parent.
+        # The menu destination remains safe without guessing that history.
         lobby = self._quick_menu_to_lobby(initial, transition, policy)
         return lobby.succeeded and not self.cancel_requested()
 
     def _quick_menu_to_lobby(self, initial, transition, policy, *, prefix="precondition"):
-        """Shared acquired return; keep the original transitions for other callers."""
+        """Lobby specialization of the existing guarded Quick Menu router."""
+        return self._quick_menu_to_destination(initial, transition, policy,
+            destination=SCREEN_LOBBY, action=SelectQuickMenuLobby(),
+            selection='lobby', scope=QUICK_MENU_TO_LOBBY_SCOPE, prefix=prefix)
+
+    def _quick_menu_to_destination(self, initial, transition, policy, *,
+                                   destination, action, selection, scope=None, prefix='precondition'):
+        destination_transition = (scoped_transition_for(
+            self, transition, scope=scope,
+            active_event=f"{prefix}.{selection}_return_scope_active",
+            unavailable_event=f"{prefix}.{selection}_return_scope_unavailable",
+        ) if scope is not None else transition)
         origin = initial.state.base_context
-        opened = transition.execute(
-            f"{prefix}.open_quick_menu",
-            OpenQuickMenu(),
-            initial,
-            expected=lambda snapshot: quick_menu_matches_origin(snapshot, origin),
-            precondition=lambda snapshot: _is_clean_base(
-                snapshot, origin
-            ),
-            retryable_from=lambda snapshot: _is_clean_base(
-                snapshot, origin
-            ),
-            abort_if=lambda snapshot: _has_incompatible_open_quick_menu_state(
-                snapshot, origin
-            ),
-            policy=policy,
+        return open_quick_menu_destination(
+            initial, transition, policy, action=action, selection=selection,
+            source_guard=lambda snapshot: _is_clean_base(snapshot, origin),
+            expected=lambda snapshot: _is_clean_base(snapshot, destination),
+            destination_transition=destination_transition,
+            cancel_requested=self.cancel_requested, prefix=prefix,
         )
-        if not opened.succeeded or self.cancel_requested():
-            return opened
-        handoff = QuickMenuHandoff.from_open_result(
-            opened, lambda snapshot: _is_clean_base(snapshot, origin),
-        )
-        if handoff is None:
-            return replace(
-                opened, outcome=VerifiedTransitionOutcome.PRECONDITION_REJECTED,
-                error="quick_menu_origin_handoff_invalid",
-            )
-        lobby_transition = scoped_transition_for(
-            self,
-            transition,
-            scope=QUICK_MENU_TO_LOBBY_SCOPE,
-            active_event=f"{prefix}.lobby_return_scope_active",
-            unavailable_event=f"{prefix}.lobby_return_scope_unavailable",
-        )
-        lobby = lobby_transition.execute(
-            f"{prefix}.select_lobby",
-            SelectQuickMenuLobby(),
-            opened.final_snapshot,
-            expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_LOBBY),
-            precondition=handoff.allows,
-            retryable_from=handoff.allows,
-            on_recovery=handoff.invalidate,
-            abort_if=lambda snapshot: (
-                (
-                    not _is_clean_base(snapshot, origin)
-                    and handoff.observe(
-                        snapshot, lambda item: _is_clean_base(item, SCREEN_LOBBY)
-                    )
-                )
-                or _has_incompatible_destination_state(
-                    snapshot, origin, SCREEN_LOBBY
-                )
-            ),
-            stable_for=_CLEAN_CONTEXT_STABLE_FOR,
-            policy=policy,
-        )
-        return lobby
 
     def _navigate_to_guild(self) -> bool:
         """Navigate a non-Lobby capable origin through Quick Menu to Guild."""
@@ -633,51 +606,14 @@ class ProductiveRuntime:
             grace_timeout=2.0,
             max_attempts=2,
         )
-        opened = transition.execute(
-            "precondition.open_quick_menu",
-            OpenQuickMenu(),
-            initial,
-            expected=lambda snapshot: quick_menu_matches_origin(snapshot, origin),
-            precondition=lambda snapshot: _is_clean_base(snapshot, origin),
-            retryable_from=lambda snapshot: _is_clean_base(snapshot, origin),
-            abort_if=lambda snapshot: _has_incompatible_open_quick_menu_state(
-                snapshot, origin
-            ),
-            policy=policy,
-        )
-        if not opened.succeeded or self.cancel_requested():
-            return False
-        handoff = QuickMenuHandoff.from_open_result(
-            opened, lambda snapshot: _is_clean_base(snapshot, origin),
-        )
-        if handoff is None:
-            return False
-        guild = transition.execute(
-            "precondition.select_guild",
-            select_quick_menu_guild_action(handoff.origin),
-            opened.final_snapshot,
-            expected=lambda snapshot: _is_clean_base(snapshot, SCREEN_GUILD),
-            precondition=handoff.allows,
-            retryable_from=handoff.allows,
-            on_recovery=handoff.invalidate,
-            abort_if=lambda snapshot: (
-                (
-                    not _is_clean_base(snapshot, origin)
-                    and handoff.observe(
-                        snapshot, lambda item: _is_clean_base(item, SCREEN_GUILD)
-                    )
-                )
-                or _has_incompatible_destination_state(
-                    snapshot, origin, SCREEN_GUILD
-                )
-            ),
-            stable_for=_CLEAN_CONTEXT_STABLE_FOR,
-            policy=policy,
+        guild = self._quick_menu_to_destination(
+            initial, transition, policy, destination=SCREEN_GUILD,
+            action=select_quick_menu_guild_action(origin), selection='guild',
         )
         return guild.succeeded and not self.cancel_requested()
 
     def _navigate_to_pets_manage(self) -> bool:
-        """Normalize an acquired origin to Lobby, then open Pets on Manage."""
+        """Open Pets directly from Lobby or a compatible Quick Menu origin."""
 
         initial = self.observer.observe()
         if _is_clean_base(initial, SCREEN_PETS_MANAGE):
@@ -688,10 +624,16 @@ class ProductiveRuntime:
                 origin is None
                 or not quick_menu_accessible(origin)
                 or not _is_clean_base(initial, origin)
-                or not self._navigate_to_lobby()
             ):
                 return False
-            initial = self.observer.observe()
+            from bot.quick_menu import select_quick_menu_pets_action
+            pets = self._quick_menu_to_destination(
+                initial, self.build_verified_transition(),
+                VerifiedTransitionPolicy(normal_timeout=6., grace_timeout=2., max_attempts=2),
+                destination=SCREEN_PETS_MANAGE, action=select_quick_menu_pets_action(origin),
+                selection='pets', scope=PETS_MANAGE_NAVIGATE_SCOPE,
+            )
+            return pets.succeeded and not self.cancel_requested()
         if not _is_clean_base(initial, SCREEN_LOBBY):
             return False
 
@@ -805,7 +747,9 @@ def open_productive_runtime(
             config,
             adb_client=adb,
             video_bit_rate=8_000_000,
-            max_fps=30,
+            # Repeated MW bindings warm several OCR pools. At 30 FPS their
+            # CPU contention queued capture past Stages' freshness guard live.
+            max_fps=10,
         )
         actions = ActionExecutor(adb)
         with source:
@@ -816,7 +760,8 @@ def open_productive_runtime(
                 events=events,
                 snapshot_consumer=evidence.observe,
             )
-            facts = build_runtime_fact_reader(observer, events=events)
+            ocr_engine = RapidOcrEngine()
+            facts = build_runtime_fact_reader(observer, ocr_engine=ocr_engine, events=events)
             auto_battle = AutoBattleEnsurer(AutoBattleDetector(observer), actions)
             try:
                 shared_recovery: object = PortalObstructionRecovery(
@@ -866,6 +811,7 @@ def open_productive_runtime(
                     events,
                     token,
                     registry,
+                    ocr_engine=ocr_engine,
                 )
             finally:
                 observer.flush_analysis_metrics()
@@ -901,28 +847,12 @@ def _is_clean_known_context(snapshot) -> bool:
 
 def _is_clean_base(snapshot, base: str) -> bool:
     state = snapshot.state
-    overlays = set(state.overlays)
-    if base == SCREEN_GUILD:
-        compatible_overlays = (
-            len(overlays & _GUILD_ATTENDANCE_STATES) == 1
-            and overlays <= _GUILD_COMPATIBLE_OVERLAYS
-        )
-    elif base == SCREEN_PETS_MANAGE:
-        compatible_overlays = overlays <= {STATUS_PET_SUMMON_DAILY_ACTIVE}
-    elif base == SCREEN_BATTLE_MODE_SELECT:
-        compatible_overlays = overlays <= {STATUS_WORLD_BOSS_DAILY_ACTIVE, STATUS_MONSTER_WAVE_DAILY_ACTIVE}
-    elif base == SCREEN_PET_SUMMON:
-        epic = overlays & {
-            STATUS_PET_EPIC_AVAILABLE,
-            STATUS_PET_EPIC_UNAVAILABLE,
-        }
-        compatible_overlays = len(epic) == 1 and overlays <= _PET_SUMMON_STATUSES
-    else:
-        compatible_overlays = not overlays
+    if DEFAULT_QUICK_MENU_POLICY.allows(base):
+        return state.base_context == base and is_clean_quick_menu_base(snapshot)
     return (
         state.status is ResolutionStatus.RESOLVED
         and state.base_context == base
-        and compatible_overlays
+        and not state.overlays
     )
 
 

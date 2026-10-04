@@ -15,6 +15,8 @@ venv/
 .env.*
 !.env.example
 AGENT_LOCAL.md
+/routines.json
+/routines.json.*.bak
 
 # Capturas, datasets y salidas de runtime
 screencaps/

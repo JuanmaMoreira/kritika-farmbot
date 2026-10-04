@@ -7,26 +7,40 @@ from bot.stages_runtime import lobby
 from bot.perception.stages import surface
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.event_log import record_best_effort
+from bot.event_context import event_scope
+from bot.character_resources import character_resource_knowledge
 
 class StagesDailyFlow:
     name='stages_daily';scope=FlowScope.PER_CHARACTER
     contract=FlowContract(ComponentRequirement.exact_state('screen.lobby'),
                           (ComponentRequirement.exact_state('screen.lobby'),))
-    def __init__(self,navigation,balances,stamina,ads,*,monster_wave,reenter_same_character):
+    def __init__(self,navigation,balances,stamina,ads,*,monster_wave,reenter_same_character,ensure_lobby=None):
         self.nav,self.balances,self.stamina,self.ads=navigation,balances,stamina,ads
         self.monster_wave,self.reenter_same_character=monster_wave,reenter_same_character
+        self.ensure_lobby = ensure_lobby or (lambda: self.nav.wait(lobby))
 
     def run(self):
         n=self.nav
         try:
+            # Session reuses each occurrence binding across characters. Only
+            # reset its invocation bound here; retries within this run stay bounded.
+            if getattr(n,"relief",None) is not None:n.relief.reset()
+            knowledge=character_resource_knowledge()
+            if knowledge is not None and knowledge.stage_ads_exhausted:
+                return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted',
+                    fields={'known':True,'navigation':False}),))
             before=self.balances.read()
             record_best_effort(n.events,'stages.entry_preconditions',stamina=before.stamina,
                 sapphires=before.sapphires,sapphire_limit=before.sapphire_limit)
             if before.needs_monster_wave:
                 record_best_effort(n.events,'stages.prerequisite',flow='monster_wave')
-                dependency=self.monster_wave.run()
-                publish_flow_events(n.events,'monster_wave',dependency.events,prerequisite='stages_daily')
+                with event_scope(activity_id='monster_wave',activity_role='prerequisite'):
+                    dependency=self.monster_wave.run()
+                    record_best_effort(n.events,'stages.prerequisite.result',result=dependency.status.value,
+                        decision='continue' if dependency.succeeded else 'stop')
+                    publish_flow_events(n.events,'monster_wave',dependency.events,prerequisite='stages_daily')
                 if dependency.status is not FlowStatus.COMPLETED:return dependency
+                self.ensure_lobby()
                 before=self.balances.read()
                 if before.needs_monster_wave:
                     return FlowResult(FlowStatus.MANUAL_RESOLUTION,(FlowEvent('stages_daily.mw_required'),))
@@ -40,12 +54,12 @@ class StagesDailyFlow:
             s,count=n.prepare_ad(n.enter_target())
             if count==0:
                 n.exit_to_lobby()
-                return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted'),))
+                return self._exhausted_result()
             # Initial + two temporal retries, then one same-character reset +
-            # two attempts. Only explicit No Ads permits another Video intent.
+            # one final attempt. Only explicit No Ads permits another Video intent.
             aborted_retries=0
             for reset in range(2):
-                attempts=3 if reset==0 else 2
+                attempts=3 if reset==0 else 1
                 for attempt in range(attempts):
                     record_best_effort(n.events,'stages.video_attempt',reset=reset,attempt=attempt+1)
                     n.tap(C.VIDEO,s)
@@ -66,7 +80,7 @@ class StagesDailyFlow:
                         s,count=n.prepare_ad(n.enter_target())
                         if count==0:
                             n.exit_to_lobby()
-                            return self._aborted_result()
+                            return self._exhausted_result()
                         n.tap(C.VIDEO,s)
                         result=self.ads.complete_requested_launch()
                     if result.outcome is AdsOutcome.CANCELLED:return FlowResult(FlowStatus.CANCELLED)
@@ -84,7 +98,7 @@ class StagesDailyFlow:
                     if result.outcome is AdsOutcome.EXHAUSTED:
                         n.change(C.NO_ADS_OK,result.snapshot,{'auto'})
                         n.exit_to_lobby()
-                        return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted'),))
+                        return self._exhausted_result()
                     if result.outcome is not AdsOutcome.UNAVAILABLE:
                         raise ValueError('stages unsupported ad outcome')
                     s=n.change(C.NO_ADS_OK,result.snapshot,{'auto'})
@@ -99,12 +113,18 @@ class StagesDailyFlow:
                     s,count=n.prepare_ad(n.enter_target())
                     if count==0:
                         n.exit_to_lobby()
-                        return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted'),))
-            n.exit_to_lobby()
+                        return self._exhausted_result()
             return FlowResult(FlowStatus.MANUAL_RESOLUTION,(FlowEvent('stages_daily.ads_unavailable',
-                detail='Manual entry may be necessary; no manual combat fallback.'),))
+                detail='ADS_UNAVAILABLE: two temporal retries and same-character reentry exhausted; no manual entry.',
+                fields={'temporal_retries':2,'same_character_reentries':1,'launches':4}),))
         except RuntimeWaitCancelled:return FlowResult(FlowStatus.CANCELLED)
         except Exception as e:return FlowResult(FlowStatus.FAILED,error=f'{type(e).__name__}: {e}')
+
+    @staticmethod
+    def _exhausted_result():
+        knowledge=character_resource_knowledge()
+        if knowledge is not None:knowledge.stage_ads_exhausted=True
+        return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted'),))
 
     @staticmethod
     def _aborted_result():
@@ -113,6 +133,7 @@ class StagesDailyFlow:
 
     def _retry_delay(self):
         n=self.nav;until=n.clock()+5.
+        record_best_effort(n.events,"stages.ads_retry_wait",seconds=5.)
         while n.clock()<until:
             if n.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
             n.observer._sleeper(min(.25,until-n.clock()))

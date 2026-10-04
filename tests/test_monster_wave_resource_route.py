@@ -182,7 +182,7 @@ class FakeCraft:
     def probe_equipment_capacity(self):
         self.trace.append("probe_capacity")
         return CraftRouteResult(CraftRouteOutcome.ENTERED)
-    def drain_hero_material(self, *, max_batches):
+    def drain_hero_materials(self, *, max_batches):
         assert max_batches > 0
         self.trace.append("drain_hero")
         return SimpleNamespace(outcome=CraftOutcome.SUCCESS)
@@ -520,7 +520,7 @@ def test_craft_blocker_invokes_composer_once_and_retries_only_craft_then_continu
             if self.probes == 1:
                 return _blocked_craft_fact(20)
             return _free_craft_result(30)
-        def drain_hero_material(self, *, max_batches):
+        def drain_hero_materials(self, *, max_batches):
             self.trace.append("drain_hero")
             return SimpleNamespace(outcome=CraftOutcome.SUCCESS)
         def observe_context(self, *, after_sequence):
@@ -581,7 +581,7 @@ def test_craft_relief_failure_stops_without_further_input_and_no_sell():
         def probe_equipment_capacity(self):
             self.trace.append("probe_capacity")
             return _blocked_craft_fact(20)
-        def drain_hero_material(self, *, max_batches):
+        def drain_hero_materials(self, *, max_batches):
             raise AssertionError("no drain after failed relief")
         def observe_context(self, *, after_sequence):
             # Retry acquire after Combine still sees full Craft; exercised
@@ -634,7 +634,7 @@ def test_craft_missing_verified_popup_stops_before_combine_or_sell():
         def probe_equipment_capacity(self):
             self.trace.append("probe_capacity")
             return _blocked_craft_fact(20)
-        def drain_hero_material(self, *, max_batches):
+        def drain_hero_materials(self, *, max_batches):
             raise AssertionError("no drain when entry fails closed")
         def observe_context(self, *, after_sequence):
             raise AssertionError("no observe when entry fails closed")
@@ -664,3 +664,106 @@ def test_craft_missing_verified_popup_stops_before_combine_or_sell():
     assert combine_calls == []
     assert sell_calls == []
     assert trace == ["mw_qm_craft", "probe_capacity"]
+
+
+def _modal_return(destination, *, stale=False):
+    from dataclasses import replace
+    before=_context(30,SCREEN_TRADING)
+    final=(_mw_context(30 if stale else 31) if destination=='mw' else
+           _context(31,'screen.lobby') if destination=='lobby' else
+           replace(_context(31,SCREEN_TRADING),state=ResolvedState(ResolutionStatus.UNKNOWN,31,31.)))
+    trace=[]
+    class Observer:
+        def wait_until(self,predicate,**kw):
+            value=before if kw['after_sequence']==0 else _mw_context(32)
+            assert predicate(value)
+            return value
+    class Transition:
+        def execute(self,name,action,initial,**kw):
+            assert isinstance(action,CloseTrading) and kw['precondition'](initial)
+            trace.append('close')
+            matches=kw['expected'](final)
+            return VerifiedTransitionResult(name,VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT if matches else
+                VerifiedTransitionOutcome.TIMEOUT,1,0,final)
+    craft=SimpleNamespace(enter_from_verified_quick_menu=lambda *a:None,request_back_to_origin=lambda:None)
+    def resume():
+        trace.append('lobby_reentry')
+        return MonsterWaveNavigationResult(FlowStatus.COMPLETED)
+    nav=MonsterWavePrerequisiteNavigationRuntime(Observer(),Transition(),craft,
+        resume_mw_from_lobby=resume)
+    return nav.leave_trading_to_mw(),trace
+
+
+def test_trading_modal_close_confirmed_mw_has_no_back_or_reentry():
+    result,trace=_modal_return('mw')
+    assert result.status is FlowStatus.COMPLETED and result.after_sequence==31
+    assert trace==['close']
+
+
+def test_trading_close_real_lobby_permits_existing_bounded_reentry():
+    result,trace=_modal_return('lobby')
+    assert result.status is FlowStatus.COMPLETED and result.after_sequence==32
+    assert trace==['close','lobby_reentry']
+
+
+def test_trading_close_unknown_never_authorizes_preventive_back_or_reentry():
+    result,trace=_modal_return('unknown')
+    assert result.status is FlowStatus.FAILED and trace==['close']
+
+
+def test_trading_modal_close_requires_fresh_effect_before_returning():
+    result,trace=_modal_return('mw',stale=True)
+    assert result.status is FlowStatus.FAILED and trace==['close']
+
+
+def _treasure_return_with_ranking(*, stuck=False, unknown=False, cancelled=False):
+    from dataclasses import replace
+    from bot.semantic_actions import ExitTreasure
+    from bot.monster_wave_actions import AcknowledgeMonsterWaveRanking
+    from bot.monster_wave_semantics import POPUP_MW_RANKING
+    before = _context(30, SCREEN_TREASURE)
+    ranking = _context(31, SCREEN_MONSTER_WAVE, overlays=(POPUP_MW_RANKING,))
+    if unknown:
+        ranking = replace(ranking, state=ResolvedState(ResolutionStatus.UNKNOWN,31,31.,overlays=(POPUP_MW_RANKING,)))
+    trace=[]
+    class Observer:
+        def wait_until(self,predicate,**kw):
+            assert predicate(before)
+            return before
+    class Transition:
+        def execute(self,name,action,initial,**kw):
+            trace.append(type(action).__name__)
+            assert kw['precondition'](initial)
+            assert kw['policy'].max_attempts == 1
+            if isinstance(action,ExitTreasure): final=ranking
+            else:
+                assert isinstance(action,AcknowledgeMonsterWaveRanking)
+                final=_context(initial.sequence+1, SCREEN_MONSTER_WAVE, overlays=(POPUP_MW_RANKING,)) if stuck else _mw_context(32)
+            match=kw['expected'](final)
+            return VerifiedTransitionResult(name, VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT if match else VerifiedTransitionOutcome.TIMEOUT, 1,0,final)
+    craft=SimpleNamespace(enter_from_verified_quick_menu=lambda *a:None,request_back_to_origin=lambda:None)
+    calls=[0]
+    def cancel():
+        calls[0]+=1
+        return cancelled and calls[0]>=3
+    nav=MonsterWavePrerequisiteNavigationRuntime(Observer(),Transition(),craft,
+        cancel_requested=cancel, resume_mw_from_lobby=lambda: (_ for _ in ()).throw(AssertionError('no reentry')))
+    return nav.leave_treasure_to_mw(),trace
+
+def test_treasure_return_resolves_known_mw_ranking_before_clean_anchor():
+    result,trace=_treasure_return_with_ranking()
+    assert result.status is FlowStatus.COMPLETED and result.after_sequence==32
+    assert trace==['ExitTreasure','AcknowledgeMonsterWaveRanking']
+
+def test_return_ranking_stuck_is_bounded_and_remains_failure():
+    result,trace=_treasure_return_with_ranking(stuck=True)
+    assert result.status is FlowStatus.FAILED
+    assert trace==['ExitTreasure','AcknowledgeMonsterWaveRanking','AcknowledgeMonsterWaveRanking']
+
+def test_unknown_ranking_on_relief_return_cannot_authorize_ack_or_back():
+    result,trace=_treasure_return_with_ranking(unknown=True)
+    assert result.status is FlowStatus.FAILED and trace==['ExitTreasure']
+
+def test_cancellation_before_return_ranking_ack_preserves_cancelled():
+    result,trace=_treasure_return_with_ranking(cancelled=True)
+    assert result.status is FlowStatus.CANCELLED and trace==['ExitTreasure']

@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from bot.config import DEFAULT_CHARACTER_COUNT
@@ -26,6 +26,9 @@ from bot.gui_model import (
     SessionElapsedTimer,
     event_visible,
 )
+from bot.routines import RoutineEditor, RoutineStore, config_overrides, step_settings
+from bot.monster_wave_config import MonsterWaveConfig
+from bot.flow_registry import DEFAULT_FLOW_REGISTRY
 from bot.productive_runtime import PROJECT_ROOT
 from bot.gui_evidence import locate_evidence, report_evidence_refs
 from bot.session_report import render_session_report
@@ -49,7 +52,12 @@ class KritikaFarmBotGui:
         self.root = root
         self.dotenv_path = Path(dotenv_path)
         self.log_dir = Path(log_dir)
-        self.selection = FlowSelectionModel()
+        self.selection = RoutineEditor(RoutineStore(PROJECT_ROOT / "routines.json", DEFAULT_FLOW_REGISTRY))
+        if not self.selection.store.path.exists():
+            try:
+                self.selection.save()
+            except OSError as error:
+                self.selection.store.warnings.append(f"Cannot initialize routine file: {error}")
         self.controller = GuiRuntimeController(registry=self.selection.registry)
         self.progress = GuiProgress()
         self.session_timer = SessionElapsedTimer()
@@ -62,6 +70,10 @@ class KritikaFarmBotGui:
         root.minsize(760, 560)
         root.protocol("WM_DELETE_WINDOW", self._on_close)
 
+        self.routine_var = tk.StringVar()
+        self.available_flow_var = tk.StringVar()
+        self.purchase_skip_var = tk.BooleanVar(value=False)
+        self.continue_full_var = tk.BooleanVar(value=False)
         self.characters_var = tk.StringVar(value=str(DEFAULT_CHARACTER_COUNT))
         self.debug_var = tk.BooleanVar(value=False)
         default_sell = EquipmentSellPolicy()
@@ -81,7 +93,10 @@ class KritikaFarmBotGui:
         self.evidence_status_var = tk.StringVar(value="")
 
         self._build_layout()
+        self._refresh_routines()
         self._refresh_flow_list()
+        if self.selection.store.warnings:
+            self.result_var.set("; ".join(self.selection.store.warnings))
         self._set_running_controls(False)
         self.root.after(POLL_INTERVAL_MS, self._drain_worker)
         self.root.after(SESSION_TIMER_INTERVAL_MS, self._refresh_session_timer)
@@ -100,19 +115,46 @@ class KritikaFarmBotGui:
         controls.grid(row=1, column=0, sticky="ew")
         controls.columnconfigure(0, weight=1)
 
-        flows = ttk.LabelFrame(controls, text="Flows", padding=8)
+        flows = ttk.LabelFrame(controls, text="Routine — execution order", padding=8)
         flows.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         flows.columnconfigure(0, weight=1)
+        self.routine_controls = []
+        routines = ttk.Frame(flows)
+        routines.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+        routines.columnconfigure(0, weight=1)
+        self.routine_select = ttk.Combobox(routines, textvariable=self.routine_var, state="readonly")
+        self.routine_select.grid(row=0, column=0, columnspan=5, sticky="ew")
+        self.routine_select.bind("<<ComboboxSelected>>", self._select_routine)
+        for column, (label, command) in enumerate((
+                ("New", self._new_routine), ("Duplicate", self._duplicate_routine),
+                ("Rename", self._rename_routine), ("Save", self._save_routine),
+                ("Delete", self._delete_routine))):
+            button = ttk.Button(routines, text=label, command=command)
+            button.grid(row=1, column=column, sticky="ew", pady=(4, 0))
+            self.routine_controls.append(button)
+        available = ttk.Frame(flows)
+        available.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        available.columnconfigure(0, weight=1)
+        self.available_flow_select = ttk.Combobox(available, textvariable=self.available_flow_var,
+            values=tuple(d.display_name for d in self.selection.registry.definitions), state="readonly")
+        self.available_flow_select.grid(row=0, column=0, sticky="ew")
+        self.available_flow_select.current(0)
+        for column, (label, command) in enumerate((("Add step", self._add_step),
+                                                  ("Remove step", self._remove_step)), start=1):
+            button = ttk.Button(available, text=label, command=command)
+            button.grid(row=0, column=column, padx=(5, 0))
+            self.routine_controls.append(button)
         self.flow_list = tk.Listbox(flows, height=5, exportselection=False)
-        self.flow_list.grid(row=0, column=0, rowspan=4, sticky="nsew")
+        self.flow_list.grid(row=1, column=0, rowspan=4, sticky="nsew")
+        self.flow_list.bind("<<ListboxSelect>>", lambda _: self._load_step_settings())
         self.flow_list.bind("<Double-Button-1>", lambda _: self._toggle_flow())
         self.flow_list.bind("<space>", lambda _: self._toggle_flow())
         self.toggle_button = ttk.Button(flows, text="Enable / Disable", command=self._toggle_flow)
-        self.toggle_button.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+        self.toggle_button.grid(row=1, column=1, sticky="ew", padx=(8, 0))
         self.up_button = ttk.Button(flows, text="↑ Up", command=self._move_up)
-        self.up_button.grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=4)
+        self.up_button.grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=4)
         self.down_button = ttk.Button(flows, text="↓ Down", command=self._move_down)
-        self.down_button.grid(row=2, column=1, sticky="ew", padx=(8, 0))
+        self.down_button.grid(row=3, column=1, sticky="ew", padx=(8, 0))
 
         run = ttk.LabelFrame(controls, text="Execution", padding=8)
         run.grid(row=0, column=1, sticky="ns")
@@ -172,7 +214,7 @@ class KritikaFarmBotGui:
         )
 
         policy_frame = ttk.Frame(self.output_tabs, padding=12)
-        self.output_tabs.add(policy_frame, text="Equipment Sell")
+        self.output_tabs.add(policy_frame, text="Step settings")
         ttk.Label(policy_frame, text="Ethereal: checked types may be sold with Bulk").grid(
             row=0, column=0, columnspan=3, sticky="w", pady=(0,10))
         self.sell_policy_checks = []
@@ -185,6 +227,18 @@ class KritikaFarmBotGui:
                                 variable=self.ethereal_enhance_var)
         check.grid(row=4, column=0, columnspan=3, sticky="w", pady=5)
         self.sell_policy_checks.append(check)
+        for row, (label, variable) in enumerate((
+                ("MW: purchase SKIP tickets", self.purchase_skip_var),
+                ("MW: continue with nonblocking inventory full", self.continue_full_var)), start=6):
+            check = ttk.Checkbutton(policy_frame, text=label, variable=variable)
+            check.grid(row=row, column=0, columnspan=3, sticky="w", pady=4)
+            self.sell_policy_checks.append(check)
+        button = ttk.Button(policy_frame, text="Apply settings to selected step", command=self._apply_step_settings)
+        button.grid(row=8, column=0, columnspan=3, sticky="w", pady=8)
+        self.routine_controls.append(button)
+        ttk.Label(policy_frame, text="Settings belong to the selected step, including its prerequisites.\n"
+                  "Apply, then Save the routine. Steps without overrides inherit runtime defaults.").grid(
+            row=9, column=0, columnspan=3, sticky="w")
         ttk.Label(policy_frame, text="Ethereal+ is always protected. Lower tiers use Bulk.\n"
                   "Full: Combine first; Sell; then one +4 row with Karats if needed.").grid(
             row=5, column=0, columnspan=3, sticky="w", pady=10)
@@ -220,18 +274,18 @@ class KritikaFarmBotGui:
             row=1, column=column, sticky="w"
         )
 
-    def _selected_flow_id(self) -> str | None:
+    def _selected_flow_id(self) -> int | None:
         selection = self.flow_list.curselection()
         if not selection:
             return None
         return self.selection.options[selection[0]].id
 
-    def _refresh_flow_list(self, selected_id: str | None = None) -> None:
+    def _refresh_flow_list(self, selected_id: int | None = None) -> None:
         self.flow_list.delete(0, "end")
         selected_index = None
         for index, item in enumerate(self.selection.options):
             mark = "x" if item.enabled else " "
-            self.flow_list.insert("end", f"[{mark}] {item.display_name}")
+            self.flow_list.insert("end", f"{index + 1:02d}. [{mark}] {item.display_name}")
             if item.id == selected_id:
                 selected_index = index
         if selected_index is None and self.selection.options:
@@ -239,6 +293,7 @@ class KritikaFarmBotGui:
         if selected_index is not None:
             self.flow_list.selection_set(selected_index)
             self.flow_list.activate(selected_index)
+        self._load_step_settings()
 
     def _toggle_flow(self) -> None:
         flow_id = self._selected_flow_id()
@@ -259,11 +314,135 @@ class KritikaFarmBotGui:
         if flow_id is None:
             self._validation_error("Select a flow first")
             return
-        if up:
-            self.selection.move_up(flow_id)
+        moved = self.selection.move_up(flow_id) if up else self.selection.move_down(flow_id)
+        self._refresh_flow_list(flow_id + (-1 if up else 1) if moved else flow_id)
+
+    def _refresh_routines(self):
+        self.routine_select.configure(values=tuple(r.name for r in self.selection.routines))
+        index = next((i for i, r in enumerate(self.selection.routines)
+                      if r.id == self.selection.selected_id), -1)
+        if index >= 0:
+            self.routine_select.current(index)
+            self.routine_var.set(self.selection.draft.name)
         else:
-            self.selection.move_down(flow_id)
-        self._refresh_flow_list(flow_id)
+            self.routine_var.set("")
+
+    def _keep_draft(self):
+        saved = next((r for r in self.selection.routines if r.id == self.selection.selected_id), None)
+        if self.selection.draft == saved:
+            return True
+        answer = messagebox.askyesnocancel("Unsaved routine", "Save changes before switching routines?", parent=self.root)
+        if answer is None:
+            return False
+        return self._save_routine() if answer else True
+
+    def _select_routine(self, _event=None):
+        index = self.routine_select.current()
+        if index >= 0 and self._keep_draft():
+            self.selection.select(self.selection.routines[index].id)
+            self._refresh_flow_list()
+        self._refresh_routines()
+
+    def _new_routine(self, duplicate=False):
+        if not self._keep_draft():
+            return
+        name = simpledialog.askstring("Routine", "Routine name:", parent=self.root,
+            initialvalue=(self.selection.draft.name + " copy" if duplicate and self.selection.draft else ""))
+        if name:
+            try:
+                self.selection.create(name, duplicate=duplicate)
+                self._refresh_routines()
+                self._refresh_flow_list()
+            except ValueError as error:
+                self._validation_error(str(error))
+
+    def _duplicate_routine(self):
+        self._new_routine(duplicate=True)
+
+    def _rename_routine(self):
+        if self.selection.draft is None:
+            return
+        name = simpledialog.askstring("Rename routine", "Routine name:", parent=self.root,
+                                      initialvalue=self.selection.draft.name)
+        if name:
+            try:
+                self.selection.rename(name)
+                self.routine_var.set(self.selection.draft.name)
+            except ValueError as error:
+                self._validation_error(str(error))
+
+    def _save_routine(self):
+        try:
+            self.selection.save()
+            self._refresh_routines()
+            self.result_var.set(f"Routine saved: {self.selection.store.path}")
+            return True
+        except (OSError, ValueError) as error:
+            self._validation_error(str(error))
+            return False
+
+    def _delete_routine(self):
+        if self.selection.draft is None:
+            return
+        if messagebox.askyesno("Delete routine", f'Delete "{self.selection.draft.name}"?', parent=self.root):
+            try:
+                self.selection.delete()
+                self._refresh_routines()
+                self._refresh_flow_list()
+            except OSError as error:
+                self._validation_error(str(error))
+
+    def _add_step(self):
+        index = self.available_flow_select.current()
+        if index < 0:
+            return
+        try:
+            self.selection.add(self.selection.registry.definitions[index].id)
+            self._refresh_flow_list(len(self.selection.options) - 1)
+        except ValueError as error:
+            self._validation_error(str(error))
+
+    def _remove_step(self):
+        index = self._selected_flow_id()
+        if index is not None:
+            self.selection.remove(index)
+            self._refresh_flow_list(min(index, len(self.selection.options) - 1))
+
+    def _load_step_settings(self):
+        index = self._selected_flow_id()
+        if index is None:
+            return
+        try:
+            values = config_overrides(self.selection.draft.steps[index].config)
+            policy = values.get("equipment_sell", EquipmentSellPolicy())
+            mw = values.get("monster_wave", MonsterWaveConfig())
+            for kind, variable in self.ethereal_type_vars.items():
+                variable.set(kind in policy.ethereal_types)
+            self.ethereal_enhance_var.set(policy.ethereal_enhance)
+            self.purchase_skip_var.set(mw.purchase_skip_tickets)
+            self.continue_full_var.set(mw.continue_when_nonblocking_inventory_full)
+        except (TypeError, ValueError) as error:
+            self.result_var.set(f"Invalid step settings: {error}; apply valid settings to repair")
+
+    def _apply_step_settings(self):
+        index = self._selected_flow_id()
+        if index is not None:
+            self.selection.configure(index, step_settings(
+                MonsterWaveConfig(self.purchase_skip_var.get(), self.continue_full_var.get()),
+                self._equipment_sell_policy()))
+            self.result_var.set(f"Settings applied to step {index + 1}; Save to persist")
+
+    def _execution_request(self, character_count=None):
+        kwargs = dict(debug=self.debug_var.get(), dotenv_path=self.dotenv_path, log_dir=self.log_dir)
+        if isinstance(self.selection, RoutineEditor):
+            if self.selection.draft is None:
+                raise ValueError("Create a routine first")
+            return GuiExecutionRequest.for_routine(self.selection.draft, self.selection.registry,
+                                                   character_count=character_count, **kwargs)
+        kwargs["equipment_sell"] = self._equipment_sell_policy()
+        return (GuiExecutionRequest.selected_flows(self.selection.active_ids, **kwargs)
+                if character_count is None else GuiExecutionRequest.session(
+                    self.selection.active_ids, character_count, **kwargs))
 
     def _equipment_sell_policy(self):
         return EquipmentSellPolicy(
@@ -273,13 +452,7 @@ class KritikaFarmBotGui:
 
     def _run_selected_flows(self) -> None:
         try:
-            request = GuiExecutionRequest.selected_flows(
-                self.selection.active_ids,
-                debug=self.debug_var.get(),
-                equipment_sell=self._equipment_sell_policy(),
-                dotenv_path=self.dotenv_path,
-                log_dir=self.log_dir,
-            )
+            request = self._execution_request()
             self._start(request)
         except (ValueError, RuntimeError) as error:
             self._validation_error(str(error))
@@ -287,14 +460,7 @@ class KritikaFarmBotGui:
     def _run_session(self) -> None:
         try:
             count = int(self.characters_var.get())
-            request = GuiExecutionRequest.session(
-                self.selection.active_ids,
-                count,
-                debug=self.debug_var.get(),
-                equipment_sell=self._equipment_sell_policy(),
-                dotenv_path=self.dotenv_path,
-                log_dir=self.log_dir,
-            )
+            request = self._execution_request(count)
             self._start(request)
         except (ValueError, RuntimeError) as error:
             self._validation_error(str(error))
@@ -390,6 +556,11 @@ class KritikaFarmBotGui:
     def _set_running_controls(self, running: bool) -> None:
         for check in self.sell_policy_checks:
             check.configure(state="disabled" if running else "normal")
+        for widget in getattr(self, "routine_controls", ()):
+            widget.configure(state="disabled" if running else "normal")
+        for name in ("routine_select", "available_flow_select"):
+            if hasattr(self, name):
+                getattr(self, name).configure(state="disabled" if running else "readonly")
         configure_state = "disabled" if running else "normal"
         for widget in (
             self.flow_list,
@@ -441,6 +612,8 @@ class KritikaFarmBotGui:
 
     def _on_close(self) -> None:
         if not self.controller.is_running:
+            if not self._keep_draft():
+                return
             self.root.destroy()
             return
         if not messagebox.askyesno(

@@ -15,6 +15,10 @@ class StagesReliefs:
         self.nav,self.dependencies,self.equipment=nav,dependencies,equipment
         self.used=set()
 
+    def reset(self):
+        """The relief bound belongs to one run(), never the next character."""
+        self.used.clear()
+
     def __call__(self, control, initial, expected):
         n=self.nav
         blockers={POPUP_EQUIPMENT_INVENTORY_FULL,POPUP_SOCKET_INVENTORY_FULL}.intersection(initial.state.overlays)

@@ -111,7 +111,7 @@ class SocketInventoryRelief:
         transition_timeout: float = 6.0,
         fact_timeout: float = 8.0,
         stable_for: float = 0.25,
-        animation_policy: TapThroughPolicy = TapThroughPolicy(),
+        animation_policy: TapThroughPolicy = TapThroughPolicy(tap_interval=0.2),
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -140,6 +140,25 @@ class SocketInventoryRelief:
         self.tap_through = tap_through or TapThroughAnimation(
             observer, actions, events
         )
+        # Once Gold starts Enhance, only Socket animation/completion and
+        # its upper layers are relevant. Sell discovery remains on the full owner.
+        from bot.runtime_observer import RuntimeObserver
+        from bot.perception.engine import PerceptionEngine
+        from bot.perception import ScopeSpec, select_detectors
+        from bot.perception.socket import SocketEnhanceAnimationDetector
+        if isinstance(observer, RuntimeObserver) and isinstance(observer.perception, PerceptionEngine):
+            scope = ScopeSpec('socket_enhance_animation', frozenset({
+                'landmark.socket_tab', 'landmark.socket_enhance_all_title',
+                'landmark.socket_no_material_prompt', 'landmark.socket_sell_bulk_button',
+                'landmark.socket_inventory_full_prompt', 'landmark.equipment_inventory_full_prompt',
+                'landmark.quick_menu_lobby_tile',
+            }), (SocketEnhanceAnimationDetector,))
+            animation_observer = observer.scoped(select_detectors(observer.perception, scope))
+            if isinstance(self.tap_through, TapThroughAnimation):
+                original = self.tap_through
+                self.tap_through = TapThroughAnimation(
+                    animation_observer, actions, events,
+                    clock=original.clock, sleeper=original.sleeper)
         self.normal_policy = VerifiedTransitionPolicy(
             normal_timeout=transition_timeout,
             grace_timeout=1.0,
@@ -284,6 +303,9 @@ class SocketInventoryRelief:
             precondition=_is_enhance_modal,
             tolerated=_is_clean_socket,
             policy=self.single_action_policy,
+            # A fresh positive animation phase authorizes the safe tap helper.
+            # Requiring a stable animation window misses transient dark phases.
+            stable_for=0.0,
         )
         outcome = enhance_result.final_snapshot
         if not enhance_result.succeeded:
@@ -345,6 +367,7 @@ class SocketInventoryRelief:
                 transient=lambda item: item.state.status is ResolutionStatus.UNKNOWN,
                 cancel_requested=cancel_requested,
                 policy=self.animation_policy,
+                stable_for=self.stable_for,
             )
             if tapped.outcome is TapThroughOutcome.CANCELLED:
                 return (
@@ -363,11 +386,15 @@ class SocketInventoryRelief:
                     tapped.final_snapshot,
                     tapped.tap_count,
                 )
-            return (
-                SocketStrategyOutcome.EFFECT,
-                tapped.final_snapshot,
-                tapped.tap_count,
-            )
+            final = tapped.final_snapshot
+            if self.stable_for:
+                # Full perception verifies the stable terminal BASE once;
+                # narrowed UNKNOWN is never itself input authorization.
+                final = self.observer.wait_until(
+                    _is_clean_socket, after_sequence=final.sequence,
+                    timeout=self.normal_policy.normal_timeout,
+                    stable_for=self.stable_for, cancel_requested=cancel_requested)
+            return (SocketStrategyOutcome.EFFECT, final, tapped.tap_count)
 
         self._record("socket_relief.enhance_no_effect")
         modal = self._transition(
@@ -534,6 +561,7 @@ class SocketInventoryRelief:
         precondition,
         tolerated=lambda item: False,
         policy=None,
+        stable_for=None,
     ):
         selected_policy = policy or self.normal_policy
         result = self.transition.execute(
@@ -547,7 +575,7 @@ class SocketInventoryRelief:
                 item, expected, precondition
             )
             and not tolerated(item),
-            stable_for=self.stable_for,
+            stable_for=self.stable_for if stable_for is None else stable_for,
             policy=selected_policy,
         )
         self._record(
@@ -619,11 +647,9 @@ def _is_equipment_home(snapshot: RuntimeSnapshot) -> bool:
 
 
 def _is_tappable_animation(snapshot: RuntimeSnapshot) -> bool:
-    return bool(
-        snapshot.observations.find(
-            SOCKET_ENHANCE_ANIMATION_TAPPABLE_OBSERVATION
-        )
-    )
+    return (snapshot.state.status is ResolutionStatus.UNKNOWN
+        and not snapshot.state.overlays and bool(snapshot.observations.find(
+            SOCKET_ENHANCE_ANIMATION_TAPPABLE_OBSERVATION)))
 
 
 def _incompatible_slots(snapshot: RuntimeSnapshot) -> tuple[int, ...]:

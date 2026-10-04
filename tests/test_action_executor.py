@@ -671,3 +671,15 @@ def test_trading_max_dispatch_error_records_failure_without_success():
         "action.started", "action.failed",
     ]
     assert events.record.call_args_list[-1].kwargs["stage"] == "dispatch"
+
+
+
+def test_battle_mode_back_reuses_acquired_back_geometry():
+    from bot.semantic_actions import ExitBattleModeSelect, ExitWorldBoss
+    adb=Mock()
+    executor=ActionExecutor(adb)
+    geometry=FrameGeometry(width=2712, height=1220)
+    back=executor.execute(ExitBattleModeSelect(),geometry)
+    known=executor.execute(ExitWorldBoss(),geometry)
+    assert back.normalized_target==known.normalized_target
+    assert adb.tap.call_count==2

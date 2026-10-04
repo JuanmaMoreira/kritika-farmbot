@@ -1,4 +1,4 @@
-"""Productive Lobby-to-Lobby Daily Quests flow."""
+"""Daily Quests restores its verified underlying BASE."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from bot.catalog import (
     STATUS_DAILY_QUESTS_CLAIMABLE,
     STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
 )
-from bot.component_contracts import ComponentRequirement
+from bot.component_contracts import ComponentRequirement, QUICK_MENU_ACCESS_REQUIREMENT
 from bot.event_log import EventSink
 from bot.flow_contracts import FlowContract, FlowEvent, FlowResult, FlowScope, FlowStatus
 from bot.runtime_observer import (
@@ -36,6 +36,11 @@ from bot.semantic_actions import (
     SelectDailyQuests,
 )
 from bot.state import ResolutionStatus
+from bot.quick_menu import (
+    DEFAULT_QUICK_MENU_POLICY, is_clean_quick_menu_base,
+    open_quick_menu_destination, select_quick_menu_panel_action,
+)
+from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
 
 
 DAILY_QUESTS_NOOP = "daily_quests.noop"
@@ -87,9 +92,10 @@ class DailyQuestsFlow:
     name = "daily_quests"
     scope = FlowScope.PER_CHARACTER
     contract = FlowContract(
-        precondition=ComponentRequirement.exact_state(SCREEN_LOBBY),
-        successful_postconditions=(
-            ComponentRequirement.exact_state(SCREEN_LOBBY),
+        precondition=QUICK_MENU_ACCESS_REQUIREMENT,
+        successful_postconditions=tuple(
+            ComponentRequirement.exact_state(base)
+            for base in sorted(DEFAULT_QUICK_MENU_POLICY.accessible_from)
         ),
     )
 
@@ -102,6 +108,7 @@ class DailyQuestsFlow:
         claim_observer: RuntimeObserver | None = None,
         open_observer: RuntimeObserver | None = None,
         lobby_observer: RuntimeObserver | None = None,
+        verified_transition: VerifiedTransition | None = None,
         navigation_timeout: float = 6.0,
         claim_timeout: float = 8.0,
         navigation_stable_for: float = 0.25,
@@ -148,6 +155,7 @@ class DailyQuestsFlow:
         self.claim_observer: _Observer = claim_observer
         self.open_observer: _Observer = open_observer
         self.lobby_observer: _Observer = lobby_observer
+        self.verified_transition = verified_transition or VerifiedTransition(observer, actions, events)
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
@@ -163,15 +171,6 @@ class DailyQuestsFlow:
         )
         self._clock = clock
         self._sleeper = sleeper
-
-    @staticmethod
-    def _is_clean_lobby(snapshot: RuntimeSnapshot) -> bool:
-        state = snapshot.state
-        return (
-            state.status is ResolutionStatus.RESOLVED
-            and state.base_context == SCREEN_LOBBY
-            and not state.overlays
-        )
 
     @staticmethod
     def _is_daily_quests(snapshot: RuntimeSnapshot) -> bool:
@@ -301,25 +300,6 @@ class DailyQuestsFlow:
         )
 
     @staticmethod
-    def _has_incompatible_close_state(snapshot: RuntimeSnapshot) -> bool:
-        state = snapshot.state
-        return (
-            state.status is ResolutionStatus.AMBIGUOUS
-            or bool(
-                set(state.overlays)
-                - {
-                    MODE_DAILY_QUESTS,
-                    STATUS_DAILY_QUESTS_CLAIMABLE,
-                    STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE,
-                }
-            )
-            or (
-                state.status is ResolutionStatus.RESOLVED
-                and state.base_context not in {SCREEN_QUESTS, SCREEN_LOBBY}
-            )
-        )
-
-    @staticmethod
     def _known_incompatible(snapshot, expected, retryable_from) -> bool:
         if expected(snapshot) or retryable_from(snapshot):
             return False
@@ -334,7 +314,7 @@ class DailyQuestsFlow:
     def run_with_initial(self, snapshot: RuntimeSnapshot | None) -> DailyQuestsFlowResult:
         """Run on a freshly verified precondition snapshot when usable.
 
-        The seed must already show the clean Lobby this flow starts from;
+        The seed must already show a clean Quick Menu capable BASE;
         anything else falls back to a normal fresh observation, preserving
         the baseline behavior exactly.
         """
@@ -346,7 +326,9 @@ class DailyQuestsFlow:
         try:
             if self._cancelled():
                 return self._cancel(events)
-            lobby = self._initial_lobby(seed)
+            entry = self._initial_base(seed)
+            origin = entry.state.base_context
+            restored = lambda s: s.state.base_context == origin and is_clean_quick_menu_base(s)
             # OpenQuests waits for content readiness, not just chrome: the
             # navigation expected (panel title + tab) is satisfied before
             # the mission list populates, and the claim/noop decision reads
@@ -354,15 +336,33 @@ class DailyQuestsFlow:
             # loading closes the Batch B1 false noop while keeping the wait
             # scoped. The final snapshot still carries the claimable and
             # progress-reward observations the flow reads next.
-            quests = self._act_and_wait(
-                OpenQuests(),
-                lobby,
-                expected=self._is_open_done,
-                abort_if=self._has_incompatible_daily_navigation,
-                timeout=self.navigation_timeout,
-                stable_for=self.navigation_stable_for,
-                observer=self.open_observer,
-            )
+            if origin == SCREEN_LOBBY:
+                quests = self._act_and_wait(
+                    OpenQuests(),
+                    entry,
+                    expected=self._is_open_done,
+                    abort_if=self._has_incompatible_daily_navigation,
+                    timeout=self.navigation_timeout,
+                    stable_for=self.navigation_stable_for,
+                    observer=self.open_observer,
+                )
+            else:
+                arrived = open_quick_menu_destination(
+                    entry, self.verified_transition,
+                    VerifiedTransitionPolicy(normal_timeout=self.navigation_timeout),
+                    action=select_quick_menu_panel_action(origin, self.name),
+                    selection=self.name,
+                    expected=self._is_open_done,
+                    destination_guard=self._is_quests,
+                    destination_transition=VerifiedTransition(self.open_observer, self.actions, self.events),
+                    stable_for=self.navigation_stable_for,
+                    cancel_requested=self.cancel_requested, prefix=self.name,
+                )
+                if self._cancelled():
+                    raise RuntimeWaitCancelled('daily_quests cancelled')
+                if not arrived.succeeded:
+                    raise RuntimeError(arrived.error or 'quick_menu_destination_failed')
+                quests = arrived.final_snapshot
             if not self._is_daily_quests(quests):
                 daily = self._wait_for_daily_tab(quests)
             else:
@@ -413,19 +413,22 @@ class DailyQuestsFlow:
             if no_op:
                 self._append_event(events, DAILY_QUESTS_NOOP)
 
-            lobby = self._act_and_wait(
+            returned = self._act_and_wait(
                 CloseDailyQuests(),
                 daily,
-                expected=self._is_clean_lobby,
-                abort_if=self._has_incompatible_close_state,
+                expected=restored,
+                abort_if=lambda s: not (restored(s) or self._is_daily_quests(s)
+                                        or self._is_passive_unknown(s)),
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
-                observer=self.lobby_observer,
+                observer=self.lobby_observer if origin == SCREEN_LOBBY else self.observer,
             )
-            assert self._is_clean_lobby(lobby)
+            assert restored(returned)
+            self._record('daily_quests.base_restored', restored_base=origin, current_surface=origin)
             return DailyQuestsFlowResult(
                 FlowStatus.COMPLETED,
                 tuple(events),
+                final_snapshot=returned,
                 no_op=no_op,
                 claim_all_executed=claim_executed,
                 claim_all_completed=claim_completed,
@@ -441,20 +444,20 @@ class DailyQuestsFlow:
         except Exception as error:
             return self._failed(events, f"{type(error).__name__}: {error}")
 
-    def _initial_lobby(self, seed: RuntimeSnapshot | None = None) -> RuntimeSnapshot:
-        if isinstance(seed, RuntimeSnapshot) and self._is_clean_lobby(seed):
+    def _initial_base(self, seed: RuntimeSnapshot | None = None) -> RuntimeSnapshot:
+        if isinstance(seed, RuntimeSnapshot) and is_clean_quick_menu_base(seed):
             return seed
         initial = self.observer.observe()
-        if self._is_clean_lobby(initial):
+        if is_clean_quick_menu_base(initial):
             return initial
         if not self._is_passive_unknown(initial):
-            raise RuntimeError("precondition_lobby_failed")
+            raise RuntimeError("precondition_quick_menu_base_failed")
         return self.observer.wait_until(
-            self._is_clean_lobby,
+            is_clean_quick_menu_base,
             after_sequence=initial.sequence,
             timeout=self.navigation_timeout,
             abort_if=lambda snapshot: self._known_incompatible(
-                snapshot, self._is_clean_lobby, self._is_passive_unknown
+                snapshot, is_clean_quick_menu_base, self._is_passive_unknown
             ),
             cancel_requested=self.cancel_requested,
             stable_for=self.navigation_stable_for,

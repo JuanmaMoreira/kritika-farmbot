@@ -1,12 +1,13 @@
 """Concrete Normal/Abyssal Rion/Stage8 navigation and Mao preparation."""
 import time
-import numpy as np
 from bot.stages_actions import StageAction,StageControl as C
 from bot.perception.stages import has,surface
 from bot.catalog import SCREEN_LOBBY, POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL
 from bot.state import ResolutionStatus
-from bot.runtime_observer import RuntimeWaitCancelled
+from bot.runtime_observer import RuntimeWaitCancelled,RuntimeWaitTimeout
 from bot.event_log import record_best_effort
+from bot.tap_through_animation import TapThroughAnimation,TapThroughPolicy,TapThroughOutcome
+from types import SimpleNamespace
 
 def lobby(s):return s.state.status is ResolutionStatus.RESOLVED and s.state.base_context==SCREEN_LOBBY and not s.state.overlays
 
@@ -16,22 +17,41 @@ def exposed(s):
         overlay == 'popup.stages_'+layer for overlay in s.state.overlays) if layer else False
 
 class StagesNavigation:
-    def __init__(self,observer,actions,*,events=None,cancel_requested=lambda:False,clock=time.monotonic):
+    def __init__(self,observer,actions,*,events=None,cancel_requested=lambda:False,clock=time.monotonic,sleeper=time.sleep):
         self.observer,self.actions=observer,actions
         self.events,self.cancel_requested,self.clock=events,cancel_requested,clock
+        self.sleeper=sleeper;self.claim_observer=None
         self.cursor=0;self.dispatched_at=0.
         self.relief=None
 
-    def wait(self,predicate,timeout=6.):
+    def wait(self,predicate,timeout=6.,*,observer=None):
+        observer=observer or self.observer
         if self.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
-        source=getattr(self.observer,'source',None)
+        source=getattr(observer,'source',None)
         if callable(getattr(source,'refresh_native',None)):
             latest=source.get_frame()
             if (latest.sequence<=self.cursor or latest.timestamp<=self.dispatched_at or
                     self.clock()-latest.timestamp>1.):
                 source.refresh_native()
-        s=self.observer.wait_until(lambda s:s.timestamp>self.dispatched_at and self.clock()-s.timestamp<2. and predicate(s),
-            after_sequence=self.cursor,timeout=timeout,cancel_requested=self.cancel_requested)
+        fresh_match=lambda s:s.timestamp>self.dispatched_at and 0.<=self.clock()-s.timestamp<2. and predicate(s)
+        try:
+            s=observer.wait_until(fresh_match,after_sequence=self.cursor,timeout=timeout,
+                cancel_requested=self.cancel_requested)
+        except RuntimeWaitTimeout as error:
+            last=error.last_snapshot
+            # A post-ad stream can show the requested surface with capture age
+            # already outside the input guard. It authorizes observation only.
+            # One real native acquisition re-verifies; never resend the action.
+            if (last is None or self.clock()-last.timestamp<2. or
+                    not callable(getattr(source,'refresh_native',None)) or not predicate(last)):
+                raise
+            if self.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
+            record_best_effort(self.events,'stages.wait.native_reacquire',
+                source_sequence=last.sequence,frame_age=self.clock()-last.timestamp,
+                reason='stale_matching_surface',input_retries=0)
+            source.refresh_native()
+            s=observer.wait_until(fresh_match,after_sequence=last.sequence,timeout=2.,
+                cancel_requested=self.cancel_requested)
         self.cursor=s.sequence
         return s
 
@@ -57,32 +77,65 @@ class StagesNavigation:
             return self.relief(control,result,expected)
         return result
 
+    def stamina_increments(self,count,snapshot):
+        """Bounded nonconsuming quantity setup; one final panel verification owns confirm."""
+        if not 0<=count<=19:raise ValueError('stamina selector tap bound')
+        if self.clock()-snapshot.timestamp>2.:raise ValueError('stamina selector stale')
+        for _ in range(count):
+            if self.cancel_requested():raise RuntimeWaitCancelled('stamina selection cancelled')
+            self.actions.execute(StageAction(C.STAMINA_INCREMENT),snapshot.geometry,
+                events=self.events,source_sequence=snapshot.sequence)
+            self.cursor=snapshot.sequence;self.dispatched_at=self.clock()
+            self.sleeper(.10)
+
+    def claim_rewards(self,s):
+        if has(s,'claim_inactive') and exposed(s) and surface(s)=='normal':return s
+        cycles=0;started=self.clock();current=s
+        def observe(predicate,**kwargs):
+            nonlocal cycles,current
+            cycles+=1
+            current=self.wait(predicate,timeout=min(3.,kwargs['timeout']),observer=self.claim_observer)
+            return current
+        def tap(action,geometry):self.tap(C.CLAIM,current)
+        valid=lambda item: item.state.status is ResolutionStatus.RESOLVED and item.state.base_context=='screen.stages' and exposed(item) and surface(item)=='normal' and self.clock()-item.timestamp<2.
+        result=TapThroughAnimation(SimpleNamespace(wait_until=observe),SimpleNamespace(execute=tap),
+            events=self.events,clock=self.clock,sleeper=self.sleeper).run(s,
+            action=StageAction(C.CLAIM),expected=lambda item:valid(item) and has(item,'claim_inactive'),
+            tappable=lambda item:valid(item) and has(item,'claim_active'),transient=lambda item:False,
+            cancel_requested=self.cancel_requested,
+            policy=TapThroughPolicy(tap_interval=.15,timeout=12.,max_taps=20))
+        record_best_effort(self.events,'stages.claim_loop',taps=result.tap_count,
+            perception_cycles=cycles,elapsed=self.clock()-started,outcome=result.outcome.value)
+        if result.outcome is TapThroughOutcome.CANCELLED:raise RuntimeWaitCancelled('stages claim cancelled')
+        if not result.succeeded:raise ValueError('stages claim '+result.outcome.value)
+        return result.final_snapshot
+
     def enter_target(self):
         s=self.wait(lobby)
         s=self.change(C.OPEN,s,{'normal','elite'})
         record_best_effort(self.events,'stages.mode',mode=surface(s))
         if surface(s)=='elite':s=self.change(C.NORMAL,s,{'normal'})
-        for count in range(20):
-            if has(s,'claim_inactive'):break
-            if not has(s,'claim_active'):raise ValueError('stages claim state unverified')
-            h,w=s.frame.image.shape[:2]
-            crop=s.frame.image[round(.895*h):round(.963*h),round(.230*w):round(.373*w)].copy()
-            def claim_effect(after):
-                if surface(after)!='normal':return False
-                if has(after,'claim_inactive'):return True
-                if not has(after,'claim_active'):return False
-                other=after.frame.image[round(.895*h):round(.963*h),round(.230*w):round(.373*w)]
-                return other.shape==crop.shape and np.abs(other.astype(float)-crop).mean()>2.
-            self.tap(C.CLAIM,s);s=self.wait(claim_effect)
-            record_best_effort(self.events,'stages.claim',number=count+1,active=has(s,'claim_active'))
-        else:raise ValueError('stages claim bound')
-        if not has(s,'abyssal'):
+        # Verify the current episode on a fresh, exposed Normal frame before
+        # deciding whether World Map is needed, including Elite -> Normal.
+        s=self.wait(lambda s:exposed(s) and surface(s)=='normal')
+        confirmed=has(s,'abyssal')
+        measured=s.observations.best('stages.abyssal_score')
+        record_best_effort(self.events,'stages.episode_check',
+            episode='abyssal_rion' if confirmed else 'unconfirmed',world_map_required=not confirmed,
+            score=measured.value if measured is not None else None,threshold=.94,
+            source_sequence=s.sequence,frame_shape=s.frame.image.shape[:2],
+            frame_age=self.clock()-s.timestamp,overlays=s.state.overlays)
+        if not confirmed:
             s=self.change(C.WORLD_MAP,s,{'world_map'})
             s=self.change(C.ABYSSAL_TAIL,s,{'world_map','normal'})
             if surface(s)=='world_map':s=self.change(C.WORLD_MAP,s,{'normal'})
             s=self.wait(lambda s:surface(s)=='normal' and has(s,'abyssal'))
         record_best_effort(self.events,'stages.episode',episode='abyssal_rion')
-        if not has(s,'stage8'):s=self.wait(lambda s:surface(s)=='normal' and has(s,'abyssal') and has(s,'stage8'))
+        if not has(s,'stage8'):s=self.wait(lambda s:exposed(s) and surface(s)=='normal' and has(s,'abyssal') and has(s,'stage8'))
+        # Claims preserve the verified episode within this entry. Their toast
+        # does not change context; no title recheck after generating it.
+        s=self.claim_rewards(s)
+        s=self.wait(lambda s:exposed(s) and surface(s)=='normal' and has(s,'stage8'))
         return self.change(C.STAGE8,s,{'config'})
 
     def prepare_ad(self,s):

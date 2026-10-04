@@ -60,6 +60,7 @@ class CraftRouteResult:
     reason: str | None = None
     inputs: tuple[str, ...] = ()
     return_base: str | None = None
+    work_family: CraftFamily | None = None
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,7 @@ class HeroMaterialDrainResult:
     batches: tuple[CraftOperationResult, ...] = ()
     final_fact: CraftContextFact | None = None
     reason: str | None = None
+    skipped_families: tuple[CraftFamily, ...] = ()
 
 
 class CraftRuntime:
@@ -245,10 +247,11 @@ class CraftRuntime:
         current = self.observe_context(after_sequence=0)
         if current.outcome is not CraftRouteOutcome.ENTERED:
             return current
-        if current.craft_fact.weapon_material is None:
-            return CraftRouteResult(CraftRouteOutcome.FAILED, craft_fact=current.craft_fact,
-                                    reason="weapon_material_unavailable")
-        if current.craft_fact.weapon_material < 49:
+        work = next((family for family in CraftFamily
+            if current.craft_fact.material_for(family) is not None
+            and current.craft_fact.hero_cost_for(family) == 49
+            and current.craft_fact.material_for(family) >= 49), None)
+        if work is None:
             return current
         opened = self.open_quick_menu_or_handoff()
         if opened.outcome is not CraftRouteOutcome.QUICK_MENU_OPEN:
@@ -308,7 +311,7 @@ class CraftRuntime:
                 inputs=inputs,
             )
         if inventory.capacity - inventory.item_count < 1:
-            return CraftRouteResult(CraftRouteOutcome.CAPACITY_BLOCKED,
+            return CraftRouteResult(CraftRouteOutcome.CAPACITY_BLOCKED, work_family=work,
                                     inventory_fact=inventory, craft_fact=restored.craft_fact,
                                     reason="no_free_equipment_slot", inputs=inputs)
         return CraftRouteResult(CraftRouteOutcome.ENTERED,
@@ -526,14 +529,16 @@ class CraftRuntime:
             self.sleeper(self.sample_interval)
         return last_valid if last_valid is not None and self._fresh(last_valid) else None
 
-    def drain_hero_material(self, *, max_batches: int) -> HeroMaterialDrainResult:
-        """Drain the entered Hero Weapon Craft context with verified progress."""
+    def drain_hero_material(self, *, max_batches: int, family=CraftFamily.WEAPON) -> HeroMaterialDrainResult:
+        """Drain one acquired Hero family with the same verified operation."""
+        if not isinstance(family, CraftFamily):
+            raise ValueError("family must be CraftFamily")
         if isinstance(max_batches, bool) or not isinstance(max_batches, int) or max_batches < 1:
             raise ValueError("max_batches must be positive")
         batches: list[CraftOperationResult] = []
         previous: CraftContextFact | None = None
         request = CraftRequest(
-            family=CraftFamily.WEAPON, tier=CraftTier.HERO,
+            family=family, tier=CraftTier.HERO,
             quantity_mode=CraftQuantityMode.MAX_AVAILABLE,
         )
         for _ in range(max_batches):
@@ -549,22 +554,22 @@ class CraftRuntime:
                     CraftOutcome.FAILED, tuple(batches), previous,
                     "fresh_craft_context_unavailable",
                 )
-            if current.weapon_hero_cost is None:
+            if current.hero_cost_for(family) is None:
                 return HeroMaterialDrainResult(
                     CraftOutcome.FAILED, tuple(batches), current,
-                    "weapon_cost_unavailable",
+                    f"{family.value}_cost_unavailable",
                 )
-            if current.weapon_hero_cost != 49:
+            if current.hero_cost_for(family) != 49:
                 return HeroMaterialDrainResult(
                     CraftOutcome.FAILED, tuple(batches), current,
                     "unexpected_hero_recipe_cost",
                 )
-            if current.weapon_material is None:
+            if current.material_for(family) is None:
                 return HeroMaterialDrainResult(
                     CraftOutcome.FAILED, tuple(batches), current,
-                    "weapon_material_unavailable",
+                    f"{family.value}_material_unavailable",
                 )
-            if current.weapon_material < 49:
+            if current.material_for(family) < 49:
                 return HeroMaterialDrainResult(CraftOutcome.SUCCESS, tuple(batches), current)
             result = self.execute(request)
             batches.append(result)
@@ -573,19 +578,50 @@ class CraftRuntime:
                     result.outcome, tuple(batches), result.after_fact, result.reason,
                 )
             if (result.before_fact is None or result.after_fact is None
-                    or result.before_fact.weapon_material != current.weapon_material
+                    or result.before_fact.material_for(family) != current.material_for(family)
                     or result.after_fact.sequence <= result.before_fact.sequence
-                    or result.after_fact.weapon_material >= result.before_fact.weapon_material):
+                    or result.after_fact.material_for(family) >= result.before_fact.material_for(family)):
                 return HeroMaterialDrainResult(
                     CraftOutcome.FAILED, tuple(batches), result.after_fact,
                     "craft_progress_not_proven",
                 )
             previous = result.after_fact
-            if previous.weapon_material < 49:
+            if previous.material_for(family) < 49:
                 return HeroMaterialDrainResult(CraftOutcome.SUCCESS, tuple(batches), previous)
         return HeroMaterialDrainResult(
             CraftOutcome.FAILED, tuple(batches), previous, "craft_batch_budget_exhausted",
         )
+
+    def drain_hero_materials(self, *, max_batches: int) -> HeroMaterialDrainResult:
+        """Use the already-paid Craft visit for each freshly eligible family."""
+        batches = []
+        skipped = []
+        final = None
+        for family in CraftFamily:
+            context = self.observe_context(after_sequence=0)
+            if context.outcome is not CraftRouteOutcome.ENTERED or context.craft_fact is None:
+                return HeroMaterialDrainResult(
+                    CraftOutcome.CANCELLED if context.outcome is CraftRouteOutcome.CANCELLED else CraftOutcome.FAILED,
+                    tuple(batches), final, context.reason, tuple(skipped))
+            final = context.craft_fact
+            material, cost = final.material_for(family), final.hero_cost_for(family)
+            if material is None or cost is None:
+                # Missing economics never authorize selection or consumption.
+                from bot.event_log import record_best_effort
+                record_best_effort(self.events, 'craft.family.skipped',
+                    family=family.value, reason='family_fact_unavailable')
+                skipped.append(family)
+                continue
+            if material < cost:
+                continue
+            result = self.drain_hero_material(max_batches=max_batches, family=family)
+            batches.extend(result.batches)
+            final = result.final_fact
+            if result.outcome is not CraftOutcome.SUCCESS:
+                return HeroMaterialDrainResult(result.outcome, tuple(batches), final,
+                    result.reason, tuple(skipped))
+        return HeroMaterialDrainResult(CraftOutcome.SUCCESS, tuple(batches), final,
+            skipped_families=tuple(skipped))
 
     def select_trading_from_open_menu(self, *, after_sequence: int) -> CraftRouteResult:
         """Use a fresh local Craft Quick Menu fact for the modal handoff."""

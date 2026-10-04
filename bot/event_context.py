@@ -7,7 +7,8 @@ from uuid import uuid4
 
 CONTEXT_FIELDS = (
     "run_id", "session_id", "character_index", "flow", "operation_id",
-    "parent_operation_id", "step",
+    "parent_operation_id", "step", "routine_id", "routine_name",
+    "step_index", "flow_id", "occurrence", "attempt_index", "activity_id", "activity_role",
 )
 _context: ContextVar[dict] = ContextVar("runtime_event_context", default={})
 
