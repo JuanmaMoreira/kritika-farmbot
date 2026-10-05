@@ -685,12 +685,27 @@ def test_quick_immediate_post_tap_unknown_is_auxiliary_or_raid_interrupt(raid):
 
 
 def test_quick_stale_context_cannot_authorize_auto_tap():
-    ensurer, _, _, adb = ensurer_for(
+    from bot.runtime_observer import RuntimeWaitTimeout
+    ensurer, _, observer, adb = ensurer_for(
         [], [snapshot(10), snapshot(20)], fast=[reading(AutoBattleState.OFF, 10)],
     )
+    observer.wait_until.side_effect = RuntimeWaitTimeout(
+        after_sequence=10, timeout=3, last_snapshot=snapshot(10))
     result = ensurer.ensure_on_quick(after_sequence=1)
     assert result.tap_count == 0
     adb.tap.assert_not_called()
+
+
+def test_quick_repeated_harvest_frame_waits_for_fresh_off_guard_and_verifies_on():
+    ensurer, _, observer, adb = ensurer_for(
+        [], [snapshot(10), snapshot(20), snapshot(31)],
+        fast=[reading(AutoBattleState.OFF, 10), reading(AutoBattleState.ON, 30)],
+    )
+    observer.wait_until.return_value = snapshot(11)
+    result = ensurer.ensure_on_quick(after_sequence=1)
+    assert result.status is EnsureAutoBattleStatus.SUCCESS
+    assert result.tap_count == 1 and adb.tap.call_count == 1
+    assert observer.wait_until.call_args.kwargs['after_sequence'] == 10
 
 
 def test_quick_post_tap_harvest_cancellation_is_preserved():
@@ -701,6 +716,18 @@ def test_quick_post_tap_harvest_cancellation_is_preserved():
     result = ensurer.ensure_on_quick(after_sequence=1)
     assert result.status is EnsureAutoBattleStatus.CANCELLED
     assert adb.tap.call_count == 1
+
+
+def test_quick_repeated_post_tap_frame_waits_without_sending_another_input():
+    ensurer, _, observer, adb = ensurer_for(
+        [], [snapshot(11), snapshot(11), snapshot(31)],
+        fast=[reading(AutoBattleState.OFF, 10), reading(AutoBattleState.ON, 30)],
+    )
+    observer.wait_until.return_value = snapshot(12)
+    result = ensurer.ensure_on_quick(after_sequence=1)
+    assert result.status is EnsureAutoBattleStatus.SUCCESS
+    assert result.tap_count == 1 and adb.tap.call_count == 1
+    assert observer.wait_until.call_args.kwargs['after_sequence'] == 11
 
 
 def test_quick_visible_off_window_cannot_tap_if_control_disappears_before_input():

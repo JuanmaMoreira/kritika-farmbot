@@ -307,6 +307,7 @@ def test_stale_state_after_grace_is_never_used_to_retry():
         [
             _timeout(1, _snapshot(2, BEFORE)),
             _timeout(2, _snapshot(3, BEFORE), timeout=2.0),
+            _timeout(3, _snapshot(3, BEFORE), timeout=2.0),
         ],
         observes=[_snapshot(1, BEFORE)],
     )
@@ -341,7 +342,8 @@ def test_late_expected_snapshot_cannot_bypass_requested_stability(recovery):
 
 def test_post_grace_snapshot_must_be_newer_than_last_wait_observation():
     observer = ScriptedObserver(
-        [_timeout(1, _snapshot(5, BEFORE)), _timeout(5, _snapshot(8, OTHER))],
+        [_timeout(1, _snapshot(5, BEFORE)), _timeout(5, _snapshot(8, OTHER)),
+         _timeout(8, _snapshot(8, OTHER))],
         observes=[_snapshot(6, BEFORE)],
     )
     result, actions = _run(observer)
@@ -571,3 +573,15 @@ def test_post_action_recovery_is_published_and_cannot_anchor_new_handoff():
     assert result.outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY
     assert result.action_source_snapshot is source
     assert result.recovery_after_action
+
+
+def test_repeated_stream_frame_after_grace_acquires_fresh_guard_before_retry():
+    observer = ScriptedObserver(
+        [_timeout(1, _snapshot(2, BEFORE)), _timeout(2, _snapshot(3, BEFORE)),
+         _snapshot(4, BEFORE), _snapshot(5, EXPECTED)],
+        observes=[_snapshot(3, BEFORE)],
+    )
+    result, actions = _run(observer)
+    assert result.outcome is VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY
+    assert len(actions.calls) == 2
+    assert observer.wait_calls[2][:2] == (3, 2.0)

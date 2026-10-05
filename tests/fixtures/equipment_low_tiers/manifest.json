@@ -1,0 +1,59 @@
+{
+  "provenance": "LIVE_EVIDENCE 2026-10-05; Mystic Wolf Guardian Drakennn15; read-only native ROI; existing USER_GT discard policy",
+  "frames": [
+    {
+      "file": "poor_gloves.png",
+      "source": "artifacts\\session_stabilization\\sell_tiers_poor_gloves.png",
+      "source_sha256": "4fdd8b7cf195536016d2eed5798ce3ff147a6538ced2fdfc4dd24bb0d6e7e94c",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "box": [
+        1356,
+        245,
+        2251,
+        673
+      ],
+      "grade": "poor",
+      "type": "gloves",
+      "enhance": false
+    },
+    {
+      "file": "normal_enhance.png",
+      "source": "artifacts\\session_stabilization\\sell_tiers_normal_enhance.png",
+      "source_sha256": "20920305989b158f7f904ef4242826ae46fb9bc18c111b9163b3cd45751951b1",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "box": [
+        1356,
+        245,
+        2251,
+        673
+      ],
+      "grade": "normal",
+      "type": "weapon",
+      "enhance": true
+    },
+    {
+      "file": "normal_chest.png",
+      "source": "artifacts\\session_stabilization\\sell_tiers_normal_chest.png",
+      "source_sha256": "696bd47ef0c9284f45ce493eaa4c6d1e2dfb19d6d639a302f3a38599e320054f",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "box": [
+        1356,
+        245,
+        2251,
+        673
+      ],
+      "grade": "normal",
+      "type": "chest",
+      "enhance": false
+    }
+  ]
+}

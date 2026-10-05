@@ -11,8 +11,7 @@ Contract under test (unchanged timings: 6s normal / 2s grace / max 2 /
 stable 0.25, QUICK_MENU_TO_LOBBY_SCOPE, clean-Lobby B2 destination):
 - contractual source persisting post-tap is tolerated while waiting:
   not success, not abort, not a retry on its own, no second tap;
-- the handoff must stay valid through that transient so a later menu frame
-  can still authorize exactly one bounded retry;
+- menu loss invalidates the handoff; a later discovered menu cannot revive it;
 - menu persistence authorizes a bounded retry only via handoff.allows();
 - clean source without menu never retries;
 - foreign RESOLVED aborts; UNKNOWN never inputs/retries; AMBIGUOUS aborts;
@@ -203,16 +202,16 @@ def test_contractual_source_persists_guild_without_abort_or_retry():
     assert actions.taps("SelectQuickMenuLobby") == 1
 
 
-def test_source_then_menu_persistence_authorizes_exactly_one_retry():
+def test_source_then_discovered_menu_cannot_revive_retry_authority():
     result, actions = run_helper(
         world_boss(1),
         [[menu(2)], [world_boss(3), menu(4)], [], [lobby(6)]],
         observes=[menu(5)],
     )
 
-    assert result.succeeded
+    assert result.outcome is VerifiedTransitionOutcome.RETRY_GUARD_REJECTED
     assert actions.taps("OpenQuickMenu") == 1
-    assert actions.taps("SelectQuickMenuLobby") == 2
+    assert actions.taps("SelectQuickMenuLobby") == 1
 
 
 def test_persistent_source_without_menu_fails_bounded_without_second_tap():

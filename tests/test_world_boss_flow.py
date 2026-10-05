@@ -300,7 +300,7 @@ def standalone_transitions(frames, outcomes):
 def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
                transitions=(), auto=None, trace=None, cancel=lambda: False,
                fake_time=None, wait_policy=None, socket_relief=None,
-               equipment_combine_relief=None, transition_outcomes=None):
+               equipment_combine_relief=None, equipment_sell=None, transition_outcomes=None):
     trace = trace if trace is not None else []
     observer = Observer(standalone_waits(waits), observes, trace)
     facts = Facts(sapphire_read, timer_read, trace)
@@ -331,6 +331,7 @@ def build_flow(*, sapphire_read, timer_read=None, waits=(), observes=(),
         observer, Mock(), facts, auto, events,
         socket_relief=socket_relief,
         equipment_combine_relief=equipment_combine_relief,
+        equipment_sell=equipment_sell,
         cancel_requested=cancel,
         verified_transition=transition_driver,
         stable_for=0,
@@ -629,6 +630,27 @@ def test_auto_battle_timeout_without_raid_evidence_continues_through_timer():
         for name, _ in events.records
     )
     assert driver.calls[-3][0] == "world_boss.continue_after_raid"
+
+
+def test_auto_hidden_first_window_reobserves_before_waiting_and_enables_confirmed_off():
+    waits, observes, transitions = happy_inputs()
+    auto = Mock()
+    auto.ensure_on_quick.side_effect = [
+        auto_result(AutoBattleState.UNKNOWN, sequence=8, status=EnsureAutoBattleStatus.FAILURE),
+        auto_result(AutoBattleState.OFF, taps=1, sequence=9),
+    ]
+    flow, _, _, _, events, _ = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 20, 1, SCREEN_LOBBY),
+        timer_read=fact_result("battle.timer_remaining", 20, 9, SCREEN_WORLD_BOSS_BATTLE),
+        waits=waits, observes=observes, transitions=transitions, auto=auto,
+    )
+    result = flow.run()
+    assert result.status is FlowStatus.COMPLETED
+    assert result.auto_battle_initial is AutoBattleState.OFF
+    assert result.auto_battle_taps == 1
+    assert auto.ensure_on_quick.call_count == 2
+    assert auto.ensure_on_quick.call_args.kwargs['after_sequence'] == 8
+    assert any(name == 'world_boss.auto_battle_reobserve' for name, _ in events.records)
 
 
 def test_previous_rewards_may_arrive_after_transient_world_boss_main():

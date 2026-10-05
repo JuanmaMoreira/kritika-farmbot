@@ -28,7 +28,7 @@ def _asset() -> np.ndarray:
 
 def _background(seed: int = 7) -> np.ndarray:
     rng = np.random.default_rng(seed)
-    return rng.integers(0, 256, size=(800, 1600, 3), dtype=np.uint8)
+    return rng.integers(0, 256, size=(1000, 2000, 3), dtype=np.uint8)
 
 
 def test_default_probe_wires_asset_scorer_with_measured_operating_point():
@@ -41,7 +41,8 @@ def test_default_probe_wires_asset_scorer_with_measured_operating_point():
 
 def _paste(background: np.ndarray, template: np.ndarray) -> np.ndarray:
     probe = PortalNotificationProbe()
-    x1, y1, _, _ = relative_region_to_pixels(probe.region, 1600, 800)
+    height, width = background.shape[:2]
+    x1, y1, _, _ = relative_region_to_pixels(probe.region, width, height)
     pasted = background.copy()
     height, width = template.shape[:2]
     pasted[y1 : y1 + height, x1 : x1 + width] = template

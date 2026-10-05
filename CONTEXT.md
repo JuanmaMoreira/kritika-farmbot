@@ -1,5 +1,31 @@
 # Estado actual — Kritika FarmBot
 
+## Checkpoint local — estabilización combinada 2026-10-05
+
+Sobre `31ecf4642db02d6a90fce871360f38cc45e92650`, rama `rebuild/stable-baseline`.
+Campaña GUI final `20261005T050411.404714Z_session_2808930b.jsonl`: Cat Acrobat,
+Crimson Assassin, Flame Striker consecutivos, tres Rotation, Session COMPLETED,
+cero technical failures,33:19 de Session. Código/assets idénticos durante los tres.
+Offline final una invocación:1906 passed,4 skips históricos Rotation,451,65 s.
+Cierre en un único commit local `fix: stabilize combined farming sessions`, sin push;
+trabajo independiente previo preservado y excluido del índice. Reconstrucción, rojos,
+eventos y límites en [SESSION_STABILIZATION_AUDIT](docs/SESSION_STABILIZATION_AUDIT.md).
+
+Fixes causales: contexto fresco Auto OFF/ON y retry VerifiedTransition; Ads stall
+desde último progreso SDK, no60 s globales; Gold publica MW final para QM chaining;
+hub WB no elegible→MW sin Lobby; crop Hero Armor; board OCR memo por pixels exactos;
+Select Striker/H&H bajo obstrucción; Keys0/10 rojo; assets Sell Normal/Poor y popup
+K Coin multiline. WB usa el owner Sell existente una vez tras Full post-Combine,
+restaura WB y conserva su caller; no repite Combine ni delega el Full a MW.
+
+Business final: Cat Video0; Crimson mail restante tras procesamiento acreditado;
+Flame UNASSESSED sólo por proyección Gold (whitelist informativa omite
+`monster_wave.sapphire_effect`). No son technical failures ni se ocultan en historia.
+Quedan esa whitelist, chrome Ads X sola con cierre tardío/reward acreditado, GT
+Accessories MAX/result/effect abierto, triple explícitamente identificado post-fix
+y No Ads temporal full recovery natural. Craft focal Hero Armor114→16 adquirido;
+campaña final no necesitó Craft. H&H se cierra sólo ante obstrucción causal.
+
 ## Bloque cerrado — checkpoint local 2026-10-04
 
 Sobre `3f4acf3ea94cb04164c92cea795d98561109806e` (`feat: add productive stages daily
@@ -53,7 +79,9 @@ MW→QM→Quests→close→MW→QM→Mailbox→close→MW→QM→Character Selec
 Sin Lobby intermedio. Battle Mode Select tiene QM, pero hacia Lobby gana un Back directo;
 hacia Pets/Quests/Mailbox/Rotation gana QM directo. Capability explícita, no universal;
 modal/actividad incompatible/UNKNOWN/AMBIGUOUS no autorizan inputs. Rutas ajenas fail-closed.
-Stages/Gold Farming conservan su contrato Lobby propio, sin imponerlo a todas las activities.
+Stages usa Lobby para Stamina y su entrada física, después del prerequisite MW directo
+desde hub cuando corresponde. Gold conserva la BASE MW de la inversión final para el
+siguiente step literal; no exige Lobby terminal.
 
 ## Evidencia reutilizable y deuda
 
@@ -63,11 +91,15 @@ Abyssal 111 frames. Navigation handoff y QM fix: 752 passed / 4 skipped en cober
 combinada; todos los runs rojos de validación se preservan. Skips: evidencia histórica
 local Rotation ausente. No nueva suite completa ni smoke por ritual en el cierre.
 
-Deuda real no bloqueante: Craft Armor Expert adquirido sin Hero/MAX/result/effect natural
-completo; Accessories Hero Earrings adquirido sin MAX/result/effect completo; chat desplegado
+Hero Armor/Helmet tiene adquisición natural MAX2/10, coste49, una confirmación y efecto
+114→16 en DemonBlade; Accessories Hero Earrings sigue sin MAX/result/effect completo.
+Poor/Normal adquiridos y vendidos por el owner; Rare/Epic tienen assets/replays positivos.
+Cadena MW→QM Mailbox→restore MW→QM Quests→restore MW→QM Rotation acreditada en Mystic.
+Deuda real no bloqueante: chat desplegado
 completo no adquirido (banners existentes pasan); ahorro físico final Socket 0.2 s pendiente
 natural; Ads multipart/triple post-fix y No Ads temporal full recovery no forzados end-to-end;
-smoke natural de handoff/QM chaining pendiente. Otras deudas menores conservadas en ROADMAP.
+chrome de ad X sola sin texto reward-granted aún no reconocido (cierre tardío con reward
+verificado). Otras deudas menores conservadas en ROADMAP.
 Targeted swipe/ordered-list navigation (2026-10-04): primitive transversal implementada;
 único consumidor productivo actual Trading Center / Hero Weapon Crafting Materials.
 Orden relativo del suffix/nueve anchors CV y física adquiridos. Coarse robusto .94→.02

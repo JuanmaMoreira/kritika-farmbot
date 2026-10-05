@@ -493,6 +493,16 @@ class VerifiedTransition:
                 )
             latest_wait = grace.last_snapshot or grace_anchor
             if observed.sequence <= latest_wait.sequence:
+                # observe() reads the latest stream frame; it need not advance
+                # immediately after the wait's final poll. Acquire evidence,
+                # without input, before deciding whether a retry is safe.
+                fresh = self._wait(lambda item: True,
+                                   after_sequence=latest_wait.sequence,
+                                   timeout=policy.grace_timeout,
+                                   abort_if=None, stable_for=0.0)
+                if isinstance(fresh, RuntimeSnapshot):
+                    observed = fresh
+            if observed.sequence <= latest_wait.sequence:
                 return finish(
                     name,
                     VerifiedTransitionOutcome.TIMEOUT,

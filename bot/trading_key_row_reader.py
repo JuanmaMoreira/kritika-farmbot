@@ -94,10 +94,14 @@ def _prepare_pair(crop, height, width):
     red = (cv2.inRange(hsv, np.array([0, 120, 145]), np.array([8, 255, 255]))
            | cv2.inRange(hsv, np.array([170, 120, 145]), np.array([180, 255, 255])))
     if np.count_nonzero(red) > .00003 * height * width:
-        # Insufficient-input numerals are red; their isolated color mask
-        # removes icon/border interference without altering the digits.
+        # The red mask localizes insufficient-input numerals. Preserve their
+        # antialiased red contrast: binary thresholding erased the thin slash
+        # in fresh stream frames of 0/10 after a successful final trade.
         ys, xs = np.nonzero(red)
-        glyph = 255 - red[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        channels = crop.astype(np.float32)
+        excess = np.maximum(channels[:, :, 2] - np.maximum(channels[:, :, 0], channels[:, :, 1]), 0)
+        contrast = (255 - excess * (255 / max(1., float(excess.max())))).astype(np.uint8)
+        glyph = contrast[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         margin = max(2, round(height * .0025))
         glyph = cv2.copyMakeBorder(glyph, margin, margin, margin * 2, margin * 2,
                                    cv2.BORDER_CONSTANT, value=255)

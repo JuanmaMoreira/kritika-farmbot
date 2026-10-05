@@ -121,7 +121,9 @@ def parse_confirmation(
     ):
         return None
     identity = _clean_text(identity_text)
-    match = re.fullmatch(r"Selling\s*\[([^]]+)\](?:\s+for\s+\d[\d,]*(?:\s+K)?)?\s*[.,]?", identity, re.IGNORECASE)
+    # The K Coin amount can wrap onto the next line; this ROI owns identity,
+    # while the independently read Bulk lines own the destructive scope.
+    match = re.fullmatch(r"Selling\s*\[([^]]+)\](?:\s+for(?:\s+\d[\d,]*(?:\s+K)?)?)?\s*[.,]?", identity, re.IGNORECASE)
     if match is None:
         return None
     item_name = _clean_text(match.group(1))
@@ -223,7 +225,7 @@ class EquipmentSellReader:
         _require_frame(frame)
         identity = self._read(frame, CONFIRM_IDENTITY_ROI, scale=2.5)
         regions = (CONFIRM_COIN_GROUP_LINE_ROIS
-                   if re.search(r"\]\s+for\s+\d[\d,]*", identity.text)
+                   if re.search(r"\]\s+for\b", identity.text)
                    else CONFIRM_GROUP_LINE_ROIS)
         groups = tuple(
             self._read(frame, region, scale=2.5)

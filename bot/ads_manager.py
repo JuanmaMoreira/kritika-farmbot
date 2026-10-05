@@ -114,6 +114,10 @@ class AdsManager:
             if name != last_phase:
                 record_best_effort(self.events, 'ads.phase', phase=name,
                                    activity=getattr(observation, 'activity', None),
+                                   source_sequence=getattr(getattr(observation, 'snapshot', None), 'sequence', None),
+                                   frame_timestamp=getattr(getattr(observation, 'snapshot', None), 'timestamp', None),
+                                   progress=getattr(observation, 'progress', None),
+                                   close_key=getattr(observation, 'close_key', None),
                                    elapsed_seconds=self.clock() - start)
                 last_phase = name
 
@@ -174,11 +178,20 @@ class AdsManager:
                     last_progress_log=self.clock()
             elapsed=self.clock()-start
             progressing=progress_at is not None and self.clock()-progress_at<=self.progress_grace
-            if elapsed>=self.max_duration:break
-            if elapsed>=self.deadline and not progressing:
+            stalled_for=self.clock()-(progress_at if progress_at is not None else start)
+            if elapsed>=self.max_duration:
+                record_best_effort(self.events,'ads.recovery_authority',
+                    reason='absolute_bound',elapsed_seconds=elapsed,stalled_seconds=stalled_for)
+                break
+            if stalled_for>=self.deadline and not progressing:
                 # Unknown/stalled ads use the terminal fallback. A verified
                 # moving progress bar makes the 60s estimate inapplicable.
-                if not (last.back_ready and normal_backs<2) and last.close_point is None:break
+                # A part's bar disappearing is not completion: unknown/stall
+                # fallback is measured from the last verified SDK movement.
+                if not (last.back_ready and normal_backs<2) and last.close_point is None:
+                    record_best_effort(self.events,'ads.recovery_authority',
+                        reason='unknown_or_stalled',elapsed_seconds=elapsed,stalled_seconds=stalled_for)
+                    break
             if last.skip_ticket:
                 if not refused:
                     phase('refuse_skip_ticket', last)
@@ -186,13 +199,17 @@ class AdsManager:
                     refused = True
             elif last.external:
                 active = True
-                if external_backs < 2 and self.clock() >= next_back_at:
+                if external_backs < 2 and steps < self.max_close_steps and self.clock() >= next_back_at:
                     phase('external_return', last)
                     self.android_back(last.snapshot)
                     external_backs += 1
                     steps += 1
                     next_back_at = self.clock() + self.back_grace
             elif last.active:
+                # A fresh SDK return closes that external excursion. Multipart
+                # ads may open the store once per part; keep the per-excursion
+                # bound and the total input budget, rather than starving part 3.
+                external_backs = 0
                 if not active:
                     phase('active', last)
                 active = True

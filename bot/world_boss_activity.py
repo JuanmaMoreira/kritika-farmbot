@@ -21,6 +21,7 @@ from bot.catalog import (
     POPUP_SOCKET_INVENTORY_FULL,
     SCREEN_BATTLE_MODE_SELECT,
     SCREEN_COMBINE,
+    SCREEN_LOBBY,
     SCREEN_SOCKET,
     SCREEN_WORLD_BOSS,
     SCREEN_WORLD_BOSS_BATTLE,
@@ -61,6 +62,10 @@ from bot.semantic_actions import (
     OpenEquipmentCombine,
     ExitWorldBoss,
     OpenWorldBossSelector,
+    OpenQuickMenu,
+    OpenBattleModeSelect,
+    SelectQuickMenuInventory,
+    ExitEquipmentInventory,
     RejectSocketInventoryFull,
     RejectMeteorInventoryFull,
     SelectAvailableWorldBoss,
@@ -290,6 +295,8 @@ class WorldBossActivity:
         *,
         socket_relief: _SocketRelief,
         equipment_combine_relief: _EquipmentCombineRelief,
+        equipment_sell=None,
+        equipment_sell_policy=None,
         cancel_requested: Callable[[], bool] = lambda: False,
         fact_timeout: float = 15.0,
         transition_timeout: float = 6.0,
@@ -332,6 +339,8 @@ class WorldBossActivity:
         self.auto_battle = auto_battle
         self.socket_relief = socket_relief
         self.equipment_combine_relief = equipment_combine_relief
+        self.equipment_sell = equipment_sell
+        self.equipment_sell_policy = equipment_sell_policy
         self.events = events
         self.cancel_requested = cancel_requested
         self.fact_timeout = float(fact_timeout)
@@ -363,6 +372,7 @@ class WorldBossActivity:
     def run(self, *, sapphires: int | None = None) -> WorldBossFlowResult:
         flow_events: list[FlowEvent] = []
         result = None
+        self._inventory_restored_wb = False
         try:
             result = self._run(flow_events, sapphires)
             if not result.succeeded:
@@ -377,7 +387,8 @@ class WorldBossActivity:
                 return replace(result, status=FlowStatus.CANCELLED)
             returned = self.verified_transition.execute(
                 "world_boss.return_to_battle_mode", ExitWorldBoss(), before,
-                expected=_is_battle_mode_select,
+                expected=lambda s: _is_battle_mode_select(s) or (
+                    self._inventory_restored_wb and _is_clean_base(s, SCREEN_LOBBY)),
                 precondition=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
                 retryable_from=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
                 stable_for=self.stable_for, policy=self.transition_policy,
@@ -385,6 +396,19 @@ class WorldBossActivity:
             result = replace(result,
                 transition_outcomes=result.transition_outcomes + _transition_outcomes([returned]),
                 transition_attempts=result.transition_attempts + _transition_attempts([returned]))
+            if returned.succeeded and _is_clean_base(returned.final_snapshot, SCREEN_LOBBY):
+                # Inventory's BASE history can make the next Back return Lobby.
+                # Re-enter the hub only from that fresh physical destination.
+                returned = self.verified_transition.execute(
+                    "world_boss.inventory_return.restore_hub", OpenBattleModeSelect(), returned.final_snapshot,
+                    expected=_is_battle_mode_select,
+                    precondition=lambda s: _is_clean_base(s, SCREEN_LOBBY),
+                    retryable_from=lambda s: _is_clean_base(s, SCREEN_LOBBY),
+                    stable_for=self.stable_for, policy=self.transition_policy,
+                )
+                result = replace(result,
+                    transition_outcomes=result.transition_outcomes + _transition_outcomes([returned]),
+                    transition_attempts=result.transition_attempts + _transition_attempts([returned]))
             if self.cancel_requested():
                 return replace(result, status=FlowStatus.CANCELLED)
             if not returned.succeeded or not _is_battle_mode_select(returned.final_snapshot):
@@ -537,6 +561,7 @@ class WorldBossActivity:
             main = entered
         socket_relief_attempted = False
         equipment_combine_relief_attempted = False
+        equipment_sell_attempted = False
         while True:
             battle = self._transition(
                 transitions,
@@ -632,8 +657,6 @@ class WorldBossActivity:
 
             if _is_world_boss_bag_full(battle):
                 if equipment_combine_relief_attempted:
-                    event = FlowEvent(WORLD_BOSS_BAG_FULL, fields=dict(branch="negative_after_relief"))
-                    flow_events.append(event)
                     returned = self._transition(
                         transitions,
                         "world_boss.dismiss_bag_full",
@@ -645,6 +668,17 @@ class WorldBossActivity:
                     )
                     if returned is None:
                         return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
+                    # Fuse effect is not proof of free capacity. A new Full
+                    # after Combine authorizes the existing inventory owner,
+                    # once, while WB still owns its caller BASE.
+                    if self.equipment_sell is not None and not equipment_sell_attempted:
+                        equipment_sell_attempted = True
+                        main = self._sell_equipment(returned, transitions)
+                        if main is None:
+                            return self._transition_failure(transitions, sapphires, flow_events, previous_rewards)
+                        continue
+                    event = FlowEvent(WORLD_BOSS_BAG_FULL, fields=dict(branch="negative_after_relief"))
+                    flow_events.append(event)
                     self._record_best_effort("world_boss.completed", postcondition=SCREEN_WORLD_BOSS)
                     return WorldBossFlowResult(
                         status=FlowStatus.COMPLETED,
@@ -739,6 +773,20 @@ class WorldBossActivity:
             after_sequence=battle.sequence,
             cancel_requested=self.cancel_requested,
         )
+        if (ensured.tap_count == 0 and ensured.status in {
+                EnsureAutoBattleStatus.TIMEOUT, EnsureAutoBattleStatus.FAILURE}):
+            # Entry cinematics can hide Auto during the first temporal window.
+            # One new bounded observation may establish OFF/ON; UNKNOWN still
+            # never permits input, and a dispatched tap is never repeated here.
+            self._record_best_effort('world_boss.auto_battle_reobserve',
+                                    detail=ensured.detail,
+                                    initial=(ensured.observations[0].value.value
+                                             if ensured.observations else None))
+            ensured = self.auto_battle.ensure_on_quick(
+                after_sequence=(ensured.observations[-1].sequence
+                                if ensured.observations else battle.sequence),
+                cancel_requested=self.cancel_requested,
+            )
         initial_auto = (
             ensured.observations[0].value if ensured.observations else None
         )
@@ -747,6 +795,8 @@ class WorldBossActivity:
             initial=(initial_auto.value if initial_auto else None),
             taps=ensured.tap_count,
             status=ensured.status.value,
+            final=(ensured.observations[-1].value.value if ensured.observations else None),
+            source_sequences=[item.sequence for item in ensured.observations],
         )
         if ensured.status is EnsureAutoBattleStatus.CANCELLED:
             return self._cancelled(
@@ -978,6 +1028,54 @@ class WorldBossActivity:
             transition_outcomes=_transition_outcomes(transitions),
             transition_attempts=_transition_attempts(transitions),
         )
+
+    def _sell_equipment(self, origin, transitions):
+        from bot.quick_menu import QuickMenuHandoff, quick_menu_matches_origin
+        from bot.equipment_sell_policy import EquipmentSellPolicy
+
+        opened = self._transition(
+            transitions, "world_boss.inventory.open_quick_menu", OpenQuickMenu(), origin,
+            expected=lambda s: quick_menu_matches_origin(s, SCREEN_WORLD_BOSS),
+            precondition=lambda s: _is_clean_base(s, SCREEN_WORLD_BOSS),
+            retryable_from=lambda s: _is_clean_base(s, SCREEN_WORLD_BOSS),
+        )
+        if opened is None:
+            return None
+        handoff = QuickMenuHandoff.from_open_result(
+            transitions[-1], lambda s: _is_clean_base(s, SCREEN_WORLD_BOSS))
+        if handoff is None:
+            raise ValueError("world_boss_inventory_menu_handoff_invalid")
+        ready = self.observer.wait_until(
+            handoff.allows, after_sequence=opened.sequence, timeout=self.transition_policy.normal_timeout,
+            stable_for=self.stable_for, cancel_requested=self.cancel_requested,
+            abort_if=handoff.observe,
+        )
+        if self.cancel_requested():
+            raise RuntimeWaitCancelled("world_boss_inventory_cancelled")
+        self.actions.execute(SelectQuickMenuInventory(), ready.geometry,
+                             events=self.events, source_sequence=ready.sequence)
+        handoff.invalidate()
+        owner = self.equipment_sell
+        owner._after_sequence = ready.sequence
+        owner._not_before = owner.clock()
+        self._record_best_effort("world_boss.equipment_sell.started", sequence=ready.sequence)
+        result = owner.execute_relief(self.equipment_sell_policy or EquipmentSellPolicy())
+        self._record_best_effort("world_boss.equipment_sell.finished", outcome=result.outcome,
+            reason=result.reason, before_count=getattr(result.before, "item_count", None),
+            after_count=getattr(result.after, "item_count", None),
+            capacity=getattr(result.after, "capacity", None))
+        if result.outcome == "cancelled":
+            raise RuntimeWaitCancelled("world_boss_equipment_sell_cancelled")
+        if not result.succeeded:
+            raise ValueError(f"world_boss_equipment_sell_failed:{result.reason}")
+        owner._tap(ExitEquipmentInventory())
+        restored = self.observer.wait_until(
+            lambda s: _is_clean_base(s, SCREEN_WORLD_BOSS), after_sequence=result.after.sequence,
+            timeout=self.fact_timeout, stable_for=self.stable_for,
+            cancel_requested=self.cancel_requested,
+        )
+        self._inventory_restored_wb = True
+        return restored
 
     def _transition(
         self,

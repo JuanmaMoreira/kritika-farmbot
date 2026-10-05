@@ -1,6 +1,7 @@
 """A1 keeps its capture bounds despite unrelated global detector latency."""
 
 from types import SimpleNamespace
+from dataclasses import replace
 from unittest.mock import Mock
 
 import numpy as np
@@ -156,6 +157,8 @@ def test_session_completed_wb_then_mw_board_matches_standalone(monkeypatch, afte
     # This harness scripts economic preparation; Lobby readiness has dedicated
     # real owner/binding tests in test_gold_farming.
     flow.entry_readiness = lambda: None
+    flow.activity.cancel_requested = lambda: False
+    flow.activity.observer = SimpleNamespace(observe=lambda: harness.clean.context)
     trace = []
     zone = SimpleNamespace(
         entry_requirement=ComponentRequirement.exact_state(SCREEN_LOBBY),
@@ -166,7 +169,9 @@ def test_session_completed_wb_then_mw_board_matches_standalone(monkeypatch, afte
     flows = []
     if after_wb:
         wb, driver = _completed_world_boss()
-        flows.append(wb.prepared(zone))
+        # Resource reading is scripted in this board-spacing regression. The
+        # fake ensurer has no physical snapshot for prepared_precheck to inspect.
+        flows.append(replace(wb.prepared(zone), precheck=wb.precheck))
     flows.append(flow.prepared(zone))
     preconditions = SimpleNamespace(
         ensure=lambda requirement: EnsureResult(
@@ -189,15 +194,16 @@ def test_session_completed_wb_then_mw_board_matches_standalone(monkeypatch, afte
         assert completed == ["world_boss", "monster_wave"]
     assert observer.perception is original_perception
     assert flow.activity is flow.inner.activity
-    zone.enter.assert_called_once()
-    zone.leave.assert_called_once()
+    assert zone.enter.call_count == 1 + int(after_wb)
+    zone.leave.assert_not_called()
+    assert result.character_results[0].flow_results[-1].final_snapshot is harness.clean.context
     assert len(acquired) == 1
     board = acquired[0]
     assert board.snapshot.board_popup is BoardPopup.PRESENT_WITH_ROWS
     assert board.snapshot.resource_rows == ROWS
     assert board.snapshot.evidence.row_sequences[0] > 4625
     assert board.context.timestamp - 1404.875 == pytest.approx(.6)
-    assert [call[0] for call in harness.calls] == ["prepare", "pass", "yes", "finish", "leave"]
+    assert [call[0] for call in harness.calls] == ["prepare", "pass", "yes", "finish"]
 
 
 

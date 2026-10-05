@@ -1,0 +1,30 @@
+{
+  "hell_mw": {
+    "shape": [
+      1220,
+      2712,
+      3
+    ],
+    "roi": [
+      0.27,
+      0.085,
+      0.36,
+      0.175
+    ],
+    "source": "artifacts/session_stabilization/mw_portal_red_current.png"
+  },
+  "absent_guild": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "roi": [
+      0.27,
+      0.085,
+      0.36,
+      0.175
+    ],
+    "source": "artifacts/portal_notification_acquisition/negative_guild_3_seq53.png"
+  }
+}

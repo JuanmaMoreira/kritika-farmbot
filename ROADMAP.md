@@ -3,6 +3,18 @@
 Estado en [CONTEXT](CONTEXT.md); GT físico en [GAMEPLAY_GT](docs/GAMEPLAY_GT.md);
 contratos en [ARCHITECTURE](ARCHITECTURE.md) y [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md).
 
+## Estabilización combinada cerrada — 2026-10-05
+
+Campaña GUI final2808930b: tres personajes consecutivos/Rotation, COMPLETED,
+cero fallos técnicos con código final idéntico; offline1906 passed,4 skips históricos.
+Detalle y business incompleto/UNASSESSED conservados en
+[SESSION_STABILIZATION_AUDIT](docs/SESSION_STABILIZATION_AUDIT.md). WB→Sell tras
+Full post-Combine y assets Normal/Poor quedan productivos y físicamente validados.
+Un único checkpoint local `fix: stabilize combined farming sessions`, sin push;
+targeted swipe sigue cerrado. Deuda causal no bloqueante: chrome Ads X sola,
+whitelist informativa SessionReport, Accessories MAX/result/effect físico,
+triple explícitamente identificado post-fix y No Ads temporal full recovery natural.
+
 ## Bloque cerrado — 2026-10-04
 
 Configurable Routines v1 (persistencia/GUI/config por occurrence/snapshot), Gold Farming
@@ -21,8 +33,8 @@ anteriores permanecen rojos. No hay nuevo planner, DAG ni framework de workflow.
    benchmarks nativos anteriores conservados. Calibración, fallback y replays verdes.
    ToT reutilizará la primitive cuando se implemente y se adquiera explícitamente su GT
    de lista. No hay requisito de segunda superficie ni adopciones inferidas de otros menús.
-2. Completar GT Craft naturalmente: Weapons tiene cadena productiva completa. Armor sólo
-   Expert adquirido; faltan Hero/MAX/result/effect completos. Accessories Hero Earrings
+2. Completar GT Craft naturalmente: Weapons tiene cadena productiva completa. Hero Armor
+   Helmet ahora tiene MAX/result/effect adquirido (DemonBlade114→16, coste49). Accessories Hero Earrings
    adquirido; faltan MAX/result/effect completos. La visita de tres familias ya existe,
    pero cada operación sigue exigiendo evidencia real y sus guards consumptivos.
 3. Daily ToT/Arena/Melee cuando vuelva a ser prioridad: ToT entrada rápida/piso bajo y
@@ -34,9 +46,15 @@ anteriores permanecen rojos. No hay nuevo planner, DAG ni framework de workflow.
    - Chat desplegado completo en Abyssal; banners Channel Global Chat existentes pasan.
    - Ahorro físico final de Socket animation/scoped perception 0.2 s.
    - Ads multipart/triple post-fix y No Ads temporal full recovery end-to-end.
-   - MW→Quests→Mailbox→Rotation y QM desde Battle Mode Select; Back sólo hacia Lobby.
+   - QM desde Battle Mode Select hacia destinos aún no ejercidos naturalmente; Back sólo hacia Lobby.
    - Sell logical transform entre Bulks si sigue Full; expansión Equipment +4 positiva
-     sólo por necesidad real; Poor/Normal y Ethereal Enhance positivos cuando hagan falta.
+     sólo por necesidad real; Ethereal Enhance positivo cuando haga falta. Poor/Normal
+     cerrados mediante assets físicos y tres Bulks guarded127→126→125→122.
+   - Chrome SDK X sola sin reward-granted: captura adquirida; reconocer autoridad de cierre
+     sin confundir fin de parte con fin del ad. Reward posterior acreditado actualmente.
+   - SessionReport: reconocer el evento informativo `monster_wave.sapphire_effect` para
+     no proyectar Gold como UNASSESSED cuando sus efectos y resultado están acreditados.
+     La campaña2808930b conserva la proyección histórica; no convertirlo en failure.
    - Lifecycle SKIP tras pausas muy largas; portabilidad del corpus; Fill All con Gold
      insuficiente sigue UNKNOWN de baja prioridad.
 

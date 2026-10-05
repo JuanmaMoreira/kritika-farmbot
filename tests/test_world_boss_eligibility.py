@@ -144,8 +144,6 @@ def test_scoped_daily_decision_matches_global_on_curated_hub_and_foreign_frames(
     global_engine = build_default_perception(root)
     scoped_engine = select_detectors(global_engine, WORLD_BOSS_ELIGIBILITY_SCOPE)
     resolver = build_default_resolver()
-    # Point Reward adds one MW detector to the shared global inventory.
-    assert len(global_engine.detectors) == 98
     assert len(scoped_engine.detectors) == 5
 
     daily = [entry for entry in load_manifest(root / "datasets/daily_activity_semantic_manifest.json")

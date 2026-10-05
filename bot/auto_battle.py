@@ -23,7 +23,7 @@ from bot.runtime_facts import (
     RuntimeFact,
     TemporalFactEvidence,
 )
-from bot.runtime_observer import RuntimeObserver
+from bot.runtime_observer import RuntimeObserver, RuntimeWaitTimeout, RuntimeWaitCancelled
 from bot.semantic_actions import ToggleAutoBattle
 from bot.state import ResolutionStatus
 from bot.temporal_observation import (
@@ -385,7 +385,7 @@ class AutoBattleEnsurer:
         self.max_unknown_observations = int(max_unknown_observations)
 
     def _execute_verified_tap(
-        self, guard
+        self, guard, cancel_requested=None
     ) -> tuple[EnsureAutoBattleStatus | None, int, object | None, str | None]:
         """Execute one tap against an already verified guard snapshot.
 
@@ -412,12 +412,16 @@ class AutoBattleEnsurer:
         except Exception as error:
             return (EnsureAutoBattleStatus.FAILURE, 1, None, str(error))
         if baseline.sequence <= guard.sequence:
-            return (
-                EnsureAutoBattleStatus.TIMEOUT,
-                1,
-                None,
-                "no fresh frame immediately after Auto Battle tap",
-            )
+            try:
+                baseline = self.detector.observer.wait_until(
+                    lambda item: True, after_sequence=guard.sequence,
+                    timeout=QUICK_AUTO_BATTLE_TIMEOUT, cancel_requested=cancel_requested,
+                )
+            except RuntimeWaitCancelled:
+                return (EnsureAutoBattleStatus.CANCELLED, 1, None, None)
+            except RuntimeWaitTimeout:
+                return (EnsureAutoBattleStatus.TIMEOUT, 1, None,
+                        "no fresh frame after Auto Battle tap")
         if OVERLAY_WORLD_BOSS_RAID_COMPLETE in baseline.state.overlays:
             return (
                 EnsureAutoBattleStatus.INTERRUPTED,
@@ -529,7 +533,7 @@ class AutoBattleEnsurer:
                     taps,
                     "Raid Complete appeared before Auto Battle tap",
                 )
-            tap_status, made, baseline, detail = self._execute_verified_tap(guard)
+            tap_status, made, baseline, detail = self._execute_verified_tap(guard, cancel_requested)
             taps += made
             if tap_status is not None:
                 return EnsureAutoBattleResult(
@@ -588,10 +592,18 @@ class AutoBattleEnsurer:
                 EnsureAutoBattleStatus.FAILURE, tuple(facts), 0, str(error)
             )
         if context.sequence <= max(after_sequence, fact.sequence):
-            return EnsureAutoBattleResult(
-                EnsureAutoBattleStatus.TIMEOUT, tuple(facts), 0,
-                "no fresh context after fast harvest; no input sent",
-            )
+            try:
+                context = self.detector.observer.wait_until(
+                    lambda item: True, after_sequence=max(after_sequence, fact.sequence),
+                    timeout=budget, cancel_requested=cancel_requested,
+                )
+            except RuntimeWaitCancelled:
+                return EnsureAutoBattleResult(EnsureAutoBattleStatus.CANCELLED, tuple(facts), 0)
+            except RuntimeWaitTimeout:
+                return EnsureAutoBattleResult(
+                    EnsureAutoBattleStatus.TIMEOUT, tuple(facts), 0,
+                    "no fresh context after fast harvest; no input sent",
+                )
         if OVERLAY_WORLD_BOSS_RAID_COMPLETE in context.state.overlays:
             return EnsureAutoBattleResult(
                 EnsureAutoBattleStatus.INTERRUPTED,
@@ -629,7 +641,7 @@ class AutoBattleEnsurer:
             )
         if cancel_requested is not None and cancel_requested():
             return EnsureAutoBattleResult(EnsureAutoBattleStatus.CANCELLED, tuple(facts), 0)
-        tap_status, made, baseline, detail = self._execute_verified_tap(context)
+        tap_status, made, baseline, detail = self._execute_verified_tap(context, cancel_requested)
         taps = made
         if tap_status is not None:
             return EnsureAutoBattleResult(

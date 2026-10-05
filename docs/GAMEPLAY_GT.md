@@ -38,6 +38,8 @@ Combine es **una BASE**: Transmute, Fuse, [Awakened] Transmute y [Ethereal] Rand
 - Craft recipe/quantity: Cancel vuelve a la misma Craft BASE.
 - **USER_GT (2026-10-01):** `Craft → Inventory → Back → Craft → Back → Lobby` es una secuencia determinista. Lobby es su postcondition normal, no failure ni recovery inesperado. Craft conserva su entrada directa; no agregar `MW → Inventory → MW` preventivo. Desde ese Lobby se continúa por navegación normal a Battle Mode Select y MW.
 - **LIVE_EVIDENCE (2026-10-02):** `MW → Inventory → Back → MW → Back → Lobby` conserva esa historia de BASE. Lobby limpio es un destino normal conocido; la activity reusable restablece Battle Mode Select mediante navegación normal sólo en esta rama, sin otro Back ni consumo.
+- **LIVE_EVIDENCE (2026-10-05):** en Cat Acrobat, `WB → QM Inventory → Back → WB` restaura WB (secuencias134→194→229, adquisición `4d203684`). El siguiente Back devuelve Lobby, confirmado físicamente; restaurar hub sólo desde ese destino fresco. No demuestra una salida directa hub tras Inventory.
+- **USER_GT (2026-10-05):** WB también debe intentar Sell Equipment cuando un nuevo Start confirma Full después de Combine. El contrato Combine-only era anterior a la implementación productiva de Sell; no debe trasladar ese blocker sin resolver a MW.
 - Pets Combine All y Mass Evolve Normal/Rare: No devuelve exactamente el parent/estado subyacente Pet Combine o Pet Summon, o Pets Manage si allí aplica esa confirmación; no inferir otras rutas.
 - **USER_GT (2026-10-03):** desde Select Battle Mode limpio un Back vuelve directamente a Lobby. En la secuencia `MW → Back → Select Battle Mode → Back → Lobby` es el segundo Back; no se autoriza Back sobre UNKNOWN/modal.
 - Trading abierto desde Quick Menu conserva el parent; X restaura ese parent (Craft y Treasure establecidos). Treasure sí cambia de BASE.
@@ -96,9 +98,18 @@ No es una segmentación exacta ni prueba de todo el ciclo animado. Queda incerti
 
 ## Mecánicas establecidas que afectan composición
 
+**USER_GT (2026-10-04):** Sapphires también es legible por OCR desde Select Battle Mode.
+No hace falta salir a Lobby para decidir la entrada MW desde ese hub acreditado.
+
 Evidencia física previa curada (procedencia en [contrato SKIP archivado](legacy/DOC_RESET_20260925.md) y [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md), no inferencia del detector): SKIP se activa con tickets completos (30/30 en el caso adquirido; VIP puede reducir el requisito). Fill All compra faltantes a 140.000 Gold por ticket; completar tickets no activa SKIP automáticamente. El estado/timer es account-wide y se debe observar fresco, sin fijar duración a partir de un ejemplo. La misión Daily MW requiere x4; eso no limita MW productivo ni autoriza un gate Daily. **USER_GT / product policy:** MW no tiene Eligibility; su objetivo es gastar Sapphires, liberar capacidad y obtener rewards incluso con Daily completada. USER_GT actualizado (2026-10-03): capacidad/base relevante102; Stages sólo necesita saldo <102. MW productivo aplica el mínimo número de entradas para salir de pressure, no vacía por objetivo. Saldo fresco <102 omite navegación; saldo >=102 autoriza inversión. Ejemplos aceptados sin nuevos ingresos: 101→0 entradas; 102→1; 201→1→101; 299→2→99; 300→2→100. Cada CLEAR requiere saldo fresco: no acreditar el efecto aritméticamente.
 
 El board MW muestra balances/límites, no rewards entrantes exactos ni recetas; drops no deterministas no autorizan predicción de saldo. Capacidad Gold Keys no observable por board/Trading; el alert Silver→Gold lleno aporta el bloqueo causal. Conversiones adquiridas: 40 Weapon→10 Hero, receta Hero Weapon de 49 materiales y 10 Bronze→2 Silver. Los facts frescos siguen autorizando cada operación económica, no un saldo calculado persistente. Procedencia histórica: [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md); policy y wiring: [RESOURCE_ROUTING](RESOURCE_ROUTING.md).
+
+**LIVE_EVIDENCE (2026-10-04, Demon Blade):** Hero Armor → Helmet con 114/999 materiales,
+costo 49 por unidad; MAX mostró 2/10. Una confirmación produjo `Laoku's Destructive Helmet`;
+tras cerrar el resultado, Craft mostró 16/999. Selector/MAX/resultado/decremento adquiridos
+en [manifest de replay](../tests/fixtures/craft_armor/manifest.json). No acredita resultados
+de Accessories ni otros tiers/recetas por analogía.
 
 **USER_GT:** tras confirmar `Mass Combine` una sola vez en `[Ethereal] Random Part` aparece una animación de resultado cuyo item concreto es irrelevante y puede variar; no se modela por resultado y no requiere el landmark de espada. Se atraviesa con taps fuera del item/botón visible hasta recuperar de forma fresca y estable `Combine → Transmute → [Ethereal] Random Part`. Es la misma clase de mecánica que las demás animaciones cancelables: el contrato es recuperar el BASE, no reconocer el resultado.
 

@@ -1,0 +1,33 @@
+{
+  "provenance": "Cat Acrobat campaign 52f9b450 event 1489+: K Coin amount wraps after identity for; acquisition without confirm",
+  "frames": [
+    {
+      "file": "campaign7_sell_coin_popup.png",
+      "geometry": [
+        2712,
+        1220
+      ],
+      "box": [
+        909,
+        342,
+        1803,
+        878
+      ],
+      "sha256": "febb9cd8766f0f0ff696e56242d9877b4902cca6053bebb4e229ed25fd1e49ff"
+    },
+    {
+      "file": "sell_tiers_coin_popup_stream.png",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "box": [
+        909,
+        343,
+        1803,
+        881
+      ],
+      "sha256": "5e59c8e68603c76d16a47504824c5d9ad21409e233f193a651e0a564510c234b"
+    }
+  ]
+}

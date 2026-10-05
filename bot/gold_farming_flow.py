@@ -1,6 +1,7 @@
 """User-selected economic capability; no planning of unrelated activities."""
 from dataclasses import replace
-from bot.flow_contracts import FlowEvent, FlowResult, FlowStatus
+from bot.flow_contracts import FlowContract, FlowEvent, FlowResult, FlowStatus
+from bot.monster_wave_flow import MonsterWaveFlow
 from bot.event_context import event_scope
 from bot.event_log import record_best_effort
 from bot.stages_daily_flow import StagesDailyFlow
@@ -10,7 +11,8 @@ from bot.runtime_observer import RuntimeWaitCancelled
 class GoldFarmingFlow:
     name = "gold_farming"
     scope = StagesDailyFlow.scope
-    contract = StagesDailyFlow.contract
+    contract = FlowContract(StagesDailyFlow.contract.precondition,
+                            MonsterWaveFlow.contract.successful_postconditions)
 
     def __init__(self, stages, monster_wave, *, ensure_lobby, events=None,
                  cancel_requested=lambda: False, continue_on_unavailable=True):
@@ -47,7 +49,8 @@ class GoldFarmingFlow:
                         result=invested.status.value, decision="continue" if invested.succeeded else "stop")
                     if not invested.succeeded:
                         return replace(invested, events=tuple(events))
-                    self.ensure_lobby()
+                    if attempt == 1 and not exhausted and not recovery_exhausted:
+                        self.ensure_lobby()
                 if exhausted or recovery_exhausted:
                     if attempt == 1:
                         skipped = FlowEvent("gold_farming.attempt.skipped", fields={
@@ -57,7 +60,8 @@ class GoldFarmingFlow:
                         record_best_effort(self.events, skipped.kind, **skipped.fields)
                     break
             events.append(FlowEvent("gold_farming.completed"))
-            return FlowResult(FlowStatus.COMPLETED, tuple(events))
+            return FlowResult(FlowStatus.COMPLETED, tuple(events),
+                              final_snapshot=invested.final_snapshot)
         except RuntimeWaitCancelled:
             return FlowResult(FlowStatus.CANCELLED, tuple(events))
         except Exception as error:

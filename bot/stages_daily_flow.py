@@ -1,5 +1,6 @@
 """Daily orchestration: resources→concrete Stage8 ads path→fresh effect."""
-from bot.component_contracts import ComponentRequirement
+from bot.component_contracts import ComponentRequirement, QUICK_MENU_ACCESS_REQUIREMENT
+from bot.battle_mode_zone import is_battle_mode_select
 from bot.flow_contracts import FlowContract,FlowEvent,FlowResult,FlowScope,FlowStatus,publish_flow_events
 from bot.ads_manager import AdsOutcome
 from bot.stages_actions import StageControl as C
@@ -12,12 +13,14 @@ from bot.character_resources import character_resource_knowledge
 
 class StagesDailyFlow:
     name='stages_daily';scope=FlowScope.PER_CHARACTER
-    contract=FlowContract(ComponentRequirement.exact_state('screen.lobby'),
+    contract=FlowContract(QUICK_MENU_ACCESS_REQUIREMENT,
                           (ComponentRequirement.exact_state('screen.lobby'),))
-    def __init__(self,navigation,balances,stamina,ads,*,monster_wave,reenter_same_character,ensure_lobby=None):
+    def __init__(self,navigation,balances,stamina,ads,*,monster_wave,reenter_same_character,ensure_lobby=None,
+                 entry_snapshot=None):
         self.nav,self.balances,self.stamina,self.ads=navigation,balances,stamina,ads
         self.monster_wave,self.reenter_same_character=monster_wave,reenter_same_character
         self.ensure_lobby = ensure_lobby or (lambda: self.nav.wait(lobby))
+        self.entry_snapshot = entry_snapshot
 
     def run(self):
         n=self.nav
@@ -29,16 +32,20 @@ class StagesDailyFlow:
             if knowledge is not None and knowledge.stage_ads_exhausted:
                 return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted',
                     fields={'known':True,'navigation':False}),))
+            if self.entry_snapshot is not None:
+                initial=self.entry_snapshot()
+                if is_battle_mode_select(initial):
+                    # The selected caller already owns a verified hub. MW reads
+                    # fresh Sapphires there, including its pressure/no-work gate.
+                    # Stamina and Stages' own entry still belong to Lobby afterward.
+                    dependency=self._run_monster_wave(from_hub=True)
+                    if dependency.status is not FlowStatus.COMPLETED:return dependency
+                self.ensure_lobby()
             before=self.balances.read()
             record_best_effort(n.events,'stages.entry_preconditions',stamina=before.stamina,
                 sapphires=before.sapphires,sapphire_limit=before.sapphire_limit)
             if before.needs_monster_wave:
-                record_best_effort(n.events,'stages.prerequisite',flow='monster_wave')
-                with event_scope(activity_id='monster_wave',activity_role='prerequisite'):
-                    dependency=self.monster_wave.run()
-                    record_best_effort(n.events,'stages.prerequisite.result',result=dependency.status.value,
-                        decision='continue' if dependency.succeeded else 'stop')
-                    publish_flow_events(n.events,'monster_wave',dependency.events,prerequisite='stages_daily')
+                dependency=self._run_monster_wave()
                 if dependency.status is not FlowStatus.COMPLETED:return dependency
                 self.ensure_lobby()
                 before=self.balances.read()
@@ -119,6 +126,23 @@ class StagesDailyFlow:
                 fields={'temporal_retries':2,'same_character_reentries':1,'launches':4}),))
         except RuntimeWaitCancelled:return FlowResult(FlowStatus.CANCELLED)
         except Exception as e:return FlowResult(FlowStatus.FAILED,error=f'{type(e).__name__}: {e}')
+
+    def routing_no_work(self):
+        knowledge=character_resource_knowledge()
+        if knowledge is not None and knowledge.stage_ads_exhausted:
+            return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted',
+                fields={'known':True,'navigation':False}),))
+        return None
+
+    def _run_monster_wave(self, *, from_hub=False):
+        record_best_effort(self.nav.events,'stages.prerequisite',flow='monster_wave',from_hub=from_hub)
+        with event_scope(activity_id='monster_wave',activity_role='prerequisite'):
+            owner=(self.monster_wave.prepared(self.monster_wave.zone) if from_hub else self.monster_wave)
+            dependency=owner.run()
+            record_best_effort(self.nav.events,'stages.prerequisite.result',result=dependency.status.value,
+                decision='continue' if dependency.succeeded else 'stop')
+            publish_flow_events(self.nav.events,'monster_wave',dependency.events,prerequisite='stages_daily')
+            return dependency
 
     @staticmethod
     def _exhausted_result():

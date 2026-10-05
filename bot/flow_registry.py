@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Callable, Protocol
 
 from bot.stages_daily_flow import StagesDailyFlow
+from bot.gold_farming_flow import GoldFarmingFlow
 from bot.black_market_flow import BlackMarketFlow
 from bot.daily_quests_flow import DailyQuestsFlow
 from bot.flow_contracts import FlowContract, FlowScope, PerCharacterFlow
@@ -311,6 +312,18 @@ def _black_market_confirmation_observer_for(
 
 def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
     from bot.perception import QUICK_MENU_TO_LOBBY_SCOPE
+    from bot.action_executor import ActionExecutor
+    from bot.equipment_sell_reader import EquipmentSellReader
+    from bot.equipment_sell_runtime import EquipmentSellRuntime
+
+    source = getattr(dependencies.observer, "source", None)
+    engine = getattr(dependencies, "ocr_engine", None)
+    equipment_sell = None
+    if (callable(getattr(source, "get_frame", None))
+            and callable(getattr(engine, "recognize", None))
+            and isinstance(dependencies.actions, ActionExecutor)):
+        equipment_sell = EquipmentSellRuntime(source, EquipmentSellReader(engine), dependencies.actions,
+            events=dependencies.events, cancel_requested=dependencies.cancel_requested, sample_timeout=6.0)
 
     main_transition = _verified_transition_for(dependencies)
     return WorldBossFlow(
@@ -321,6 +334,8 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
         dependencies.events,
         socket_relief=dependencies.socket_relief,
         equipment_combine_relief=dependencies.equipment_combine_relief,
+        equipment_sell=equipment_sell,
+        equipment_sell_policy=getattr(getattr(dependencies, "config", None), "equipment_sell", None),
         cancel_requested=dependencies.cancel_requested,
         verified_transition=main_transition,
         lobby_transition=scoped_transition_for(
@@ -1048,7 +1063,7 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
         _build_guild_check_in,
     ),
     FlowDefinition('gold_farming', 'Gold Farming Cycle', StagesDailyFlow.scope,
-                   StagesDailyFlow.contract, _build_gold_farming),
+                   GoldFarmingFlow.contract, _build_gold_farming),
 ))
 
 

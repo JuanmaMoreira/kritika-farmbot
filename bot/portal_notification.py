@@ -49,6 +49,9 @@ PORTAL_DISMISS_X_ASSET = Path(
 PORTAL_DISMISS_X_VARIANT_ASSETS = (
     Path("assets/ui/portal/portal-dismiss-x-wide-hell.png"),
     Path("assets/ui/portal/portal-dismiss-x-wide-guild.png"),
+    # Current Hell rendering: complete X and rim rather than a wide crop
+    # dominated by the variable HUD/background beside the clipped glyph.
+    Path("assets/ui/portal/portal-dismiss-x-complete-hell.png"),
 )
 
 

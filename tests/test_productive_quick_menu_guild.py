@@ -231,28 +231,28 @@ def test_contractual_source_persists_world_boss_without_abort_or_retry():
     assert actions.taps("SelectQuickMenuGuild") == 1
 
 
-def test_source_then_menu_persistence_authorizes_exactly_one_retry():
+def test_source_then_discovered_menu_cannot_revive_retry_authority():
     succeeded, actions = run_helper(
         world_boss(1),
         [[menu(2)], [world_boss(3), menu(4)], [], [guild(6)]],
         observes=[menu(5)],
     )
 
-    assert succeeded
+    assert not succeeded
     assert actions.taps("OpenQuickMenu") == 1
-    assert actions.taps("SelectQuickMenuGuild") == 2
+    assert actions.taps("SelectQuickMenuGuild") == 1
 
 
-def test_pet_summon_source_then_menu_authorizes_exactly_one_retry():
+def test_pet_summon_source_then_discovered_menu_cannot_revive_retry_authority():
     succeeded, actions = run_helper(
         pet_summon(1),
         [[menu(2)], [pet_summon(3), menu(4)], [], [guild(6)]],
         observes=[menu(5)],
     )
 
-    assert succeeded
+    assert not succeeded
     assert actions.taps("OpenQuickMenu") == 1
-    assert actions.taps("SelectQuickMenuGuild") == 2
+    assert actions.taps("SelectQuickMenuGuild") == 1
 
 
 def test_persistent_source_without_menu_fails_bounded_without_second_tap():

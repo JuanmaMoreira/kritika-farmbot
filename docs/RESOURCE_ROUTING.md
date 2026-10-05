@@ -52,7 +52,9 @@ Smoke `20261001T195406.677299Z_mw_stabilization_43eaf70d`: 2 CLEAR, 5 trades Key
 Validación final 2026-10-02: `mw_final_native_d1e5d83e` COMPLETED, tres CLEAR y 253/253, Lobby, sin flow.failed. `mw_exit_inventory_native_3bf4119d` prueba la rama Inventory → MW → Lobby → hub sin consumos; conserva la salida contractual de la activity. Equipment expansión +4 positiva y Poor/Normal visuales siguen pendientes de adquisición cuando sean necesarios, sin alterar el fail-closed ni comprar preventivamente.
 
 
-Deuda posterior no bloqueante: expansión +4 positiva live (mecánica adquirida/tests verdes, no compra innecesaria), Poor/Normal visual positivo y Ethereal Enhance positivo (sin evidencia suficiente, fail-closed), lifecycle SKIP tras pausas largas, portabilidad/publicación del corpus local y Fill All con Gold insuficiente UNKNOWN. No adquirir ni implementar estas ramas durante el cierre. No repetir smokes aceptados.
+Deuda posterior no bloqueante: expansión +4 positiva live (mecánica adquirida/tests verdes, no compra innecesaria), Ethereal Enhance positivo (sin evidencia suficiente, fail-closed), lifecycle SKIP tras pausas largas, portabilidad/publicación del corpus local y Fill All con Gold insuficiente UNKNOWN. Poor/Normal cerrados el2026-10-05: assets físicos y Bulks127→126→125→122 con guards vigentes. No repetir smokes aceptados.
+
+WB Equipment actualizado2026-10-05 por USER_GT: Full→Combine→nuevo Full→dismiss→QM Inventory→Sell owner→fresh WB→Start. El contrato antiguo Combine-only era anterior a Sell productivo. Focal Cat Acrobat `2190ee23` acredita131→122/128 mediante un Bulk Legendary Earrings pagado en K Coins, retorno WB, Auto ON sin tap y raid completo. Popup K Coin puede envolver el importe después de «for»; identidad y scope Bulk se leen en sus regiones físicas, sin parser permisivo ni inferir efecto. Un Full posterior a esa visita bounded no repite Combine/Sell. Al salir de WB después de Inventory, un Lobby fresco es historia normal y habilita restablecer hub.
 
 ## Stages Daily — caller productivo cerrado 2026-10-02
 
@@ -75,7 +77,7 @@ Smoke aceptado `stages_progress_smoke` / `f1c24b514e4e40128d5875a7c1ed74f4`: COM
 
 USER_GT actualizado durante validación live de Configurable Routines v1:
 `Basic Gold Farming` selecciona `Gold Farming Cycle` (`gold_farming`), una capability
-Lobby→Lobby con hasta dos oportunidades de Stages Ads y una inversión MW después de
+Entrada desde BASE acreditada QuickMenu-capable con hasta dos oportunidades de Stages Ads y una inversión MW después de
 cada oportunidad. La inversión de la última oportunidad es final; si Stages confirma
 agotamiento diario en la primera, se omite la segunda oportunidad y se conserva MW final.
 No programa actividades ajenas, no cambia el orden de rutinas custom ni controla Rotation.
@@ -109,8 +111,8 @@ Reporting conserva events reales de children y status/decision de cada actividad
 `attempt_index/activity_id/activity_role` distingue requested, prerequisite, investment y
 final_investment dentro de routine/character/occurrence. Ads unavailable autorizado puede
 continuar dentro del ciclo con resultado MANUAL_RESOLUTION registrado y business incompleteness;
-FAILED/CANCELLED/manual no declarado corta sin inversión ni Rotation. Stages devuelve Lobby fresco; después de MW la capability solicita su propio retorno
-Lobby mediante Navigation, sin imponer esa salida al gameplay owner MW. Overrides MW/equipment de cada occurrence se clonan y aplican
+FAILED/CANCELLED/manual no declarado corta sin inversión ni Rotation. Stages devuelve Lobby fresco; después de MW la capability solicita retorno
+Lobby sólo si reanuda Stages. La inversión final publica su BASE/snapshot y permite QM directo hacia los paneles o Rotation del caller. Overrides MW/equipment de cada occurrence se clonan y aplican
 al MW prerequisite/inversiones de esa capability, sin mutar otra occurrence.
 
 Persistencia schema v1: sólo el preset original intacto (`basic-gold`, nombre original,
@@ -246,8 +248,9 @@ verificada, una confirmación y decremento fresco. Categoría sin trabajo o lect
 inconclusa no bloquea las siguientes; failure real corta. Capacity probe considera
 las tres familias y abre la receta de la familia elegible si debe probar Full.
 Material/costo compartido no prueba que otro selector tenga cantidad o efecto:
-esos guards siempre vuelven a verificarse. Faltan resultados productivos naturales
-Armor/Accessories completos, documentados en ROADMAP; no se inventa GT.
+esos guards siempre vuelven a verificarse. Hero Armor/Helmet tiene ahora selector,
+MAX, resultado y efecto natural 114→16 (GAMEPLAY_GT, adquisición 2026-10-04).
+Accessories conserva pendiente MAX/result/effect; no se inventa GT por analogía.
 
 Socket Enhance All/Gold: después del primer positivo de inicio, TapThroughAnimation
 usa 0.2 s entre taps, cada uno precedido por pixels frescos y animación positiva
@@ -267,8 +270,8 @@ Supersede el destino terminal standalone MW→Lobby de arriba. MW termina gamepl
 MW limpio y evidencia final; Session/Navigation poseen el siguiente handoff, reutilizando
 PreparedActivity y ComponentRequirement. Hub o Lobby fresco de no-work/ramas existentes son
 postconditions válidas; no se fuerza una superficie intermedia. Contrato de rutas y NO_WORK
-puro en ARCHITECTURE. Stages y Gold Farming solicitan explícitamente Lobby a Navigation después
-de MW cuando reanudan operaciones que lo requieren. Pressure <102, budgets, reliefs, Ads,
+puro en ARCHITECTURE. Stages y Gold Farming solicitan explícitamente Lobby a Navigation
+sólo al reanudar Stages después de MW. Pressure <102, budgets, reliefs, Ads,
 trades y agotamiento conservan su policy. Rotation sigue fuera de Gold Farming y entra desde una BASE verificada con capability Quick Menu,
 sin Lobby intermedio. Quests/Mailbox son destinos QM y restauran su origen fresco.
 Battle Mode Select tiene QM; Back directo gana exclusivamente cuando el destino solicitado es Lobby.

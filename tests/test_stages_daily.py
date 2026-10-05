@@ -456,3 +456,60 @@ def test_no_ads_retry_can_recover_at_each_authorized_launch(returned_at):
     assert n.calls.count(C.VIDEO)==returned_at
     assert n.clock.now==min(returned_at-1,2)*5.
     assert resets==(['same'] if returned_at==4 else [])
+
+
+def test_part_progress_disappears_after_deadline_without_authorizing_early_back():
+    c=Clock(); seen=[]
+    def observe():
+        if seen:return AdObservation(c.now,returned=True,game_present=True)
+        if c.now<5:return AdObservation(c.now,active=True,progress=c.now/5)
+        return AdObservation(c.now,active=True,back_ready=c.now>=9)
+    m=AdsManager(observe,lambda *a:pytest.fail('visual tap'),lambda *a:None,
+        lambda s:seen.append(c.now),clock=c,sleeper=c.sleep,deadline=6,
+        progress_grace=2,max_duration=12)
+    assert m.complete_requested_launch().outcome is AdsOutcome.RETURNED
+    assert seen==[9.]
+
+
+def test_three_sdk_parts_each_return_from_store_with_bounded_fresh_back():
+    c=Clock(); seen=[]
+    def observe():
+        if len(seen)>=4:return AdObservation(c.now,returned=True,game_present=True)
+        if len(seen)==3:return AdObservation(c.now,active=True,back_ready=True)
+        # Each distinct SDK part advances before opening its own external activity.
+        if c.now>=len(seen)*3+2:return AdObservation(c.now,external=True)
+        return AdObservation(c.now,active=True,progress=(c.now%3)/3)
+    m=AdsManager(observe,lambda *a:pytest.fail('visual tap'),lambda *a:None,
+        lambda s:seen.append(c.now),clock=c,sleeper=c.sleep,deadline=6,max_duration=20,
+        progress_grace=2)
+    assert m.complete_requested_launch().outcome is AdsOutcome.RETURNED
+    assert len(seen)==4 and seen[-1]<20
+
+
+def test_existing_battle_hub_runs_prepared_mw_before_any_lobby_request():
+    from unittest.mock import Mock
+    from test_world_boss_flow import snapshot
+    from bot.catalog import SCREEN_BATTLE_MODE_SELECT
+    trace=[]
+    f,n,_=flow([balance(),balance(),balance(378)],[AdsOutcome.RETURNED])
+    f.entry_snapshot=lambda:snapshot(1,base=SCREEN_BATTLE_MODE_SELECT)
+    prepared=S(run=lambda:trace.append('hub_mw') or FlowResult(FlowStatus.COMPLETED))
+    f.monster_wave=S(zone=object(),prepared=Mock(return_value=prepared),
+        run=lambda:pytest.fail('Lobby MW entry requested from existing hub'))
+    f.ensure_lobby=lambda:trace.append('lobby')
+    assert f.run().status is FlowStatus.COMPLETED
+    assert trace==['hub_mw','lobby']
+    f.monster_wave.prepared.assert_called_once_with(f.monster_wave.zone)
+    assert n.calls.count(C.VIDEO)==1
+
+
+def test_hub_mw_failure_preserves_failure_without_lobby_or_ad_input():
+    from test_world_boss_flow import snapshot
+    from bot.catalog import SCREEN_BATTLE_MODE_SELECT
+    f,n,_=flow([],[])
+    failed=FlowResult(FlowStatus.FAILED,error='board_failure')
+    f.entry_snapshot=lambda:snapshot(1,base=SCREEN_BATTLE_MODE_SELECT)
+    f.monster_wave=S(zone=object(),prepared=lambda zone:S(run=lambda:failed))
+    f.ensure_lobby=lambda:pytest.fail('must not navigate after failure')
+    assert f.run() is failed
+    assert n.calls==[]

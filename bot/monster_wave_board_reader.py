@@ -153,6 +153,11 @@ class MonsterWaveBoardReader:
         if not callable(getattr(engine, "recognize", None)):
             raise ValueError("engine must provide recognize(image)")
         self.engine = engine
+        # Pure OCR memoization, bounded to one exact pixel crop per row. Facts
+        # still belong to each fresh, resolved popup frame; changed pixels
+        # always run OCR again. This avoids spending the pair's age budget
+        # recognizing identical board chrome twice.
+        self._last_ocr = {}
 
     def read_sample(self, snapshot: RuntimeSnapshot) -> MonsterWaveBoardSample | None:
         state = snapshot.state
@@ -179,8 +184,13 @@ class MonsterWaveBoardReader:
                          round(x1 * width):round(x2 * width)]
             if crop.size == 0:
                 return None
-            prepared = cv2.resize(crop, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-            result = self.engine.recognize(prepared)
+            cached = self._last_ocr.get(item_id)
+            if cached is not None and np.array_equal(cached[0], crop):
+                result = cached[1]
+            else:
+                prepared = cv2.resize(crop, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+                result = self.engine.recognize(prepared)
+                self._last_ocr[item_id] = (crop.copy(), result)
             if result.confidence < 0.90:
                 return None
             row = parse_board_line(result.text, item_id)

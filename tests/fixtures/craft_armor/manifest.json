@@ -1,0 +1,13 @@
+{
+  "acquisition": "2026-10-04 America/Argentina/Buenos_Aires",
+  "character": "Demon Blade",
+  "provenance": "LIVE_EVIDENCE; authorized session stabilization campaign",
+  "source_directory_local": "artifacts/session_stabilization",
+  "transform": "Native captures resized proportionally to width 960; no content edits",
+  "frames": [
+    {"file": "armor_recipe.png", "source": "armor_recipe.png", "state": "Hero Armor / Helmet selector; quantity 1; cost 49 Armor materials"},
+    {"file": "armor_max.png", "source": "armor_max.png", "state": "MAX; quantity 2/10; cost 49 per unit"},
+    {"file": "armor_result.png", "source": "armor_result.png", "state": "Laoku's Destructive Helmet result after one confirmation"},
+    {"file": "armor_result_2.png", "source": "armor_result_2.png", "state": "Craft BASE; fresh Armor count 16/999 after initial 114/999"}
+  ]
+}

@@ -66,8 +66,13 @@ def _snapshot(*, sequence=10, timestamp=None, names=(), overlays=(),
 
 
 @pytest.fixture(scope="module")
-def reader():
-    return MonsterWaveBoardReader(RapidOcrEngine())
+def board_ocr():
+    return RapidOcrEngine()
+
+
+@pytest.fixture
+def reader(board_ocr):
+    return MonsterWaveBoardReader(board_ocr)
 
 
 def test_current_human_confirmed_board_exact_values_and_consensus(reader):
@@ -92,6 +97,28 @@ def test_current_human_confirmed_board_exact_values_and_consensus(reader):
     assert board.tickets is Tickets.UNKNOWN
     assert board.max_state.selected is True
     assert board.evidence.row_sequences == (1, 2)
+
+
+def test_exact_ocr_pixels_reused_but_changed_row_is_recognized_on_its_fresh_frame():
+    from unittest.mock import Mock
+    from bot.ocr import OcrResult
+    engine=Mock()
+    engine.recognize.side_effect=[OcrResult(f'(12/999) {title}',.99) for _,title,_ in BOARD_ROWS]
+    owner=MonsterWaveBoardReader(engine)
+    first=_snapshot(sequence=1,overlays=(POPUP_MW_BOARD,))
+    second=_snapshot(sequence=2,overlays=(POPUP_MW_BOARD,))
+    a,b=owner.read_sample(first),owner.read_sample(second)
+    assert a.rows==b.rows and (a.sequence,b.sequence)==(1,2)
+    assert engine.recognize.call_count==5
+    assert consensus_board_samples((a,b),after_sequence=0) is not None
+    changed=_snapshot(sequence=3,overlays=(POPUP_MW_BOARD,))
+    h,w=changed.frame.image.shape[:2]
+    changed.frame.image[round(.415*h),round(.5*w)]=(255,0,0)
+    engine.recognize.side_effect=[OcrResult('(13/999) Weapon Material',.99)]
+    c=owner.read_sample(changed)
+    assert c.sequence==3 and c.rows[1].balance==13
+    assert engine.recognize.call_count==6
+    assert consensus_board_samples((b,c),after_sequence=0) is None
 
 
 def test_red_measure_separates_acquired_rows_and_ignores_nearby_red_ui():

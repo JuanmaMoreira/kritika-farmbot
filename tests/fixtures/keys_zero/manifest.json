@@ -1,0 +1,50 @@
+{
+  "0": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "roi": [
+      0.3,
+      0.35,
+      0.55,
+      0.65
+    ],
+    "source": "20261005T014110.277553Z_keys_zero_stabilization_acquisition_03030f51.jsonl",
+    "input": 0,
+    "other_row": 340
+  },
+  "1": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "roi": [
+      0.3,
+      0.35,
+      0.55,
+      0.65
+    ],
+    "source": "20261005T014110.277553Z_keys_zero_stabilization_acquisition_03030f51.jsonl",
+    "input": 0,
+    "other_row": 340
+  },
+  "2": {
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "roi": [
+      0.3,
+      0.35,
+      0.55,
+      0.65
+    ],
+    "source": "20261005T014110.277553Z_keys_zero_stabilization_acquisition_03030f51.jsonl",
+    "input": 0,
+    "other_row": 340
+  }
+}

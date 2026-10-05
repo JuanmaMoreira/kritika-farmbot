@@ -222,3 +222,19 @@ def test_failed_ad_recovery_still_invests_pending_sapphires_then_rotates():
   assert not knowledge.stage_ads_exhausted
  assert trace==['stages_daily.run','monster_wave.run','rotation.advance']
  assert build_session_report(r).status is ReportStatus.BUSINESS_INCOMPLETE
+
+
+@pytest.mark.parametrize('stages,mw,expected_lobbies', [
+    ([productive, productive], [invested, invested], 3),
+    ([exhausted], [invested], 1),
+    ([unavailable], [invested], 1),
+])
+def test_final_investment_preserves_mw_surface_for_caller(stages, mw, expected_lobbies):
+    seed = object()
+    mw[-1] = FlowResult(FlowStatus.COMPLETED, mw[-1].events, final_snapshot=seed)
+    c, _ = cycle(stages, mw)
+    c.ensure_lobby = Mock()
+    result = c.run()
+    assert result.succeeded and result.final_snapshot is seed
+    assert c.ensure_lobby.call_count == expected_lobbies
+    assert 'screen.monster_wave' in {s.name for s in c.contract.successful_postconditions}

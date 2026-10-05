@@ -52,7 +52,8 @@ _SELECTED_RECIPE_ROIS: dict[
         (0.455, 0.420, 0.545, 0.490),
     ),
     CraftFamily.ARMOR: (
-        (0.280, 0.245, 0.360, 0.315),
+        # Text only: the selected Helmet check/border lowered live tier OCR.
+        (0.294, 0.282, 0.348, 0.322),
         (0.280, 0.420, 0.370, 0.490),
     ),
     CraftFamily.ACCESSORY: (

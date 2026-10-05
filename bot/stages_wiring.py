@@ -64,4 +64,5 @@ def build_stages_daily(dependencies, monster_wave):
     nav.relief = StagesReliefs(nav, dependencies, monster_wave.equipment_relief)
     return StagesDailyFlow(nav, balances, StaminaPurchase(nav,balances,detector),ads,
         monster_wave=monster_wave, reenter_same_character=SameCharacterReentry(nav,balances),
-        ensure_lobby=lambda: ensure_lobby_entry(dependencies))
+        ensure_lobby=lambda: ensure_lobby_entry(dependencies),
+        entry_snapshot=dependencies.observer.observe)
