@@ -17,6 +17,7 @@ from bot.summon_pet_daily_flow import SummonPetDailyFlow
 from bot.world_boss_flow import WorldBossFlow
 from bot.monster_wave_flow import MonsterWaveFlow
 from bot.monster_wave_config import MonsterWaveConfig
+from bot.relief_policy import coordinator_for
 
 
 class FlowDependencies(Protocol):
@@ -332,10 +333,10 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
         dependencies.facts,
         dependencies.auto_battle,
         dependencies.events,
-        socket_relief=dependencies.socket_relief,
+        socket_relief=coordinator_for(dependencies).socket_operation(dependencies.socket_relief),
         equipment_combine_relief=dependencies.equipment_combine_relief,
         equipment_sell=equipment_sell,
-        equipment_sell_policy=getattr(getattr(dependencies, "config", None), "equipment_sell", None),
+        equipment_sell_policy=coordinator_for(dependencies).policy.equipment_sell,
         cancel_requested=dependencies.cancel_requested,
         verified_transition=main_transition,
         lobby_transition=scoped_transition_for(
@@ -451,6 +452,10 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         active_event="monster_wave.board_acquisition_scope_active",
         unavailable_event="monster_wave.board_acquisition_scope_unavailable",
     )
+    from bot.runtime_observer import RuntimeObserver
+    from bot.monster_wave_board_perception import MonsterWaveBoardPerception
+    if isinstance(board_observer, RuntimeObserver):
+        board_observer = board_observer.scoped(MonsterWaveBoardPerception(board_observer.perception))
     boards = MonsterWaveBoardAcquisitionRuntime(
         board_observer, MonsterWaveBoardReader(engine),
         cancel_requested=cancel_requested,
@@ -648,6 +653,7 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         execute_key_trade=_execute_key_trade,
         drain_gold_keys=_drain_gold_keys,
         acknowledge_gold_full=_acknowledge_gold_full,
+        reliefs=coordinator_for(dependencies),
         cancel_requested=cancel_requested,
     )
 
@@ -683,8 +689,9 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
     )
     equipment_relief = EquipmentReliefComposer(
         dependencies.equipment_combine_relief, inventory_runtime,
+        reliefs=coordinator_for(dependencies),
     )
-    policy = getattr(getattr(dependencies, "config", None), "equipment_sell", EquipmentSellPolicy())
+    policy = coordinator_for(dependencies).policy.equipment_sell
 
     def _enter_equipment_inventory(caller):
         before = observer.observe()
@@ -755,6 +762,7 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         prereq_navigation, snapshots, craft_runtime, keys_runtime,
         materials_runtime, keys_budget_remaining=None,
         equipment_relief=equipment_relief, equipment_sell_plan=craft_sell_plan,
+        reliefs=coordinator_for(dependencies),
         cancel_requested=cancel_requested,
     )
 
@@ -762,7 +770,7 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
         inner, boards=boards, navigation=standalone_navigation, route=route,
         planner=plan_resource_route, non_board=NonBoardResourceFacts(),
         equipment_relief=equipment_relief, equipment_sell_plan=mw_sell_plan,
-        socket_relief=dependencies.socket_relief,
+        socket_relief=coordinator_for(dependencies).socket_operation(dependencies.socket_relief),
     )
 
 

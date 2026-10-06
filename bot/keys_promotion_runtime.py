@@ -225,6 +225,7 @@ class KeysPromotionRuntime:
         execute_key_trade,
         drain_gold_keys,
         acknowledge_gold_full=None,
+        reliefs=None,
         cancel_requested=lambda: False,
         clock=monotonic,
     ) -> None:
@@ -248,6 +249,7 @@ class KeysPromotionRuntime:
                 raise ValueError(f"{name} must be callable")
         self.trading_runtime = trading_runtime
         self.treasure_runtime = treasure_runtime
+        self.reliefs = reliefs
         self.quick_menu_runtime = quick_menu_runtime
         self.read_key_facts = read_key_facts
         self.execute_key_trade = execute_key_trade
@@ -553,7 +555,13 @@ class KeysPromotionRuntime:
             raise _StepFailed("execute_key_trade_invalid_result")
         return result
 
-    def _recover_gold_capacity(
+    def _recover_gold_capacity(self, **kwargs):
+        if self.reliefs is None:
+            return self._execute_gold_capacity_relief(**kwargs)
+        from bot.relief_policy import ReliefCapability
+        return self.reliefs.handle(ReliefCapability.TREASURE, self._execute_gold_capacity_relief, **kwargs)
+
+    def _execute_gold_capacity_relief(
         self,
         *,
         after_sequence: int,

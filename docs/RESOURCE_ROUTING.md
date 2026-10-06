@@ -100,7 +100,10 @@ COMPLETED/cero fallos técnicos. MW final reutilizable→paneles/QM Rotation dir
 en3 scopes;25 retornos Lobby legítimos, cero violaciones verificadas desde JSONL.
 25 personajes con Ads agotados,6 Ads con efecto Sapphire; no es cobertura amplia
 de anuncios largos/multipart. Ajustes Ads cortos/chrome SDK tienen offline e
-integración verdes, amplitud live pendiente de aparición natural. Hashes,
+integración verdes. Ese límite de amplitud es histórico: **CLOSED por USER_GT
+2026-10-06**, campaña posterior al reset sin failures de Ads; sólo MW y Trading
+fallaron por causas ajenas. Se cierran broad live Ads coverage, short ads y multipart
+natural coverage, sin atribuir un nuevo28/28 COMPLETED. Hashes,
 business outcomes y provenance en [FULL_ROSTER_CHECKPOINT](FULL_ROSTER_CHECKPOINT.md).
 
 MW estable para esta versión; loop autónomo live terminado. Camino productivo estabilizado live: smokes completos sin instrumentación `214/214` y `253/253`, tres CLEAR cada uno y Lobby, sin flow.failed. Caller Equipment ejercitado en 4 CLEAR `396/396` tras cinco Bulk; su salida final Lobby fue el último fallo y quedó corregida/validada nativamente sin repetir consumos. Gold Full post-confirm, ACK/drain y retry causal único validados live. Validación proporcional final registrada en CONTEXT. USER_GT de Sell ya está cerrado y autoriza explícitamente Karats para Equipment; no existe un bloqueo pendiente por falta de autorización. MW productivo omite con precheck fresco de Sapphires <102, independientemente del badge Daily. Fill All con Gold insuficiente no bloquea esta integración.
@@ -172,8 +175,8 @@ Reporting conserva events reales de children y status/decision de cada actividad
 final_investment dentro de routine/character/occurrence. Ads unavailable autorizado puede
 continuar dentro del ciclo con resultado MANUAL_RESOLUTION registrado y business incompleteness;
 FAILED/CANCELLED/manual no declarado corta sin inversión ni Rotation. Stages devuelve Lobby fresco; después de MW la capability solicita retorno
-Lobby sólo si reanuda Stages. La inversión final publica su BASE/snapshot y permite QM directo hacia los paneles o Rotation del caller. Overrides MW/equipment de cada occurrence se clonan y aplican
-al MW prerequisite/inversiones de esa capability, sin mutar otra occurrence.
+Lobby sólo si reanuda Stages. La inversión final publica su BASE/snapshot y permite QM directo hacia los paneles o Rotation del caller. Overrides propios legacy MW se clonan por occurrence. Reliefs usan una policy transversal
+de rutina compartida, sin duplicar configuración por caller (GUI_CONFIGURATION).
 
 Persistencia schema v1: sólo el preset original intacto (`basic-gold`, nombre original,
 cuatro steps enabled/default config/default continuation) migra a la capability. Rutinas
@@ -303,7 +306,8 @@ y recalcula; no supone un decremento de100. Un efecto inconcluso corta, no consu
 otra entrada. Guards de CLEAR y relief no cambian. Los smokes históricos anteriores
 registran la policy anterior; la recalibración presente se verifica offline.
 
-CraftStep aprovecha el panel abierto para Weapons, Armor y Accessories Hero
+CraftStep aprovecha el panel abierto para las familias Hero habilitadas por ReliefPolicy
+(Weapons, Armor y Accessories; todas habilitadas por migración para conservar comportamiento)
 elegibles, en ese orden; costo/material ya visibles permiten decidir sin abrir
 tabs por precaución. Cada familia reutiliza selección fuerte, MAX/cantidad
 verificada, una confirmación y decremento fresco. Categoría sin trabajo o lectura
@@ -339,3 +343,21 @@ sin Lobby intermedio. Quests/Mailbox son destinos QM y restauran su origen fresc
 Battle Mode Select tiene QM; Back directo gana exclusivamente cuando el destino solicitado es Lobby.
 Desde MW, Quick Menu→Lobby evita dos cambios BASE por Back→hub→Lobby; hacia otra actividad
 Battle Mode sólo se solicita hub. Unknown/modal/failure/cancel nunca habilitan cleanup arbitrario.
+
+## Policy transversal de Reliefs — 2026-10-06
+
+La rutina posee `ReliefPolicy` y un `ReliefCoordinator`; callers detectan presión y
+conservan intención/retorno, nunca deciden categorías Craft ni permisos Socket/Sell/Treasure.
+El coordinator delega a las operaciones ya guardadas, sin mover trigger ni cambiar
+el orden seguro. Socket permite Enhance-only, incompatible-Sell-only, ambas o ninguna;
+ambas conserva Enhance primero y Sell sólo si no hubo efecto. Equipment encapsula Combine
+sin configuración seguido de Sell con policy común. Treasure permite el recovery Gold Keys
+existente; Platinum sigue pendiente de GT e implementación. Schema/migración/GUI en
+[GUI_CONFIGURATION](GUI_CONFIGURATION.md).
+
+A1 board MW conserva resolver completo, pares concordantes dentro de 1 s y edad final
+máxima 2 s. Memoiza únicamente outputs CV puros por ROI **grayscale exacto**, por owner
+A1 y con un entry por detector; cambios de pixels/geometría invalidan. Emite nuevo batch,
+sequence, timestamp y resolución cada frame; specialized detectors siempre corren. No es
+cache de snapshots/contexts ni autorización de input. Causa y replay del run fallido en
+[MW_FAILED_SESSION_86ADECD4](MW_FAILED_SESSION_86ADECD4.md).

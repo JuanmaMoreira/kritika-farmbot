@@ -174,13 +174,14 @@ class SocketInventoryRelief:
         self,
         return_plan: SocketReturnPlan,
         cancel_requested: Callable[[], bool] = lambda: False,
+        *, policy=None,
     ) -> SocketReliefResult:
         if not isinstance(return_plan, SocketReturnPlan):
             raise ValueError("return_plan must be a SocketReturnPlan")
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
         try:
-            return self._run(return_plan, cancel_requested)
+            return self._run(return_plan, cancel_requested, policy)
         except (KeyboardInterrupt, SystemExit):
             raise
         except RuntimeWaitCancelled:
@@ -188,7 +189,11 @@ class SocketInventoryRelief:
         except Exception as error:
             return self._failed(f"{type(error).__name__}: {error}")
 
-    def _run(self, return_plan, cancel_requested):
+    def _run(self, return_plan, cancel_requested, policy=None):
+        from bot.relief_policy import SocketReliefPolicy
+        policy = SocketReliefPolicy() if policy is None else policy
+        if not isinstance(policy, SocketReliefPolicy):
+            raise ValueError("invalid socket policy")
         if cancel_requested():
             return self._cancelled()
         current = self.observer.observe()
@@ -199,9 +204,9 @@ class SocketInventoryRelief:
             )
         self._record("socket_relief.started", sequence=current.sequence)
 
-        enhance, current, animation_taps = self._enhance(
-            current, cancel_requested
-        )
+        enhance, animation_taps = SocketStrategyOutcome.NOT_RUN, 0
+        if policy.enhance_all:
+            enhance, current, animation_taps = self._enhance(current, cancel_requested)
         if enhance is SocketStrategyOutcome.CANCELLED:
             return self._cancelled(
                 enhance=enhance,
@@ -218,7 +223,7 @@ class SocketInventoryRelief:
 
         sell = SocketStrategyOutcome.NOT_RUN
         relief_effect = enhance is SocketStrategyOutcome.EFFECT
-        if not relief_effect:
+        if not relief_effect and policy.sell_incompatible:
             sell, current = self._sell(current, cancel_requested)
             if sell is SocketStrategyOutcome.CANCELLED:
                 return self._cancelled(

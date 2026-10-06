@@ -15,7 +15,32 @@ from bot.character_data import ResourceSnapshotMode
 from bot.world_boss_state import WorldBossEligibilityMode
 
 
-SCHEMA_VERSION = 1
+from bot.relief_policy import ReliefPolicy
+
+SCHEMA_VERSION = 2
+
+
+def migrate_reliefs(steps):
+    """Intersect sale permissions on conflict; retain every original occurrence."""
+    entries = {str(i): deepcopy(s.config["equipment_sell"]) for i, s in enumerate(steps) if "equipment_sell" in s.config}
+    policies = []
+    # Only migration knows the v1 consumers and their implicit defaults.
+    # This historical map is not runtime wiring or GUI visibility policy.
+    legacy_consumers = {"monster_wave", "world_boss", "stages_daily", "gold_farming"}
+    values = [s.config.get("equipment_sell", {}) for s in steps
+              if "equipment_sell" in s.config or s.flow_id in legacy_consumers]
+    for value in values:
+        try:
+            policies.append(config_overrides({"equipment_sell": value})["equipment_sell"])
+        except (TypeError, ValueError):
+            policies.append(EquipmentSellPolicy(frozenset(), False))
+    policy = ReliefPolicy()
+    if policies:
+        allowed = frozenset.intersection(*(p.ethereal_types for p in policies))
+        policy = replace(policy, equipment_sell=EquipmentSellPolicy(allowed, all(p.ethereal_enhance for p in policies)))
+    cleaned = tuple(replace(s, config={k: v for k, v in s.config.items() if k != "equipment_sell"}) for s in steps)
+    return cleaned, policy, entries, len(set(policies)) > 1
+
 
 
 def config_overrides(config: dict) -> dict:
@@ -71,6 +96,8 @@ class RoutineSpec:
     name: str
     steps: tuple[RoutineStep, ...] = ()
     resource_snapshot_mode: str = ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value
+    relief_policy: dict | None = None
+    legacy_relief_configs: dict = field(default_factory=dict)
 
     def __post_init__(self):
         if not isinstance(self.id, str) or not self.id.strip():
@@ -80,7 +107,11 @@ class RoutineSpec:
         if any(not isinstance(step, RoutineStep) for step in self.steps):
             raise ValueError("steps must contain RoutineStep")
         object.__setattr__(self, "name", self.name.strip())
-        object.__setattr__(self, "steps", tuple(self.steps))
+        steps, migrated, legacy, _ = migrate_reliefs(self.steps)
+        policy = migrated if self.relief_policy is None else ReliefPolicy.from_dict(self.relief_policy)
+        object.__setattr__(self, "steps", steps)
+        object.__setattr__(self, "relief_policy", policy.to_dict())
+        object.__setattr__(self, "legacy_relief_configs", {**deepcopy(self.legacy_relief_configs), **legacy})
         object.__setattr__(self, 'resource_snapshot_mode', ResourceSnapshotMode(self.resource_snapshot_mode).value)
 
     def active_steps(self, registry):
@@ -111,7 +142,7 @@ class RoutineStore:
             return default_routines(self.registry), "custom"
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
-            if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] != SCHEMA_VERSION:
+            if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] not in (1, SCHEMA_VERSION):
                 raise ValueError("unsupported routine schema version")
             if not isinstance(data.get("routines"), list):
                 raise ValueError("routines must be an array")
@@ -119,6 +150,7 @@ class RoutineStore:
             self.warnings.append(f"Cannot load routines: {error}; using defaults")
             self._preserve_original = True
             return default_routines(self.registry), "custom"
+        self._preserve_original = data["version"] != SCHEMA_VERSION
         routines = []
         ids = set()
         available = {d.id for d in self.registry.definitions}
@@ -160,7 +192,24 @@ class RoutineStore:
                     and tuple(steps) == legacy and "gold_farming" in available):
                     steps = [RoutineStep("gold_farming")]
                     self.warnings.append("Basic Gold Farming upgraded to Gold Farming Cycle; custom sequences preserved")
-                routines.append(replace(base, steps=tuple(steps)))
+                cleaned, migrated, legacy, conflict = migrate_reliefs(steps)
+                if legacy:
+                    self._preserve_original = True
+                if conflict:
+                    self.warnings.append(f"{base.name}: conflicting legacy Equipment relief; intersecting sale permissions; originals retained")
+                raw_policy = raw.get('relief_policy', migrated.to_dict() if data['version'] == 1 else None)
+                archive = deepcopy(raw.get('legacy_relief_configs', {}))
+                if not isinstance(archive, dict):
+                    archive = {'unreadable_archive': archive}
+                archive.update(legacy)
+                try:
+                    ReliefPolicy.from_dict(raw_policy)
+                except (TypeError, ValueError, KeyError):
+                    archive['invalid_relief_policy'] = raw_policy
+                    raw_policy = ReliefPolicy.safe().to_dict()
+                    self._preserve_original = True
+                    self.warnings.append(f"{base.name}: invalid relief policy; productive suboperations disabled; original retained")
+                routines.append(replace(base, steps=cleaned, relief_policy=raw_policy, legacy_relief_configs=archive))
                 ids.add(base.id)
             except (KeyError, TypeError, ValueError) as error:
                 self.warnings.append(f"Invalid routine ({error}); skipped")
@@ -219,7 +268,9 @@ class RoutineEditor:
     def create(self, name, *, duplicate=False):
         steps = deepcopy(self.draft.steps) if duplicate and self.draft else ()
         mode = self.draft.resource_snapshot_mode if duplicate and self.draft else ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value
-        self.draft = RoutineSpec(uuid4().hex, name, steps, mode)
+        policy = deepcopy(self.draft.relief_policy) if duplicate and self.draft else None
+        archive = deepcopy(self.draft.legacy_relief_configs) if duplicate and self.draft else {}
+        self.draft = RoutineSpec(uuid4().hex, name, steps, mode, policy, archive)
         self.selected_id = self.draft.id
         self.routines.append(deepcopy(self.draft))
 
@@ -251,7 +302,12 @@ class RoutineEditor:
 
     def configure(self, index, config):
         config_overrides(config)
+        if "equipment_sell" in config:
+            raise ValueError("Equipment relief belongs to the routine policy")
         self._replace_step(index, config=config)
+
+    def configure_reliefs(self, policy):
+        self.draft = replace(self.draft, relief_policy=ReliefPolicy.from_dict(policy).to_dict())
 
     def set_resource_snapshot_mode(self, mode):
         self.draft = replace(self.draft, resource_snapshot_mode=ResourceSnapshotMode(mode).value)

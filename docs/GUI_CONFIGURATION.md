@@ -1,77 +1,82 @@
 # GUI/config — contrato vigente
 
-Cleanup 2026-10-06 sobre `fe774abcef3a636c138028717a0d2a0b514c5e6f`, incluido
-en el checkpoint de Character State / Character Data Sweep. Implementación en
-`tools/gui.py`, proyección en `bot/gui_model.py`. Tk/ttk sigue siendo el framework.
+Refactor Reliefs 2026-10-06 sobre `d97e899b9fac3fbc26583d595b21abd4267b0ce9`.
+Implementación en `tools/gui.py`; proyección en `bot/gui_model.py`. Tk/ttk sigue vigente.
 
 ## Owners y persistencia
 
-| Setting | Owner / condición de visibilidad | Persistencia | Default del formulario |
+Relief configuration belongs to routine-level transversal relief policy, not to current consumer flows.
+Consumers are not part of the policy contract.
+`RoutineSpec.relief_policy` / JSON v2 posee decisiones de Socket, Equipment Sell,
+Crafting Material y Treasure. La UI no enumera consumidores ni deriva ownership del call graph.
+
+| Setting | Owner | Persistencia / semántica | Default migrado sin overrides |
 | --- | --- | --- | --- |
-| Enabled | Occurrence, fila de la rutina seleccionada | `RoutineStep.enabled`, JSON v1 | true |
-| Purchase SKIP tickets | MW occurrence; también prerequisite/investment de Stages Ads y Gold Farming Cycle | `config.monster_wave.purchase_skip_tickets` | false |
-| Continue with nonblocking inventory full | Mismos consumidores de MW | `config.monster_wave.continue_when_nonblocking_inventory_full` | false |
-| Ethereal Boots, Chest, Gloves, Helmet, Pants | Equipment relief de MW, Stages, Gold y WB | `config.equipment_sell.ethereal_types` | checked |
-| Ethereal Earrings, Necklace, Ring, Weapon | Mismo equipment relief | mismo campo | unchecked |
-| Ethereal Enhance | Mismo equipment relief | `config.equipment_sell.ethereal_enhance` | false |
-| WB eligibility | Sólo World Boss occurrence | `config.world_boss.eligibility` | DAILY_QUEST |
-| Resource snapshot | Rutina completa, sin depender de la fila seleccionada | `RoutineSpec.resource_snapshot_mode`, JSON v1 | BEFORE_CHARACTER_ROTATION |
-| Routine name / selected library entry | Biblioteca de rutinas | `RoutineSpec.name` / `selected_id`, JSON v1 | Presets existentes |
-| Characters | Request de Run Session; Sweep usa su ALL 28 existente | Request en memoria, no rutina | 28 |
-| Debug | Visibilidad de eventos del request | Request en memoria | false |
-| Appearance | Application, siempre disponible | `runtime/gui_preferences.json` | Light si falta/es inválida |
+| Enhance All | Socket Relief de rutina | `relief_policy.socket.enhance_all` | true |
+| Sell incompatible opals | Socket Relief de rutina | `relief_policy.socket.sell_incompatible` | true |
+| Sell Ethereal Boots/Chest/Gloves/Helmet/Pants | Equipment Relief de rutina | `equipment_sell.ethereal_types`: checked **autoriza venta** | checked |
+| Sell Ethereal Earrings/Necklace/Ring/Weapon | Equipment Relief de rutina | mismo allowlist de venta | unchecked |
+| Sell Ethereal Enhance | Equipment Relief de rutina | `equipment_sell.ethereal_enhance`: checked autoriza su familia independiente | false |
+| Weapon / Armor / Accessories | Crafting Material Relief de rutina | `crafting_material.categories` | las tres habilitadas, preservando el drain existente |
+| Open Gold Keys for safe capacity relief | Treasure Relief de rutina | `treasure.gold_keys` | true |
+| WB eligibility | occurrence WB | `config.world_boss.eligibility` | DAILY_QUEST |
+| Resource snapshot | rutina | `resource_snapshot_mode` | BEFORE_CHARACTER_ROTATION |
+| Appearance | Application | `runtime/gui_preferences.json` | Light si falta/es inválida |
+| Enabled / continuation | occurrence | `enabled` / `continue_on_unavailable` | true |
+| Characters / Debug | request | sólo memoria | 28 / false |
 
-Los defaults de formulario se conservan de los dataclasses actuales. Una occurrence
-sin overrides sigue heredando los defaults del runtime; Apply crea una decisión
-explícita para las secciones que consume. La tabla describe controles GUI;
-`continue_on_unavailable` sigue siendo un campo v1 existente, sin añadir un control.
+Combine sigue encapsulado antes de Sell, sin configuración ni panel vacío. Ethereal+
+sigue protegido permanentemente. Los labels dicen **Sell Ethereal**, sin invertir
+el allowlist antiguo. No hay switch general Socket: ambas opciones false impiden sus
+suboperaciones productivas; el owner conserva su retorno y resultado sin relief.
 
-## Auditoría causal y layout
+`treasure.gold_keys` gobierna el OPEN_ONCE + drain seguro existente. Platinum no tiene
+campo ni control hoy. El objeto `treasure` es el slot de schema donde se añadirá
+`open_platinum_keys` junto con operación, GT y guards; un campo no implementado se
+rechaza de forma segura, nunca aparenta funcionar.
 
-El panel anterior mostraba venta, ambos settings MW, WB eligibility y Resource
-snapshot simultáneamente. Apply construía MW + equipment_sell para cualquier flow,
-incluido Black Market. Sólo agregaba eligibility cuando el flow era WB. La propiedad
-de rutina de Resource snapshot ya era correcta en JSON, pero su placement era Step
-Settings. No existía scroll en ese panel. No existía preference de appearance.
+## Layout y comportamiento de edición
 
-Ahora Routine Editor agrupa selector/New/Duplicate/Rename/Save Routine/Delete,
-lista ordenada y acciones Enable/Disable, Up/Down, Remove, Add flow. A su derecha:
+```text
+Routine Editor
+├── Steps (ordered occurrences)
+├── Step Settings
+├── Routine Settings
+├── Reliefs
+└── Application
+```
 
-- **Step Settings = selected occurrence**. El título identifica posición y nombre.
-  Se reconstruye al cambiar selección. BM, Mailbox y otros flows sin consumers
-  configurables muestran `No configurable settings for this step.`; Apply está
-  deshabilitado. WB muestra eligibility y su equipment relief, nunca MW. MW muestra
-  sus dos decisiones y equipment relief, nunca WB. Stages y Gold mantienen los
-  consumers MW/equipment que sus builders componen, identificados como prerequisite
-  o investment. No se infiere gameplay nuevo desde los nombres.
-- **Routine Settings = whole routine**. Resource snapshot en panel propio.
-  Cambiarlo modifica el borrador; Save Routine persiste, como antes.
-- **Application Settings = appearance**. Pestaña Application independiente.
-  Light/Dark se aplica inmediatamente y se persiste al seleccionar.
-- **Character State** independiente del editor, con Sweep — All 28 como acción de
-  mantenimiento y el mismo progreso/Stop Safely global.
+Step Settings sólo expone eligibility WB. Los dos campos legacy MonsterWaveConfig
+se conservan en configs guardadas y APIs standalone, pero no se muestran: en el path
+productivo actual la preparación resuelve tickets por SKIP físico y el planner decide
+YES/NO. No presentar switches sin efecto en la rutina. Otros steps sin decisiones
+configurables muestran una nota y Apply deshabilitado.
 
-Los dos panels de settings usan Canvas + scrollbar ttk vertical, rueda local y
-Page Up/Down con foco en el viewport. El ancho sigue el viewport y las notas se
-ajustan. Apply queda fuera del scroll. La lista de steps y la tabla mantienen
-scroll horizontal/vertical. No se depende de maximizar la ventana.
+Routine Settings contiene Resource snapshot. Reliefs contiene los cuatro grupos de
+la tabla. Application contiene Light/Dark. Estos tres panels y Step Settings usan el
+viewport Canvas/scrollbar existente, wheel local, Page Up/Down y tokens del theme.
+Notas ajustan su ancho; Apply WB queda fuera del scroll. No requiere maximizar.
 
-## Apply, v1 y configs repetidas
+Apply WB modifica sólo la occurrence y descarta ediciones no aplicadas al cambiar
+selección. Checkboxes Reliefs actualizan directamente el borrador de **rutina**;
+Save Routine persiste. Seleccionar steps no vuelve a cargar ni modifica relief policy.
+Reorder conserva occurrences; Duplicate copia policy y archivo legacy de forma independiente.
 
-Apply modifica exclusivamente las secciones configurables de la occurrence que
-describe el formulario. No aplica si la selección ya cambió antes del evento del
-formulario. Save Routine persiste el borrador. Cambiar de step descarta ediciones
-no aplicadas, explicado junto a Apply; no hay autosave silencioso. Reorder y
-Duplicate conservan el config de cada occurrence. Los overrides legacy ajenos a un
-formulario se retienen sin añadirlos a otros flows ni eliminar datos existentes.
-No cambia schema v1 ni su recuperación de configs corruptas/Basic Gold.
+## Migración v1 → v2
 
-**Rutina normal + BEFORE_CHARACTER_ROTATION conserva su mecanismo productivo**:
-al final de cada personaje, Rotation abre su Quick Menu; el collector observa
-Lapiz/Dark/Light/Nature/K Coins, persiste un snapshot completo y luego Rotation
-abre Character Select. No hay una apertura QM adicional. OFF continúa desactivando
-el collector. No se modificaron `ProductiveRuntime`, `StandardRotation`, Session,
-reader, SQLite ni policy WB en esta pasada.
+Load no escribe. Save hace backup único del original v1 y replace atómico desde un
+temporal. `config.equipment_sell` se mueve a la policy; cada valor explícito se conserva
+por índice original en `legacy_relief_configs`. La reconciliación incluye los defaults
+implícitos de consumidores v1. Valores distintos intersectan tipos vendibles y sólo
+habilitan Ethereal Enhance si todos autorizaban: warning explícito, sin elegir una
+occurrence. Config corrupta se conserva y deniega permisos; policy v2 inválida/faltante
+usa opciones productivas desactivadas, allowlist Ethereal vacío y warning. Low-tier
+Bulk/Combine mantienen su contrato seguro no configurable.
+
+El archivo local inspeccionado tiene dos rutinas. En Basic Gold, WB y Gold guardaban
+el mismo allowlist de cinco Armor y Enhance false; migran sin conflicto. Custom usa
+defaults. Resource snapshot, selected ID, ordering, flags, WB eligibility y legacy MW
+se conservan. No se modifican .env ni datos de Character State.
 
 ## Sorting de Character State
 
@@ -123,3 +128,10 @@ stress de 30 filas de settings, tabla/resources/times, report, console, Applicat
 diálogo y Light↔Dark. Reopen confirma 28 filas idénticas y Dark persistido.
 La pasada visual no necesitó teléfono, sweep completo, Ads/resources ni evaluator.
 El cierre conjunto se documenta en [CHARACTER_STATE_CHECKPOINT](CHARACTER_STATE_CHECKPOINT.md).
+
+Validación de Reliefs (2026-10-06): `python -m tools.reliefs_gui_smoke` abre Tk real
+con copias privadas, comprueba las cuatro pestañas, Light/Dark, scroll en ventana
+reducida, aislamiento de Step Settings y Save/reopen idéntico. Capturas y auditoría
+local en `artifacts/reliefs_gui_b810a723/`; cero Session/inputs de teléfono.
+El `routines.json` local se migró a v2 después de conservar un backup exacto v1;
+las dos rutinas y la selección Basic Gold Farming se conservan sin warnings.

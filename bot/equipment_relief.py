@@ -151,15 +151,22 @@ class _StopComposition(Exception):
 class EquipmentReliefComposer:
     """Compose one caller attempt, Combine retry and optional Sell retry."""
 
-    def __init__(self, combine_relief, sell_runtime) -> None:
+    def __init__(self, combine_relief, sell_runtime, *, reliefs=None) -> None:
         if not callable(getattr(combine_relief, "run", None)):
             raise ValueError("combine_relief must provide run()")
         if not callable(getattr(sell_runtime, "execute", None)):
             raise ValueError("sell_runtime must provide execute()")
         self.combine_relief = combine_relief
         self.sell_runtime = sell_runtime
+        self.reliefs = reliefs
 
-    def run(
+    def run(self, request):
+        if self.reliefs is None:
+            return self._run(request)
+        from bot.relief_policy import ReliefCapability
+        return self.reliefs.handle(ReliefCapability.EQUIPMENT, self._run, request)
+
+    def _run(
         self,
         request: EquipmentReliefRequest[RequestT, ContextT, CallerResultT],
     ) -> EquipmentReliefResult[CallerResultT]:

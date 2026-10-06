@@ -385,7 +385,13 @@ class MonsterWaveActivity:
                 if skip_state(current) is SkipState.READY:
                     current = step('activate', ActivateMonsterWaveSkip(), current,
                                    lambda s: skip_state(s) is SkipState.READY, active)
-                current = step('select_max', SelectMonsterWaveMax(), current, active, max_ready)
+                # MAX persists for this character across independent preparations.
+                # A fresh selected state is verification, not permission to retap.
+                if has(current, MW_MAX):
+                    if not max_ready(current):
+                        raise ValueError('mw_selected_max_not_ready')
+                else:
+                    current = step('select_max', SelectMonsterWaveMax(), current, active, max_ready)
                 return finish(sapphires_initial=fact.value)
 
             if phase == 'reenter':

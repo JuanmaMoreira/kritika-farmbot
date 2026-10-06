@@ -1,0 +1,38 @@
+{
+  "semantic_label": "trading_keys_bronze6_silver15_post_confirm",
+  "physical_class": "MODAL",
+  "provenance": "USER_GT 2026-10-06 + fresh productive stream of preserved failed state; original native frames retained only at 960px",
+  "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+  "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+  "character_index": 17,
+  "character": "Ice Warlock",
+  "original_log": "logs/20261006T153842.516960Z_session_ef92f6d3.jsonl",
+  "expected": {
+    "silver_key": [
+      6,
+      10
+    ],
+    "gold_key": [
+      15,
+      10
+    ]
+  },
+  "patches": [
+    {
+      "file": "rows_1.png",
+      "box": [
+        813,
+        428,
+        1483,
+        783
+      ],
+      "geometry": [
+        2712,
+        1224
+      ],
+      "sha256": "afb8e816710473a7e3ac34b316b5ed3db2d0620d151fd4c53d7995ef754eb8c0",
+      "source": "artifacts\\trading_failed_20261006\\productive_stream_1.png",
+      "source_sha256": "69f3b8df3467f7fae07890bfe7ee6905609fa16613ebb20e348db0765384d887"
+    }
+  ]
+}

@@ -1,5 +1,66 @@
 # Estado actual — Kritika FarmBot
 
+## Checkpoint causal Reliefs / MW / Trading — 2026-10-06
+
+Scope exclusivo posterior a `d97e899b`: policy/coordinator transversal de rutina,
+schema/migración v2 y GUI Reliefs; freshness A1 MW; OCR Keys post-confirm.
+La auditoría MAX confirma dos selecciones reales entre preparaciones independientes;
+fix mínimo conserva MAX ya seleccionado con evidencia fresca, sin rediseñar MW.
+Validación consolidada, INDEX aislado y exclusiones en
+[cierre del checkpoint](docs/RELIEFS_FARMING_CHECKPOINT.md).
+
+## FAILED manual Trading — corregido 2026-10-06
+
+Run `5c599d7e4c5a406394d3c18c46b07fb7`, session
+`a94ac2e7e19c47389bacda3db00ecc61`, log `20261006T153842.516960Z_session_ef92f6d3`.
+Continuación manual19 desde Crimson Assassin; Ice Warlock scope17/19, Gold step3
+occurrence1, MW final_investment attempt2 / keys_promotion / Silver→Gold.
+MAX correcto: Silver215/10, selector1/20→20/20, confirm único, efecto215→15.
+Primera divergencia: OCR post-confirm `15/10J` / .88277, secuencia93095;
+FAILED15:11:17 ART por `after_fact_unreadable`, sin retry económico.
+
+Fix focal del reader Keys: anclar unión de glyphs blancos a la línea numérica;
+excluir componentes decorativos fuera de línea. Parser estricto, threshold.90,
+consenso2, freshness y C4 conservados. Corpus afectado y209 tests dirigidos verdes.
+Live: Keys Bronze6/10/Silver15/10; apertura única Gold Key2 verifica1/20,
+máximo útil1 y omisión de `>>`. Detenido antes de confirm, Item Trade abierto,
+cero trades nuevos y cleanup de fuente. Replays/logs/límites en
+[informe Trading](docs/TRADING_FAILED_SESSION_A94AC2E7.md).
+
+**USER_GT Ads:** amplitud live cerrada por la campaña manual de hoy con Ads
+renovadas y dos failures, ninguno en Ads. No queda campaña de amplitud pendiente.
+**Ads live breadth debt: CLOSED**: broad coverage, short ads y multipart natural
+coverage. No se afirma nuevo28/28 COMPLETED. Notas de amplitud pendiente en campañas
+previas son historia superseded, salvo regresión futura concreta. Sell K Coins y
+trabajo histórico independiente quedan preservados fuera de este checkpoint.
+
+## Reliefs y FAILED manual MW — cierre causal 2026-10-06
+
+Baseline `d97e899b`, branch `rebuild/stable-baseline`. Config Reliefs pasa a rutina v2,
+con coordinator compartido, migración v1 conservadora/archivo original y GUI Step Settings /
+Routine Settings / Reliefs / Application. Ethereal checked autoriza vender, ahora explícito.
+Craft conserva tres categorías habilitadas al migrar. Platinum no implementado ni mostrado.
+
+Intento manual28 anterior: session `c385af509b7c4b2ba214f169e8af3b7f`, run
+`ff4b8797565f445695ef2cad0c2987ea`, log `20261006T123851.620375Z_session_86adecd4`.
+Falló 09:49:04 ART en Burst Breaker (primer personaje), Gold step3 occurrence1,
+MW final_investment attempt2. BASE MW + resource board correctamente resuelto; A1 agotó
+edad durante OCR y spacing durante percepción. Último CLEAR/accounting:276→176.
+Fix local A1 memoiza resultados CV por pixels exactos de ROI, conservando guards y
+ventanas. Replay curado demuestra old FAILED / fixed continuation YES + finish.
+Smoke live read-only: gap0.297s, edad0.875s, cinco filas, cero inputs y cleanup.
+Investigación/validación en [informe MW](docs/MW_FAILED_SESSION_86ADECD4.md).
+
+Validación dirigida: 1060 passed/16 failed inicialmente; un test GUI de routines
+usaba un control MW retirado y se actualizó (routines:53 passed). Los otros15 son
+fallos heredados presentes en `artifacts/character_state_baseline_failures.txt`:
+11 harness GUI anterior a Session y4 handoffs que llaman `_initial_lobby` retirado.
+Seis casos corrupt adicionales pasan (policy:38 passed). Resultados reutilizados:
+1067 verdes únicos,15 heredados; sin suite global. GUI real y migración/reopen local
+verificados. Estos conteos acumulados quedan como procedencia; la selección final
+única y validación del INDEX están en el cierre del checkpoint. No Open Pets.
+
+
 ## Character Identity + Persistent Character State — 2026-10-05/06
 
 Checkpoint conjunto sobre parent `fe774abcef3a636c138028717a0d2a0b514c5e6f`,
@@ -185,9 +246,8 @@ Poor/Normal adquiridos y vendidos por el owner; Rare/Epic tienen assets/replays 
 Cadena MW→QM Mailbox→restore MW→QM Quests→restore MW→QM Rotation acreditada en Mystic.
 Deuda real no bloqueante: chat desplegado
 completo no adquirido (banners existentes pasan); ahorro físico final Socket 0.2 s pendiente
-natural; Ads multipart/triple post-fix y No Ads temporal full recovery no forzados end-to-end;
-chrome de ad X sola sin texto reward-granted aún no reconocido (cierre tardío con reward
-verificado). Otras deudas menores conservadas en ROADMAP.
+natural. Amplitud Ads cerrada por USER_GT2026-10-06; los límites de campañas
+anteriores conservan sólo procedencia. Otras deudas menores conservadas en ROADMAP.
 Targeted swipe/ordered-list navigation (2026-10-04): primitive transversal implementada;
 único consumidor productivo actual Trading Center / Hero Weapon Crafting Materials.
 Orden relativo del suffix/nueve anchors CV y física adquiridos. Coarse robusto .94→.02

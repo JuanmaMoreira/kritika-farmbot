@@ -693,6 +693,7 @@ class MonsterWaveResourceRouteRuntime:
         keys_budget_remaining: int | None = None,
         equipment_relief=None,
         equipment_sell_plan=None,
+        reliefs=None,
         cancel_requested=lambda: False,
     ) -> None:
         for owner, method in (
@@ -725,12 +726,19 @@ class MonsterWaveResourceRouteRuntime:
         self.craft_runtime = craft_runtime
         self.keys_runtime = keys_runtime
         self.materials_runtime = materials_runtime
+        self.reliefs = reliefs
         self.keys_budget_remaining = (
             int(keys_budget_remaining) if keys_budget_remaining is not None else None
         )
         self.equipment_relief = equipment_relief
         self.equipment_sell_plan = equipment_sell_plan
         self.cancel_requested = cancel_requested
+
+    def _craft_operation(self, operation, **kwargs):
+        if self.reliefs is None:
+            return operation(**kwargs)
+        from bot.relief_policy import ReliefCapability
+        return self.reliefs.handle(ReliefCapability.CRAFTING_MATERIAL, operation, **kwargs)
 
     def execute_plan_once(
         self,
@@ -821,7 +829,7 @@ class MonsterWaveResourceRouteRuntime:
             if entered.status is not FlowStatus.COMPLETED:
                 return failed(entered, craft.capability)
             craft_open = True
-            capacity = self.craft_runtime.probe_equipment_capacity()
+            capacity = self._craft_operation(self.craft_runtime.probe_equipment_capacity)
             evidence.append("craft:required_equipment_capacity")
             if capacity.outcome is CraftRouteOutcome.CAPACITY_BLOCKED:
                 if self.equipment_relief is None:
@@ -837,7 +845,7 @@ class MonsterWaveResourceRouteRuntime:
             elif capacity.outcome is not CraftRouteOutcome.ENTERED:
                 return failed(capacity, craft.capability)
             else:
-                drained = self.craft_runtime.drain_hero_materials(max_batches=32)
+                drained = self._craft_operation(self.craft_runtime.drain_hero_materials, max_batches=32)
                 evidence.append("craft:drain_eligible_hero_families")
                 if drained.outcome is not CraftOutcome.SUCCESS:
                     return failed(drained, craft.capability)
@@ -882,7 +890,7 @@ class MonsterWaveResourceRouteRuntime:
                 evidence.append("route:trading_x_restores_craft")
                 if left.status is not FlowStatus.COMPLETED:
                     return failed(left, trading.capability, returning=True)
-                drained = self.craft_runtime.drain_hero_materials(max_batches=32)
+                drained = self._craft_operation(self.craft_runtime.drain_hero_materials, max_batches=32)
                 evidence.append("craft:drain_new_eligible_hero_families")
                 if drained.outcome is not CraftOutcome.SUCCESS:
                     return failed(drained, craft.capability)
@@ -984,10 +992,10 @@ class MonsterWaveResourceRouteRuntime:
                 first_attempt = False
                 return cached
             # Retry ONLY this CraftStep: fresh probe + drain, no trading.
-            probed = self.craft_runtime.probe_equipment_capacity()
+            probed = self._craft_operation(self.craft_runtime.probe_equipment_capacity)
             if getattr(probed, "outcome", None) is not CraftRouteOutcome.ENTERED:
                 return probed
-            return self.craft_runtime.drain_hero_materials(max_batches=32)
+            return self._craft_operation(self.craft_runtime.drain_hero_materials, max_batches=32)
 
         def is_full(result) -> bool:
             return (

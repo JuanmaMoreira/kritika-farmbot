@@ -35,6 +35,8 @@ from bot.character_state import CharacterStateStore, stamp
 from bot.character_data import ResourceSnapshotMode
 from bot.world_boss_state import WorldBossEligibilityMode
 from bot.monster_wave_config import MonsterWaveConfig
+from bot.relief_policy import ReliefPolicy, SocketReliefPolicy
+from bot.craft_semantics import CraftFamily
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
 from bot.productive_runtime import PROJECT_ROOT
 from bot.gui_evidence import locate_evidence, report_evidence_refs
@@ -103,6 +105,10 @@ class KritikaFarmBotGui:
             for t in sorted(CONFIGURABLE_EQUIPMENT_TYPES, key=lambda t: t.value)
         }
         self.ethereal_enhance_var = tk.BooleanVar(value=default_sell.ethereal_enhance)
+        self.socket_enhance_var = tk.BooleanVar(value=True)
+        self.socket_sell_var = tk.BooleanVar(value=True)
+        self.craft_category_vars = {f: tk.BooleanVar(value=True) for f in CraftFamily}
+        self.treasure_gold_var = tk.BooleanVar(value=True)
         self.status_var = tk.StringVar(value=GuiRunStatus.IDLE.value)
         self.character_var = tk.StringVar(value="-")
         self.flow_var = tk.StringVar(value="-")
@@ -233,6 +239,7 @@ class KritikaFarmBotGui:
                   'Use Save Routine to persist.', wraplength=340, style='Muted.TLabel').grid(row=3, column=0, sticky='ew', pady=12)
         self.routine_scroll.bind_content()
         self.routine_controls.append(self.resource_select)
+        self._build_relief_settings(settings)
         self.settings_tabs = settings
 
         state_frame = ttk.Frame(self.output_tabs, padding=6)
@@ -282,14 +289,17 @@ class KritikaFarmBotGui:
                 ('Copy selected', self._copy_selected), ('Copy all', self._copy_all))):
             ttk.Button(self.console_frame, text=text, command=command).grid(row=1, column=column, pady=7)
 
-        application = ttk.Frame(self.output_tabs, padding=16)
-        self.output_tabs.add(application, text='Application')
+        self.application_scroll = ScrollableSettings(self.settings_tabs)
+        self.settings_tabs.add(self.application_scroll, text='Application')
+        application = self.application_scroll.content
         ttk.Label(application, text='Application Settings', font=('Segoe UI', 12, 'bold')).grid(row=0, column=0, sticky='w')
         ttk.Label(application, text='Appearance').grid(row=1, column=0, sticky='w', pady=(18, 4))
         appearance = ttk.Combobox(application, textvariable=self.appearance_var, values=('Light', 'Dark'), state='readonly', width=18)
         appearance.grid(row=2, column=0, sticky='w')
         appearance.bind('<<ComboboxSelected>>', self._change_appearance)
         ttk.Label(application, text='Applied immediately and remembered for the application.', style='Muted.TLabel').grid(row=3, column=0, pady=12)
+
+        self.application_scroll.bind_content()
 
         status = ttk.LabelFrame(outer, text="Status / Progress — active task", padding=6)
         status.grid(row=3, column=0, sticky="ew", pady=(8, 0))
@@ -370,6 +380,8 @@ class KritikaFarmBotGui:
     def _refresh_routines(self):
         if self.selection.draft and hasattr(self,'resource_snapshot_var'):
             self.resource_snapshot_var.set(self.selection.draft.resource_snapshot_mode)
+            if hasattr(self, "relief_scroll"):
+                self._load_relief_settings()
         self.routine_select.configure(values=tuple(r.name for r in self.selection.routines))
         index = next((i for i, r in enumerate(self.selection.routines)
                       if r.id == self.selection.selected_id), -1)
@@ -460,6 +472,65 @@ class KritikaFarmBotGui:
             self.selection.remove(index)
             self._refresh_flow_list(min(index, len(self.selection.options) - 1))
 
+    def _build_relief_settings(self, settings):
+        self.relief_scroll = ScrollableSettings(settings)
+        settings.add(self.relief_scroll, text='Reliefs')
+        content = self.relief_scroll.content
+        row = 0
+        self.relief_controls = []
+        def heading(text):
+            nonlocal row
+            ttk.Label(content, text=text, font=('Segoe UI', 11, 'bold')).grid(row=row, column=0, sticky='w', pady=(12, 5))
+            row += 1
+        def note(text):
+            nonlocal row
+            ttk.Label(content, text=text, wraplength=340, style='Muted.TLabel').grid(row=row, column=0, sticky='ew', pady=5)
+            row += 1
+        def check(text, var):
+            nonlocal row
+            widget = ttk.Checkbutton(content, text=text, variable=var, command=self._apply_relief_settings)
+            widget.grid(row=row, column=0, sticky='w', pady=3)
+            self.relief_controls.append(widget)
+            row += 1
+        note('Whole routine. Changes update the draft; Save Routine persists them.')
+        heading('Socket Relief')
+        check('Enhance All', self.socket_enhance_var)
+        check('Sell incompatible opals', self.socket_sell_var)
+        heading('Equipment Relief')
+        note('Sell Equipment - checked means allow selling. Ethereal+ is always protected.')
+        note('Sell Ethereal equipment of these types:')
+        for kind, var in self.ethereal_type_vars.items():
+            check('Sell Ethereal ' + ('Earrings' if kind.value == 'earring' else kind.value.title()), var)
+        check('Sell Ethereal Enhance', self.ethereal_enhance_var)
+        heading('Crafting Material Relief')
+        note('Craft categories:')
+        for family, var in self.craft_category_vars.items():
+            check({'weapon': 'Weapon', 'armor': 'Armor', 'accessory': 'Accessories'}[family.value], var)
+        heading('Treasure Relief')
+        check('Open Gold Keys for safe capacity relief', self.treasure_gold_var)
+        self.routine_controls.extend(self.relief_controls)
+        self.relief_scroll.bind_content()
+
+    def _load_relief_settings(self):
+        policy = ReliefPolicy.from_dict(self.selection.draft.relief_policy)
+        self.socket_enhance_var.set(policy.socket.enhance_all)
+        self.socket_sell_var.set(policy.socket.sell_incompatible)
+        for kind, variable in self.ethereal_type_vars.items():
+            variable.set(kind in policy.equipment_sell.ethereal_types)
+        self.ethereal_enhance_var.set(policy.equipment_sell.ethereal_enhance)
+        for family, variable in self.craft_category_vars.items():
+            variable.set(family in policy.craft_categories)
+        self.treasure_gold_var.set(policy.treasure_gold_keys)
+
+    def _apply_relief_settings(self):
+        if self.selection.draft is None or self.controller.is_running:
+            return
+        policy = ReliefPolicy(SocketReliefPolicy(self.socket_enhance_var.get(), self.socket_sell_var.get()),
+            self._equipment_sell_policy(), frozenset(f for f, v in self.craft_category_vars.items() if v.get()),
+            self.treasure_gold_var.get())
+        self.selection.configure_reliefs(policy.to_dict())
+        self.result_var.set('Reliefs applied to routine draft; Save Routine to persist')
+
     def _load_step_settings(self):
         index = self._selected_flow_id()
         self._settings_step_index = index
@@ -474,11 +545,7 @@ class KritikaFarmBotGui:
             values = config_overrides(step.config)
         except (TypeError, ValueError) as error:
             self.result_var.set(f"Invalid step settings: {error}; apply valid settings to repair")
-        policy = values.get("equipment_sell", EquipmentSellPolicy())
         mw = values.get("monster_wave", MonsterWaveConfig())
-        for kind, variable in self.ethereal_type_vars.items():
-            variable.set(kind in policy.ethereal_types)
-        self.ethereal_enhance_var.set(policy.ethereal_enhance)
         self.purchase_skip_var.set(mw.purchase_skip_tickets)
         self.continue_full_var.set(mw.continue_when_nonblocking_inventory_full)
         if hasattr(self, 'wb_eligibility_var'):
@@ -491,7 +558,6 @@ class KritikaFarmBotGui:
         for widget in content.winfo_children():
             widget.destroy()
         self.step_controls = []
-        self.sell_policy_checks = []
         sections = STEP_CONFIG_SECTIONS.get(step.flow_id, ()) if step else ()
         self.visible_step_sections = sections
         index = self._settings_step_index
@@ -524,21 +590,6 @@ class KritikaFarmBotGui:
                 check.grid(row=row, column=0, sticky='w', pady=3)
                 row += 1
                 self.step_controls.append(check)
-        if 'equipment_sell' in sections:
-            ttk.Label(content, text='Equipment relief · Ethereal sales', font=('Segoe UI', 10, 'bold')).grid(row=row, column=0, sticky='w', pady=(12, 4))
-            row += 1
-            note('Checked types may be sold with Bulk during this step’s equipment relief. '
-                 'Ethereal+ is always protected. Lower tiers use Bulk.')
-            for kind, variable in self.ethereal_type_vars.items():
-                label = 'Earrings' if kind.value == 'earring' else kind.value.title()
-                check = ttk.Checkbutton(content, text=label, variable=variable)
-                check.grid(row=row, column=0, sticky='w', pady=2)
-                row += 1
-                self.sell_policy_checks.append(check)
-            check = ttk.Checkbutton(content, text='Ethereal Enhance', variable=self.ethereal_enhance_var)
-            check.grid(row=row, column=0, sticky='w', pady=2)
-            self.sell_policy_checks.append(check)
-            self.step_controls.extend(self.sell_policy_checks)
         running = self.controller.is_running
         for widget in self.step_controls:
             widget.configure(state='disabled' if running else 'readonly' if isinstance(widget, ttk.Combobox) else 'normal')

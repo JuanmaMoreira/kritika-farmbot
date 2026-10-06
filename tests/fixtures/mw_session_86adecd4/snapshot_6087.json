@@ -1,0 +1,52 @@
+{
+  "sequence": 6087,
+  "timestamp": 1423.734,
+  "observations": [
+    {
+      "confidence": 1.0,
+      "name": "landmark.monster_wave_title",
+      "region": null,
+      "source": "local_cv",
+      "value": null
+    },
+    {
+      "confidence": 0.9898069539755483,
+      "name": "landmark.monster_wave_skip_process",
+      "region": null,
+      "source": "local_cv",
+      "value": null
+    },
+    {
+      "confidence": 1.0,
+      "name": "indicator.monster_wave_max_selected",
+      "region": null,
+      "source": "local_cv",
+      "value": null
+    },
+    {
+      "confidence": 0.9947889618394743,
+      "name": "landmark.monster_wave_usage_unobstructed",
+      "region": null,
+      "source": "local_cv",
+      "value": null
+    },
+    {
+      "confidence": 0.9841797670605491,
+      "name": "landmark.monster_wave_inventory_board",
+      "region": null,
+      "source": "local_cv",
+      "value": null
+    }
+  ],
+  "state": {
+    "base_candidates": [],
+    "base_context": "screen.monster_wave",
+    "overlays": [
+      "popup.monster_wave_inventory_board"
+    ],
+    "sequence": 6087,
+    "status": "resolved",
+    "subcontext": null,
+    "timestamp": 1423.734
+  }
+}

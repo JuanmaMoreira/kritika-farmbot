@@ -1,0 +1,509 @@
+[
+  {
+    "acquisition_id": "fad6d4db75694c0b9d57c9cc7c8e589d",
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "after_sequence": 93000,
+    "attempt_index": 2,
+    "character_index": 17,
+    "component": "trading",
+    "consensus_seconds": 0.0005893000015930738,
+    "elapsed_seconds": 3.293475700000272,
+    "event": "trading.keys.facts.ready",
+    "event_role": "diagnostic",
+    "event_sequence": 24987,
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "gold_have": 215,
+    "gold_need": 10,
+    "level": "INFO",
+    "message": null,
+    "occurrence": 1,
+    "operation_id": "c559560c6a0147d69b17f19115451882",
+    "parent_operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "samples_attempted": 2,
+    "schema_version": 1,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "silver_have": 6,
+    "silver_need": 10,
+    "source_sequence": 93034,
+    "source_sequences": [
+      93029,
+      93034
+    ],
+    "step": "runtime_wait",
+    "step_index": 3,
+    "timestamp": "2026-10-06T18:11:08.408817+00:00"
+  },
+  {
+    "action_kind": "SelectTradingRow",
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "attempt_index": 2,
+    "character_index": 17,
+    "component": "action",
+    "dispatch_result": "adb_command_returned",
+    "event": "action.dispatched",
+    "event_role": "diagnostic",
+    "event_sequence": 24991,
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "level": "INFO",
+    "message": null,
+    "monotonic_timestamp": 20750.187,
+    "occurrence": 1,
+    "operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "parent_operation_id": null,
+    "pixel_target": [
+      2034,
+      693
+    ],
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "source_sequence": 93034,
+    "step": "gold_farming",
+    "step_index": 3,
+    "target": [
+      0.75,
+      0.5661764705882354
+    ],
+    "timestamp": "2026-10-06T18:11:08.478467+00:00"
+  },
+  {
+    "accepted": true,
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "attempt_index": 2,
+    "character_index": 17,
+    "component": "trading",
+    "diagnostic": {
+      "age_after_reader": 0.7162079999907291,
+      "age_before_reader": 0.5282079999888083,
+      "reads": {
+        "input_pair": {
+          "confidence": 0.99982,
+          "ocr_seconds": 0.0321641999980784,
+          "raw": "(215/10)"
+        },
+        "input_title": {
+          "confidence": 0.97814,
+          "ocr_seconds": 0.03640980000272975,
+          "raw": "Silver Key"
+        },
+        "output_title": {
+          "confidence": 0.99834,
+          "ocr_seconds": 0.04572349999943981,
+          "raw": "[Gold Key]"
+        },
+        "panel_title": {
+          "confidence": 0.95274,
+          "ocr_seconds": 0.034263100002135616,
+          "raw": "Item Trade"
+        },
+        "quantity": {
+          "confidence": 0.98956,
+          "ocr_seconds": 0.03057959999932791,
+          "raw": "1/20"
+        }
+      },
+      "reason": null,
+      "sequence": 93046
+    },
+    "event": "trading.panel.sample",
+    "event_role": "diagnostic",
+    "event_sequence": 24994,
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "level": "INFO",
+    "message": null,
+    "occurrence": 1,
+    "operation_id": "bc28c824d48e4366a6e72ee8647153d8",
+    "parent_operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "phase": "pre_max",
+    "reader_seconds": 0.18521200000031968,
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "sequence": 93046,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "step": "runtime_wait",
+    "step_index": 3,
+    "timestamp": "2026-10-06T18:11:09.733564+00:00"
+  },
+  {
+    "action_kind": "SelectTradingMaximum",
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "attempt_index": 2,
+    "character_index": 17,
+    "component": "action",
+    "dispatch_result": "adb_command_returned",
+    "event": "action.dispatched",
+    "event_role": "diagnostic",
+    "event_sequence": 24998,
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "level": "INFO",
+    "message": null,
+    "monotonic_timestamp": 20751.515,
+    "occurrence": 1,
+    "operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "parent_operation_id": null,
+    "pixel_target": [
+      1895,
+      981
+    ],
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "source_sequence": 93046,
+    "step": "gold_farming",
+    "step_index": 3,
+    "target": [
+      0.699,
+      0.802
+    ],
+    "timestamp": "2026-10-06T18:11:09.797531+00:00"
+  },
+  {
+    "accepted": true,
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "attempt_index": 2,
+    "character_index": 17,
+    "component": "trading",
+    "diagnostic": {
+      "age_after_reader": 0.6755330000160029,
+      "age_before_reader": 0.535533000016585,
+      "reads": {
+        "input_pair": {
+          "confidence": 0.99921,
+          "ocr_seconds": 0.029097999999066815,
+          "raw": "(215/200)"
+        },
+        "input_title": {
+          "confidence": 0.95694,
+          "ocr_seconds": 0.02635809999992489,
+          "raw": "Silver Key"
+        },
+        "output_title": {
+          "confidence": 0.99834,
+          "ocr_seconds": 0.0323117000007187,
+          "raw": "[Gold Key]"
+        },
+        "panel_title": {
+          "confidence": 0.95226,
+          "ocr_seconds": 0.028224300000147196,
+          "raw": "Item Trade"
+        },
+        "quantity": {
+          "confidence": 0.98489,
+          "ocr_seconds": 0.026777999999467283,
+          "raw": "20/20"
+        }
+      },
+      "reason": null,
+      "sequence": 93057
+    },
+    "event": "trading.panel.sample",
+    "event_role": "diagnostic",
+    "event_sequence": 25000,
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "level": "INFO",
+    "message": null,
+    "occurrence": 1,
+    "operation_id": "a8ad6d90399e4c2a9facc9118f5868ed",
+    "parent_operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "phase": "post_max",
+    "reader_seconds": 0.14729929999884916,
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "sequence": 93057,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "step": "runtime_wait",
+    "step_index": 3,
+    "timestamp": "2026-10-06T18:11:10.793673+00:00"
+  },
+  {
+    "action_kind": "ConfirmTradingTrade",
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "attempt_index": 2,
+    "character_index": 17,
+    "component": "action",
+    "dispatch_result": "adb_command_returned",
+    "event": "action.dispatched",
+    "event_role": "diagnostic",
+    "event_sequence": 25004,
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "level": "INFO",
+    "message": null,
+    "monotonic_timestamp": 20752.578,
+    "occurrence": 1,
+    "operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "parent_operation_id": null,
+    "pixel_target": [
+      1338,
+      957
+    ],
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "source_sequence": 93057,
+    "step": "gold_farming",
+    "step_index": 3,
+    "target": [
+      0.4934,
+      0.7819
+    ],
+    "timestamp": "2026-10-06T18:11:10.864539+00:00"
+  },
+  {
+    "acquisition_id": "b5d1e72d8c724162a831dcbc23867ebc",
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "after_sequence": 93068,
+    "attempt_index": 2,
+    "candidates": {
+      "gold_key": [
+        {
+          "identity_confidence": 0.9850241541862488,
+          "identity_match": true,
+          "identity_method": "template",
+          "item_id": "gold_key",
+          "localized_roi": [
+            0.495,
+            0.585202614379085,
+            0.547,
+            0.623202614379085
+          ],
+          "ocr_calls": 1,
+          "pair_method": "key_cell",
+          "pair_reads": [
+            {
+              "confidence": 0.88277,
+              "method": "key_cell",
+              "parse_result": null,
+              "raw": "15/10J",
+              "reason": "ocr_low_confidence",
+              "roi": [
+                0.495,
+                0.585202614379085,
+                0.547,
+                0.623202614379085
+              ]
+            }
+          ],
+          "parse_result": null,
+          "phase_seconds": {
+            "crop": 6.300000677583739e-06,
+            "ocr": 0.02361870000095223,
+            "parsing": 1.2299999070819467e-05,
+            "preprocessing": 0.0011290000002190936,
+            "row_localization": 0.002278899999510031
+          },
+          "reason": "ocr_low_confidence",
+          "row_top": 0.49820261437908503,
+          "row_y": 0.5661764705882354,
+          "sample": null
+        }
+      ],
+      "silver_key": [
+        {
+          "identity_confidence": 0.9847181439399719,
+          "identity_match": true,
+          "identity_method": "template",
+          "item_id": "silver_key",
+          "localized_roi": [
+            0.495,
+            0.4430457516339869,
+            0.547,
+            0.48104575163398694
+          ],
+          "ocr_calls": 1,
+          "pair_method": "key_cell",
+          "pair_reads": [
+            {
+              "confidence": 0.99992,
+              "method": "key_cell",
+              "parse_result": [
+                6,
+                10
+              ],
+              "raw": "6/10",
+              "reason": null,
+              "roi": [
+                0.495,
+                0.4430457516339869,
+                0.547,
+                0.48104575163398694
+              ]
+            }
+          ],
+          "parse_result": [
+            6,
+            10
+          ],
+          "phase_seconds": {
+            "crop": 6.599999323952943e-06,
+            "ocr": 0.023150900000473484,
+            "parsing": 1.8700000509852543e-05,
+            "preprocessing": 0.00043000000005122274,
+            "row_localization": 0.002137600000423845
+          },
+          "reason": null,
+          "row_top": 0.35604575163398694,
+          "row_y": 0.42401960784313725,
+          "sample": {
+            "have": 6,
+            "item_id": "silver_key",
+            "need": 10,
+            "row_y": 0.42401960784313725,
+            "section": "keys",
+            "sequence": 93095
+          }
+        }
+      ]
+    },
+    "capture_monotonic": 20755.649176999985,
+    "character_index": 17,
+    "component": "trading",
+    "elapsed_seconds": 2.603222800000367,
+    "event": "trading.keys.facts.sample",
+    "event_role": "diagnostic",
+    "event_sequence": 25010,
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "frame_height": 1224,
+    "frame_width": 2712,
+    "identified_rows": [
+      "silver_key"
+    ],
+    "is_keys_ready": true,
+    "level": "DEBUG",
+    "message": null,
+    "missing_rows": [
+      "gold_key"
+    ],
+    "occurrence": 1,
+    "ocr_calls": 2,
+    "operation_id": "81946b1aec2d468a9f8f5dd24c28e764",
+    "parent_operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "reader_seconds": 0.05286999999952968,
+    "reason": "missing_gold_key",
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "snapshot_seconds": 2.5502828000026057,
+    "source_sequence": 93095,
+    "status": "incomplete",
+    "step": "runtime_wait",
+    "step_index": 3,
+    "timestamp": "2026-10-06T18:11:14.448317+00:00"
+  },
+  {
+    "activity_id": "monster_wave",
+    "activity_role": "final_investment",
+    "after_fact": null,
+    "attempt_index": 2,
+    "before_fact": {
+      "evidence": [
+        "sample@93029:215/10",
+        "sample@93034:215/10"
+      ],
+      "have": 215,
+      "item_id": "gold_key",
+      "need": 10,
+      "row_y": 0.5661764705882354,
+      "section": "keys",
+      "sequence": 93034
+    },
+    "character_index": 17,
+    "component": "trading",
+    "confirmed": true,
+    "event": "trading.keys.trade.result",
+    "event_role": "diagnostic",
+    "event_sequence": 25031,
+    "evidence": [
+      "before:215/10",
+      "after_fact_unreadable",
+      "operation:silver_to_gold"
+    ],
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "inputs": [
+      "tap_row",
+      "tap_max",
+      "tap_confirm"
+    ],
+    "level": "INFO",
+    "message": null,
+    "occurrence": 1,
+    "operation": "silver_to_gold",
+    "operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "outcome": "failed",
+    "parent_operation_id": null,
+    "reason": "after_fact_unreadable",
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "step": "gold_farming",
+    "step_index": 3,
+    "timestamp": "2026-10-06T18:11:17.415619+00:00"
+  },
+  {
+    "activity_id": null,
+    "activity_role": null,
+    "advances_completed": 16,
+    "attempt_index": null,
+    "cause": "preparation_failed:step_failed:keys_promotion",
+    "character_index": 17,
+    "component": "session",
+    "event": "session.failed",
+    "event_role": "lifecycle",
+    "event_sequence": 25061,
+    "failure": {
+      "evidence_ref": "file:///D:/PROYECTOS/kritika-farmbot/artifacts/failure_evidence/failure_cc7e9afb653c4e3ca40bcf56f41943ca/failure.json",
+      "exception_type": null,
+      "flow": "gold_farming",
+      "message": "preparation_failed:step_failed:keys_promotion",
+      "sequence": null,
+      "step": "gold_farming",
+      "type": "legacy_error"
+    },
+    "flow": "gold_farming",
+    "flow_id": "gold_farming",
+    "level": "ERROR",
+    "message": null,
+    "occurrence": 1,
+    "operation_id": "26f51e7f0db7412aa8042fb947c63461",
+    "parent_operation_id": null,
+    "routine_id": "basic-gold",
+    "routine_name": "Basic Gold Farming",
+    "run_id": "5c599d7e4c5a406394d3c18c46b07fb7",
+    "schema_version": 1,
+    "session_id": "a94ac2e7e19c47389bacda3db00ecc61",
+    "step": "gold_farming",
+    "step_index": 3,
+    "timestamp": "2026-10-06T18:11:17.670807+00:00"
+  }
+]

@@ -241,13 +241,13 @@ class CraftRuntime:
             inputs=("open_quick_menu",),
         )
 
-    def probe_equipment_capacity(self) -> CraftRouteResult:
+    def probe_equipment_capacity(self, *, families=None) -> CraftRouteResult:
         """Read current Equipment slots and prove return to this Craft visit."""
         # Capacity is relevant only when this branch will create Equipment.
         current = self.observe_context(after_sequence=0)
         if current.outcome is not CraftRouteOutcome.ENTERED:
             return current
-        work = next((family for family in CraftFamily
+        work = next((family for family in CraftFamily if families is None or family in families
             if current.craft_fact.material_for(family) is not None
             and current.craft_fact.hero_cost_for(family) == 49
             and current.craft_fact.material_for(family) >= 49), None)
@@ -592,12 +592,14 @@ class CraftRuntime:
             CraftOutcome.FAILED, tuple(batches), previous, "craft_batch_budget_exhausted",
         )
 
-    def drain_hero_materials(self, *, max_batches: int) -> HeroMaterialDrainResult:
+    def drain_hero_materials(self, *, max_batches: int, families=None) -> HeroMaterialDrainResult:
         """Use the already-paid Craft visit for each freshly eligible family."""
         batches = []
         skipped = []
         final = None
         for family in CraftFamily:
+            if families is not None and family not in families:
+                continue
             context = self.observe_context(after_sequence=0)
             if context.outcome is not CraftRouteOutcome.ENTERED or context.craft_fact is None:
                 return HeroMaterialDrainResult(

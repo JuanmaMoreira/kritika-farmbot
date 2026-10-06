@@ -116,8 +116,18 @@ def _prepare_pair(crop, height, width):
                   and .001 * width <= bw <= .014 * width]
         if not glyphs:
             return None
-        # Union every glyph in the bounded causal cell, not a leftmost
-        # connected chain which can silently discard a leading digit.
+        # Icon borders also contain white, dark-outlined components. The
+        # manual Ice Warlock failure read 15/10J; a union of off-line icon
+        # components and digits admits that suffix. Anchor on tall digit tops,
+        # preserving every aligned glyph (including disconnected strokes),
+        # without choosing a leftmost chain that can lose leading digits.
+        digit_tops = [y for x, y, bw, bh in glyphs if bh >= .017 * height]
+        if not digit_tops:
+            return None
+        tolerance = max(1, round(.003 * height))
+        line_top = max(digit_tops, key=lambda y: sum(
+            abs(other - y) <= tolerance for other in digit_tops))
+        glyphs = [g for g in glyphs if abs(g[1] - line_top) <= tolerance]
         x1 = min(x for x, y, bw, bh in glyphs)
         y1 = min(y for x, y, bw, bh in glyphs)
         x2 = max(x + bw for x, y, bw, bh in glyphs)

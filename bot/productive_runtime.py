@@ -133,6 +133,7 @@ class ProductiveRuntime:
     # Stateless recognition backend shared by sequential occurrence bindings.
     # Readers keep their own facts/cursors/configs; no result cache is shared.
     ocr_engine: object | None = field(default=None, kw_only=True, repr=False)
+    reliefs: object | None = field(default=None, kw_only=True)
     routine_continue_on_unavailable: bool = field(default=True, kw_only=True)
     character_store: object | None = field(default=None, kw_only=True, repr=False)
     resource_snapshot_mode: str = field(default=ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value, kw_only=True)
@@ -339,6 +340,9 @@ class ProductiveRuntime:
         positions = tuple(i for i, step in enumerate(routine.steps) if step.enabled and step.flow_id in available)
         with event_scope(routine_id=routine.id, routine_name=routine.name):
             self.events.record("routine.started", step_count=len(steps))
+            from bot.relief_policy import ReliefPolicy, ReliefCoordinator
+            previous_reliefs = self.reliefs
+            self.reliefs = ReliefCoordinator(ReliefPolicy.from_dict(routine.relief_policy))
             previous = self.resource_snapshot_mode
             self.resource_snapshot_mode = routine.resource_snapshot_mode
             try:
@@ -348,10 +352,12 @@ class ProductiveRuntime:
                                         routine_steps=steps, routine_positions=positions)
             finally:
                 self.resource_snapshot_mode = previous
+                self.reliefs = previous_reliefs
 
     def _step_runtime(self, step):
         from bot.routines import config_overrides
         overrides = config_overrides(step.config)
+        overrides.pop("equipment_sell", None)  # legacy data is owned by routine migration
         if not overrides and self.routine_continue_on_unavailable == step.continue_on_unavailable:
             return self
         return replace(self, config=replace(self.config, **overrides),

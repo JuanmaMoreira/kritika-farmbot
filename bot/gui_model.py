@@ -241,12 +241,12 @@ def event_visible(event: RuntimeEvent, *, debug: bool) -> bool:
     return debug or event.level >= EventLevel.INFO
 
 
-# Actual consumers in FlowRegistry, including composed prerequisites.
+# Occurrence decisions only; relief policy belongs to the whole routine.
 STEP_CONFIG_SECTIONS = {
-    'monster_wave': ('monster_wave', 'equipment_sell'),
-    'stages_daily': ('monster_wave', 'equipment_sell'),
-    'gold_farming': ('monster_wave', 'equipment_sell'),
-    'world_boss': ('world_boss', 'equipment_sell'),
+    'monster_wave': (),
+    'stages_daily': (),
+    'gold_farming': (),
+    'world_boss': ('world_boss',),
 }
 
 CHARACTER_SORT_FIELDS = {

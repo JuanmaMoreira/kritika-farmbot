@@ -3,6 +3,27 @@
 Estado en [CONTEXT](CONTEXT.md); GT físico en [GAMEPLAY_GT](docs/GAMEPLAY_GT.md);
 contratos en [ARCHITECTURE](ARCHITECTURE.md) y [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md).
 
+## Checkpoint Reliefs / MW / Trading — 2026-10-06
+
+Alcance causal sobre `d97e899b`: Reliefs de rutina con migración v2, coordinator
+y GUI dedicada; FAILED manual `86adecd4` atribuido a ventana A1, con fix y replay focal.
+Open Platinum Keys queda futuro: requiere GT físico, economics/guards y operación real;
+no tiene control funcional hoy. Auditoría MW confirma segunda selección real de MAX;
+fix local conserva la selección física fresca entre preparaciones independientes.
+Open Pets no iniciado. Informe y límites live en
+[MW_FAILED_SESSION_86ADECD4](docs/MW_FAILED_SESSION_86ADECD4.md).
+
+Trading FAILED de la continuación manual19: reader post-confirm Keys corregido
+con209 tests dirigidos previos/replay y smoke focal hasta selector1/20 sin consumo.
+Ver [informe Trading](docs/TRADING_FAILED_SESSION_A94AC2E7.md).
+**USER_GT2026-10-06:** amplitud live Ads cerrada con Ads renovadas; las notas
+de limitación de campañas previas son históricas, no tareas de adquisición pendientes.
+**Ads live breadth debt: CLOSED** (broad coverage, short ads, multipart natural
+coverage). Campaña posterior al reset: failures sólo MW/Trading, causalmente ajenos;
+no se afirma un nuevo28/28 COMPLETED. Validación y exclusiones en
+[cierre del checkpoint](docs/RELIEFS_FARMING_CHECKPOINT.md).
+
+
 ## Full roster combinado cerrado técnicamente — 2026-10-05
 
 Campaña GUI manual27ae46d4:28/28 scopes,28 Rotation, Session COMPLETED,
@@ -77,14 +98,10 @@ no implementarlo como parte de este frente.
 4. Deudas live menores existentes, sólo ante aparición natural:
    - Chat desplegado completo en Abyssal; banners Channel Global Chat existentes pasan.
    - Ahorro físico final de Socket animation/scoped perception 0.2 s.
-   - Ads multipart/triple explícito post-latest-fix y No Ads temporal full recovery end-to-end;
-     implementación/tests e integración28/28 ya verdes, amplitud live limitada.
    - QM desde Battle Mode Select hacia destinos aún no ejercidos naturalmente; Back sólo hacia Lobby.
    - Sell logical transform entre Bulks si sigue Full; expansión Equipment +4 positiva
      sólo por necesidad real; Ethereal Enhance positivo cuando haga falta. Poor/Normal
      cerrados mediante assets físicos y tres Bulks guarded127→126→125→122.
-   - Chrome SDK X sola sin reward-granted: autoridad adquirida implementada y replay verde;
-     falta amplitud live natural tras ajuste general, sin confundir fin de parte con fin del ad.
    - SessionReport: reconocer el evento informativo `monster_wave.sapphire_effect` para
      no proyectar Gold como UNASSESSED cuando sus efectos y resultado están acreditados.
      La campaña2808930b conserva la proyección histórica; no convertirlo en failure.
@@ -94,3 +111,7 @@ no implementarlo como parte de este frente.
 Estas deudas no bloquean el checkpoint. No fabricar Full/materiales/ads ni provocar
 variantes para validarlas. No repetir la campaña de tres personajes ni seguir optimizando
 paths cerrados. Combate/manual Stages, scheduler y planner general permanecen fuera de scope.
+
+Las menciones anteriores de amplitud Ads pendiente son procedencia histórica,
+**superseded** por el cierre USER_GT2026-10-06. Sólo una regresión futura concreta
+puede reabrir esa deuda; no se requiere otra campaña para el presente cierre.

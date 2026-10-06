@@ -54,7 +54,7 @@ def test_roundtrip_order_flags_repetitions_independent_config_and_selected_id(st
     loaded, selected = store.load()
     assert loaded == (routine,)
     assert selected == 'r'
-    assert json.loads(store.path.read_text())['version'] == 1
+    assert json.loads(store.path.read_text())['version'] == 2
     assert config_overrides(loaded[0].steps[0].config)['monster_wave'] == MonsterWaveConfig(True, False)
     assert config_overrides(settings)['equipment_sell'].ethereal_types == frozenset({EquipmentType.RING})
     assert loaded[0].steps[2].config == {}
@@ -118,7 +118,7 @@ def test_editor_create_save_load_rename_duplicate_move_repeat_toggle_remove_dele
     editor.add('monster_wave')
     editor.add('mailbox')
     editor.add('monster_wave')
-    editor.configure(0, step_settings(MonsterWaveConfig(True), EquipmentSellPolicy()))
+    editor.configure(0, {'monster_wave': {'purchase_skip_tickets': True}})
     editor.move_up(2)
     editor.toggle(0)
     assert editor.active_ids == ('monster_wave', 'mailbox')
@@ -256,7 +256,9 @@ def test_disabled_and_unknown_skipped_order_and_step_config_applied_without_glob
     assert result.status is SessionStatus.COMPLETED
     assert trace == ['monster_wave.run', 'monster_wave.run', 'rotation.advance']
     assert builds[0][1].monster_wave.purchase_skip_tickets
-    assert builds[0][1].equipment_sell.ethereal_enhance
+    assert not routine.relief_policy["equipment_sell"]["ethereal_enhance"]
+    assert routine.legacy_relief_configs["2"]["ethereal_enhance"]
+    assert builds[0][1].equipment_sell == original.equipment_sell
     assert builds[1][1] == original
     assert runtime.config == original
     assert any(event == 'routine.step.unavailable' for event, _ in runtime.events.records)
@@ -419,19 +421,20 @@ def test_gui_callbacks_edit_positions_save_reopen_and_confirm_delete(store, monk
     app.available_flow_select = Combo()
     app.routine_var = Var()
     app.purchase_skip_var, app.continue_full_var = Var(False), Var(False)
+    app.wb_eligibility_var = Var('DAILY_QUEST')
     monkeypatch.setattr(app, '_ask_string', lambda *args, **kwargs: 'New routine')
     app._new_routine()
     assert app.selection.draft.name == 'New routine'
-    app.available_flow_select.index = next(i for i, d in enumerate(store.registry.definitions) if d.id == 'monster_wave')
+    app.available_flow_select.index = next(i for i, d in enumerate(store.registry.definitions) if d.id == 'world_boss')
     app._add_step()
-    app.purchase_skip_var.set(True)
+    app.wb_eligibility_var.set("GENERAL")
     app._apply_step_settings()
     app._add_step()
     app._move_up()
     assert app._selected_flow_id() == 0
     app._toggle_flow()
     assert not app.selection.draft.steps[0].enabled
-    assert app.selection.draft.steps[1].config['monster_wave']['purchase_skip_tickets']
+    assert app.selection.draft.steps[1].config['world_boss']['eligibility'] == 'GENERAL'
     assert app.flow_list.items[0].startswith('01.')
     assert app._save_routine()
     assert RoutineEditor(store).draft == app.selection.draft

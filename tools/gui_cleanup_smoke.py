@@ -127,7 +127,7 @@ def main():
         capture('dark_report')
         app.output_tabs.select(app.console_frame)
         capture('dark_console')
-        app.output_tabs.select(4)
+        app.settings_tabs.select(app.application_scroll)
         capture('dark_application')
         theme('Light')
         app.output_tabs.select(app.state_frame)

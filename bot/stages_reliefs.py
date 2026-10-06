@@ -9,6 +9,7 @@ from bot.stages_runtime import lobby, exposed
 from bot.perception.stages import surface
 from bot.runtime_observer import RuntimeWaitCancelled,RuntimeWaitTimeout
 from bot.event_log import record_best_effort
+from bot.relief_policy import coordinator_for
 
 class StagesReliefs:
     def __init__(self, nav, dependencies, equipment):
@@ -51,7 +52,7 @@ class StagesReliefs:
         if blocker==POPUP_SOCKET_INVENTORY_FULL:
             enter(AcceptSocketInventoryFull(),SCREEN_SOCKET)
             # Socket's existing return contract identifies Stages base after Back.
-            result=self.dependencies.socket_relief.run(SocketReturnPlan(ExitSocket(),'screen.stages'),cancel_requested=n.cancel_requested)
+            result=coordinator_for(self.dependencies).socket_operation(self.dependencies.socket_relief).run(SocketReturnPlan(ExitSocket(),'screen.stages'),cancel_requested=n.cancel_requested)
             if result.outcome.value=='cancelled':raise RuntimeWaitCancelled('socket relief cancelled')
             if not result.succeeded:raise ValueError('stages socket relief: '+str(result.error))
             s=config(result.final_snapshot.sequence)
@@ -85,7 +86,7 @@ class StagesReliefs:
             lambda s:blocker in s.state.overlays,
             lambda _:enter(OpenEquipmentCombine(),SCREEN_COMBINE),
             EquipmentCombineReturnPlan(ExitCombine(),'screen.stages',restored),
-            EquipmentReliefSellPlan(self.dependencies.config.equipment_sell,enter_inventory,return_inventory),
+            EquipmentReliefSellPlan(coordinator_for(self.dependencies).policy.equipment_sell,enter_inventory,return_inventory),
             n.cancel_requested)
         result=self.equipment.run(request)
         if 'cancelled' in result.outcome.value:raise RuntimeWaitCancelled('equipment relief cancelled')

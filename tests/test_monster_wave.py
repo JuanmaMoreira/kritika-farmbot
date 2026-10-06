@@ -176,6 +176,28 @@ def test_preparation_and_max_are_once_for_reusable_passes():
     assert d.intents.count('StartMonsterWaveSkip')==3
 
 
+def test_max_persists_across_independent_preparations_for_same_character():
+    d = Device()
+    assert d.activity().prepare().succeeded
+    assert d.activity().run_pass().succeeded
+    assert d.activity().leave().succeeded
+    # Final investment constructs another activity, but the physical MAX stays.
+    d.entry = MAX
+    assert d.activity().prepare().succeeded
+    for _ in range(2):
+        assert d.activity().run_pass().succeeded
+    assert d.intents.count('SelectMonsterWaveMax') == 1
+    assert d.intents.count('StartMonsterWaveSkip') == 3
+
+
+def test_selected_max_without_clear_controls_never_authorizes_retap():
+    d = Device((MW_TIMER, MW_SKIP_START, MW_MAX))
+    result = d.activity().prepare()
+    assert result.status is FlowStatus.FAILED
+    assert result.error == 'mw_selected_max_not_ready'
+    assert d.intents == ['OpenMonsterWave']
+
+
 def test_zero_initial_sapphires_does_not_start_defensive_extra_pass():
     d=Device()
     def read_sapphires(**kwargs):

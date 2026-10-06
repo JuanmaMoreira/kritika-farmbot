@@ -69,10 +69,10 @@ def labels(widget):
 
 @pytest.mark.parametrize('flow,sections', [
     ('black_market', ()), ('mailbox', ()),
-    ('world_boss', ('world_boss', 'equipment_sell')),
-    ('monster_wave', ('monster_wave', 'equipment_sell')),
-    ('stages_daily', ('monster_wave', 'equipment_sell')),
-    ('gold_farming', ('monster_wave', 'equipment_sell')),
+    ('world_boss', ('world_boss',)),
+    ('monster_wave', ()),
+    ('stages_daily', ()),
+    ('gold_farming', ()),
 ])
 def test_contextual_controls_and_apply_only_owned_config(app, flow, sections):
     steps(app, flow)
@@ -146,15 +146,44 @@ def test_resource_snapshot_in_routine_scope_save_reopen_independent_of_step(app)
     assert all(s.config == {} for s in app.selection.draft.steps)
 
 
+def test_reliefs_shared_draft_controls_save_duplicate_and_step_independence(app):
+    steps(app, 'black_market', 'world_boss', 'monster_wave', 'stages_daily', 'gold_farming')
+    assert [app.settings_tabs.tab(t, 'text') for t in app.settings_tabs.tabs()] == [
+        'Step Settings', 'Routine Settings', 'Reliefs', 'Application']
+    text = labels(app.relief_scroll.content)
+    assert all(s in text for s in ('Socket Relief', 'Equipment Relief', 'Crafting Material Relief', 'Treasure Relief'))
+    assert not any('Platinum' in s or 'Combine' in s for s in text)
+    assert 'Sell Ethereal Weapon' in text and 'Sell Ethereal Enhance' in text
+    app.socket_enhance_var.set(False)
+    app.socket_sell_var.set(True)
+    from bot.craft_semantics import CraftFamily
+    for family, variable in app.craft_category_vars.items():
+        variable.set(family is CraftFamily.WEAPON)
+    app._apply_relief_settings()
+    policy = deepcopy(app.selection.draft.relief_policy)
+    for index in range(5):
+        select_step(app, index)
+        app._apply_step_settings()
+        assert app.selection.draft.relief_policy == policy
+        assert 'equipment_sell' not in app.selection.draft.steps[index].config
+        assert not any('Relief' in t or 'Ethereal' in t for t in labels(app.step_scroll.content))
+    app.selection.create('Copy Reliefs', duplicate=True)
+    app._refresh_routines()
+    assert not app.socket_enhance_var.get() and app.socket_sell_var.get()
+    app._save_routine()
+    from bot.routines import RoutineEditor
+    assert RoutineEditor(app.selection.store).draft.relief_policy == policy
+
+
 def test_settings_scroll_reaches_bottom_and_apply_remains_accessible(app):
     steps(app, 'monster_wave')
     app.root.geometry('760x560')
     app.root.deiconify()
     app.root.update()
     assert app.step_scroll.canvas.winfo_height() >= 100
-    for panel in (app.step_scroll, app.routine_scroll):
-        if panel is app.routine_scroll:
-            app.settings_tabs.select(panel)
+    for panel in (app.step_scroll, app.routine_scroll, app.relief_scroll):
+        app.settings_tabs.select(0 if panel is app.step_scroll else panel)
+        if panel is not app.relief_scroll:
             for i in range(20):
                 ttk.Label(panel.content, text=f'Growing settings {i}').grid(row=10 + i, column=0)
             panel.bind_content()

@@ -105,6 +105,20 @@ Evidencia física previa curada (procedencia en [contrato SKIP archivado](legacy
 
 El board MW muestra balances/límites, no rewards entrantes exactos ni recetas; drops no deterministas no autorizan predicción de saldo. Capacidad Gold Keys no observable por board/Trading; el alert Silver→Gold lleno aporta el bloqueo causal. Conversiones adquiridas: 40 Weapon→10 Hero, receta Hero Weapon de 49 materiales y 10 Bronze→2 Silver. Los facts frescos siguen autorizando cada operación económica, no un saldo calculado persistente. Procedencia histórica: [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md); policy y wiring: [RESOURCE_ROUTING](RESOURCE_ROUTING.md).
 
+**USER_GT (2026-10-06, MW):** MAX se selecciona una sola vez por personaje y
+permanece seleccionado durante los passes y preparaciones siguientes. La operación
+inicial conserva los dos taps consecutivos del control; persistencia no autoriza retap.
+
+**USER_GT / LIVE_EVIDENCE (2026-10-06, Trading Keys):** la fila `Silver Key 2`
+consume Bronze y la fila `Gold Key 2` consume Silver; el par debajo del icono
+de entrada es inventario disponible / coste por trade. Bronze `6/10` no permite
+un trade; Silver `15/10` permite uno. El Item Trade de Gold Key muestra Silver
+`(15/10)` y cantidad inicial `1/20`: numerador = trades seleccionados,
+denominador = límite del batch, distinto de la cantidad de Silver disponible.
+La oferta produce dos Gold Keys por trade. No revela capacidad Gold libre.
+Captura preservada y apertura única sin confirm en
+[informe Trading](TRADING_FAILED_SESSION_A94AC2E7.md).
+
 **LIVE_EVIDENCE (2026-10-04, Demon Blade):** Hero Armor → Helmet con 114/999 materiales,
 costo 49 por unidad; MAX mostró 2/10. Una confirmación produjo `Laoku's Destructive Helmet`;
 tras cerrar el resultado, Craft mostró 16/999. Selector/MAX/resultado/decremento adquiridos

@@ -100,19 +100,36 @@ scope. El resumen distingue identities/snapshots/Rotations/failures; Ads/WB sól
 cambian por sus eventos y ResetClock. Los fallos de lectura guardan evidencia local
 del frame ya disponible, sin captura adicional.
 
-## Rutinas configurables v1
+## Rutinas configurables v2
 
 ```text
-RoutineSpec (id, name, ordered RoutineStep[])
+RoutineSpec (id, name, ordered RoutineStep[], relief_policy)
   → ProductiveRuntime.run_routine
   → FlowRegistry existente (resolución por flow_id, una instancia por ocurrencia)
   → run_flows_once (personaje actual) / SessionPlan → SessionRunner → Rotation
   → flows productivos existentes
 ```
 
-`RoutineStep` conserva flow_id, enabled, overrides mínimos de config y policy booleana continue_on_unavailable. Repeticiones y orden son por posición, sin unicidad ni deduplicación de prerequisites. Presets son specs normales editables; ningún runner reconoce IDs/nombres de presets. Config se reconstruye con `MonsterWaveConfig`/`EquipmentSellPolicy`; una copia de dependencias para construir cada step comparte hardware, cancelación y eventos, sin modificar el config global ni contaminar otra ocurrencia.
+`RoutineStep` conserva flow_id, enabled, overrides mínimos de config y policy booleana continue_on_unavailable. Repeticiones y orden son por posición, sin unicidad ni deduplicación de prerequisites. Presets son specs normales editables; ningún runner reconoce IDs/nombres de presets. Config propia se reconstruye con `MonsterWaveConfig` legacy; una copia de dependencias para construir cada step comparte hardware, cancelación y eventos, sin modificar el config global ni contaminar otra ocurrencia.
 
-`RoutineStore` posee JSON local v1 (routines, selected_id, ordered steps); `RoutineEditor` posee CRUD y edición posicional independiente de Tk. `Custom` inicial reproduce el orden del registry; `.env` y APIs legacy no migran ni se sobrescriben. Un flow desconocido conserva su entrada y se omite con advertencia; nuevos flows siguen disponibles para añadir. Config inválida se conserva deshabilitada, otros entries válidos se recuperan; archivos/entries ilegibles se respaldan antes de Save. Escritura mediante archivo temporal y replace.
+`RoutineStore` posee JSON local v2 (routines, selected_id, ordered steps, relief_policy), con lectura/migración v1; `RoutineEditor` posee CRUD y edición posicional independiente de Tk. `Custom` inicial reproduce el orden del registry; `.env` y APIs legacy no migran ni se sobrescriben. Un flow desconocido conserva su entrada y se omite con advertencia; nuevos flows siguen disponibles para añadir. Config inválida se conserva deshabilitada, otros entries válidos se recuperan; archivos/entries ilegibles se respaldan antes de Save. Escritura mediante archivo temporal y replace.
+
+**Reliefs transversales:** la configuración pertenece a la routine-level relief policy,
+no a los flows consumidores actuales. Consumers are not part of the policy contract.
+`ProductiveRuntime.run_routine` instala un único
+`ReliefCoordinator(ReliefPolicy)` compartido por bindings y lo restaura en finally.
+El consumidor conserva la evidencia de presión, intención, navegación y retorno; el
+coordinator delega una vez a owners existentes. Socket recibe dos permisos independientes;
+Equipment composer conserva Combine-first y recibe el allowlist Sell; WB recibe esa misma
+policy desde contexto. Craft probe/drain reciben familias permitidas; Treasure consulta
+permiso antes de su recovery OPEN_ONCE/drain. No se mueven guards, bounds, cancellation,
+effect verification ni accounting a una abstracción nueva.
+
+Migración intersecta permisos de venta incompatibles (incluyendo defaults implícitos v1),
+emite warning y archiva todos los configs explícitos. Load no modifica disco; Save v1
+hace backup + temporary/replace. Policy corrupta/faltante v2 desactiva suboperaciones
+productivas configurables, sin modificar el contrato Combine/low-tier Sell. Platinum es
+un slot futuro del objeto Treasure, sin permiso ejecutable/UI hasta contar con GT.
 
 Policy usa resultados existentes: COMPLETED incluye no trabajo; FAILED/CANCELLED cortan. El registry declara únicamente los eventos de indisponibilidad conocidos, y SessionPlan alinea su autorización por posición. MANUAL_RESOLUTION puede continuar sólo sin error/failure, con todos sus eventos declarados, policy habilitada y postcondition verificada. El resultado original se conserva; el reporte muestra incompletitud business. Resoluciones manuales no declaradas y RESOURCE_BOARD_PENDING conservan el corte previo. No navegar en cleanup tras failure/cancelación.
 
