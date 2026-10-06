@@ -1,5 +1,38 @@
 # Estado actual — Kritika FarmBot
 
+## Checkpoint full roster — aceptación técnica28/28 2026-10-05
+
+Parent `656460c4b16526ced5ae46b36764240aa5ec71cb`, rama `rebuild/stable-baseline`.
+Nuevo checkpoint único `fix: stabilize full roster farming session`; commit/push
+autorizados para el cierre verde. Campaña GUI manual principal
+`20261005T234827.311080Z_session_27ae46d4`, run
+`e4d8ec7e6aaf403ca5f919685b22cd81`, session
+`6c2c6ad1abff47ffb4648262e26368bb`:28 scopes consecutivos/28 Rotation,
+Session COMPLETED, cero flow/session/runtime.failed,20:48:32→21:49:50 -03,
+61:17.608. Rutina BM→WB→Gold→Mailbox→DailyQuests→Rotation verificada por scope.
+26 nombres de clase registrados y2 UNKNOWN (18/21), conservados sin inferencia.
+25 personajes ads_exhausted;6 Ads con efecto Sapphire; WB28 no elegibles;
+23 inversiones MW en5 personajes. Chaining MW directo3, Lobby legítimo25,
+cero violaciones. Business incomplete27 es resultado real, no failure técnico.
+
+AdsManager ahora reconoce primitivas del chrome SDK independientes del fondo,
+y lee exclusivamente Reward granted/Next ad en el campo fijo SDK bajo ownership
+Android concordante. Terminal fresco autoriza cierre inmediato sin edad mínima;
+Next ad es intermedio sin cierre. Timeout/progreso no acreditan recompensa.
+No se añadieron templates por creative; propuesta aislada descartada. Implementación
+offline e integración28/28 verdes; amplitud live de short-ad/multipart limitada
+por agotamiento diario. En este run hubo6 SDK Back terminales (ads9.922–25 s),
+sin afirmar cobertura exhaustiva ni un ad físico de5 s. Próxima campaña manual
+con reset diario aportará cobertura natural; no bloquea el checkpoint.
+Causas/fixes/validaciones anteriores y rojos en
+[COMBINED_28_ACCEPTANCE_AUDIT](docs/COMBINED_28_ACCEPTANCE_AUDIT.md).
+Hashes, límites de configuración, cierre/INDEX y tabla28 en
+[FULL_ROSTER_CHECKPOINT](docs/FULL_ROSTER_CHECKPOINT.md). Siguen pendientes
+triple explícito post-latest-fix, No Ads temporal full recovery, Accessories
+MAX/result/effect y whitelist informativa `monster_wave.sapphire_effect`.
+X sola SDK adquirida está implementada/offline; su amplitud live tras este ajuste
+sigue pendiente. Trabajo independiente Summon Pet/scripts fuera del checkpoint.
+
 ## Checkpoint local — estabilización combinada 2026-10-05
 
 Sobre `31ecf4642db02d6a90fce871360f38cc45e92650`, rama `rebuild/stable-baseline`.

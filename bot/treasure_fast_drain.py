@@ -446,9 +446,9 @@ def local_karat_boundary(reading) -> bool:
     Mirrors ``RIGHT_KARAT_OPEN`` without the title: repeat-side Karat
     (popup or bar) with no drainable Gold side and no Gold anywhere
     (any Gold+Karat mix is a contradiction, never a boundary).
-    Authorizes zero taps; the caller confirms through resolvable
-    observations before reporting exhaustion, and times out fail-closed
-    otherwise.
+    Authorizes zero economic taps. With a fresh positive local reward,
+    the caller can use the existing safe lateral finalizer; otherwise
+    it awaits resolvable confirmation, bounded and fail-closed.
     """
     if local_reward_side(reading) is not None:
         return False
@@ -645,26 +645,62 @@ def drain_gold_keys_fast(
             "no_repeat_state",
         )
     ):
-        # Reward-transient entry: the verified open is caller-attested
-        # lineage; the first frame only needs local pair Gold (same
-        # contract as the loop). Karat/contradiction still refuse.
+        # A verified first open can still be in its reward flash. Observe
+        # passively until existing Gold/Karat authority reappears; the flash
+        # itself never authorizes a repeat or dismiss.
+        entry_until = min(deadline, now() + config.transient_wait_s)
         try:
-            entry_reading = measure_local(initial_snapshot.frame.image)  # type: ignore[attr-defined]
-        except Exception:
+            entry_ts = float(initial_snapshot.timestamp)
+            entry_seq = initial_snapshot.sequence
+        except (AttributeError, TypeError, ValueError):
+            return _finish(GoldKeyDrainOutcome.FAILED, reason="unreadable_timestamp")
+        entry_measure_pending = True
+        while True:
+            if _cancelled():
+                return _finish(GoldKeyDrainOutcome.CANCELLED, reason="user_cancelled")
             entry_reading = None
-        if entry_reading is not None and (
-            local_reward_side(entry_reading) is not None
-        ):
-            entry_reason = None
-            evidence.append("entry:reward_transient_local")
-        elif (
-            allow_karat_entry
-            and entry_reading is not None
-            and local_karat_boundary(entry_reading)
-        ):
-            entry_reason = None
-            karat_entry_pending = True
-            evidence.append("entry:karat_boundary_local")
+            if entry_measure_pending:
+                try:
+                    entry_reading = measure_local(initial_snapshot.frame.image)
+                except Exception:
+                    pass
+                entry_measure_pending = False
+            if entry_reading is not None and local_reward_side(entry_reading) is not None:
+                entry_reason = None
+                evidence.append("entry:reward_transient_local")
+                break
+            if allow_karat_entry and entry_reading is not None and local_karat_boundary(entry_reading):
+                entry_reason = None
+                karat_entry_pending = True
+                evidence.append("entry:karat_boundary_local")
+                break
+            if now() >= entry_until:
+                evidence.append("entry:transient_wait_timeout")
+                break
+            sleep(min(config.tap_interval_s, entry_until - now()))
+            try:
+                fresh_entry = observe()
+                fresh_ts = float(fresh_entry.timestamp)
+                fresh_seq = fresh_entry.sequence
+            except Exception:
+                return _finish(GoldKeyDrainOutcome.FAILED, reason="entry_observation_failed")
+            if fresh_ts <= entry_ts or fresh_seq <= entry_seq:
+                evidence.append("entry:stale_observation")
+                continue
+            entry_ts, entry_seq = fresh_ts, fresh_seq
+            initial_snapshot = fresh_entry
+            entry_measure_pending = True
+            entry_reason = check_fast_drain_entry(
+                initial_snapshot, initial_open_verified=True
+            )
+            evidence.append("entry:fresh_transient_observation")
+            if entry_reason is None:
+                break
+            if entry_reason not in (
+                "unknown_state", "ambiguous_state", "right_gold_absent",
+                "no_repeat_state",
+            ):
+                break
     if entry_reason is not None:
         if (
             entry_reason == "already_karat_boundary"
@@ -1088,11 +1124,14 @@ def drain_gold_keys_fast(
             if pending_reading is not None and local_karat_boundary(
                 pending_reading
             ):
-                # Premium backing seen locally: latch Gold exhaustion
-                # at once, zero taps; confirm through resolvable
-                # observations or time out closed.
+                # The reward grid can hide the title indefinitely at
+                # the premium boundary. Use the same safe finalizer as
+                # local Karat entry when the reward is positively seen;
+                # never require a global title before dismissing it.
                 _latch_gold_exhausted("local_karat")
                 evidence.append("local_karat_seen")
+                if local_reward_present(pending_reading):
+                    return _finalize_exhausted(snapshot)
                 terminal = _wait_bounded("local_karat")
                 if terminal is not None:
                     return terminal

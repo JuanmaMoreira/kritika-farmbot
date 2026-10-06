@@ -997,7 +997,10 @@ class WorldBossActivity:
             raid,
             expected=lambda item: _is_clean_base(item, SCREEN_WORLD_BOSS),
             precondition=_is_raid_complete,
-            retryable_from=lambda _: False,
+            # This only dismisses the completed raid; no new battle/reward
+            # confirmation. A lost tap may retry from the same fresh, resolved
+            # overlay, within the existing transition bound.
+            retryable_from=_is_raid_complete,
             tolerated=_is_raid_complete,
         )
         if returned is None:

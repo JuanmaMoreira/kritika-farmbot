@@ -32,16 +32,52 @@ Estado reconciliado para el checkpoint MW del 2026-10-02 en `rebuild/stable-base
 | CraftStep full | Entrada directa por handoff; Inventory sólo por necesidad real de capacidad. Full abre Combine directo; retorno local a Craft y fresh Item Count antes de Sell. Plan EquipmentSellPolicy conectado al mismo CraftStep. Inventory consultado implica segundo Back a Lobby como salida normal. Live Combine `135/128→124/128`, Craft `318→24`, Lobby esperado; caller Sell validado live en MW: Full → Combine → count 162/128 → cinco Bulk → 127/128 → retorno al mismo pass y CLEAR |
 | Keys productivo | Promoción normal verificada live en varias pasadas. Scope conserva dependencias del resolver, caller MW y tabs/rows; excluye readers ajenos. Identidades de las dos filas mediante templates frescos; sólo los pares causales usan OCR (2 llamadas/sample, 2 samples concordantes, máximo 3 ante un transitorio). C4 conserva panel/cantidad/cost kind/MAX post-dispatch/confirm único/efecto. Después del confirm, ni Item Trade persistente ni filas transitorias con el saldo previo cierran la espera: requiere decremento fresco o boundary reconocido, preservando el mismo consenso del efecto sin OCR duplicado. El siguiente paso reutiliza únicamente el consenso exacto que probó SUCCESS si sigue fresco (0..2 s), o readquiere después de su barrera. J cierra por X, reclasifica fresco y verifica MW; L1 reanuda directamente el mismo pass con `resume_after_relief=True`, cero Back/re-entry. Sólo un Lobby físicamente confirmado permite el recovery bounded existente; UNKNOWN/AMBIGUOUS no autoriza Back preventivo |
 | Gold relief productivo | ACK y drain conectados a los owners existentes. ACK exige alert Gold-full fresco y dos filas Keys completas después del dispatch; probado live. Treasure usa scope con todas las dependencias del resolver + detector Gold/Karats también en la primera apertura. OPEN_ONCE y drain verificados live: 499 Gold agotados, límite Karats y un dismiss final; cinco promociones causales posteriores completadas. Conserva latch premium, finalizer y retry causal único |
+
 | Materials productivo | Weapon→Hero conectado y verificado live: `852→52→12`, C3 fresco concordante y C4 verificado con una confirmación por intent. General incluye ofertas temporales fuera del catálogo histórico. Navegación dirigida productiva usa anchors CV y el orden relativo acreditado del suffix; no asigna índice al prefix temporal ni hace OCR de ofertas ajenas. Driver con feedback y máximo total de 12 gestos, fallback al scan previo con presupuesto restante; contexto/guard/cancelación frescos y target completo concordante antes de READY. C3/C4, MAX, costes, confirm único y efecto no cambian. No implementa otros materiales. Contrato transversal en ARCHITECTURE; GT físico en GAMEPLAY_GT; benchmark en TARGETED_SWIPE_AUDIT |
 | Sell | USER_GT definitivo implementado: nueve tipos Ethereal + Enhance configurables en GUI; E+ protegido; Bulk único por intent; count fresco, transformación lógica compatible tras Bulk e invalidación completa tras expansión. Adapter live Inventory `131/128→128/128→127/128` mediante dos Bulk verificadas (equipment y enhance), reevaluando el nuevo tail. Expansión: fila +4/popup/coste adquiridos nativamente, compra positiva aún no ejercitada live porque Bulk resolvió Full. Boots/Gloves/Pants/Chest/Helmet Ethereal y reinicios tail verificadas live: `172→167→162→157→146→135→129→128→123`, ocho Bulk y cero compras; Legendary/Epic/Rare/Ethereal tienen guards visuales nativos; Poor/Normal pendientes de adquisición si aparecen |
 
+Treasure drain, entrada transitoria (2026-10-05): después de OPEN_ONCE verificado,
+un destello blanco inicial puede carecer de autoridad Gold/Karat. El owner espera
+pasivamente hasta5 s con secuencia y timestamp crecientes, cancelación y cero
+inputs, hasta la misma autoridad local/semántica existente. No repite OPEN_ONCE;
+estado resuelto ajeno/contradictorio aborta, y un frame stale no acredita entrada.
+
+Treasure drain, frontera premium local (2026-10-05): bajo la entrada verificada,
+Karat fresco sin Gold bloquea irrevocablemente el botón económico. Si también
+hay reward local positivo, el loop utiliza el mismo finalizer lateral seguro
+que la entrada Karat; no espera que el título cubierto vuelva por sí solo.
+Cada dismiss conserva su autorización fresca y el éxito exige Treasure limpio
+posterior, sin reward ni RIGHT_GOLD_OPEN_MAX. Karat sin reward positivo mantiene
+la espera bounded sin input; no hay nuevos ROIs, thresholds ni Back desde UNKNOWN.
+
 Referencias de implementación: [flow_registry](../bot/flow_registry.py), [ProductiveMonsterWaveFlow](../bot/monster_wave_productive.py), [J/navigation](../bot/monster_wave_resource_route.py), [K](../bot/monster_wave_standalone.py), [planner](../bot/resource_route_planner.py), [Craft reader](../bot/craft_reader.py). Los tests de [MW productivo](../tests/test_monster_wave_productive.py) y [ruta](../tests/test_monster_wave_resource_route.py) describen composición con dobles; no convertirlos en prueba de integración física/callback real.
+
+HUD Sapphire MW (2026-10-05): grayscale local corrige el3 nativo que OCR color
+interpretaba intermitentemente como `③` y el parser rechazaba. Mismo ROI,
+scale2, confidence.50, consenso2 y freshness; Hub/Lobby preprocessing previo.
+Replay30 crops y consumidor live `read_sapphires_after_clear` confirman3 sin
+consumo adicional. Ver [auditoría combinada](COMBINED_28_ACCEPTANCE_AUDIT.md).
+
+El popup Sell con nombre largo y pago K Coins puede envolver el **nombre**
+antes del `]`. El reader lee una segunda línea física sólo tras prefijo fuerte
+`Selling [` sin cierre; requiere confianza suficiente en ambas y nombre completo
+concordante con detail. Identidad completa selecciona las regiones Bulk K Coin;
+scope Bulk exacto independiente, consenso fresco y confirm único siguen vigentes.
+Regresión Blade Dancer 2026-10-05 y replay nativo en COMBINED_28_ACCEPTANCE_AUDIT.
 
 ## Sell acceleration — implementada
 
 [Protected-block scan acceleration](../ROADMAP.md#protected-block-scan-acceleration) implementado en el Sell owner global: dos crops alrededor del panel fuerte protegido, NCC BGR con margen 2 px y threshold .90; sólo discovery. Sin perfil/crop/matching concluyente usa scan secuencial. Panel/policy/popup siguen autorizando cada Bulk. Rangos lógicos sobreviven sólo al Bulk compatible; expansión/contexto distinto invalidan. Combine-first, Ethereal+ y prefix accesible no cambian.
 
 ## Checkpoint aceptado y límites
+
+Full roster combinado2026-10-05: GUI manual27ae46d4,28/28 scopes y28 Rotation,
+COMPLETED/cero fallos técnicos. MW final reutilizable→paneles/QM Rotation directo
+en3 scopes;25 retornos Lobby legítimos, cero violaciones verificadas desde JSONL.
+25 personajes con Ads agotados,6 Ads con efecto Sapphire; no es cobertura amplia
+de anuncios largos/multipart. Ajustes Ads cortos/chrome SDK tienen offline e
+integración verdes, amplitud live pendiente de aparición natural. Hashes,
+business outcomes y provenance en [FULL_ROSTER_CHECKPOINT](FULL_ROSTER_CHECKPOINT.md).
 
 MW estable para esta versión; loop autónomo live terminado. Camino productivo estabilizado live: smokes completos sin instrumentación `214/214` y `253/253`, tres CLEAR cada uno y Lobby, sin flow.failed. Caller Equipment ejercitado en 4 CLEAR `396/396` tras cinco Bulk; su salida final Lobby fue el último fallo y quedó corregida/validada nativamente sin repetir consumos. Gold Full post-confirm, ACK/drain y retry causal único validados live. Validación proporcional final registrada en CONTEXT. USER_GT de Sell ya está cerrado y autoriza explícitamente Karats para Equipment; no existe un bloqueo pendiente por falta de autorización. MW productivo omite con precheck fresco de Sapphires <102, independientemente del badge Daily. Fill All con Gold insuficiente no bloquea esta integración.
 
@@ -122,11 +158,13 @@ Arena/ToT podrían tener capabilities propias si su dominio lo requiere; no se i
 
 ### Handoff del panel SELLABLE — USER_GT 2026-10-02
 
-El scanner mantiene abierto el mismo panel cuando el consenso fuerte fresco de nombre/tier/type y guards visuales cumple la policy. El handoff local conserva candidate, Inventory previo inmutable y panel/evidence de ese tap; Bulk usa ese panel directamente, sin close/reopen ni otro consenso equivalente. Cualquier input intermedio, cambio de candidate, pérdida de freshness o discontinuidad del título/grade/Sell invalida el handoff sin consumo. Esa continuidad visual sólo invalida: CV nunca autoriza Sell. PROTECTED/inconcluso cierra y conserva el scan vigente.
+El scanner mantiene abierto el mismo panel cuando el consenso fuerte fresco de nombre/tier/type y guards visuales cumple la policy. El handoff local conserva candidate, Inventory previo inmutable y panel/evidence de ese tap; Bulk usa ese panel directamente, sin close/reopen. Cualquier input intermedio, cambio de candidate o pérdida de freshness invalida el handoff sin consumo. La continuidad visual es el fast path; CV nunca autoriza Sell. **IMPLEMENTATION_CONTRACT 2026-10-05:** un miss de correlación del título/grade/Sell requiere una única relectura fuerte bounded, sin input, posterior al frame comparado. Debe confirmar el mismo nombre/tier/type/familia Enhance, Sell disponible y guard visual, con freshness/input lineage intactos; UNKNOWN, contradicción o cancelación deniegan sin consumo. PROTECTED/inconcluso durante discovery cierra y conserva el scan vigente.
 
 El popup Bulk, policy Ethereal/Ethereal+, confirmación única y fresh Item Count/delta permanecen en el owner consumptivo existente. Un `before` anterior al panel sólo se acepta con `reuse_selected_panel`, el mismo strong item observado por el scan y secuencias monotónicas; las transformaciones lógicas tras Bulk no cambian. Telemetría: protected/sellable panel opens, same-item reopens, Bulks y elapsed.
 
 Live Sell selected-panel continuity: exact pixel equality was invalidated by H264/background noise on an unchanged strong Boots panel (name NCC 0.999999, grade/type 0.996757; protected Ethereal+ negatives 0.4928/0.6877). Fresh same-candidate/input-lineage guards remain; conservative ROI correlation only rejects continuity and never authorizes sale. Strong classification/policy and the fresh Bulk popup retain destructive ownership. Zero-confirm denials report bulk_not_started plus their real reason rather than effect_inconclusive.
+
+WB Ice Warlock live 2026-10-05: title score .998975 below .999 aborted before Sell. The local fix keeps thresholds and obtains fresh strong semantic consensus when pixel continuity misses. A focused run naturally reproduced .998960, revalidated Epic Pants Enhance on sources714/717, then confirmed Bulk once and verified Item Count128→127 before returning to WB. Historical failed campaigns remain failed; see [combined acceptance audit](COMBINED_28_ACCEPTANCE_AUDIT.md).
 
 
 Live Craft count (2026-10-03): Hero Weapon ROI excludes the animated icon at the left of the count. The routine investment physically verified 800−10×49=310/999, while the old crop yielded 1310/999 and correctly failed closed. Native/stream replay reads 310/999 after cropping; confidence and parse_pair bounds remain unchanged. An inconclusive effect still never authorizes a second confirmation.

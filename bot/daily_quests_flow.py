@@ -284,10 +284,10 @@ class DailyQuestsFlow:
             state.status is ResolutionStatus.AMBIGUOUS
             or (
                 state.status is ResolutionStatus.RESOLVED
-                and not (
-                    state.base_context == SCREEN_QUESTS
-                    and MODE_DAILY_QUESTS in state.overlays
-                )
+                # A transient MAX-material toast can obscure the Daily tab
+                # after a claim while Quests chrome remains resolved. Wait
+                # passively; only fresh Daily evidence can settle the claim.
+                and state.base_context != SCREEN_QUESTS
             )
             or bool(
                 set(state.overlays)

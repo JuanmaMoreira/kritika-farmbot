@@ -43,6 +43,7 @@ from bot.runtime_facts import (
     RuntimeFact,
 )
 from bot.runtime_observer import RuntimeFacts, RuntimeSnapshot, RuntimeWaitCancelled
+from bot.runtime_observer import RuntimeWaitTimeout
 from bot.semantic_actions import (
     AcceptSocketInventoryFull,
     DismissWorldBossBagFull,
@@ -59,6 +60,7 @@ from bot.socket_inventory_relief import (
 )
 from bot.state import ResolutionStatus, ResolvedState
 from bot.verified_transition import (
+    VerifiedTransition,
     VerifiedTransitionOutcome,
     VerifiedTransitionResult,
 )
@@ -489,8 +491,9 @@ def test_complete_flow_handles_optional_previous_rewards_and_finishes_world_boss
         base=SCREEN_LOBBY,
         overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,),
     )
-    assert not continue_call[3]["retryable_from"](valid_raid)
+    assert continue_call[3]["retryable_from"](valid_raid)
     assert not continue_call[3]["retryable_from"](unknown_raid)
+    assert not continue_call[3]["retryable_from"](foreign_raid)
     assert not continue_call[3]["abort_if"](valid_raid)
     assert not continue_call[3]["abort_if"](unknown_raid)
     assert continue_call[3]["abort_if"](foreign_raid)
@@ -1237,6 +1240,71 @@ def test_each_navigation_or_ack_failure_aborts_without_later_input(
     assert result.status is FlowStatus.FAILED
     assert expected_name in result.error
     assert len(driver.calls) == failure_index + 1
+
+
+@pytest.mark.parametrize("retry_state,expected_outcome,taps", [
+    ("raid", VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY, 2),
+    ("unknown", VerifiedTransitionOutcome.RETRY_GUARD_REJECTED, 1),
+    ("ambiguous", VerifiedTransitionOutcome.UNEXPECTED_STATE, 1),
+    ("foreign", VerifiedTransitionOutcome.UNEXPECTED_STATE, 1),
+    ("stale", VerifiedTransitionOutcome.TIMEOUT, 1),
+    ("persistent", VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED, 2),
+])
+def test_raid_exit_lost_tap_replays_fresh_bounded_retry(retry_state, expected_outcome, taps):
+    # 72bd9da9: Raid Complete at 21887, still present at 21966/21972/21977.
+    # Exercise the production flow's guard with the real transition driver.
+    waits, observes, transitions = happy_inputs()
+    auto = Mock(ensure_on_quick=Mock(return_value=auto_result()))
+    flow, _, _, _, _, driver = build_flow(
+        sapphire_read=fact_result("resource.sapphires", 10, 1, SCREEN_LOBBY),
+        timer_read=fact_result("battle.timer_remaining", 60, 9, SCREEN_WORLD_BOSS_BATTLE),
+        waits=waits, observes=observes, transitions=transitions, auto=auto,
+    )
+    raid = lambda seq: snapshot(seq, base=SCREEN_WORLD_BOSS_BATTLE,
+                               overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+    candidate = raid(21977)
+    if retry_state == "unknown":
+        candidate = snapshot(21977, overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+    elif retry_state == "ambiguous":
+        candidate = snapshot(21977,
+                             status=ResolutionStatus.AMBIGUOUS,
+                             overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+    elif retry_state == "foreign":
+        candidate = snapshot(21977, base=SCREEN_LOBBY,
+                             overlays=(OVERLAY_WORLD_BOSS_RAID_COMPLETE,))
+    elif retry_state == "stale":
+        candidate = raid(21972)
+    def timeout(anchor, seconds, final):
+        return RuntimeWaitTimeout(after_sequence=anchor, timeout=seconds, last_snapshot=raid(final))
+
+    replay_waits = [timeout(21887, 6, 21966), timeout(21966, 2, 21972)]
+    if retry_state == "stale":
+        replay_waits.append(timeout(21972, 2, 21972))
+    elif retry_state == "persistent":
+        replay_waits.extend([timeout(21977, 6, 22000), timeout(22000, 2, 22010)])
+    else:
+        replay_waits.append(snapshot(22000, base=SCREEN_WORLD_BOSS))
+    replay = Observer(waits=replay_waits, observes=[candidate, raid(22020)])
+    actions = Mock()
+    actual = VerifiedTransition(replay, actions)
+    outcomes = []
+    original_execute = driver.execute
+
+    def execute(name, action, before, **kwargs):
+        if name != "world_boss.continue_after_raid":
+            return original_execute(name, action, before, **kwargs)
+        driver.snapshots.pop(0)
+        result = actual.execute(name, action, raid(21887), **kwargs)
+        outcomes.append(result.outcome)
+        return result
+
+    driver.execute = execute
+    result = flow.run()
+    assert outcomes == [expected_outcome]
+    assert actions.execute.call_count == taps
+    assert result.status is (FlowStatus.COMPLETED if retry_state == "raid" else FlowStatus.FAILED)
+    if taps == 2:
+        assert ("wait", 21977) in replay.trace
 
 
 def test_raid_complete_ack_failure_is_structured_and_never_claims_world_boss():

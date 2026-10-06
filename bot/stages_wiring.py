@@ -51,7 +51,8 @@ def build_stages_daily(dependencies, monster_wave):
         skip_ticket=lambda s: surface(s)=='skip_ticket',
         exhausted=lambda s: surface(s)=='daily_exhausted',
         game_visible=lambda s: surface(s) is not None or
-            s.observations.best('landmark.lobby_trading_center_label') is not None)
+            s.observations.best('landmark.lobby_trading_center_label') is not None,
+        chrome_ocr=balances.engine)
     def ad_input(operation, *args):
         operation(*args)
         android.input_dispatched()

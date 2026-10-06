@@ -1,0 +1,96 @@
+{
+  "authority": "USER_GT 2026-10-05 confirms exact circular Google SDK X as close-ready; native captures are LIVE_EVIDENCE",
+  "content": "SDK chrome only; unrelated ad content zeroed, no scaling",
+  "entries": [
+    {
+      "file": "legacy_terminal.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "terminal": true,
+      "retained_rois": [
+        [
+          0.055,
+          0.045,
+          0.094,
+          0.119
+        ],
+        [
+          0.902,
+          0.012,
+          0.945,
+          0.108
+        ]
+      ],
+      "source": "artifacts\\session_stabilization\\ad_campaign6_char2_terminal.png",
+      "source_sha256": "846d7857c66a2b2afc6992ba5fbeb9e7445c50e08b05916e013dca6df5ee9aab",
+      "fixture_sha256": "0fc59812950fa812703b15bfebaeccc523d6b1522afe1dddc07accca7e2bb279"
+    },
+    {
+      "file": "natural_terminal.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "terminal": true,
+      "retained_rois": [
+        [
+          0.055,
+          0.045,
+          0.094,
+          0.119
+        ],
+        [
+          0.902,
+          0.012,
+          0.945,
+          0.108
+        ]
+      ],
+      "source": "artifacts\\acceptance_28_20261005\\natural_ad_x_review\\13.png",
+      "source_sha256": "04e6a767ece880e0214a5bdbb735c8402e632d4403824862b8f63a8057db6217",
+      "fixture_sha256": "fce8130c31a2464e6a6de67b59bc592b964d1af48160f57c37e0ca333aada089"
+    },
+    {
+      "file": "multipart_early.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "terminal": false,
+      "retained_rois": [
+        [
+          0.055,
+          0.045,
+          0.094,
+          0.119
+        ]
+      ],
+      "source": "artifacts\\acceptance_28_20261005\\natural_ad_x_review\\07.png",
+      "source_sha256": "15cd13e798409809bf335be83c31b871ebdcfa2dd5a005f372815b91a469d2e2",
+      "fixture_sha256": "ee96d7a76b2cfc7b6a9924c86c5f6c7deffd8b524df6702c34c1c6e6fd31f0a1"
+    },
+    {
+      "file": "natural_light_terminal.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "source": "artifacts\\acceptance_28_20261005\\campaign7_natural_ad\\13.png",
+      "source_sha256": "e64dbd6daff5b133946eb33a03c071c0c466cb17ac63030872dac7a943c7a99b",
+      "provenance": "Native fixed SDK chrome only; other content zeroed"
+    },
+    {
+      "file": "reward_card_terminal.png",
+      "shape": [
+        1220,
+        2712
+      ],
+      "source": "artifacts\\acceptance_28_20261005\\campaign7_failed_current.png",
+      "terminal": true,
+      "source_sha256": "fd1b5adec24363415a22c13bee8d1087701306cf8fe98f9fe282dd687ca395ec",
+      "provenance": "Native fixed SDK terminal chrome only; other content zeroed"
+    }
+  ]
+}

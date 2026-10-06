@@ -13,7 +13,7 @@ from bot.semantic_actions import CloseEquipmentDetail
 from bot.equipment_inventory_relief import execute_inventory_relief
 
 
-def harness(grade=G.RARE,kind=T.GLOVES,*,policy=None,inconclusive=False,wrong_popup=False):
+def harness(grade=G.RARE,kind=T.GLOVES,*,policy=None,inconclusive=False,wrong_popup=False,enhance=False):
  class Source:
   sequence=2;changed=False;clock=10.
   def get_frame(self):
@@ -31,8 +31,9 @@ def harness(grade=G.RARE,kind=T.GLOVES,*,policy=None,inconclusive=False,wrong_po
   f=source.get_frame();n._latest=f;n._after_sequence=f.sequence
   if method=='detail_sample':
    if inconclusive:return None
-   return EquipmentItemFact('Candidate',grade,kind,False,f.sequence,10.,(f.sequence-1,f.sequence),sell_available=True,grade_visual=grade)
-  if method=='confirmation_sample':return EquipmentSellConfirmationFact('Other' if wrong_popup else 'Candidate',B.TYPE_GRADE if grade==G.ETHEREAL else B.EQUIPMENT_GRADE,kind if grade==G.ETHEREAL else None,f.sequence,10.,(f.sequence-1,f.sequence))
+   observed_grade=G.ETHEREAL_PLUS if source.changed else grade
+   return EquipmentItemFact('Candidate',observed_grade,kind,enhance,f.sequence,10.,(f.sequence-1,f.sequence),sell_available=True,grade_visual=observed_grade)
+  if method=='confirmation_sample':return EquipmentSellConfirmationFact('Other' if wrong_popup else 'Candidate',B.ENHANCE_GRADE if enhance else B.TYPE_GRADE if grade==G.ETHEREAL else B.EQUIPMENT_GRADE,kind if grade==G.ETHEREAL and not enhance else None,f.sequence,10.,(f.sequence-1,f.sequence))
   return EquipmentInventoryFact(100,112,7,22,f.sequence,10.,(f.sequence-1,f.sequence))
  n._inventory_after=inventory;n._navigate_page=navigate;n._read_next=next_fact
  original=n._tap
@@ -129,7 +130,48 @@ def test_real_protected_ethereal_plus_panel_change_invalidates_selected_evidence
  item=n._inspect(candidate,before)
  old=replace(n._latest,image=panel_replay_frame(0));n._latest=old
  n._selected_sale=replace(n._selected_sale,frame=old)
+ source.changed=True  # The strong reader also observes the actual protected change.
  source.get_frame=lambda:FrameSnapshot(panel_replay_frame(1,protected=True),10.,old.sequence+1)
  result=n._bulk_candidate(candidate,n._scan_policy.authorize(item),item)
  assert result.outcome is EquipmentSellOutcome.DENIED and result.confirm_count==0
  assert calls==['SelectEquipmentInventorySlot']
+
+
+@pytest.mark.parametrize('fresh_state',[
+ 'same','unknown','changed','stale','unconfirmed','sell_disabled','visual_mismatch','input','cancelled'])
+def test_pixel_miss_revalidates_once_without_input_before_single_bulk(monkeypatch,fresh_state):
+ n,source,before,candidate,calls=harness(G.EPIC,T.PANTS,enhance=True)
+ item=n._inspect(candidate,before)
+ old=replace(n._latest,image=panel_replay_frame(0));n._latest=old
+ n._selected_sale=replace(n._selected_sale,frame=old)
+ source.sequence=old.sequence
+ def frames():
+  source.sequence+=1
+  return FrameSnapshot(panel_replay_frame(1),10.,source.sequence)
+ source.get_frame=frames
+ # The Ice Warlock incident rejected .998975 at the unchanged .999 threshold.
+ monkeypatch.setattr('bot.equipment_sell_runtime.cv2.matchTemplate',
+                     lambda *args,**kwargs:np.array([[.998975]],dtype=np.float32))
+ original=n._read_next;reads=[]
+ def reverify(method,predicate=lambda _:True):
+  if method!='detail_sample':return original(method,predicate)
+  reads.append(method)
+  fresh=original(method,predicate)
+  if fresh_state=='unknown':return None
+  if fresh_state=='changed':return replace(fresh,grade=G.ETHEREAL_PLUS,grade_visual=G.ETHEREAL_PLUS)
+  if fresh_state=='stale':return replace(fresh,sequence=item.sequence,sample_sequences=item.sample_sequences)
+  if fresh_state=='unconfirmed':return replace(fresh,sample_sequences=(fresh.sequence,))
+  if fresh_state=='sell_disabled':return replace(fresh,sell_available=False)
+  if fresh_state=='visual_mismatch':return replace(fresh,grade_visual=G.ETHEREAL_PLUS)
+  if fresh_state=='input':n._not_before+=1
+  if fresh_state=='cancelled':n.cancel_requested=lambda:True
+  return fresh
+ n._read_next=reverify
+ result=n._bulk_candidate(candidate,n._scan_policy.authorize(item),item)
+ assert reads==['detail_sample']
+ if fresh_state=='same':
+  assert result.succeeded and result.confirm_count==1
+  assert calls==['SelectEquipmentInventorySlot','OpenEquipmentSell','ConfirmEquipmentBulkSale']
+ else:
+  assert not result.succeeded and result.confirm_count==0
+  assert calls==['SelectEquipmentInventorySlot']

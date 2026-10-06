@@ -36,6 +36,43 @@ class StagesDetector:
 
     def present(self,frame,name):return name in self._templates and self.score(frame,name)>=.94
 
+    def sdk_close_scores(self,frame):
+        """Fixed SDK primitives, masked independently of creative background.
+
+        The X mask keeps its circle interior; the speaker mask keeps its glyph
+        and edge. Opposite X polarity requires explicit reward authority.
+        """
+        values=[]
+        for name in ('ad_close_round','ad_sdk_sound'):
+            h,w=frame.shape[:2];p=self.profile[name];x1,y1,x2,y2=p['search']
+            search=cv2.cvtColor(frame[round(y1*h):round(y2*h),round(x1*w):round(x2*w)],cv2.COLOR_BGR2GRAY)
+            c=p['crop'];tw=round(c[2]*w)-round(c[0]*w)
+            source=self._templates[name];th=round(source.shape[0]*tw/source.shape[1])
+            template=cv2.cvtColor(cv2.resize(source,(tw,th)),cv2.COLOR_BGR2GRAY)
+            if search.shape[0]<th or search.shape[1]<tw:
+                values.append((0.,0.));continue
+            if name=='ad_close_round':
+                mask=np.zeros(template.shape,dtype=np.uint8)
+                cv2.circle(mask,(tw//2,th//2),round(min(tw,th)*.36),255,-1)
+            else:
+                mask=cv2.dilate((template>240).astype(np.uint8)*255,np.ones((3,3),np.uint8))
+            scores=cv2.matchTemplate(search,template,cv2.TM_CCOEFF_NORMED,mask=mask)
+            finite=scores[np.isfinite(scores)]
+            if name=='ad_close_round' and finite.size and np.max(np.abs(finite))>=.94:
+                # A plain X on a flat background is not the acquired circle.
+                safe=np.where(np.isfinite(scores),scores,0.)
+                yy,xx=np.unravel_index(np.argmax(np.abs(safe)),scores.shape)
+                angles=np.arange(32)*2*np.pi/32
+                rings=[]
+                for radius in (.34,.43):
+                    xs=np.rint(xx+tw//2+min(tw,th)*radius*np.cos(angles)).astype(int)
+                    ys=np.rint(yy+th//2+min(tw,th)*radius*np.sin(angles)).astype(int)
+                    rings.append(float(np.median(search[ys,xs])))
+                if abs(rings[0]-rings[1])<3.:
+                    values.append((0.,0.));continue
+            values.append((float(finite.max()),float(-finite.min())) if finite.size else (0.,0.))
+        return values[0][0],values[0][1],values[1][0]
+
     def detect(self,frame,*,claim_only=False):
         def obs(name,value=None):return Observation('stages.'+name,1.,ObservationSource.LOCAL_CV,value=value)
         if self.present(frame,'loading'):return (obs('loading'),)

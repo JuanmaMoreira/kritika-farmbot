@@ -1017,6 +1017,42 @@ def test_local_karat_without_confirmation_fails_closed():
     assert script.taps == []
 
 
+def test_local_karat_reward_during_drain_finalizes_with_hidden_title():
+    # Lina 2026-10-05: Gold drain reaches a premium-backed reward grid,
+    # title remains covered/UNKNOWN. Waiting for title cannot dismiss it.
+    script = _Script([
+        _unknown_reward(12278, timestamp=12278.0, karat=True),
+        _unknown_reward(12284, timestamp=12284.0, karat=True),
+        _clean_grid(12290, timestamp=12290.0),
+    ])
+    result, _ = _drain(
+        script, _popup(12185, timestamp=12185.0),
+        measure_local=TreasureContentDetector().measure,
+    )
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert result.karat_boundary_seen
+    assert result.inputs_emitted == 0
+    assert result.dismiss_inputs == 2
+    assert script.taps == [DISMISS_POINT] * 2
+    assert "local_karat_seen" in result.evidence
+    assert "finalize:overlay_closed" in result.evidence
+
+
+def test_local_karat_reward_during_drain_without_effect_fails_closed():
+    script = _Script([
+        _unknown_reward(12278, timestamp=12278.0, karat=True),
+        _unknown_reward(12284, timestamp=12284.0, karat=True),
+    ])
+    result, _ = _drain(
+        script, _popup(12185, timestamp=12185.0),
+        measure_local=TreasureContentDetector().measure,
+    )
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert result.reason == "dismiss_no_effect"
+    assert result.inputs_emitted == 0
+    assert script.taps and all(point == DISMISS_POINT for point in script.taps)
+
+
 # Reward-transient entry: verified open + local pair Gold suffices.
 
 
@@ -1076,6 +1112,57 @@ def test_entry_from_transient_refused_without_measure_or_verify():
 
 
 # Post-Karat finalize: one safe outside dismiss, verified close.
+
+def test_verified_open_white_flash_waits_for_fresh_gold_before_drain():
+    script = _Script([_unknown(12), _unknown(13), _karat(14)])
+    measure = _measure_script([_reading(), _reading(bar_gold=1.), _reading(bar_gold=1.)])
+    result, _ = _drain(script, _unknown(11), measure_local=measure)
+    assert result.outcome is GoldKeyDrainOutcome.GOLD_KEYS_EXHAUSTED
+    assert script.taps == [BAR_REPEAT_POINT]
+    assert "entry:fresh_transient_observation" in result.evidence
+
+
+def test_entry_flash_timeout_is_passive_and_bounded():
+    script = _Script([_unknown(12)])
+    result, clock = _drain(script, _unknown(11),
+        config=GoldKeyDrainConfig(transient_wait_s=.45),
+        measure_local=lambda image: _reading())
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert "entry:transient_wait_timeout" in result.evidence
+    assert result.elapsed_s <= .451
+    assert script.taps == []
+
+
+@pytest.mark.parametrize("fresh,reason", [(_foreign(12), "not_treasure"),
+    (_contradiction(12), "contradictory_state")])
+def test_entry_wait_resolved_contradiction_refuses_before_local_authority(fresh, reason):
+    script = _Script([fresh])
+    result, _ = _drain(script, _unknown(11),
+        measure_local=_measure_script([_reading(), _reading(bar_gold=1.)]))
+    assert result.reason == reason
+    assert script.taps == []
+
+
+def test_entry_stale_gold_cannot_authorize_input():
+    script = _Script([_popup(11)])
+    calls = []
+    def measure(image):
+        calls.append(image)
+        return _reading() if len(calls) == 1 else _reading(bar_gold=1.)
+    result, _ = _drain(script, _unknown(11),
+        config=GoldKeyDrainConfig(transient_wait_s=.3), measure_local=measure)
+    assert result.outcome is GoldKeyDrainOutcome.FAILED
+    assert len(calls) == 1 and script.taps == []
+
+
+def test_entry_wait_honors_cancellation_without_input():
+    script = _Script([_unknown(12)])
+    clock = _Clock()
+    result, _ = _drain(script, _unknown(11), clock=clock,
+        measure_local=lambda image: _reading(),
+        cancel_requested=lambda: clock.now_value >= 1000.15)
+    assert result.outcome is GoldKeyDrainOutcome.CANCELLED
+    assert script.taps == []
 
 
 def test_gold_present_means_no_outside_tap():

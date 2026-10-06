@@ -126,7 +126,7 @@ def rows_observation():
 
 
 def snapshot(sequence, timestamp, *, base, overlays=(), status=None,
-             observations=()):
+             observations=(), base_candidates=()):
     if status is None:
         status = ResolutionStatus.RESOLVED if base else ResolutionStatus.UNKNOWN
     image = np.zeros((120, 240, 3), dtype=np.uint8)
@@ -139,6 +139,7 @@ def snapshot(sequence, timestamp, *, base, overlays=(), status=None,
             timestamp,
             base_context=base,
             overlays=tuple(overlays),
+            base_candidates=tuple(base_candidates),
         ),
         RuntimeFacts(),
         FrameGeometry.from_frame(image),
@@ -456,6 +457,54 @@ def test_already_available_progress_reward_is_claimed_without_claim_all():
         ClaimDailyQuestsProgressReward(),
         CloseDailyQuests(),
     ]
+
+
+@pytest.mark.parametrize("progress", [False, True])
+@pytest.mark.parametrize("recovers", [False, True])
+def test_claim_tab_obscured_by_max_toast_waits_without_input(progress, recovers):
+    # Galaxy Lord campaign: after a single claim, Quests remained resolved
+    # at 43986..43988; the third frame lost Daily before its stable bound.
+    lobby = snapshot(43963, 1.0, base=SCREEN_LOBBY)
+    claim_status = (STATUS_DAILY_QUESTS_PROGRESS_REWARD_CLAIMABLE
+                    if progress else STATUS_DAILY_QUESTS_CLAIMABLE)
+    opened = [snapshot(seq, time, base=SCREEN_QUESTS,
+                       overlays=(MODE_DAILY_QUESTS, claim_status),
+                       observations=(rows_observation(),))
+              for seq, time in ((43964, 2.0), (43965, 2.3))]
+    obscured = [snapshot(seq, time, base=SCREEN_QUESTS,
+                         overlays=(MODE_DAILY_QUESTS,) if seq < 43988 else ())
+                for seq, time in ((43986, 3.0), (43987, 3.1), (43988, 3.2))]
+    recovered = [snapshot(seq, time, base=SCREEN_QUESTS,
+                          overlays=(MODE_DAILY_QUESTS,),
+                          observations=(rows_observation(),))
+                 for seq, time in ((43989, 4.0), (43990, 4.6))]
+    returned = [snapshot(seq, time, base=SCREEN_LOBBY)
+                for seq, time in ((43991, 5.0), (43992, 5.3))]
+    scripts = [opened, obscured + (recovered if recovers else [])]
+    if recovers:
+        scripts.append(returned)
+    result, actions, _, observer = run_flow(lobby, scripts)
+    claim = ClaimDailyQuestsProgressReward() if progress else ClaimAllDailyQuests()
+    assert actions == [OpenQuests(), claim] + ([CloseDailyQuests()] if recovers else [])
+    assert result.status is (FlowStatus.COMPLETED if recovers else FlowStatus.FAILED)
+    assert result.progress_reward_completed is (progress and recovers)
+    assert result.claim_all_completed is (not progress and recovers)
+    assert observer.calls[1].after_sequence == 43965
+    if not recovers:
+        assert "no matching runtime snapshot" in result.error
+
+
+@pytest.mark.parametrize("base,overlays,status", [
+    (SCREEN_LOBBY, (), ResolutionStatus.RESOLVED),
+    (SCREEN_QUESTS, ("overlay.foreign",), ResolutionStatus.RESOLVED),
+    (None, (), ResolutionStatus.AMBIGUOUS),
+])
+def test_claim_wait_still_rejects_contradictory_context(base, overlays, status):
+    incompatible = snapshot(10, 10.0, base=base, overlays=overlays, status=status,
+                            base_candidates=(SCREEN_LOBBY, SCREEN_QUESTS)
+                            if status is ResolutionStatus.AMBIGUOUS else ())
+    assert DailyQuestsFlow._has_incompatible_daily_state(incompatible)
+    assert not DailyQuestsFlow._is_daily_quests_settled(incompatible)
 
 
 def test_progress_reward_claim_is_single_attempt_and_requires_disappearance():

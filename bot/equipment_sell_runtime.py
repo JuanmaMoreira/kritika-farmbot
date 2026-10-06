@@ -21,7 +21,7 @@ from bot.equipment_sell_operation import (
     EquipmentSellResult,
     execute_equipment_sell,
 )
-from bot.equipment_sell_semantics import consensus_facts
+from bot.equipment_sell_semantics import EquipmentItemFact, consensus_facts
 from bot.equipment_block_scan import EquipmentBlockMatcher
 from bot.semantic_actions import (
     CancelEquipmentSale,
@@ -305,7 +305,27 @@ class EquipmentSellRuntime:
             else:score=float(cv2.matchTemplate(a,b,cv2.TM_CCOEFF_NORMED).max())
             scores[name]=score
             if not np.isfinite(score) or score<threshold:
-                return reject("panel_region_changed",region=name,score=score,threshold=threshold)
+                # Pixel continuity is a fast path, not a semantic contradiction.
+                # Re-read once, without input, using the existing bounded strong
+                # consensus. A changed/unknown/protected item still fails closed.
+                self._latest=frame
+                self._after_sequence=frame.sequence
+                fresh=self._read_next("detail_sample")
+                fields=("name","grade","equipment_type","enhance","sell_available","grade_visual")
+                if (not isinstance(fresh,EquipmentItemFact) or not fresh.confirmed or
+                        fresh.sequence<=frame.sequence or
+                        not 0<=self.clock()-fresh.observed_at<=2. or
+                        any(getattr(fresh,key)!=getattr(selected.item,key) for key in fields) or
+                        fresh.sell_available is not True or fresh.grade_visual is not fresh.grade or
+                        self._selected_sale is not selected or self._not_before!=selected.input_barrier or
+                        self._after_sequence!=fresh.sequence or self._latest.sequence!=fresh.sequence or
+                        self.cancel_requested()):
+                    return reject("panel_reverification_failed",region=name,score=score,threshold=threshold)
+                record_best_effort(self.events,"equipment.sell.selected_panel.continuity",
+                                  outcome="revalidated",reason="fresh_strong_consensus",
+                                  source_sequence=fresh.sequence,sample_sequences=fresh.sample_sequences,
+                                  previous_sequence=selected.item.sequence,region=name,score=score,threshold=threshold)
+                return True
         self._latest=frame
         record_best_effort(self.events,"equipment.sell.selected_panel.continuity",
                           outcome="retained",source_sequence=frame.sequence,scores=scores)

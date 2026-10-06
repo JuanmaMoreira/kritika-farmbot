@@ -324,7 +324,9 @@ def build_monster_wave_sapphires_extractor(engine: OcrEngine) -> OcrFactExtracto
     return OcrFactExtractor(
         name=RESOURCE_SAPPHIRES, context=SCREEN_MONSTER_WAVE,
         region=(.617, .040, .676, .082), engine=engine, parser=parse_integer,
-        preprocessing=SAPPHIRES_PREPROCESSING, require_clean_context=True,
+        # The color HUD crop yielded a circled digit for a real 3.
+        # Grayscale stabilizes this local number without relaxing parsing.
+        preprocessing=RoiPreprocessing(scale=2.0, grayscale=True), require_clean_context=True,
         confirmations=2, max_observations=3, sample_interval=.20,
     )
 
@@ -336,7 +338,8 @@ def build_battle_mode_sapphires_extractor(engine: OcrEngine) -> OcrFactExtractor
     # Same global HUD, verified in the existing Battle Mode captures.
     # Daily status indicators do not obstruct this resource.
     return replace(build_monster_wave_sapphires_extractor(engine),
-                   context=SCREEN_BATTLE_MODE_SELECT, require_clean_context=False)
+                   context=SCREEN_BATTLE_MODE_SELECT, require_clean_context=False,
+                   preprocessing=SAPPHIRES_PREPROCESSING)
 
 
 def build_timer_extractor(engine: OcrEngine) -> OcrFactExtractor:

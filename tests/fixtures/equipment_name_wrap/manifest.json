@@ -1,0 +1,15 @@
+{
+  "provenance": "Blade Dancer campaign d5604ea5, event 5468 first incomplete confirmation; reproduced without any sale confirm in 20261005T205632.905742Z_sell_long_name_readonly_4eb18317",
+  "geometry": [
+    2712,
+    1224
+  ],
+  "box": [
+    949,
+    465,
+    1762,
+    681
+  ],
+  "file": "phantom_sword.png",
+  "sha256": "7018325c021f2aa61ffcb7192165b3365169068867fdd4239aa2f6299afd51a7"
+}

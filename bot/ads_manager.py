@@ -34,6 +34,7 @@ class AdObservation:
     exhausted: bool = False
     ad_compatible: bool = False
     progress: float | None = None
+    intermediate: str | None = None
 
 
 def read_sdk_progress(frame):
@@ -66,12 +67,12 @@ class AdsResult:
 
 
 class AdsManager:
-    """Close safe SDK variants; recover unknown/stalled ads after 60 seconds.
+    """Close reward-ready SDK variants immediately, with bounded observation.
 
     Verified SDK progress/reset extends observation, with a 15s idle grace and
     absolute 180s bound for multipart ads. Motion never authorizes a close.
 
-    Every Back requires freshly observed ad/external ownership. Game return
+    SDK ownership alone and elapsed time never authorize a close. Game return
     stops Android input even when results are absent. The caller verifies reward.
     """
 
@@ -118,6 +119,7 @@ class AdsManager:
                                    frame_timestamp=getattr(getattr(observation, 'snapshot', None), 'timestamp', None),
                                    progress=getattr(observation, 'progress', None),
                                    close_key=getattr(observation, 'close_key', None),
+                                   intermediate=getattr(observation, 'intermediate', None),
                                    elapsed_seconds=self.clock() - start)
                 last_phase = name
 
@@ -184,7 +186,8 @@ class AdsManager:
                     reason='absolute_bound',elapsed_seconds=elapsed,stalled_seconds=stalled_for)
                 break
             if stalled_for>=self.deadline and not progressing:
-                # Unknown/stalled ads use the terminal fallback. A verified
+                # Unknown/stalled ads stop observation, without closing an
+                # uncredited reward. A verified
                 # moving progress bar makes the 60s estimate inapplicable.
                 # A part's bar disappearing is not completion: unknown/stall
                 # fallback is measured from the last verified SDK movement.
@@ -213,7 +216,8 @@ class AdsManager:
                 if not active:
                     phase('active', last)
                 active = True
-                if last.back_ready and normal_backs < 2 and self.clock() >= next_back_at:
+                if (last.back_ready and normal_backs < 2 and
+                        steps < self.max_close_steps and self.clock() >= next_back_at):
                     phase('sdk_back', last)
                     self.android_back(last.snapshot)
                     normal_backs += 1
@@ -226,28 +230,35 @@ class AdsManager:
                         previous_key = last.close_key
                         steps += 1
                 else:
-                    phase('waiting_closable', last)
+                    phase('multipart_next' if last.intermediate else 'waiting_closable', last)
             elif not active and self.clock() - start >= self.launch_deadline and last.game_present:
                 phase('launch_unconfirmed', last)
                 return observe_return(last)
             self.sleeper(self.poll_interval)
 
         phase('terminal_recovery', last)
-        # Each iteration observes system and surface again. A package match
-        # alone never permits a second Back.
+        # Bounds are not reward evidence. Only fresh accredited SDK terminal
+        # chrome or an external visit can authorize an input here.
         for terminal_step in range(2):
             if self.cancel_requested():
                 return finish(AdsOutcome.CANCELLED, last)
             last = self.observe()
             if last.game_present or last.returned:
                 return observe_return(last)
-            # An embedded unknown surface on main can justify the first
-            # last-resort Back after this caller's launch request. It cannot
-            # justify a second Back without positive ad/external ownership.
-            if not (last.active or last.external or
-                    (terminal_step==0 and last.ad_compatible)):
+            if steps >= self.max_close_steps:
                 break
-            self.android_back(last.snapshot)
+            if last.external and external_backs < 2:
+                self.android_back(last.snapshot)
+                external_backs += 1
+            elif last.active and last.back_ready and normal_backs < 2:
+                self.android_back(last.snapshot)
+                normal_backs += 1
+            elif (last.active and last.close_point is not None and
+                    not last.back_ready and last.close_key != previous_key):
+                self.close(last.snapshot, last.close_point)
+                previous_key = last.close_key
+            else:
+                break
             steps += 1
             until = self.clock() + self.back_grace
             while True:
@@ -271,7 +282,8 @@ class AndroidAdsObserver:
     """
 
     def __init__(self, observer, adb, game_package, detector, *, returned,
-                 unavailable, skip_ticket, game_visible, exhausted=lambda s: False):
+                 unavailable, skip_ticket, game_visible, exhausted=lambda s: False,
+                 chrome_ocr=None):
         self.observer = observer
         self.adb = adb
         self.game_package = game_package
@@ -281,6 +293,7 @@ class AndroidAdsObserver:
         self.skip_ticket = skip_ticket
         self.game_visible = game_visible
         self.exhausted = exhausted
+        self.chrome_ocr = chrome_ocr
         self._not_before = 0.
         self._force_native = False
 
@@ -311,14 +324,45 @@ class AndroidAdsObserver:
         dark = self.detector.present(snapshot.frame.image, 'ad_reward_close')
         light = self.detector.present(snapshot.frame.image, 'ad_reward_close_light')
         sdk_chrome = dark or light
+        round_close = False
+        intermediate = None
+        reward_text = False
+        if sdk_activity and activity == 'com.google.android.gms.ads.AdActivity':
+            primitive_reader = getattr(self.detector, 'sdk_close_scores', None)
+            black_x, white_x, sound = (primitive_reader(snapshot.frame.image)
+                if callable(primitive_reader) else (0.,0.,0.))
+            # Read only the acquired SDK text field, never the creative.
+            if self.chrome_ocr is not None:
+                frame = snapshot.frame.image
+                h,w = frame.shape[:2]
+                try:
+                    label = self.chrome_ocr.recognize(frame[
+                        round(.027*h):round(.095*h),round(.795*w):round(.902*w)].copy())
+                    text = re.sub(r'[^a-z]', '', label.text.casefold())
+                    if label.confidence >= .85:
+                        reward_text = text == 'rewardgranted'
+                        if text == 'nextad': intermediate = 'next_ad'
+                except Exception:
+                    pass
+            sdk_chrome = intermediate is None and (
+                sdk_chrome or (reward_text and max(black_x,white_x) >= .94))
+            # X alone requires both acquired fixed SDK primitives. Unknown
+            # content X and part transitions never publish this authority.
+            round_close = (not sdk_chrome and intermediate is None
+                           and black_x >= .94 and sound >= .94)
         # Main activity plus old SDK pixels cannot authorize another Back.
-        # Unacquired embedded layouts use the one-shot terminal fallback.
+        # Unacquired embedded layouts never authorize timer-only cleanup.
         active = sdk_activity
         loading = self.detector.present(snapshot.frame.image,'loading')
         game_visible = self.game_visible(snapshot)
         game_present = game_activity and not active and (game_visible or loading)
         ad_compatible = game_activity and not active and not game_visible and not loading
         external = bool(package and package != self.game_package and agrees)
+        # Android checks and SDK text OCR must not turn old pixels into a new
+        # close authority. A slow observation waits for the next fresh frame.
+        terminal_fresh = 0. <= time.monotonic() - snapshot.timestamp <= 2.
+        sdk_chrome = sdk_chrome and terminal_fresh
+        round_close = round_close and terminal_fresh
         return AdObservation(
             snapshot, active=active,
             returned=game_present and self.returned(snapshot),
@@ -326,10 +370,13 @@ class AndroidAdsObserver:
             skip_ticket=game_present and self.skip_ticket(snapshot),
             external=external, game_present=game_present,
             back_ready=sdk_activity and sdk_chrome,
-            # Acquired variants run in AdActivity. Do not reinterpret a cached
-            # SDK image on the main activity as an embedded close hitbox.
-            close_point=None,
-            close_key=('reward_granted_light' if light else 'reward_granted_dark') if sdk_chrome else None,
+            # Fixed native SDK control, normalized to frame geometry. Main/
+            # external ownership and unacquired X layouts publish no hitbox.
+            close_point=(.922,.059) if round_close else None,
+            close_key=(('reward_granted_text' if reward_text else
+                        'reward_granted_light' if light else 'reward_granted_dark')
+                       if sdk_chrome else 'sdk_round_close' if round_close else None),
             activity=activity, exhausted=game_present and self.exhausted(snapshot),
             ad_compatible=ad_compatible,
-            progress=read_sdk_progress(snapshot.frame.image) if sdk_activity else None)
+            progress=read_sdk_progress(snapshot.frame.image) if sdk_activity else None,
+            intermediate=intermediate)

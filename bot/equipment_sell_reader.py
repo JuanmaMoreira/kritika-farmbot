@@ -22,6 +22,7 @@ from bot.equipment_sell_semantics import (
     EquipmentType,
 )
 from bot.geometry import RelativeRegion, relative_region_to_pixels
+from bot.ocr import OcrResult
 
 
 ITEM_COUNT_ROI: RelativeRegion = (0.687, 0.234, 0.817, 0.276)
@@ -29,6 +30,8 @@ PAGE_ROI: RelativeRegion = (0.724, 0.885, 0.786, 0.937)
 DETAIL_TITLE_ROI: RelativeRegion = (0.514, 0.255, 0.731, 0.310)
 DETAIL_GRADE_TYPE_ROI: RelativeRegion = (0.560, 0.315, 0.750, 0.365)
 CONFIRM_IDENTITY_ROI: RelativeRegion = (0.350, 0.385, 0.650, 0.425)
+# A long item name can carry its closing bracket onto the second identity line.
+CONFIRM_IDENTITY_CONTINUATION_ROI: RelativeRegion = (0.350, 0.418, 0.650, 0.448)
 CONFIRM_GROUP_LINE_ROIS: tuple[RelativeRegion, ...] = (
     (0.350, 0.438, 0.650, 0.469),
     (0.350, 0.473, 0.650, 0.504),
@@ -123,7 +126,7 @@ def parse_confirmation(
     identity = _clean_text(identity_text)
     # The K Coin amount can wrap onto the next line; this ROI owns identity,
     # while the independently read Bulk lines own the destructive scope.
-    match = re.fullmatch(r"Selling\s*\[([^]]+)\](?:\s+for(?:\s+\d[\d,]*(?:\s+K)?)?)?\s*[.,]?", identity, re.IGNORECASE)
+    match = re.fullmatch(r"Selling\s*\[([^]]+)\](?:\s+for(?:\s+\d[\d,]*(?:\s+K(?:\s+Coins)?)?)?)?\s*[.,]?", identity, re.IGNORECASE)
     if match is None:
         return None
     item_name = _clean_text(match.group(1))
@@ -224,6 +227,15 @@ class EquipmentSellReader:
     ) -> EquipmentSellConfirmationFact | None:
         _require_frame(frame)
         identity = self._read(frame, CONFIRM_IDENTITY_ROI, scale=2.5)
+        continuation = None
+        if (identity.confidence >= .80 and
+                re.match(r"Selling\s*\[", identity.text, re.IGNORECASE) and
+                "]" not in identity.text):
+            continuation = self._read(frame, CONFIRM_IDENTITY_CONTINUATION_ROI, scale=2.5)
+            identity = OcrResult(
+                f"{identity.text} {continuation.text}",
+                min(identity.confidence, continuation.confidence),
+            )
         regions = (CONFIRM_COIN_GROUP_LINE_ROIS
                    if re.search(r"\]\s+for\b", identity.text)
                    else CONFIRM_GROUP_LINE_ROIS)
@@ -233,6 +245,8 @@ class EquipmentSellReader:
         )
         self.last_confirmation_diagnostic = {
             "identity": {"text": identity.text, "confidence": identity.confidence},
+            "continuation": ({"text": continuation.text, "confidence": continuation.confidence}
+                             if continuation is not None else None),
             "groups": [{"text": v.text, "confidence": v.confidence} for v in groups],
         }
         if identity.confidence < 0.80 or min(value.confidence for value in groups) < 0.75:

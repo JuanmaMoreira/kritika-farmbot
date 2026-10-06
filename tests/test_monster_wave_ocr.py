@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import cv2
+import numpy as np
 import pytest
 
 from bot.action_executor import FrameGeometry
@@ -18,10 +19,45 @@ from bot.runtime import build_runtime_fact_reader
 from bot.runtime_facts import FactReadStatus, FactQuality
 from bot.runtime_observer import RuntimeSnapshot, RuntimeFacts, RuntimeObserver
 from bot.state import ResolutionStatus, ResolvedState
+from bot.geometry import relative_region_to_pixels
 from test_world_boss_flow import snapshot
 
 
 ROOT=Path(__file__).resolve().parents[1]
+
+
+def test_lina_three_sapphires_native_crop_reads_as_fresh_consensus():
+    # Native evidence following the 2026-10-05 failed CLEAR effect: the
+    # color crop intermittently read a circled 3, rejected by the parser.
+    engine=RapidOcrEngine()
+    extractor=build_monster_wave_sapphires_extractor(engine)
+    frames=[]
+    for index in range(2):
+        crop=cv2.imread(str(ROOT/f'tests/fixtures/mw_sapphire_three/native_{index}.png'))
+        image=np.zeros((1224,2712,3),dtype=np.uint8)
+        x1,y1,x2,y2=relative_region_to_pixels(extractor.region,*image.shape[1::-1])
+        assert crop.shape==image[y1:y2,x1:x2].shape
+        image[y1:y2,x1:x2]=crop
+        seq=index+11
+        frames.append(RuntimeSnapshot(FrameSnapshot(image,float(seq),seq),
+            ObservationBatch(seq,float(seq)),
+            ResolvedState(ResolutionStatus.RESOLVED,seq,float(seq),base_context=SCREEN_MONSTER_WAVE),
+            RuntimeFacts(),FrameGeometry.from_frame(image)))
+    observer=Mock(spec=RuntimeObserver)
+    observer.wait_until.side_effect=frames
+    read=build_runtime_fact_reader(observer,ocr_engine=engine).read_sapphires(
+        context=SCREEN_MONSTER_WAVE,after_sequence=10,timeout=6)
+    assert read.status is FactReadStatus.CONFIRMED
+    assert read.fact.value==3 and read.fact.quality is FactQuality.CONSENSUS
+    assert [e.sequence for e in read.fact.evidence]==[11,12]
+    assert all(e.raw_text=='3' and e.ocr_confidence>=.5 for e in read.fact.evidence)
+
+
+def test_mw_preprocessing_is_local_and_preserves_hub_and_lobby():
+    from bot.ocr_extractors import build_battle_mode_sapphires_extractor,build_sapphires_extractor,SAPPHIRES_PREPROCESSING
+    assert build_monster_wave_sapphires_extractor(Mock()).preprocessing.grayscale
+    assert build_battle_mode_sapphires_extractor(Mock()).preprocessing==SAPPHIRES_PREPROCESSING
+    assert build_sapphires_extractor(Mock()).preprocessing==SAPPHIRES_PREPROCESSING
 
 
 def test_mw_ocr_replays_curated_positives_and_rejects_contextual_negatives():

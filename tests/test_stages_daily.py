@@ -21,10 +21,10 @@ def manager(sequence,**kw):
         clock=c,sleeper=c.sleep,deadline=6,launch_deadline=2,poll_interval=.5,**kw)
     return m,seen
 
-def test_ad_waits_for_safe_affordance_and_handles_two_steps():
+def test_ad_waits_for_accredited_terminal_chrome_and_fresh_close_variant():
     m,seen=manager([AdObservation(1,skip_ticket=True),AdObservation(2,active=True),
-        AdObservation(3,active=True,close_point=(.9,.05),close_key='next'),
-        AdObservation(4,active=True,close_point=(.9,.05),close_key='next'),
+        AdObservation(3,active=True,close_point=(.9,.05),close_key='terminal_variant_a'),
+        AdObservation(4,active=True,close_point=(.9,.05),close_key='terminal_variant_a'),
         AdObservation(5,active=True),
         AdObservation(6,active=True,close_point=(.95,.06),close_key='x'),
         AdObservation(7,returned=True)])
@@ -55,7 +55,7 @@ def test_explicit_unavailable_is_not_technical_failure():
 def test_external_recovery_is_bounded_back_only():
     m,seen=manager([AdObservation(1,active=True),AdObservation(2,external=True)])
     assert m.complete_requested_launch().outcome is AdsOutcome.RECOVERY_FAILED
-    assert seen==[('back',2)]*4  # two normal external + two terminal inputs
+    assert seen==[('back',2)]*2  # one excursion; deadline grants no extra budget
 
 class Nav:
     def __init__(self):
@@ -160,11 +160,11 @@ def test_back_stops_at_game_even_without_result(normal):
                      lambda s: backs.append(clock.now),
                      clock=clock, sleeper=clock.sleep, deadline=60)
     result = ads.complete_requested_launch()
-    assert result.outcome is AdsOutcome.ABORTED_RECOVERED
-    assert backs == [0. if normal else 60.]
+    assert result.outcome is (AdsOutcome.ABORTED_RECOVERED if normal else AdsOutcome.RECOVERY_FAILED)
+    assert backs == ([0.] if normal else [])
 
 
-def test_terminal_second_back_requires_fresh_ad_and_can_return_results():
+def test_timeout_with_sdk_ownership_but_no_reward_never_backs():
     clock = Clock()
     backs = []
     def observe():
@@ -174,18 +174,18 @@ def test_terminal_second_back_requires_fresh_ad_and_can_return_results():
                      lambda *a: None, lambda s: backs.append(clock.now),
                      clock=clock, sleeper=clock.sleep, deadline=60)
     result = ads.complete_requested_launch()
-    assert result.outcome is AdsOutcome.RETURNED
-    assert backs == [60., 61.]
+    assert result.outcome is AdsOutcome.RECOVERY_FAILED
+    assert backs == []
 
 
-def test_unknown_embedded_terminal_back_stops_at_known_game():
+def test_unknown_embedded_timeout_does_not_authorize_back():
     c=Clock();backs=[]
     def observe():
         return AdObservation(c.now,ad_compatible=not backs,game_present=bool(backs))
     ads=AdsManager(observe,lambda *a:pytest.fail('content'),lambda *a:None,
         lambda s:backs.append(c.now),clock=c,sleeper=c.sleep)
-    assert ads.complete_requested_launch().outcome is AdsOutcome.ABORTED_RECOVERED
-    assert backs==[60.]
+    assert ads.complete_requested_launch().outcome is AdsOutcome.RECOVERY_FAILED
+    assert backs==[]
 
 
 def test_unknown_embedded_does_not_authorize_second_back_after_unclear_return():
@@ -193,7 +193,7 @@ def test_unknown_embedded_does_not_authorize_second_back_after_unclear_return():
     ads=AdsManager(lambda:AdObservation(c.now,ad_compatible=True),lambda *a:None,
         lambda *a:None,lambda s:backs.append(c.now),clock=c,sleeper=c.sleep)
     assert ads.complete_requested_launch().outcome is AdsOutcome.RECOVERY_FAILED
-    assert backs==[60.]
+    assert backs==[]
 
 
 def test_results_can_arrive_after_return_without_more_back():
@@ -389,14 +389,14 @@ def test_multipart_progress_extends_deadline_without_authorizing_input():
     assert seen==[9.]
 
 
-def test_static_progress_does_not_disable_terminal_recovery():
+def test_static_progress_times_out_without_uncredited_reward_close():
     c=Clock();seen=[]
     def observe():
         return AdObservation(c.now,game_present=True) if seen else AdObservation(c.now,active=True,progress=.5)
     m=AdsManager(observe,lambda *a:None,lambda *a:None,lambda s:seen.append(c.now),
         clock=c,sleeper=c.sleep,deadline=6,max_duration=12)
-    assert m.complete_requested_launch().outcome is AdsOutcome.ABORTED_RECOVERED
-    assert seen==[6.]
+    assert m.complete_requested_launch().outcome is AdsOutcome.RECOVERY_FAILED
+    assert seen==[]
 
 
 def test_continuous_progress_is_still_bounded():
@@ -405,7 +405,7 @@ def test_continuous_progress_is_still_bounded():
         lambda *a:None,lambda *a:None,lambda s:seen.append(c.now),
         clock=c,sleeper=c.sleep,deadline=6,max_duration=10,progress_grace=2)
     assert m.complete_requested_launch().outcome is AdsOutcome.RECOVERY_FAILED
-    assert seen==[10.,11.]
+    assert seen==[]
 
 
 def test_reused_stages_binding_resets_relief_bound_for_each_invocation():

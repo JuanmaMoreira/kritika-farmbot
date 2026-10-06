@@ -3,7 +3,25 @@
 Estado en [CONTEXT](CONTEXT.md); GT físico en [GAMEPLAY_GT](docs/GAMEPLAY_GT.md);
 contratos en [ARCHITECTURE](ARCHITECTURE.md) y [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md).
 
-## Estabilización combinada cerrada — 2026-10-05
+## Full roster combinado cerrado técnicamente — 2026-10-05
+
+Campaña GUI manual27ae46d4:28/28 scopes,28 Rotation, Session COMPLETED,
+cero fallos técnicos,61:17.608.25 personajes con Ads agotados;6 Ads/Sapphire
+verificados; WB28 no elegibles. No exigir business completeness. Código/assets
+coinciden con preparación anterior al run y cierre; límite de hash de config
+explicado en [FULL_ROSTER_CHECKPOINT](docs/FULL_ROSTER_CHECKPOINT.md).
+Nuevo checkpoint causal sobre656460c4; sin nuevas features ni cambio de policy.
+
+Ads cortos: terminal fuerte permite cierre inmediato, sin duración mínima;
+primitivas/texto chrome SDK independientes del creative, Next ad intermedio,
+progreso/reset, stall y180 s conservados. Offline/integration verdes; live breadth
+limitada por agotamiento diario. X sola adquirida ya implementada, pendiente
+cobertura natural amplia post-latest-fix, igual que multipart/triple explícito
+y recovery No Ads temporal. Usuario hará otro28 manual con reset diario.
+No bloquear este checkpoint ni fabricar anuncios para cubrir esas variantes.
+Accessories MAX/result/effect y SessionReport whitelist siguen pendientes.
+
+## Checkpoint anterior de tres personajes — 2026-10-05 (histórico)
 
 Campaña GUI final2808930b: tres personajes consecutivos/Rotation, COMPLETED,
 cero fallos técnicos con código final idéntico; offline1906 passed,4 skips históricos.
@@ -45,13 +63,14 @@ anteriores permanecen rojos. No hay nuevo planner, DAG ni framework de workflow.
 4. Deudas live menores existentes, sólo ante aparición natural:
    - Chat desplegado completo en Abyssal; banners Channel Global Chat existentes pasan.
    - Ahorro físico final de Socket animation/scoped perception 0.2 s.
-   - Ads multipart/triple post-fix y No Ads temporal full recovery end-to-end.
+   - Ads multipart/triple explícito post-latest-fix y No Ads temporal full recovery end-to-end;
+     implementación/tests e integración28/28 ya verdes, amplitud live limitada.
    - QM desde Battle Mode Select hacia destinos aún no ejercidos naturalmente; Back sólo hacia Lobby.
    - Sell logical transform entre Bulks si sigue Full; expansión Equipment +4 positiva
      sólo por necesidad real; Ethereal Enhance positivo cuando haga falta. Poor/Normal
      cerrados mediante assets físicos y tres Bulks guarded127→126→125→122.
-   - Chrome SDK X sola sin reward-granted: captura adquirida; reconocer autoridad de cierre
-     sin confundir fin de parte con fin del ad. Reward posterior acreditado actualmente.
+   - Chrome SDK X sola sin reward-granted: autoridad adquirida implementada y replay verde;
+     falta amplitud live natural tras ajuste general, sin confundir fin de parte con fin del ad.
    - SessionReport: reconocer el evento informativo `monster_wave.sapphire_effect` para
      no proyectar Gold como UNASSESSED cuando sus efectos y resultado están acreditados.
      La campaña2808930b conserva la proyección histórica; no convertirlo en failure.
