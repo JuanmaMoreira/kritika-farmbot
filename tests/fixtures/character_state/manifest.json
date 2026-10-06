@@ -1,0 +1,601 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "label": "demon_qm",
+      "raw": "artifacts/world-boss-live/state-quick-menu-after/20261006T021237_074328Z_03.png",
+      "raw_sha256": "d7ced2fbaca3a2c610287d4017c4c5250e7b31ad73eaf1dabaf8f4a192547652",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "lapiz": 3766,
+        "dark_essence": 455,
+        "light_essence": 50,
+        "nature_essence": 24,
+        "k_coins": 121918
+      },
+      "origin": "screen.lobby",
+      "crops": {
+        "lapiz": {
+          "path": "tests/fixtures/character_state/demon_qm_lapiz.png",
+          "roi": [
+            0.075,
+            0.884,
+            0.125,
+            0.92
+          ],
+          "sha256": "dd08d4773e36d0490a0fb14e4877e7d2e0ca9c66c743a9abca0cd6b570d68bc0"
+        },
+        "k_coins": {
+          "path": "tests/fixtures/character_state/demon_qm_k_coins.png",
+          "roi": [
+            0.15,
+            0.884,
+            0.211,
+            0.92
+          ],
+          "sha256": "a90e4bc886bc08a512207a232819f201a999bcc4db192d0d725b78ca45258d89"
+        },
+        "dark_essence": {
+          "path": "tests/fixtures/character_state/demon_qm_dark_essence.png",
+          "roi": [
+            0.075,
+            0.954,
+            0.125,
+            0.995
+          ],
+          "sha256": "7fce0f079e2ce270177716cb072c0787229a8fc85b027e1c3cfc6519a0046596"
+        },
+        "light_essence": {
+          "path": "tests/fixtures/character_state/demon_qm_light_essence.png",
+          "roi": [
+            0.16,
+            0.954,
+            0.211,
+            0.995
+          ],
+          "sha256": "0cd7725bb40a69852f8387f2659f538564d29e140e697a7e578e99cc6665d290"
+        },
+        "nature_essence": {
+          "path": "tests/fixtures/character_state/demon_qm_nature_essence.png",
+          "roi": [
+            0.245,
+            0.954,
+            0.296,
+            0.995
+          ],
+          "sha256": "8db98823fb1d8b5efa308a508da5699ac69ab38df7e30aa76a318e7b110cce14"
+        }
+      }
+    },
+    {
+      "label": "fairy_old_qm",
+      "raw": "screencaps/semantic/world_boss/quick_menu/20260827T231126_760280Z_01.png",
+      "raw_sha256": "602842dcc27d0abaf8f4994a1965de6806b7d05c6db2e80f3dc50d76d9d4a15e",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "lapiz": 93952,
+        "dark_essence": 119,
+        "light_essence": 6800,
+        "nature_essence": 118,
+        "k_coins": 147447
+      },
+      "origin": "screen.world_boss",
+      "crops": {
+        "lapiz": {
+          "path": "tests/fixtures/character_state/fairy_old_qm_lapiz.png",
+          "roi": [
+            0.20500000000000002,
+            0.884,
+            0.255,
+            0.92
+          ],
+          "sha256": "c9c3e4ade1ebefeffe15c36c3a9e6f872ef174396ac13c9fd374ba33b763363a"
+        },
+        "k_coins": {
+          "path": "tests/fixtures/character_state/fairy_old_qm_k_coins.png",
+          "roi": [
+            0.28,
+            0.884,
+            0.34099999999999997,
+            0.92
+          ],
+          "sha256": "d276852c627e7f95aec9a1ddb59b0baa636b33c9e33df048ce57985d18972a5e"
+        },
+        "dark_essence": {
+          "path": "tests/fixtures/character_state/fairy_old_qm_dark_essence.png",
+          "roi": [
+            0.20500000000000002,
+            0.954,
+            0.255,
+            0.995
+          ],
+          "sha256": "79227e4898221c12d66be421437aeab099d660050036f598d974b1ef255d50c4"
+        },
+        "light_essence": {
+          "path": "tests/fixtures/character_state/fairy_old_qm_light_essence.png",
+          "roi": [
+            0.29000000000000004,
+            0.954,
+            0.34099999999999997,
+            0.995
+          ],
+          "sha256": "3238b41d0189d7901de4f1be647f2074b830a55d49daa8ce2b80b3f9743d7bf9"
+        },
+        "nature_essence": {
+          "path": "tests/fixtures/character_state/fairy_old_qm_nature_essence.png",
+          "roi": [
+            0.375,
+            0.954,
+            0.426,
+            0.995
+          ],
+          "sha256": "0c4b4d83655f54e365ffb960d0c0ea75c764cbb01f440e29a981f22aa8fedcff"
+        }
+      }
+    },
+    {
+      "label": "wb_numeric",
+      "raw": "artifacts/world-boss-live/state-wb-main-after/20261006T021552_489434Z_03.png",
+      "raw_sha256": "0bb9482fabab86ce43bd68bfbdcac41814bef8efbe7b9b1b7c90e9e1439275d3",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "participated": true,
+        "remaining_seconds": 101640
+      },
+      "origin": null,
+      "crops": {
+        "damage": {
+          "path": "tests/fixtures/character_state/wb_numeric_damage.png",
+          "roi": [
+            0.345,
+            0.127,
+            0.537,
+            0.167
+          ],
+          "sha256": "8dc9dbc36cbd253ad180b2b1a507bfe067600c0fa5dd38db7cc5417bb4afc709"
+        },
+        "rank": {
+          "path": "tests/fixtures/character_state/wb_numeric_rank.png",
+          "roi": [
+            0.56,
+            0.126,
+            0.8,
+            0.17
+          ],
+          "sha256": "b17706b92f7837bb23a5799ab9ed2aeda6aa5b0f00b43702610e34c6ac5e82e1"
+        },
+        "timer": {
+          "path": "tests/fixtures/character_state/wb_numeric_timer.png",
+          "roi": [
+            0.672,
+            0.703,
+            0.778,
+            0.752
+          ],
+          "sha256": "7d5b98d25dd45292451e9acb95571fddb0ae185e4c927fde73c8a161b6eb8bb0"
+        }
+      }
+    },
+    {
+      "label": "wb_blank",
+      "raw": "screencaps/semantic/world_boss/main/20260827T231011_209632Z_01.png",
+      "raw_sha256": "0c8671c8eb831f1df30699e5fa014885dc82e09e911c986534fa3a9b5099cedf",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "participated": false,
+        "remaining_seconds": null,
+        "physical_remaining_seconds": 112740,
+        "timer_note": "Legacy OCR confidence .87687: reject calibration, preserve current anchor"
+      },
+      "origin": null,
+      "crops": {
+        "damage": {
+          "path": "tests/fixtures/character_state/wb_blank_damage.png",
+          "roi": [
+            0.345,
+            0.127,
+            0.537,
+            0.167
+          ],
+          "sha256": "3080bfabbde0b7bd30064fae471ad2055ba0f17b1c381a234177aecc5437db27"
+        },
+        "rank": {
+          "path": "tests/fixtures/character_state/wb_blank_rank.png",
+          "roi": [
+            0.56,
+            0.126,
+            0.8,
+            0.17
+          ],
+          "sha256": "7c322931262108abb17ff06ecda4cf38fb950c2370ab9092f6f40f50ccf81666"
+        },
+        "timer": {
+          "path": "tests/fixtures/character_state/wb_blank_timer.png",
+          "roi": [
+            0.672,
+            0.703,
+            0.778,
+            0.752
+          ],
+          "sha256": "99ab9aa50d6fcb2b75f38b66ed483aad588fd91257b280094da74563bfa2c29e"
+        }
+      }
+    },
+    {
+      "label": "crimson_sweep_qm",
+      "raw": "artifacts/character-state-unreadable/crimson_assassin_1518_e4b81711.png",
+      "raw_sha256": "2fcb48beb525412ab46b4f2142e2d4c37822b8a03bf1711acb8778c70997ff7a",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "lapiz": 27712,
+        "k_coins": 116156,
+        "dark_essence": 121,
+        "light_essence": 197,
+        "nature_essence": 172
+      },
+      "origin": "screen.lobby",
+      "crops": {
+        "lapiz": {
+          "path": "tests/fixtures/character_state/crimson_sweep_qm_lapiz.png",
+          "roi": [
+            0.075,
+            0.884,
+            0.125,
+            0.92
+          ],
+          "sha256": "33f385bb146abf6e011f7ffb220a75b8c97ce2740c8b5490f6344a4eafff32d9"
+        },
+        "k_coins": {
+          "path": "tests/fixtures/character_state/crimson_sweep_qm_k_coins.png",
+          "roi": [
+            0.15,
+            0.884,
+            0.211,
+            0.92
+          ],
+          "sha256": "38028642d22f045146ba56123d92c7da26d17e14940f83be1c04a57faffe758d"
+        },
+        "dark_essence": {
+          "path": "tests/fixtures/character_state/crimson_sweep_qm_dark_essence.png",
+          "roi": [
+            0.075,
+            0.954,
+            0.125,
+            0.995
+          ],
+          "sha256": "518fab277d559f4d90d6b3a6f4a8e67a9ecf1b8054bcc24dfe3879eb3ca98d3e"
+        },
+        "light_essence": {
+          "path": "tests/fixtures/character_state/crimson_sweep_qm_light_essence.png",
+          "roi": [
+            0.16,
+            0.954,
+            0.211,
+            0.995
+          ],
+          "sha256": "ced524e1d847cef4db5ccea7342ee6747a6c4802b1842cc491538f498c7703b2"
+        },
+        "nature_essence": {
+          "path": "tests/fixtures/character_state/crimson_sweep_qm_nature_essence.png",
+          "roi": [
+            0.245,
+            0.954,
+            0.296,
+            0.995
+          ],
+          "sha256": "d088c652f208203a2261df377dfa14c29b4472cd0253c3510af3b39a23d70790"
+        }
+      }
+    },
+    {
+      "label": "flame_sweep_qm",
+      "raw": "artifacts/character-state-unreadable/flame_striker_1676_b8a3ccc0.png",
+      "raw_sha256": "6884165831ff0ff5d3216d1038f21a5de0560e55d8b03c62daafa9688fc5551c",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "lapiz": 24647,
+        "k_coins": 126056,
+        "dark_essence": 172,
+        "light_essence": 170,
+        "nature_essence": 175
+      },
+      "origin": "screen.lobby",
+      "crops": {
+        "lapiz": {
+          "path": "tests/fixtures/character_state/flame_sweep_qm_lapiz.png",
+          "roi": [
+            0.075,
+            0.884,
+            0.125,
+            0.92
+          ],
+          "sha256": "5d45e9c009773c470511995f5ba9d057d3783c720ba228f120e5a5e61eb9e136"
+        },
+        "k_coins": {
+          "path": "tests/fixtures/character_state/flame_sweep_qm_k_coins.png",
+          "roi": [
+            0.15,
+            0.884,
+            0.211,
+            0.92
+          ],
+          "sha256": "a6e0fbab1e29145d591f34b0cd7c9973dd58c100061fa590bddd8795191c4152"
+        },
+        "dark_essence": {
+          "path": "tests/fixtures/character_state/flame_sweep_qm_dark_essence.png",
+          "roi": [
+            0.075,
+            0.954,
+            0.125,
+            0.995
+          ],
+          "sha256": "5d995366926e8ce1251272ff7e607cec255065698ba39e50f36c41b653aa171a"
+        },
+        "light_essence": {
+          "path": "tests/fixtures/character_state/flame_sweep_qm_light_essence.png",
+          "roi": [
+            0.16,
+            0.954,
+            0.211,
+            0.995
+          ],
+          "sha256": "e6913f27c408ef0f0b01ee9e3c261b157c8de91a29267664fa2e7814837f1bb6"
+        },
+        "nature_essence": {
+          "path": "tests/fixtures/character_state/flame_sweep_qm_nature_essence.png",
+          "roi": [
+            0.245,
+            0.954,
+            0.296,
+            0.995
+          ],
+          "sha256": "4c8c913e8a768b710a8742b70a2b7c37abf613642bc2270d5b7b96445292c8d3"
+        }
+      }
+    },
+    {
+      "label": "demon_sweep_qm",
+      "raw": "artifacts/character-state-unreadable/demon_blade_2914_46a348e2.png",
+      "raw_sha256": "7f3c2e5e5eef6bce438becb4214ec9385f39aec23ae04830af66bbbbdef50e9a",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "lapiz": 3766,
+        "k_coins": 121918,
+        "dark_essence": 455,
+        "light_essence": 50,
+        "nature_essence": 24
+      },
+      "origin": "screen.lobby",
+      "crops": {
+        "lapiz": {
+          "path": "tests/fixtures/character_state/demon_sweep_qm_lapiz.png",
+          "roi": [
+            0.075,
+            0.884,
+            0.125,
+            0.92
+          ],
+          "sha256": "16ea857bb2259ef00d31508be2c99131c6a68a91f1c00f33e3e6242e1c3b7bc1"
+        },
+        "k_coins": {
+          "path": "tests/fixtures/character_state/demon_sweep_qm_k_coins.png",
+          "roi": [
+            0.15,
+            0.884,
+            0.211,
+            0.92
+          ],
+          "sha256": "322e5bfadf268e7d17d7a0db98f12810a56ac1e7da5121e605666c29641c4ce9"
+        },
+        "dark_essence": {
+          "path": "tests/fixtures/character_state/demon_sweep_qm_dark_essence.png",
+          "roi": [
+            0.075,
+            0.954,
+            0.125,
+            0.995
+          ],
+          "sha256": "6044c49ae351e34bb44c6dd7c4a622d2deec2eba8010c2ee7ba03f9e18ccd940"
+        },
+        "light_essence": {
+          "path": "tests/fixtures/character_state/demon_sweep_qm_light_essence.png",
+          "roi": [
+            0.16,
+            0.954,
+            0.211,
+            0.995
+          ],
+          "sha256": "bb2f7af0dca4b8b0e08ffc4d43eb27fd98efc195e19ad90f0aed2831e73a7964"
+        },
+        "nature_essence": {
+          "path": "tests/fixtures/character_state/demon_sweep_qm_nature_essence.png",
+          "roi": [
+            0.245,
+            0.954,
+            0.296,
+            0.995
+          ],
+          "sha256": "63829c22a6e4436ce0accd0aa7690991a6571e9acd626b1de477e804f43301e7"
+        }
+      }
+    },
+    {
+      "label": "galaxy_sweep_qm",
+      "raw": "artifacts/character-state-unreadable/galaxy_lord_3640_cc086056.png",
+      "raw_sha256": "d40c20c5bd4b2199da3e268314b31a25e194dbcfa33ed6281b4bdc643a07211f",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "lapiz": 9322,
+        "k_coins": 104560,
+        "dark_essence": 239,
+        "light_essence": 42,
+        "nature_essence": 221
+      },
+      "origin": "screen.lobby",
+      "crops": {
+        "lapiz": {
+          "path": "tests/fixtures/character_state/galaxy_sweep_qm_lapiz.png",
+          "roi": [
+            0.075,
+            0.884,
+            0.125,
+            0.92
+          ],
+          "sha256": "4a3d066910190afc89cc55c0d7558b6d6ec28347da8503a17d898fa558624d84"
+        },
+        "k_coins": {
+          "path": "tests/fixtures/character_state/galaxy_sweep_qm_k_coins.png",
+          "roi": [
+            0.15,
+            0.884,
+            0.211,
+            0.92
+          ],
+          "sha256": "9865ea88c8adb35140d5d76b0ce6bcce03f77a86931e366d5044059359c144d2"
+        },
+        "dark_essence": {
+          "path": "tests/fixtures/character_state/galaxy_sweep_qm_dark_essence.png",
+          "roi": [
+            0.075,
+            0.954,
+            0.125,
+            0.995
+          ],
+          "sha256": "fe2061f25a7f009851fbdefa5bd6fd441270341a1841f4760084fd150ad244a9"
+        },
+        "light_essence": {
+          "path": "tests/fixtures/character_state/galaxy_sweep_qm_light_essence.png",
+          "roi": [
+            0.16,
+            0.954,
+            0.211,
+            0.995
+          ],
+          "sha256": "bb8f8eae0dfee126634b66acbce761abe35316dfb287db8b591110fd91ffce04"
+        },
+        "nature_essence": {
+          "path": "tests/fixtures/character_state/galaxy_sweep_qm_nature_essence.png",
+          "roi": [
+            0.245,
+            0.954,
+            0.296,
+            0.995
+          ],
+          "sha256": "88332044b5238cdcc8352ca2120c593753fdbe989e57153f31bc89ea09273150"
+        }
+      }
+    },
+    {
+      "label": "strike_sweep_qm",
+      "raw": "artifacts/character-state-unreadable/strike_archer_3930_79acbff6.png",
+      "raw_sha256": "7cfa37e07a893094e05eb8a81f1a1568d3cfbddc08e3fa70b7c11c83c0a9e59d",
+      "frame_shape": [
+        1224,
+        2712,
+        3
+      ],
+      "source": "LIVE_EVIDENCE / reviewed pixels",
+      "expected": {
+        "lapiz": 9988,
+        "k_coins": 129516,
+        "dark_essence": 8403,
+        "light_essence": 242,
+        "nature_essence": 127
+      },
+      "origin": "screen.lobby",
+      "crops": {
+        "lapiz": {
+          "path": "tests/fixtures/character_state/strike_sweep_qm_lapiz.png",
+          "roi": [
+            0.075,
+            0.884,
+            0.125,
+            0.92
+          ],
+          "sha256": "2ce752da1c8682e815e069ef63639906d01ba65566b0c8e0964916a2bc671951"
+        },
+        "k_coins": {
+          "path": "tests/fixtures/character_state/strike_sweep_qm_k_coins.png",
+          "roi": [
+            0.15,
+            0.884,
+            0.211,
+            0.92
+          ],
+          "sha256": "28b49e4ebe7f3f9a66ce6ba48c9663ccfd9fb77d989f4a43bdfb098ef66e1ee4"
+        },
+        "dark_essence": {
+          "path": "tests/fixtures/character_state/strike_sweep_qm_dark_essence.png",
+          "roi": [
+            0.075,
+            0.954,
+            0.125,
+            0.995
+          ],
+          "sha256": "294e1c253a458f515cf0590ca9b9b78e1bf502a065efd9341819a3e44a1c2796"
+        },
+        "light_essence": {
+          "path": "tests/fixtures/character_state/strike_sweep_qm_light_essence.png",
+          "roi": [
+            0.16,
+            0.954,
+            0.211,
+            0.995
+          ],
+          "sha256": "4fa8cf10f2ac300ea1b4c39408a6ef9d545c0bbb5fe0059be369fcaf5a257748"
+        },
+        "nature_essence": {
+          "path": "tests/fixtures/character_state/strike_sweep_qm_nature_essence.png",
+          "roi": [
+            0.245,
+            0.954,
+            0.296,
+            0.995
+          ],
+          "sha256": "e5b30028e3a0ffe92e88b542baa53d0f6192fc94d487b7e849e6182708060420"
+        }
+      }
+    }
+  ],
+  "limitations": "Minute countdown has <=60s quantization. Crops validate only focal reader fields; semantic context guards retain existing detectors."
+}

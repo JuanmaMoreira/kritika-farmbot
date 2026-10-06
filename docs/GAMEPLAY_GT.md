@@ -169,6 +169,33 @@ de Accessories ni otros tiers/recetas por analogía.
 
 `Point Reward` MW: MODAL establecido por USER_GT que puede aparecer por encima de CLEAR al cruzar ciertos conquest points (adquirido 2026-09-29: `+2 Gem` por `20000 Conquest Points`). Se cierra sólo con su botón OK; inmediatamente debajo queda CLEAR; tocar fuera o sobre otras zonas no lo cierra; no es overlay ni tap-through. Identidad productiva: rasgos estables del MODAL (título); la línea de recompensa variable queda fuera de identidad.
 
+## Identidad, recursos y resets — USER_GT / LIVE_EVIDENCE 2026-10-05/06
+
+- Los28 personajes conocidos tienen identidad por su nombre personal. Character
+  Select cambia su orden según entradas; posición no identifica un personaje.
+  DRAKEN一BK=Berserker, DRAKEN二DB=Demon Blade, DRAKEN三BB=Burst Breaker;
+  OCR puede confundir 一 con `-`, 二 con `-`/omitido y 三 con `=`.
+- Quick Menu inferior muestra Lapiz, Dark Essence, Light Essence, Nature Essence
+  y K Coins. La fila superior también muestra Mao Coins, distinto de K Coins.
+  Evidencia live: Demon Blade3766/455/50/24/121918 y cinco personajes adicionales,
+  sin gastar recursos para crear magnitudes. El resumen se desplaza horizontalmente
+  según el caller del Quick Menu; los campos son los mismos.
+- Cada reset diario sincronizado entrega2 Stage Ads por personaje. Un efecto rewarded
+  consume una oportunidad; Video0 indica agotamiento diario. No Ads temporal no acredita0.
+- WB cierra30min antes del reset sincronizado. Countdown observado +30min define
+  ese reset; Stage Ads resetea en él diariamente. WB nuevo sucede aproximadamente
+  cada3 días. Hora actual04:00 local -03, cierre03:30; puede desplazarse por horario
+  estacional. Live2026-10-06T02:15:52Z mostró1d4h14m: cierre aproximado
+  2026-10-07T06:30Z y reset07:00Z. Display de precisión1min; no acredita segundos.
+- Reward del WB anterior disponible significa recompensa anterior YES y participación
+  del WB actual NO. Ranking+Damage numéricos significa participación actual YES;
+  ambos guiones significa participación actual NO, sin recompensa anterior disponible.
+  La pareja adquirida está en el header World Boss main (Most Damage/Overall Rank);
+  Select Battle Mode muestra el card/ranking, sin ambos campos completos. Numeric
+  fue adquirido live; guiones y previous reward conservan evidencia histórica.
+- Tras Raid Complete el panel puede tardar en actualizar rank/damage. Guiones stale
+  no contradicen una participación recién acreditada dentro del mismo ciclo.
+
 ## UNKNOWN deliberados
 
 - Fill All con Gold insuficiente: comportamiento no confirmado, baja prioridad; expectativa del usuario de compra parcial y aviso posterior **no es GT**. No adquirir ahora ni bloquear MW.

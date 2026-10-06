@@ -28,7 +28,9 @@ class WorldBossFlow:
 
     def __init__(self, *args, **kwargs):
         lobby_transition = kwargs.pop("lobby_transition", None)
+        self.eligibility_policy = kwargs.pop('eligibility_policy', None)
         self.activity = WorldBossActivity(*args, **kwargs)
+        self.activity.eligibility_policy = self.eligibility_policy
         self.zone = BattleModeZone(
             self.activity.observer, self.activity.verified_transition,
             lobby_transition=lobby_transition,
@@ -44,6 +46,9 @@ class WorldBossFlow:
         creating a candidate result here neither publishes events nor blocks a zone.
         """
         self._sapphires_hint = None
+        no_work = self.routing_no_work()
+        if no_work is not None:
+            return no_work
         try:
             if self.activity.cancel_requested():
                 return WorldBossFlowResult(FlowStatus.CANCELLED)
@@ -77,6 +82,9 @@ class WorldBossFlow:
 
     def prepared_precheck(self):
         """Same >=5 readiness at the verified selected entry, including shared hub."""
+        no_work = self.routing_no_work()
+        if no_work is not None:
+            return no_work
         before = self.activity.observer.observe()
         if is_lobby(before):
             return self.precheck(context=SCREEN_LOBBY)
@@ -86,7 +94,16 @@ class WorldBossFlow:
         return WorldBossFlowResult(FlowStatus.FAILED, error='world_boss_readiness_entry_unconfirmed')
 
     def prepared(self, zone):
-        return PreparedActivity(self.name, zone, self.run_activity, self.prepared_precheck)
+        return PreparedActivity(self.name, zone, self.run_activity, self.prepared_precheck,
+                                routing_no_work=self.routing_no_work)
+
+    def routing_no_work(self):
+        policy = getattr(self,'eligibility_policy',None)
+        reason = policy.known_no_work() if policy else None
+        if reason:
+            return WorldBossFlowResult(FlowStatus.COMPLETED, events=(
+                FlowEvent('world_boss.current_cycle_no_work', fields={'reason':reason}),))
+        return None
 
     def run(self):
         result = self.precheck()

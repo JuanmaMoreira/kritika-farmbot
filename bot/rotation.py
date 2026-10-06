@@ -166,6 +166,7 @@ class StandardRotation:
         selection_detector: CharacterSelectionDetector = (
             DEFAULT_CHARACTER_SELECTION_DETECTOR
         ),
+        quick_menu_ready=None,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -176,6 +177,7 @@ class StandardRotation:
         if not callable(getattr(events, "record", None)):
             raise ValueError("events must provide record(event)")
         self.character_count = _positive_integer(character_count, "character_count")
+        self.quick_menu_ready = quick_menu_ready
         self.max_swipes = _positive_integer(max_swipes, "max_swipes")
         self.coarse_swipes = _non_negative_integer(
             coarse_swipes, "coarse_swipes"
@@ -313,6 +315,10 @@ class StandardRotation:
                 "quick_menu_origin_handoff_invalid",
                 transitions=tuple(transitions),
             )
+        # Session installs an explicit pre-rotation observation hook. Rotation
+        # knows neither its policy nor the meaning of collected character data.
+        if self.quick_menu_ready is not None:
+            self.quick_menu_ready(quick_menu, origin=handoff.origin)
         character_select_result = self.verified_transition.execute(
             "rotation.open_character_select",
             open_character_select_action(

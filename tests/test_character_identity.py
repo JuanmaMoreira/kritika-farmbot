@@ -46,6 +46,9 @@ def snapshot(*, image=None, status=ResolutionStatus.RESOLVED, base=SCREEN_LOBBY,
 def test_exact_unicode_lookup(name, class_name):
     engine = Mock(recognize=Mock(return_value=OcrResult(name, .99)))
     identity = LobbyNameRecognizer(engine).recognize(snapshot())
+    if name in ('DRAKEN一BK','DRAKEN二DB','DRAKEN三BB'):
+        assert identity is None  # OCR alone cannot resolve these names.
+        return
     assert identity.personal_name == name
     assert identity.class_name == class_name
     assert identity.confidence == .99
@@ -79,10 +82,26 @@ VARIANTS = {
 def test_closed_variants_preserve_exact_canonical_unicode(text, canonical, confidence):
     engine = Mock(recognize=Mock(return_value=OcrResult(text, confidence, (("line_count", 1),))))
     identity = LobbyNameRecognizer(engine).recognize(snapshot())
-    assert identity.personal_name == canonical
-    assert identity.class_name == EXPECTED[canonical]
-    assert identity.confidence == confidence
+    assert identity is None  # Synthetic black crop has no visual authority.
     assert engine.recognize.call_count == 1
+
+@pytest.mark.parametrize('slug,name,variant',[
+    ('draken1bk','DRAKEN一BK','DRAKEN-BK'),('draken2db','DRAKEN二DB','DRAKENDB'),
+    ('draken3bb','DRAKEN三BB','DRAKEN=BB')])
+@pytest.mark.parametrize('confidence',[.91536,.99])
+def test_conflicting_ocr_needs_validation_crop_not_relaxed_gate(slug,name,variant,confidence):
+    manifest=json.loads(MANIFEST.read_text(encoding='utf-8'))
+    width,height=manifest['curation']['frame_size']
+    image=np.zeros((height,width,3),np.uint8)
+    x1,y1,x2,y2=relative_region_to_pixels(LOBBY_PERSONAL_NAME_ROI,width,height)
+    image[y1:y2,x1:x2]=cv2.imread(str(ROOT/f'tests/fixtures/identity_name/{slug}_1.png'))
+    recognizer=LobbyNameRecognizer(Mock(recognize=Mock(return_value=OcrResult(variant,confidence))))
+    identity=recognizer.recognize(snapshot(image=image))
+    assert identity.personal_name==name
+    assert identity.method=='focal_template'
+    assert identity.character_id in ('berserker','demon_blade','burst_breaker')
+    recognizer.engine.recognize.return_value=OcrResult('DRAKEN-BK' if slug!='draken1bk' else 'DRAKENDB',1)
+    assert recognizer.recognize(snapshot(image=image)) is None
 
 
 def test_variants_are_separate_immutable_and_have_only_authoritative_targets():

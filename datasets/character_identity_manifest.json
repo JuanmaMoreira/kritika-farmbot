@@ -15,7 +15,7 @@
     "split": "First sequence per character for calibration; other two for validation. Same acquisition, not independent sessions.",
     "chat": "ROI disjoint from observed chat [0.44, 0.12, 0.85, 0.21]; see socket_inventory_relief_semantic_manifest.json",
     "raw_retention": "All 84 originals retained pending user review; never purged by this tool",
-    "runtime_assets": "None; crops are test fixtures, never runtime templates"
+    "runtime_assets": "Three focal Unicode masks curated separately in datasets/character_identity_templates.json; this manifest retains the complete 84-frame calibration/validation corpus."
   },
   "entries": [
     {

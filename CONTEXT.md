@@ -1,5 +1,60 @@
 # Estado actual — Kritika FarmBot
 
+## Character Identity + Persistent Character State — 2026-10-05/06
+
+Checkpoint conjunto sobre parent `fe774abcef3a636c138028717a0d2a0b514c5e6f`,
+rama `rebuild/stable-baseline`. Resolver closed-set84/84 frames,
+28/28 identidades, cero wrong/UNKNOWN; DRAKEN一BK/二DB/三BB requieren discriminador
+visual focal, sin relajación OCR ni identidad por posición. Demon Blade validado live.
+
+SQLite runtime/schema1,28 IDs permanentes, operational Ads/WB y snapshots informativos
+separados; GUI Character State, WB eligibility por occurrence y captura configurable
+OFF/BEFORE_CHARACTER_ROTATION. Collector productivo reutiliza el mismo QM de Rotation.
+Character State → **Character Data Sweep — All 28** permite refrescar recursos sin
+flows productivos. Session explícita reutiliza identity/collector/Rotation y un QM
+por personaje; no altera el modo de captura de rutinas normales. Aceptación desde
+GUI real: **28 identidades,28 snapshots completos,28 Rotations,0 failures**,5:49
+incluyendo inicialización (345.545s de Session). Mediana por personaje12.101s;
+reader+persistencia0.159s, total5.266s. Auditor verificó scopes/secuencias/timestamps,
+sin duplicados ni contaminación; cierre/reapertura de GUI y SQLite conserva28 filas.
+Natural Video0 de Demon Blade escribió0 durante el frente previo.
+Backfill causal explícito del run27ae46d4 acreditó26 personajes en el epoch actual;
+Burst Breaker permanece UNKNOWN, sin deducir el scope histórico por índice.
+
+Countdown live `1d4h14m` observado2026-10-06T02:15:52Z: cierre WB estimado
+2026-10-07T06:30Z (03:30 -03), reset sincronizado07:00Z (04:00 -03);
+siguiente reset diario2026-10-06T07:00Z. Precisión del display1min, normalizada
+al próximo límite de minuto; lecturas posteriores mantuvieron el anchor.
+Runtime scheduler/Tk timer y startup/read catch-up implementados, transitions
+determinísticos validados con reloj controlado, sin esperar físicamente al reset.
+
+Pareja rank/damage está físicamente en World Boss main; Select Battle Mode expone
+rank/card sin ese damage. Numeric live, blank y previous reward históricos acreditados.
+No nuevo Raid necesario: el estado natural era participado; escritura RAID_COMPLETE
+validada en integración incluso con cleanup posterior fallido. Deuda focal: balance0
+natural en QM; separadores/comas y magnitudes de1 a193061 adquiridos en el sweep;
+el parser0/comas y los tres Unicode tienen pruebas/corpus. Informe y límites en
+[CHARACTER_STATE_IMPLEMENTATION](docs/CHARACTER_STATE_IMPLEMENTATION.md).
+
+Estado runtime de aceptación Sweep: Ads0 acreditado en27, Burst BreakerUNKNOWN; WBYES en6,22UNKNOWN;
+snapshots completos en28. Sweep no modifica los facts operativos: comparación antes/después
+idéntica. Última observación countdown2026-10-06T02:41:19.864Z: `1d 3h48m`, mismo
+anchor2026-10-07T07:00Z. Suite afectada Sweep:241 passed; git diff --check limpio.
+Run final `2c282440554f480a9d9a59c366650195`; artifacts locales en
+`artifacts/character-data-sweep/` (audit, recursos, operational y reopen).
+
+GUI cleanup conserva Step Settings por occurrence, Routine Settings para Resource
+snapshot y Application para Appearance. Forms contextuales con scroll; tabla sortable
+con valores tipados y UNKNOWN al final en ambos sentidos; Light/Dark dinámico y
+preferencia global runtime-local. Auditoría Tk normal/reducida y reopen acreditados.
+Contrato en [GUI_CONFIGURATION](docs/GUI_CONFIGURATION.md); validación consolidada,
+índice y límites del cierre en [CHARACTER_STATE_CHECKPOINT](docs/CHARACTER_STATE_CHECKPOINT.md).
+Durante el cierre conjunto se registró catch-up SYNCHRONIZED_RESET del diario
+2026-10-06T07:00Z (observado12:27:50.521Z): Ads28=2, siguiente diario07:00Z del día7.
+WB6YES/22UNKNOWN y los28 snapshots conservados; no se completaron facts manualmente.
+El informe checkpoint separa este epoch nuevo del estado de aceptación Sweep.
+Open Pets permanece posterior y sin implementar. Trabajo independiente previo preservado.
+
 ## Checkpoint full roster — aceptación técnica28/28 2026-10-05
 
 Parent `656460c4b16526ced5ae46b36764240aa5ec71cb`, rama `rebuild/stable-baseline`.

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class CharacterResourceKnowledge:
     stage_ads_exhausted: bool = False
+    stage_ads_epoch: str | None = None
 
 _knowledge = ContextVar("character_resource_knowledge", default=None)
 

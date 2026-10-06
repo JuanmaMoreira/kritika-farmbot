@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
 from bot.config import DEFAULT_CHARACTER_COUNT
@@ -25,8 +26,14 @@ from bot.gui_model import (
     GuiRunMode,
     SessionElapsedTimer,
     event_visible,
+    STEP_CONFIG_SECTIONS, CHARACTER_SORT_FIELDS, sorted_character_rows,
 )
 from bot.routines import RoutineEditor, RoutineStore, config_overrides, step_settings
+from bot.gui_preferences import GuiPreferences
+from tools.gui_theme import GuiTheme, ScrollableSettings, AppDialog
+from bot.character_state import CharacterStateStore, stamp
+from bot.character_data import ResourceSnapshotMode
+from bot.world_boss_state import WorldBossEligibilityMode
 from bot.monster_wave_config import MonsterWaveConfig
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
 from bot.productive_runtime import PROJECT_ROOT
@@ -48,11 +55,23 @@ class KritikaFarmBotGui:
         *,
         dotenv_path: Path = PROJECT_ROOT / ".env",
         log_dir: Path = PROJECT_ROOT / "logs",
+        routine_path: Path = PROJECT_ROOT / "routines.json",
+        preferences_path: Path = PROJECT_ROOT / "runtime" / "gui_preferences.json",
+        character_store: CharacterStateStore | None = None,
     ) -> None:
         self.root = root
+        self.character_store = character_store if character_store is not None else CharacterStateStore()
+        self.preferences = GuiPreferences(preferences_path)
+        self.theme = GuiTheme(root)
+        self.appearance_var = tk.StringVar(root, value=self.preferences.load())
+        self.character_sort_column = None
+        self.character_sort_descending = False
+        self._character_rows = []
+        self._settings_step_index = None
+        self._character_refresh_after = None
         self.dotenv_path = Path(dotenv_path)
         self.log_dir = Path(log_dir)
-        self.selection = RoutineEditor(RoutineStore(PROJECT_ROOT / "routines.json", DEFAULT_FLOW_REGISTRY))
+        self.selection = RoutineEditor(RoutineStore(routine_path, DEFAULT_FLOW_REGISTRY))
         if not self.selection.store.path.exists():
             try:
                 self.selection.save()
@@ -66,11 +85,13 @@ class KritikaFarmBotGui:
         self._close_when_idle = False
 
         root.title("Kritika FarmBot")
-        root.geometry("920x680")
+        root.geometry("1100x760")
         root.minsize(760, 560)
         root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.routine_var = tk.StringVar()
+        self.wb_eligibility_var = tk.StringVar(value=WorldBossEligibilityMode.DAILY_QUEST.value)
+        self.resource_snapshot_var = tk.StringVar(value=ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value)
         self.available_flow_var = tk.StringVar()
         self.purchase_skip_var = tk.BooleanVar(value=False)
         self.continue_full_var = tk.BooleanVar(value=False)
@@ -92,7 +113,9 @@ class KritikaFarmBotGui:
         self.evidence_var = tk.StringVar(value="")
         self.evidence_status_var = tk.StringVar(value="")
 
+        self.theme.apply(self.appearance_var.get())
         self._build_layout()
+        self.theme.apply(self.appearance_var.get())
         self._refresh_routines()
         self._refresh_flow_list()
         if self.selection.store.warnings:
@@ -100,179 +123,206 @@ class KritikaFarmBotGui:
         self._set_running_controls(False)
         self.root.after(POLL_INTERVAL_MS, self._drain_worker)
         self.root.after(SESSION_TIMER_INTERVAL_MS, self._refresh_session_timer)
+        self._refresh_character_state()
 
     def _build_layout(self) -> None:
-        outer = ttk.Frame(self.root, padding=12)
+        outer = ttk.Frame(self.root, padding=10)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=1)
-        outer.rowconfigure(3, weight=1)
+        outer.rowconfigure(2, weight=1)
+        run = ttk.Frame(outer, padding=(0, 4))
+        run.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        ttk.Label(run, text="Run routine · Characters").grid(row=0, column=0, sticky="w")
+        self.characters = ttk.Spinbox(run, from_=1, to=999, width=5, textvariable=self.characters_var)
+        self.characters.grid(row=0, column=1, padx=6)
+        self.debug_check = ttk.Checkbutton(run, text="Debug", variable=self.debug_var)
+        self.debug_check.grid(row=0, column=2, padx=6)
+        self.run_flow_button = ttk.Button(run, text="Run Selected Flows", command=self._run_selected_flows)
+        self.run_flow_button.grid(row=0, column=3, padx=4)
+        self.run_session_button = ttk.Button(run, text="Run Session", command=self._run_session)
+        self.run_session_button.grid(row=0, column=4, padx=4)
+        self.stop_button = ttk.Button(run, text="Stop Safely", command=self._stop_safely)
+        self.stop_button.grid(row=0, column=5, padx=4)
 
-        ttk.Label(outer, text="Kritika FarmBot", font=("Segoe UI", 16, "bold")).grid(
-            row=0, column=0, sticky="w", pady=(0, 10)
-        )
-
-        controls = ttk.Frame(outer)
-        controls.grid(row=1, column=0, sticky="ew")
-        controls.columnconfigure(0, weight=1)
-
-        flows = ttk.LabelFrame(controls, text="Routine — execution order", padding=8)
-        flows.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        flows.columnconfigure(0, weight=1)
+        self.output_tabs = ttk.Notebook(outer)
+        self.output_tabs.grid(row=2, column=0, sticky="nsew")
+        self.editor_frame = ttk.Frame(self.output_tabs, padding=8)
+        self.output_tabs.add(self.editor_frame, text="Routine Editor")
+        self.editor_frame.columnconfigure(0, weight=1)
+        self.editor_frame.columnconfigure(1, weight=2)
+        self.editor_frame.rowconfigure(1, weight=1)
         self.routine_controls = []
-        routines = ttk.Frame(flows)
-        routines.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+        routines = ttk.Frame(self.editor_frame)
+        routines.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         routines.columnconfigure(0, weight=1)
         self.routine_select = ttk.Combobox(routines, textvariable=self.routine_var, state="readonly")
-        self.routine_select.grid(row=0, column=0, columnspan=5, sticky="ew")
+        self.routine_select.grid(row=0, column=0, sticky="ew", padx=(0, 6))
         self.routine_select.bind("<<ComboboxSelected>>", self._select_routine)
         for column, (label, command) in enumerate((
                 ("New", self._new_routine), ("Duplicate", self._duplicate_routine),
-                ("Rename", self._rename_routine), ("Save", self._save_routine),
-                ("Delete", self._delete_routine))):
+                ("Rename", self._rename_routine), ("Save Routine", self._save_routine),
+                ("Delete", self._delete_routine)), start=1):
             button = ttk.Button(routines, text=label, command=command)
-            button.grid(row=1, column=column, sticky="ew", pady=(4, 0))
+            button.grid(row=0, column=column, padx=2)
             self.routine_controls.append(button)
-        available = ttk.Frame(flows)
-        available.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(6, 0))
-        available.columnconfigure(0, weight=1)
-        self.available_flow_select = ttk.Combobox(available, textvariable=self.available_flow_var,
-            values=tuple(d.display_name for d in self.selection.registry.definitions), state="readonly")
-        self.available_flow_select.grid(row=0, column=0, sticky="ew")
-        self.available_flow_select.current(0)
-        for column, (label, command) in enumerate((("Add step", self._add_step),
-                                                  ("Remove step", self._remove_step)), start=1):
-            button = ttk.Button(available, text=label, command=command)
-            button.grid(row=0, column=column, padx=(5, 0))
-            self.routine_controls.append(button)
-        self.flow_list = tk.Listbox(flows, height=5, exportselection=False)
-        self.flow_list.grid(row=1, column=0, rowspan=4, sticky="nsew")
+
+        flows = ttk.LabelFrame(self.editor_frame, text="Steps — execution order", padding=8)
+        flows.grid(row=1, column=0, sticky="nsew", padx=(0, 8))
+        flows.columnconfigure(0, weight=1)
+        flows.rowconfigure(0, weight=1)
+        self.flow_list = tk.Listbox(flows, height=5, width=24, exportselection=False)
+        self.flow_list.grid(row=0, column=0, sticky="nsew")
         self.flow_list.bind("<<ListboxSelect>>", lambda _: self._load_step_settings())
         self.flow_list.bind("<Double-Button-1>", lambda _: self._toggle_flow())
         self.flow_list.bind("<space>", lambda _: self._toggle_flow())
-        self.toggle_button = ttk.Button(flows, text="Enable / Disable", command=self._toggle_flow)
-        self.toggle_button.grid(row=1, column=1, sticky="ew", padx=(8, 0))
-        self.up_button = ttk.Button(flows, text="↑ Up", command=self._move_up)
-        self.up_button.grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=4)
-        self.down_button = ttk.Button(flows, text="↓ Down", command=self._move_down)
-        self.down_button.grid(row=3, column=1, sticky="ew", padx=(8, 0))
+        bar = ttk.Scrollbar(flows, orient='vertical', command=self.flow_list.yview)
+        bar.grid(row=0, column=1, sticky='ns')
+        self.flow_list.configure(yscrollcommand=bar.set)
+        xbar = ttk.Scrollbar(flows, orient='horizontal', command=self.flow_list.xview)
+        xbar.grid(row=1, column=0, sticky='ew')
+        self.flow_list.configure(xscrollcommand=xbar.set)
+        step_actions = ttk.Frame(flows)
+        step_actions.grid(row=2, column=0, columnspan=2, sticky='ew', pady=6)
+        self.toggle_button = ttk.Button(step_actions, text="Enable / Disable", command=self._toggle_flow)
+        self.up_button = ttk.Button(step_actions, text="↑ Up", command=self._move_up)
+        self.down_button = ttk.Button(step_actions, text="↓ Down", command=self._move_down)
+        for column, button in enumerate((self.toggle_button, self.up_button, self.down_button)):
+            button.grid(row=0, column=column, padx=2, sticky='ew')
+            step_actions.columnconfigure(column, weight=1)
+        remove = ttk.Button(step_actions, text="Remove", command=self._remove_step)
+        remove.grid(row=1, column=0, columnspan=3, sticky='ew', padx=2, pady=(4, 0))
+        self.routine_controls.append(remove)
+        available = ttk.Frame(flows)
+        available.grid(row=3, column=0, columnspan=2, sticky='ew')
+        available.columnconfigure(0, weight=1)
+        self.available_flow_select = ttk.Combobox(available, textvariable=self.available_flow_var,
+            values=tuple(d.display_name for d in self.selection.registry.definitions), state="readonly", width=18)
+        self.available_flow_select.grid(row=0, column=0, sticky="ew")
+        self.available_flow_select.current(0)
+        add = ttk.Button(available, text="Add flow", command=self._add_step)
+        add.grid(row=0, column=1, sticky='ew', padx=(4, 0))
+        self.routine_controls.append(add)
 
-        run = ttk.LabelFrame(controls, text="Execution", padding=8)
-        run.grid(row=0, column=1, sticky="ns")
-        ttk.Label(run, text="Characters").grid(row=0, column=0, sticky="w")
-        self.characters = ttk.Spinbox(
-            run,
-            from_=1,
-            to=999,
-            width=8,
-            textvariable=self.characters_var,
-        )
-        self.characters.grid(row=0, column=1, sticky="w", padx=(8, 0))
-        self.debug_check = ttk.Checkbutton(run, text="Debug Mode", variable=self.debug_var)
-        self.debug_check.grid(row=1, column=0, columnspan=2, sticky="w", pady=7)
-        self.run_flow_button = ttk.Button(run, text="Run Selected Flows", command=self._run_selected_flows)
-        self.run_flow_button.grid(row=2, column=0, columnspan=2, sticky="ew")
-        self.run_session_button = ttk.Button(run, text="Run Session", command=self._run_session)
-        self.run_session_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=5)
-        self.stop_button = ttk.Button(run, text="Stop Safely", command=self._stop_safely)
-        self.stop_button.grid(row=4, column=0, columnspan=2, sticky="ew")
+        settings = ttk.Notebook(self.editor_frame)
+        settings.grid(row=1, column=1, sticky='nsew')
+        step_frame = ttk.Frame(settings)
+        settings.add(step_frame, text='Step Settings')
+        step_frame.columnconfigure(0, weight=1)
+        step_frame.rowconfigure(1, weight=1)
+        self.step_heading_var = tk.StringVar()
+        ttk.Label(step_frame, textvariable=self.step_heading_var, font=('Segoe UI', 11, 'bold'),
+                  padding=8).grid(row=0, column=0, sticky='ew')
+        self.step_scroll = ScrollableSettings(step_frame)
+        self.step_scroll.grid(row=1, column=0, sticky='nsew')
+        self.apply_step_button = ttk.Button(step_frame, text='Apply to selected step', command=self._apply_step_settings)
+        self.apply_step_button.grid(row=2, column=0, sticky='ew', padx=8, pady=(6, 0))
+        ttk.Label(step_frame, text='Apply → routine draft. Save Routine → disk.\nSwitching steps discards unapplied edits.',
+                  style='Muted.TLabel', padding=8).grid(row=3, column=0, sticky='ew')
 
-        status = ttk.LabelFrame(outer, text="Status / Progress", padding=8)
-        status.grid(row=2, column=0, sticky="ew", pady=10)
-        for column in range(5):
-            status.columnconfigure(column, weight=1)
-        self._status_pair(status, 0, "Status", self.status_var)
-        self._status_pair(status, 1, "Character", self.character_var)
-        self._status_pair(status, 2, "Flow", self.flow_var)
-        self._status_pair(status, 3, "State", self.state_var)
-        self._status_pair(status, 4, "Session elapsed", self.session_elapsed_var)
-        ttk.Label(status, text="Result:").grid(row=2, column=0, sticky="w", pady=(8, 0))
-        ttk.Label(status, textvariable=self.result_var).grid(
-            row=2, column=1, columnspan=4, sticky="w", pady=(8, 0)
-        )
-        ttk.Label(status, textvariable=self.log_var).grid(
-            row=3, column=0, columnspan=5, sticky="w", pady=(3, 0)
-        )
+        self.routine_scroll = ScrollableSettings(settings)
+        settings.add(self.routine_scroll, text='Routine Settings')
+        content = self.routine_scroll.content
+        ttk.Label(content, text='Whole routine / each character', font=('Segoe UI', 11, 'bold')).grid(row=0, column=0, sticky='w')
+        ttk.Label(content, text='Resource snapshot').grid(row=1, column=0, sticky='w', pady=(16, 4))
+        self.resource_select = ttk.Combobox(content, textvariable=self.resource_snapshot_var,
+            values=tuple(m.value for m in ResourceSnapshotMode), state='readonly', width=30)
+        self.resource_select.grid(row=2, column=0, sticky='ew')
+        self.resource_select.bind('<<ComboboxSelected>>', self._set_snapshot_mode)
+        ttk.Label(content, text='BEFORE_CHARACTER_ROTATION captures Lapiz, Dark, Light, Nature and K Coins '
+                  'from Rotation’s Quick Menu before Character Select.\n\nChanging this setting updates the routine draft. '
+                  'Use Save Routine to persist.', wraplength=340, style='Muted.TLabel').grid(row=3, column=0, sticky='ew', pady=12)
+        self.routine_scroll.bind_content()
+        self.routine_controls.append(self.resource_select)
+        self.settings_tabs = settings
 
-        self.output_tabs = ttk.Notebook(outer)
-        self.output_tabs.grid(row=3, column=0, sticky="nsew")
+        state_frame = ttk.Frame(self.output_tabs, padding=6)
+        self.output_tabs.add(state_frame, text='Character State')
+        self.state_frame = state_frame
+        state_frame.rowconfigure(1, weight=1)
+        state_frame.columnconfigure(0, weight=1)
+        self.reset_clock_var = tk.StringVar()
+        state_header = ttk.Frame(state_frame)
+        state_header.grid(row=0, column=0, columnspan=2, sticky='ew')
+        ttk.Label(state_header, textvariable=self.reset_clock_var).pack(side='left')
+        self.sweep_button = ttk.Button(state_header, text='Character Data Sweep — All 28', command=self._run_character_data_sweep)
+        self.sweep_button.pack(side='right', padx=8, pady=4)
+        columns = tuple(CHARACTER_SORT_FIELDS)
+        self.character_table = ttk.Treeview(state_frame, columns=columns, show='headings', height=18)
+        for column in columns:
+            self.character_table.heading(column, text=column, command=lambda c=column: self._sort_character_state(c))
+            width = 165 if column == 'Character' else 180 if column in ('Ads status / updated', 'Resource snapshot') else 135
+            self.character_table.column(column, width=width, stretch=False)
+        self.character_table.grid(row=1, column=0, sticky='nsew')
+        xbar = ttk.Scrollbar(state_frame, orient='horizontal', command=self.character_table.xview)
+        xbar.grid(row=2, column=0, sticky='ew')
+        ybar = ttk.Scrollbar(state_frame, orient='vertical', command=self.character_table.yview)
+        ybar.grid(row=1, column=1, sticky='ns')
+        self.character_table.configure(xscrollcommand=xbar.set, yscrollcommand=ybar.set)
+
         self.report_frame = ttk.Frame(self.output_tabs, padding=8)
         self.output_tabs.add(self.report_frame, text="Session Report")
         self.report_frame.columnconfigure(0, weight=1)
         self.report_frame.rowconfigure(0, weight=1)
-        self.report_text = ScrolledText(self.report_frame, wrap="word", height=18, state="disabled")
+        self.report_text = ScrolledText(self.report_frame, wrap="word", height=8, state="disabled")
+        self._theme_text_scrollbar(self.report_text)
         self.report_text.grid(row=0, column=0, columnspan=2, sticky="nsew")
-        self.evidence_select = ttk.Combobox(
-            self.report_frame, textvariable=self.evidence_var, state="readonly",
-        )
+        self.evidence_select = ttk.Combobox(self.report_frame, textvariable=self.evidence_var, state="readonly")
         self.evidence_select.grid(row=1, column=0, sticky="ew", pady=(7, 0))
-        self.evidence_button = ttk.Button(
-            self.report_frame, text="Locate evidence", command=self._locate_evidence, state="disabled",
-        )
+        self.evidence_button = ttk.Button(self.report_frame, text="Locate evidence", command=self._locate_evidence, state="disabled")
         self.evidence_button.grid(row=1, column=1, padx=(8, 0), pady=(7, 0))
-        ttk.Label(self.report_frame, textvariable=self.evidence_status_var).grid(
-            row=2, column=0, columnspan=2, sticky="w",
-        )
-
-        policy_frame = ttk.Frame(self.output_tabs, padding=12)
-        self.output_tabs.add(policy_frame, text="Step settings")
-        ttk.Label(policy_frame, text="Ethereal: checked types may be sold with Bulk").grid(
-            row=0, column=0, columnspan=3, sticky="w", pady=(0,10))
-        self.sell_policy_checks = []
-        for index, (kind, variable) in enumerate(self.ethereal_type_vars.items()):
-            label = "Earrings" if kind.value == "earring" else kind.value.title()
-            check = ttk.Checkbutton(policy_frame, text=label, variable=variable)
-            check.grid(row=1+index//3, column=index%3, sticky="w", padx=(0,30), pady=5)
-            self.sell_policy_checks.append(check)
-        check = ttk.Checkbutton(policy_frame, text="Ethereal Enhance",
-                                variable=self.ethereal_enhance_var)
-        check.grid(row=4, column=0, columnspan=3, sticky="w", pady=5)
-        self.sell_policy_checks.append(check)
-        for row, (label, variable) in enumerate((
-                ("MW: purchase SKIP tickets", self.purchase_skip_var),
-                ("MW: continue with nonblocking inventory full", self.continue_full_var)), start=6):
-            check = ttk.Checkbutton(policy_frame, text=label, variable=variable)
-            check.grid(row=row, column=0, columnspan=3, sticky="w", pady=4)
-            self.sell_policy_checks.append(check)
-        button = ttk.Button(policy_frame, text="Apply settings to selected step", command=self._apply_step_settings)
-        button.grid(row=8, column=0, columnspan=3, sticky="w", pady=8)
-        self.routine_controls.append(button)
-        ttk.Label(policy_frame, text="Settings belong to the selected step, including its prerequisites.\n"
-                  "Apply, then Save the routine. Steps without overrides inherit runtime defaults.").grid(
-            row=9, column=0, columnspan=3, sticky="w")
-        ttk.Label(policy_frame, text="Ethereal+ is always protected. Lower tiers use Bulk.\n"
-                  "Full: Combine first; Sell; then one +4 row with Karats if needed.").grid(
-            row=5, column=0, columnspan=3, sticky="w", pady=10)
-
-        console_frame = ttk.Frame(self.output_tabs, padding=8)
-        self.output_tabs.add(console_frame, text="Debug Console")
-        self.console_frame = console_frame
-        self.output_tabs.select(console_frame)
-        console_frame.columnconfigure(0, weight=1)
-        console_frame.rowconfigure(0, weight=1)
-        self.console = ScrolledText(
-            console_frame,
-            wrap="none",
-            height=18,
-            font=("Consolas", 9),
-            state="disabled",
-        )
+        ttk.Label(self.report_frame, textvariable=self.evidence_status_var).grid(row=2, column=0, columnspan=2, sticky="w")
+        self.console_frame = ttk.Frame(self.output_tabs, padding=8)
+        self.output_tabs.add(self.console_frame, text="Debug Console")
+        self.console_frame.columnconfigure(0, weight=1)
+        self.console_frame.rowconfigure(0, weight=1)
+        self.console = ScrolledText(self.console_frame, wrap="none", height=8, font=("Consolas", 9), state="disabled")
+        self._theme_text_scrollbar(self.console)
         self.console.grid(row=0, column=0, columnspan=3, sticky="nsew")
-        ttk.Button(console_frame, text="Clear", command=self._clear_console).grid(
-            row=1, column=0, sticky="w", pady=(7, 0)
-        )
-        ttk.Button(console_frame, text="Copy selected", command=self._copy_selected).grid(
-            row=1, column=1, pady=(7, 0)
-        )
-        ttk.Button(console_frame, text="Copy all", command=self._copy_all).grid(
-            row=1, column=2, sticky="e", pady=(7, 0)
-        )
+        for column, (text, command) in enumerate((('Clear', self._clear_console),
+                ('Copy selected', self._copy_selected), ('Copy all', self._copy_all))):
+            ttk.Button(self.console_frame, text=text, command=command).grid(row=1, column=column, pady=7)
+
+        application = ttk.Frame(self.output_tabs, padding=16)
+        self.output_tabs.add(application, text='Application')
+        ttk.Label(application, text='Application Settings', font=('Segoe UI', 12, 'bold')).grid(row=0, column=0, sticky='w')
+        ttk.Label(application, text='Appearance').grid(row=1, column=0, sticky='w', pady=(18, 4))
+        appearance = ttk.Combobox(application, textvariable=self.appearance_var, values=('Light', 'Dark'), state='readonly', width=18)
+        appearance.grid(row=2, column=0, sticky='w')
+        appearance.bind('<<ComboboxSelected>>', self._change_appearance)
+        ttk.Label(application, text='Applied immediately and remembered for the application.', style='Muted.TLabel').grid(row=3, column=0, pady=12)
+
+        status = ttk.LabelFrame(outer, text="Status / Progress — active task", padding=6)
+        status.grid(row=3, column=0, sticky="ew", pady=(8, 0))
+        for column in range(5):
+            status.columnconfigure(column, weight=1)
+        for column, (label, variable) in enumerate((("Status", self.status_var), ('Character', self.character_var),
+                ('Flow', self.flow_var), ('State', self.state_var), ('Session elapsed', self.session_elapsed_var))):
+            self._status_pair(status, column, label, variable)
+        ttk.Label(status, text="Result:").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        result = ttk.Label(status, textvariable=self.result_var, wraplength=600)
+        result.grid(row=2, column=1, columnspan=4, sticky='ew', pady=(6, 0))
+        ttk.Label(status, textvariable=self.log_var, wraplength=700, style='Muted.TLabel').grid(row=3, column=0, columnspan=5, sticky='ew')
+        status.bind('<Configure>', lambda e: result.configure(wraplength=max(180, e.width - 140)))
+        self.output_tabs.select(self.editor_frame)
+        self.sell_policy_checks = []
+        self.step_controls = []
+
+    @staticmethod
+    def _theme_text_scrollbar(widget):
+        # Native Tk scrollbars on Windows ignore palette colors; use the ttk owner.
+        widget.vbar.destroy()
+        widget.vbar = ttk.Scrollbar(widget.frame, orient='vertical', command=widget.yview)
+        widget.vbar.pack(side='right', fill='y')
+        widget.configure(yscrollcommand=widget.vbar.set)
 
     @staticmethod
     def _status_pair(parent, column, label, variable) -> None:
         ttk.Label(parent, text=label).grid(row=0, column=column, sticky="w")
-        ttk.Label(parent, textvariable=variable, font=("Segoe UI", 10, "bold")).grid(
-            row=1, column=column, sticky="w"
+        value = ttk.Label(parent, textvariable=variable, font=("Segoe UI", 10, "bold"), width=15, wraplength=130)
+        value.grid(
+            row=1, column=column, sticky="ew"
         )
+        parent.bind('<Configure>', lambda e: value.configure(wraplength=max(80, e.width // 5 - 12)), add='+')
 
     def _selected_flow_id(self) -> int | None:
         selection = self.flow_list.curselection()
@@ -318,6 +368,8 @@ class KritikaFarmBotGui:
         self._refresh_flow_list(flow_id + (-1 if up else 1) if moved else flow_id)
 
     def _refresh_routines(self):
+        if self.selection.draft and hasattr(self,'resource_snapshot_var'):
+            self.resource_snapshot_var.set(self.selection.draft.resource_snapshot_mode)
         self.routine_select.configure(values=tuple(r.name for r in self.selection.routines))
         index = next((i for i, r in enumerate(self.selection.routines)
                       if r.id == self.selection.selected_id), -1)
@@ -331,7 +383,7 @@ class KritikaFarmBotGui:
         saved = next((r for r in self.selection.routines if r.id == self.selection.selected_id), None)
         if self.selection.draft == saved:
             return True
-        answer = messagebox.askyesnocancel("Unsaved routine", "Save changes before switching routines?", parent=self.root)
+        answer = self._ask_confirmation("Unsaved routine", "Save changes before switching routines?", cancel=True)
         if answer is None:
             return False
         return self._save_routine() if answer else True
@@ -346,7 +398,7 @@ class KritikaFarmBotGui:
     def _new_routine(self, duplicate=False):
         if not self._keep_draft():
             return
-        name = simpledialog.askstring("Routine", "Routine name:", parent=self.root,
+        name = self._ask_string("Routine", "Routine name:",
             initialvalue=(self.selection.draft.name + " copy" if duplicate and self.selection.draft else ""))
         if name:
             try:
@@ -362,7 +414,7 @@ class KritikaFarmBotGui:
     def _rename_routine(self):
         if self.selection.draft is None:
             return
-        name = simpledialog.askstring("Rename routine", "Routine name:", parent=self.root,
+        name = self._ask_string("Rename routine", "Routine name:",
                                       initialvalue=self.selection.draft.name)
         if name:
             try:
@@ -384,7 +436,7 @@ class KritikaFarmBotGui:
     def _delete_routine(self):
         if self.selection.draft is None:
             return
-        if messagebox.askyesno("Delete routine", f'Delete "{self.selection.draft.name}"?', parent=self.root):
+        if self._ask_confirmation("Delete routine", f'Delete "{self.selection.draft.name}"?'):
             try:
                 self.selection.delete()
                 self._refresh_routines()
@@ -410,27 +462,184 @@ class KritikaFarmBotGui:
 
     def _load_step_settings(self):
         index = self._selected_flow_id()
+        self._settings_step_index = index
         if index is None:
+            if hasattr(self, 'step_scroll'):
+                self._render_step_settings(None)
             return
+        step = self.selection.draft.steps[index]
+        # Reset every variable on selection, including after an invalid legacy config.
+        values = {}
         try:
-            values = config_overrides(self.selection.draft.steps[index].config)
-            policy = values.get("equipment_sell", EquipmentSellPolicy())
-            mw = values.get("monster_wave", MonsterWaveConfig())
-            for kind, variable in self.ethereal_type_vars.items():
-                variable.set(kind in policy.ethereal_types)
-            self.ethereal_enhance_var.set(policy.ethereal_enhance)
-            self.purchase_skip_var.set(mw.purchase_skip_tickets)
-            self.continue_full_var.set(mw.continue_when_nonblocking_inventory_full)
+            values = config_overrides(step.config)
         except (TypeError, ValueError) as error:
             self.result_var.set(f"Invalid step settings: {error}; apply valid settings to repair")
+        policy = values.get("equipment_sell", EquipmentSellPolicy())
+        mw = values.get("monster_wave", MonsterWaveConfig())
+        for kind, variable in self.ethereal_type_vars.items():
+            variable.set(kind in policy.ethereal_types)
+        self.ethereal_enhance_var.set(policy.ethereal_enhance)
+        self.purchase_skip_var.set(mw.purchase_skip_tickets)
+        self.continue_full_var.set(mw.continue_when_nonblocking_inventory_full)
+        if hasattr(self, 'wb_eligibility_var'):
+            self.wb_eligibility_var.set(step.config.get('world_boss', {}).get('eligibility', WorldBossEligibilityMode.DAILY_QUEST.value))
+        if hasattr(self, 'step_scroll'):
+            self._render_step_settings(step)
+
+    def _render_step_settings(self, step):
+        content = self.step_scroll.content
+        for widget in content.winfo_children():
+            widget.destroy()
+        self.step_controls = []
+        self.sell_policy_checks = []
+        sections = STEP_CONFIG_SECTIONS.get(step.flow_id, ()) if step else ()
+        self.visible_step_sections = sections
+        index = self._settings_step_index
+        label = self.selection.options[index].display_name if step else 'Select a step'
+        self.step_heading_var.set(f'Step {index + 1} · {label}' if step else label)
+        row = 0
+        def note(text):
+            nonlocal row
+            widget = ttk.Label(content, text=text, wraplength=340, style='Muted.TLabel')
+            widget.grid(row=row, column=0, sticky='ew', pady=(4, 10))
+            row += 1
+        if not sections:
+            note('No configurable settings for this step.' if step else 'Select a step to configure its occurrence.')
+        if 'world_boss' in sections:
+            ttk.Label(content, text='Eligibility').grid(row=row, column=0, sticky='w', pady=(4, 6))
+            row += 1
+            self.wb_select = ttk.Combobox(content, textvariable=self.wb_eligibility_var,
+                values=tuple(m.value for m in WorldBossEligibilityMode), state='readonly', width=30)
+            self.wb_select.grid(row=row, column=0, sticky='ew')
+            row += 1
+            self.step_controls.append(self.wb_select)
+            note('Eligibility applies only to this World Boss occurrence.')
+        if 'monster_wave' in sections:
+            ttk.Label(content, text='Monster Wave' if step.flow_id == 'monster_wave' else 'Monster Wave prerequisite / investment',
+                      font=('Segoe UI', 10, 'bold')).grid(row=row, column=0, sticky='w', pady=6)
+            row += 1
+            for text, variable in (('Purchase SKIP tickets', self.purchase_skip_var),
+                    ('Continue with nonblocking inventory full', self.continue_full_var)):
+                check = ttk.Checkbutton(content, text=text, variable=variable)
+                check.grid(row=row, column=0, sticky='w', pady=3)
+                row += 1
+                self.step_controls.append(check)
+        if 'equipment_sell' in sections:
+            ttk.Label(content, text='Equipment relief · Ethereal sales', font=('Segoe UI', 10, 'bold')).grid(row=row, column=0, sticky='w', pady=(12, 4))
+            row += 1
+            note('Checked types may be sold with Bulk during this step’s equipment relief. '
+                 'Ethereal+ is always protected. Lower tiers use Bulk.')
+            for kind, variable in self.ethereal_type_vars.items():
+                label = 'Earrings' if kind.value == 'earring' else kind.value.title()
+                check = ttk.Checkbutton(content, text=label, variable=variable)
+                check.grid(row=row, column=0, sticky='w', pady=2)
+                row += 1
+                self.sell_policy_checks.append(check)
+            check = ttk.Checkbutton(content, text='Ethereal Enhance', variable=self.ethereal_enhance_var)
+            check.grid(row=row, column=0, sticky='w', pady=2)
+            self.sell_policy_checks.append(check)
+            self.step_controls.extend(self.sell_policy_checks)
+        running = self.controller.is_running
+        for widget in self.step_controls:
+            widget.configure(state='disabled' if running else 'readonly' if isinstance(widget, ttk.Combobox) else 'normal')
+        self.apply_step_button.configure(state='normal' if sections and not running else 'disabled')
+        self.step_scroll.reset()
+        self.step_scroll.bind_content()
+        self.theme.style_widgets(self.step_scroll)
 
     def _apply_step_settings(self):
         index = self._selected_flow_id()
-        if index is not None:
-            self.selection.configure(index, step_settings(
-                MonsterWaveConfig(self.purchase_skip_var.get(), self.continue_full_var.get()),
-                self._equipment_sell_policy()))
-            self.result_var.set(f"Settings applied to step {index + 1}; Save to persist")
+        # The form must still describe the selected occurrence when Apply is delivered.
+        if index is None or index != self._settings_step_index:
+            return
+        step = self.selection.draft.steps[index]
+        sections = STEP_CONFIG_SECTIONS.get(step.flow_id, ())
+        if not sections:
+            return
+        settings = dict(step.config)  # retain legacy overrides that this form does not own
+        current = step_settings(MonsterWaveConfig(self.purchase_skip_var.get(), self.continue_full_var.get()),
+                                self._equipment_sell_policy())
+        current['world_boss'] = {'eligibility': self.wb_eligibility_var.get()} if 'world_boss' in sections else {}
+        for section in sections:
+            settings[section] = current[section]
+        try:
+            self.selection.configure(index, settings)
+            self.result_var.set(f"Settings applied to step {index + 1}; Save Routine to persist")
+        except (TypeError, ValueError) as error:
+            self._validation_error(str(error))
+
+    def _change_appearance(self, _event=None):
+        self.theme.apply(self.appearance_var.get())
+        try:
+            self.preferences.save(self.appearance_var.get())
+        except OSError as error:
+            self.result_var.set(f'Appearance applied; unable to save preference: {error}')
+
+    def _ask_string(self, title, prompt, initialvalue=''):
+        return AppDialog(self.root, self.theme, title, prompt, initialvalue=initialvalue,
+                         choices=('OK', 'Cancel')).result
+
+    def _ask_confirmation(self, title, prompt, *, cancel=False):
+        answer = AppDialog(self.root, self.theme, title, prompt,
+                           choices=('Yes', 'No', 'Cancel') if cancel else ('Yes', 'No')).result
+        return None if answer is None else answer == 'Yes'
+
+    def _set_snapshot_mode(self, _event=None):
+        if self.selection.draft:
+            self.selection.set_resource_snapshot_mode(self.resource_snapshot_var.get())
+            self.result_var.set('Resource snapshot setting applied; Save to persist')
+
+    def _sort_character_state(self, column):
+        if column == self.character_sort_column:
+            self.character_sort_descending = not self.character_sort_descending
+        else:
+            self.character_sort_column = column
+            self.character_sort_descending = False
+        self._project_character_sort()
+
+    def _project_character_sort(self):
+        column = self.character_sort_column or 'Character'
+        for index, row in enumerate(sorted_character_rows(self._character_rows, column, self.character_sort_descending)):
+            self.character_table.move(row['character_id'], '', index)
+        for name in CHARACTER_SORT_FIELDS:
+            direction = ' ↓' if self.character_sort_descending else ' ↑'
+            self.character_table.heading(name, text=name + (direction if name == self.character_sort_column else ''))
+
+    def _refresh_character_state(self):
+        if not self.root.winfo_exists():
+            return
+        if getattr(self, "_character_refresh_after", None):
+            self.root.after_cancel(self._character_refresh_after)
+            self._character_refresh_after = None
+        try:
+            rows=self.character_store.rows()  # catch-up before displaying
+            self._character_rows = rows
+            clock=self.character_store.clock.state()
+            self.reset_clock_var.set('Reset clock: waiting for WB countdown' if clock is None else
+                f"Next reset: {datetime.fromtimestamp(clock['next_daily']).astimezone().strftime('%Y-%m-%d %H:%M')} | WB {'open' if clock['wb_open'] else 'closed'}")
+            for row in rows:
+                cid=row['character_id']
+                ads_at=row['ads_updated_at']
+                observed=row['resource_observed_at']
+                local_time=lambda at: datetime.fromtimestamp(at).astimezone().strftime('%m-%d %H:%M') if at is not None else '—'
+                values=(row['display_name'],row['stage_ads_remaining'] if row['stage_ads_remaining'] is not None else 'UNKNOWN',
+                    f"{row['ads_last_attempt_status'] or row['ads_status'] or 'UNKNOWN'} / {local_time(row['ads_last_attempt_at'] if row['ads_last_attempt_at'] is not None else ads_at)}",
+                    'UNKNOWN' if row['wb_participated'] is None else 'YES' if row['wb_participated'] else 'NO',
+                    f"{row['wb_cycle_id'] or 'UNKNOWN'} / {'open' if clock and clock['wb_open'] else 'closed' if clock else 'UNKNOWN'}",
+                    *(row[k] if row[k] is not None else '—' for k in ('lapiz','dark_essence','light_essence','nature_essence','k_coins')),
+                    local_time(observed))
+                if self.character_table.exists(cid):
+                    self.character_table.item(cid,values=values)
+                else:
+                    self.character_table.insert('', 'end',iid=cid,values=values)
+            if hasattr(self, "character_sort_column"):
+                self._project_character_sort()
+            boundary=self.character_store.clock.next_transition()
+            delay=5000 if boundary is None else max(50,min(5000,int((boundary-self.character_store.now())*1000)))
+            self._character_refresh_after = self.root.after(delay,self._refresh_character_state)
+        except Exception as error:
+            self.reset_clock_var.set(f'Character state unavailable: {error}')
+            self._character_refresh_after = self.root.after(5000,self._refresh_character_state)
 
     def _execution_request(self, character_count=None):
         kwargs = dict(debug=self.debug_var.get(), dotenv_path=self.dotenv_path, log_dir=self.log_dir)
@@ -465,10 +674,17 @@ class KritikaFarmBotGui:
         except (ValueError, RuntimeError) as error:
             self._validation_error(str(error))
 
+    def _run_character_data_sweep(self):
+        try:
+            self._start(GuiExecutionRequest.character_data_sweep(debug=self.debug_var.get(),
+                dotenv_path=self.dotenv_path,log_dir=self.log_dir))
+        except (ValueError,RuntimeError) as error:
+            self._validation_error(str(error))
+
     def _start(self, request: GuiExecutionRequest) -> None:
         self.progress = GuiProgress(character="1 / 1" if request.character_count == 1 else "-")
         self._active_mode = request.mode
-        if request.mode is GuiRunMode.SESSION:
+        if request.mode in (GuiRunMode.SESSION,GuiRunMode.CHARACTER_DATA_SWEEP):
             self.session_elapsed_var.set(self.session_timer.start())
         self._debug_for_run = request.debug
         self.status_var.set(GuiRunStatus.RUNNING.value)
@@ -504,12 +720,14 @@ class KritikaFarmBotGui:
             self._append_console(lines)
         self._sync_progress()
         if self._close_when_idle and not self.controller.is_running:
+            self.character_store.close()
             self.root.after_idle(self.root.destroy)
             return
         self.root.after(POLL_INTERVAL_MS, self._drain_worker)
 
     def _finish(self, result: GuiExecutionResult) -> None:
-        if self._active_mode is GuiRunMode.SESSION:
+        sweep = self._active_mode is GuiRunMode.CHARACTER_DATA_SWEEP
+        if self._active_mode in (GuiRunMode.SESSION,GuiRunMode.CHARACTER_DATA_SWEEP):
             self.session_elapsed_var.set(self.session_timer.finish(result.duration))
         self._active_mode = None
         self.status_var.set(result.status.value)
@@ -521,6 +739,12 @@ class KritikaFarmBotGui:
         )
         if result.error:
             summary += f"  cause={result.error} (see Debug Log)"
+        if sweep:
+            summary = (f"Character Data Sweep: {result.status.value} | {result.characters_processed} processed | "
+                f"{result.identities_resolved} identities\n{result.snapshots_updated} snapshots updated | "
+                f"{result.advances_completed} Rotations | {result.acquisition_failures} acquisition failures | {result.duration:.1f}s")
+            if result.error:
+                summary += f" | cause={result.error} (see Debug Log)"
         self.result_var.set(summary)
         self.log_var.set(f"Log: {result.log_path}")
         self._show_report(result.report)
@@ -554,10 +778,12 @@ class KritikaFarmBotGui:
         self.state_var.set(self.progress.state)
 
     def _set_running_controls(self, running: bool) -> None:
-        for check in self.sell_policy_checks:
-            check.configure(state="disabled" if running else "normal")
+        if hasattr(self,'sweep_button'):
+            self.sweep_button.configure(state='disabled' if running else 'normal')
+        for check in getattr(self, "step_controls", self.sell_policy_checks):
+            check.configure(state="disabled" if running else "readonly" if isinstance(check, ttk.Combobox) else "normal")
         for widget in getattr(self, "routine_controls", ()):
-            widget.configure(state="disabled" if running else "normal")
+            widget.configure(state="disabled" if running else "readonly" if isinstance(widget,ttk.Combobox) else "normal")
         for name in ("routine_select", "available_flow_select"):
             if hasattr(self, name):
                 getattr(self, name).configure(state="disabled" if running else "readonly")
@@ -574,6 +800,8 @@ class KritikaFarmBotGui:
         ):
             widget.configure(state=configure_state)
         self.stop_button.configure(state="normal" if running else "disabled")
+        if hasattr(self, "apply_step_button"):
+            self.apply_step_button.configure(state="normal" if self.visible_step_sections and not running else "disabled")
 
     def _append_console(self, lines: list[str]) -> None:
         at_bottom = self.console.yview()[1] >= 0.999
@@ -615,11 +843,11 @@ class KritikaFarmBotGui:
             if not self._keep_draft():
                 return
             self.root.destroy()
+            self.character_store.close()
             return
-        if not messagebox.askyesno(
+        if not self._ask_confirmation(
             "Kritika FarmBot",
             "A run is active. Request Stop Safely and close when it finishes?",
-            parent=self.root,
         ):
             return
         self._close_when_idle = True

@@ -78,6 +78,7 @@ class GuiRunMode(str, Enum):
     FLOW_ONCE = "flow_once"
     SELECTED_FLOWS = "selected_flows"
     SESSION = "session"
+    CHARACTER_DATA_SWEEP = "character_data_sweep"
 
 
 class SessionElapsedTimer:
@@ -151,6 +152,10 @@ class GuiExecutionRequest:
         return cls(GuiRunMode.FLOW_ONCE, values, 1, debug, Path(dotenv_path), Path(log_dir), equipment_sell)
 
     @classmethod
+    def character_data_sweep(cls, *, debug=False, dotenv_path=PROJECT_ROOT/'.env',log_dir=PROJECT_ROOT/'logs'):
+        return cls(GuiRunMode.CHARACTER_DATA_SWEEP,(),DEFAULT_CHARACTER_COUNT,debug,Path(dotenv_path),Path(log_dir))
+
+    @classmethod
     def selected_flows(
         cls, flow_ids, *, debug: bool = False,
         dotenv_path: Path = PROJECT_ROOT / ".env",
@@ -212,8 +217,15 @@ class GuiProgress:
                           else "Running flow")
         elif name == "flow.completed":
             self.flows_completed += 1
+        elif name == 'character_data_sweep.started':
+            self.flow = 'Character Data Sweep'
+        elif name == 'character.identity_resolved':
+            self.character = f"{self.character} | {fields.get('display_name','-')}"
+        elif name == 'character_data_sweep.snapshot':
+            self.state = f"Snapshot: {fields.get('status','-')}"
         elif name == "rotation.started":
-            self.flow = "-"
+            if self.flow != 'Character Data Sweep':
+                self.flow = "-"
             self.state = "Rotation"
         elif name in {"world_boss.wait.started", "controlled_wait.started"}:
             self.state = "Waiting"
@@ -227,6 +239,42 @@ class GuiProgress:
 
 def event_visible(event: RuntimeEvent, *, debug: bool) -> bool:
     return debug or event.level >= EventLevel.INFO
+
+
+# Actual consumers in FlowRegistry, including composed prerequisites.
+STEP_CONFIG_SECTIONS = {
+    'monster_wave': ('monster_wave', 'equipment_sell'),
+    'stages_daily': ('monster_wave', 'equipment_sell'),
+    'gold_farming': ('monster_wave', 'equipment_sell'),
+    'world_boss': ('world_boss', 'equipment_sell'),
+}
+
+CHARACTER_SORT_FIELDS = {
+    'Character': 'display_name', 'Stage Ads': 'stage_ads_remaining',
+    'Ads status / updated': 'ads_updated_at',
+    'WB participated': 'wb_participated', 'WB cycle / status': 'wb_cycle_id',
+    'Lapiz': 'lapiz',
+    'Dark': 'dark_essence', 'Light': 'light_essence', 'Nature': 'nature_essence',
+    'K Coins': 'k_coins', 'Resource snapshot': 'resource_observed_at',
+}
+
+
+def sorted_character_rows(rows, column='Character', descending=False):
+    """GUI projection: numeric/time values stay typed, unknown last in both directions.
+
+    WB ascending is NO, YES, UNKNOWN; descending YES, NO, UNKNOWN.
+    Ties use canonical display order and permanent ID regardless of direction.
+    """
+    field = CHARACTER_SORT_FIELDS[column]
+    ordered = sorted(rows, key=lambda r: (r['display_name'].casefold(), r['character_id']))
+    def key(row):
+        value = row[field]
+        if field == 'ads_updated_at' and row.get('ads_last_attempt_at') is not None:
+            value = row['ads_last_attempt_at']
+        return value.casefold() if isinstance(value, str) else value
+    known = [r for r in ordered if key(r) is not None]
+    unknown = [r for r in ordered if key(r) is None]
+    return sorted(known, key=key, reverse=descending) + unknown
 
 
 __all__ = (

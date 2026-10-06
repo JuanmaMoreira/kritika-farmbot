@@ -17,6 +17,7 @@ venv/
 AGENT_LOCAL.md
 /routines.json
 /routines.json.*.bak
+/runtime/
 
 # Capturas, datasets y salidas de runtime
 screencaps/

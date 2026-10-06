@@ -207,6 +207,6 @@ def test_dynamic_runtime_fact_contract_is_separate_from_character_context():
     assert {"value", "confidence", "quality", "source", "context", "evidence"} <= (
         runtime_fields
     )
-    assert character_fields == {"name", "name_confidence"}
+    assert character_fields == {"name", "name_confidence", "character_id"}
     assert "name_confidence" not in runtime_fields
     assert {"value", "context", "evidence"}.isdisjoint(character_fields)

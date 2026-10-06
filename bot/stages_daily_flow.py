@@ -10,6 +10,21 @@ from bot.runtime_observer import RuntimeWaitCancelled
 from bot.event_log import record_best_effort
 from bot.event_context import event_scope
 from bot.character_resources import character_resource_knowledge
+from bot.character_state import current_character_state
+
+def known_ads_exhausted():
+    scope= current_character_state()
+    if scope is not None:
+        store,cid=scope
+        state=store.operational(cid)
+        knowledge=character_resource_knowledge()
+        if knowledge is not None and knowledge.stage_ads_exhausted:
+            if knowledge.stage_ads_epoch==state['stage_ads_epoch']:
+                return True
+            knowledge.stage_ads_exhausted=False
+        return store.clock.state() is not None and state['stage_ads_remaining']==0
+    knowledge=character_resource_knowledge()
+    return knowledge is not None and knowledge.stage_ads_exhausted
 
 class StagesDailyFlow:
     name='stages_daily';scope=FlowScope.PER_CHARACTER
@@ -29,7 +44,7 @@ class StagesDailyFlow:
             # reset its invocation bound here; retries within this run stay bounded.
             if getattr(n,"relief",None) is not None:n.relief.reset()
             knowledge=character_resource_knowledge()
-            if knowledge is not None and knowledge.stage_ads_exhausted:
+            if known_ads_exhausted():
                 return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted',
                     fields={'known':True,'navigation':False}),))
             if self.entry_snapshot is not None:
@@ -103,11 +118,13 @@ class StagesDailyFlow:
                     if result.outcome is AdsOutcome.RECOVERY_FAILED:
                         raise ValueError('AD_RECOVERY_FAILED: unable to recover Kritika')
                     if result.outcome is AdsOutcome.EXHAUSTED:
+                        record_best_effort(n.events,'stages.daily_exhausted')
                         n.change(C.NO_ADS_OK,result.snapshot,{'auto'})
                         n.exit_to_lobby()
                         return self._exhausted_result()
                     if result.outcome is not AdsOutcome.UNAVAILABLE:
                         raise ValueError('stages unsupported ad outcome')
+                    record_best_effort(n.events,'stages.temporarily_unavailable')
                     s=n.change(C.NO_ADS_OK,result.snapshot,{'auto'})
                     if attempt+1<attempts:
                         self._retry_delay();s=n.wait(lambda s:surface(s)=='auto')
@@ -129,7 +146,7 @@ class StagesDailyFlow:
 
     def routing_no_work(self):
         knowledge=character_resource_knowledge()
-        if knowledge is not None and knowledge.stage_ads_exhausted:
+        if known_ads_exhausted():
             return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted',
                 fields={'known':True,'navigation':False}),))
         return None
@@ -147,7 +164,11 @@ class StagesDailyFlow:
     @staticmethod
     def _exhausted_result():
         knowledge=character_resource_knowledge()
-        if knowledge is not None:knowledge.stage_ads_exhausted=True
+        if knowledge is not None:
+            knowledge.stage_ads_exhausted=True
+            scope=current_character_state()
+            if scope is not None:
+                knowledge.stage_ads_epoch=scope[0].operational(scope[1])['stage_ads_epoch']
         return FlowResult(FlowStatus.COMPLETED,(FlowEvent('stages_daily.ads_exhausted'),))
 
     @staticmethod

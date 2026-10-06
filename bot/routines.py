@@ -11,6 +11,8 @@ from uuid import uuid4
 from bot.equipment_sell_policy import EquipmentSellPolicy
 from bot.equipment_sell_semantics import EquipmentType
 from bot.monster_wave_config import MonsterWaveConfig
+from bot.character_data import ResourceSnapshotMode
+from bot.world_boss_state import WorldBossEligibilityMode
 
 
 SCHEMA_VERSION = 1
@@ -18,9 +20,14 @@ SCHEMA_VERSION = 1
 
 def config_overrides(config: dict) -> dict:
     """Reconstruct canonical config objects, never duplicate their policy fields."""
-    if not isinstance(config, dict) or set(config) - {"monster_wave", "equipment_sell"}:
+    if not isinstance(config, dict) or set(config) - {"monster_wave", "equipment_sell", "world_boss"}:
         raise ValueError("unsupported step configuration")
     overrides = {}
+    if 'world_boss' in config:
+        value = config['world_boss']
+        if not isinstance(value, dict) or set(value) != {'eligibility'}:
+            raise ValueError('Invalid World Boss settings')
+        WorldBossEligibilityMode(value['eligibility'])
     if "monster_wave" in config:
         overrides["monster_wave"] = MonsterWaveConfig(**config["monster_wave"])
     if "equipment_sell" in config:
@@ -63,6 +70,7 @@ class RoutineSpec:
     id: str
     name: str
     steps: tuple[RoutineStep, ...] = ()
+    resource_snapshot_mode: str = ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value
 
     def __post_init__(self):
         if not isinstance(self.id, str) or not self.id.strip():
@@ -73,6 +81,7 @@ class RoutineSpec:
             raise ValueError("steps must contain RoutineStep")
         object.__setattr__(self, "name", self.name.strip())
         object.__setattr__(self, "steps", tuple(self.steps))
+        object.__setattr__(self, 'resource_snapshot_mode', ResourceSnapshotMode(self.resource_snapshot_mode).value)
 
     def active_steps(self, registry):
         available = {definition.id for definition in registry.definitions}
@@ -117,12 +126,22 @@ class RoutineStore:
             try:
                 if not isinstance(raw, dict) or not isinstance(raw.get("steps"), list):
                     raise ValueError("invalid routine entry")
-                base = RoutineSpec(raw["id"], raw["name"])
+                mode = raw.get('resource_snapshot_mode', ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value)
+                if not isinstance(mode,str) or mode not in {m.value for m in ResourceSnapshotMode}:
+                    mode = ResourceSnapshotMode.OFF.value
+                    self.warnings.append('Invalid resource snapshot mode; tracking OFF')
+                base = RoutineSpec(raw["id"], raw["name"], resource_snapshot_mode=mode)
                 if base.id in ids:
                     raise ValueError("duplicate routine id")
                 steps = []
                 for index, value in enumerate(raw["steps"]):
                     try:
+                        value = deepcopy(value)
+                        if isinstance(value, dict) and isinstance(value.get('config'), dict) and 'world_boss' in value['config']:
+                            wb = value['config']['world_boss']
+                            if not isinstance(wb, dict) or set(wb) != {'eligibility'} or not isinstance(wb.get('eligibility'),str) or wb.get('eligibility') not in {m.value for m in WorldBossEligibilityMode}:
+                                value['config']['world_boss'] = {'eligibility':WorldBossEligibilityMode.DAILY_QUEST.value}
+                                self.warnings.append('Invalid WB eligibility; using DAILY_QUEST')
                         step = RoutineStep(**value)
                         if step.flow_id not in available:
                             self.warnings.append(f"{base.name} #{index + 1}: unknown flow {step.flow_id}; retained, skipped")
@@ -199,7 +218,8 @@ class RoutineEditor:
 
     def create(self, name, *, duplicate=False):
         steps = deepcopy(self.draft.steps) if duplicate and self.draft else ()
-        self.draft = RoutineSpec(uuid4().hex, name, steps)
+        mode = self.draft.resource_snapshot_mode if duplicate and self.draft else ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value
+        self.draft = RoutineSpec(uuid4().hex, name, steps, mode)
         self.selected_id = self.draft.id
         self.routines.append(deepcopy(self.draft))
 
@@ -232,6 +252,9 @@ class RoutineEditor:
     def configure(self, index, config):
         config_overrides(config)
         self._replace_step(index, config=config)
+
+    def set_resource_snapshot_mode(self, mode):
+        self.draft = replace(self.draft, resource_snapshot_mode=ResourceSnapshotMode(mode).value)
 
     def set_enabled(self, index, enabled):
         self._replace_step(index, enabled=enabled)

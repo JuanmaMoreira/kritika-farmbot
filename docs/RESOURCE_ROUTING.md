@@ -2,6 +2,30 @@
 
 `IMPLEMENTATION_CONTRACT`. Fuente única de policy/composición de recursos y sus límites productivos. UI física/caller/Back: [GAMEPLAY_GT](GAMEPLAY_GT.md); estado caliente: [CONTEXT](../CONTEXT.md). La [reconstrucción](POST_V1_RESOURCE_ROUTING_RECONSTRUCTION.md) es procedencia histórica, no plan de ejecución.
 
+## Estado persistente por personaje — contrato 2026-10-05/06
+
+Sólo `operational` del `CharacterStateStore` participa en readiness/routing.
+Ads0 del epoch actual permite no trabajo sin abrir Stages; reset/catch-up invalida
+agotamiento previo. Video count fresco reconcilia cantidades observadas, efecto
+Sapphire rewarded decrementa y No Ads temporal conserva cantidad. UNKNOWN inicial
+no equivale a0 y Session fallida no toca personajes no procesados.
+
+Policy CURRENT_WB_NOT_PARTICIPATED omite si el ciclo actual acredita YES o WB cerrado.
+NO/UNKNOWN permite llegar al panel; sus facts frescos deciden antes de Start.
+Daily Quest y previous reward son hechos independientes. Raid Complete produceYES
+inmediatamente; un panel stale no lo degrada dentro del ciclo. GENERAL y DAILY_QUEST
+conservan sus rutas existentes; guards frescos de Start/reliefs siguen vigentes.
+
+Lapiz/Essences/K Coins de Quick Menu son snapshots **informativos**, nunca autoridad
+para compras, Craft, Socket u otras acciones consumptivas. Su trigger configurable
+pertenece a Routine/Session, no a cada apertura global de Quick Menu. Un fallo del
+collector conserva el snapshot anterior y continúa Rotation.
+BEFORE_CHARACTER_ROTATION reutiliza el Quick Menu que Rotation abre, persiste el
+snapshot completo antes de Character Select y no abre otro menú. Data Sweep fuerza
+esta adquisición en su Session dedicada sin flows productivos; no cambia el modo
+guardado de las rutinas ni los facts Ads/WB. El selector vive en Routine Settings,
+no en Step Settings; la presentación no cambia la policy económica.
+
 ## Ownership y policy aceptada
 
 **USER_GT / product policy:** el propósito productivo de MW es gastar Sapphires mediante SKIP para obtener rewards. Todo lo descrito aquí —board/planner/J y reliefs— son fallbacks ante presión/capacidad para restaurar MW y reintentar la intención productiva; no son el objetivo del flow ni flows de limpieza standalone. Un futuro flow cuyo propósito sea limpiar recursos deberá declararse explícitamente como tal.

@@ -44,6 +44,20 @@ anteriores permanecen rojos. No hay nuevo planner, DAG ni framework de workflow.
 
 ## Próximos frentes, en orden
 
+Character Identity + Persistent Character State: **cerrado como checkpoint conjunto**
+sobre parent `fe774abc`.28 IDs/corpus84, SQLite, clock dinámico/scheduler,
+Ads/WB causal, eligibility por occurrence, collector QM sin apertura adicional y GUI
+con persistencia están productivos. **Character Data Sweep cerrado**: acción GUI
+dedicada All28, sin flows productivos,28/28 recursos e identidades y28 Rotations,
+0 failures en5:49; atribución, SQLite/GUI reopen y241 tests afectados verdes.
+GUI cleanup incluido: ownership Step/Routine/Application, contextualidad/scroll,
+sorting y Light/Dark persistido con reopen. Ads/WB previos preservados, sin completar UNKNOWN
+por inferencia. Validación del índice y separación histórica en
+[checkpoint](docs/CHARACTER_STATE_CHECKPOINT.md).
+Detalle/validaciones/deuda física focal en
+[informe](docs/CHARACTER_STATE_IMPLEMENTATION.md). Open Pets queda posterior:
+no implementarlo como parte de este frente.
+
 1. Targeted swipe / ordered-list navigation: **cerrado para el alcance actual**
    ([informe](docs/TARGETED_SWIPE_AUDIT.md)): primitive reusable y Trading Center productivo,
    Materials: coarse robusto + un loop dirigido, 10/10 repeticiones finales con 2 swipes,

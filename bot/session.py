@@ -27,6 +27,7 @@ from bot.flow_contracts import (
 from bot.preconditions import EnsureResult, PreconditionEnsurer
 from bot.prepared_activity import PreparedActivity
 from bot.character_resources import character_resource_scope
+from bot.character_state import character_state_scope
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.rotation import RotationResult, RotationStrategy
 
@@ -52,6 +53,7 @@ class CharacterContext:
 
     name: str | None = None
     name_confidence: float | None = None
+    character_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.name is not None:
@@ -75,6 +77,7 @@ class SessionPlan:
     flows: tuple[PerCharacterFlow, ...]
     rotation_strategy: RotationStrategy
     rotate: bool = field(default=True, kw_only=True)
+    character_data_only: bool = field(default=False, kw_only=True)
     eligibility: tuple[EligibilityCheck | None, ...] = field(default=(), kw_only=True)
     controlled_unavailable: tuple[frozenset[str], ...] = field(default=(), kw_only=True)
     step_positions: tuple[int, ...] = field(default=(), kw_only=True)
@@ -82,7 +85,9 @@ class SessionPlan:
     def __post_init__(self) -> None:
         count = _positive_integer(self.character_count, "character_count")
         flows = tuple(self.flows)
-        if not flows:
+        if type(self.character_data_only) is not bool or self.character_data_only and (flows or not self.rotate):
+            raise ValueError('Character Data Sweep requires empty flows and Rotation')
+        if not flows and not self.character_data_only:
             raise ValueError("flows must contain at least one PER_CHARACTER flow")
         for flow in flows:
             if getattr(flow, "scope", None) is not FlowScope.PER_CHARACTER:
@@ -133,9 +138,11 @@ class SessionPlan:
         eligibility: tuple[EligibilityCheck | None, ...] = (),
         controlled_unavailable: tuple[frozenset[str], ...] = (),
         step_positions: tuple[int, ...] = (),
+        character_data_only: bool = False,
     ) -> "SessionPlan":
         return cls(character_count, flows, rotation_strategy, rotate=rotate, eligibility=eligibility,
-                   controlled_unavailable=controlled_unavailable, step_positions=step_positions)
+                   controlled_unavailable=controlled_unavailable, step_positions=step_positions,
+                   character_data_only=character_data_only)
 
 
 @dataclass(frozen=True)
@@ -169,6 +176,13 @@ class SessionResult:
     flow_names: tuple[str, ...] = field(default=(), kw_only=True)
     duration: float | None = field(default=None, kw_only=True, compare=False)
     failure_flow_position: int | None = field(default=None, kw_only=True)
+    snapshots_updated: int = field(default=0, kw_only=True)
+    acquisition_failures: int = field(default=0, kw_only=True)
+
+    @property
+    def identities_resolved(self):
+        return len({c.character_context.character_id for c in self.character_results
+                    if c.character_context.character_id is not None})
 
     def __post_init__(self):
         context = event_context()
@@ -253,7 +267,7 @@ class SessionRunner:
             if self._cancelled():
                 return self._cancel(character_results, advances_completed)
 
-            with event_scope(character_index=index), character_resource_scope():
+            with event_scope(character_index=index), character_resource_scope(), character_state_scope():
                 context = CharacterContext()
                 self._record(
                     "session.character.started",
@@ -262,6 +276,7 @@ class SessionRunner:
                     character_name=context.name,
                 )
                 flow_results: list[FlowResult] = []
+                identity_attempted = False
                 next_requested = None
                 for flow_position, flow in enumerate(self.plan.flows):
                     with event_scope(flow=flow.name, flow_id=flow.name,
@@ -319,10 +334,11 @@ class SessionRunner:
                             character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
                             return self._cancel(character_results, advances_completed)
                         next_requested = None
-                        if flow_position == 0:
+                        if not identity_attempted:
                             # Reuse the first precondition's observation. Identity
                             # adds no capture/navigation and never authorizes input.
                             context = self._character_context(index)
+                            identity_attempted = True
                         if not ensured.succeeded:
                             character_results.append(
                                 SessionCharacterResult(index, context, tuple(flow_results))
@@ -565,12 +581,21 @@ class SessionRunner:
                             ),
                         )
 
+                    if self.plan.character_data_only:
+                        # Empty gameplay sequence: identity uses Rotation's entry
+                        # observation before the same Quick Menu collects data.
+                        context = self._character_context(index)
                     self._record(
                         "rotation.started",
                         component="rotation",
                         character_index=index,
                     )
                     rotation_result = self._advance()
+                    if self.plan.character_data_only and self._cancelled():
+                        character_results.append(SessionCharacterResult(
+                            index, context, tuple(flow_results), advance_result=rotation_result,
+                        ))
+                        return self._cancel(character_results, advances_completed)
                     if not rotation_result.succeeded:
                         failure = publish_failure(
                             self.events,

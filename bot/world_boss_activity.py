@@ -522,6 +522,8 @@ class WorldBossActivity:
 
         previous_rewards = entry_handoff.allows_previous_rewards(entered)
         if previous_rewards:
+            if getattr(self,'eligibility_policy',None) is not None:
+                self.eligibility_policy.inspect(entered)
             event = FlowEvent(WORLD_BOSS_PREVIOUS_REWARDS)
             flow_events.append(event)
             entered = self._transition(
@@ -559,6 +561,17 @@ class WorldBossActivity:
             )
         else:
             main = entered
+        policy = getattr(self, 'eligibility_policy', None)
+        if policy is not None:
+            decision = policy.inspect(main)
+            from bot.world_boss_state import WorldBossEligibilityMode
+            if policy.mode is WorldBossEligibilityMode.CURRENT_WB_NOT_PARTICIPATED:
+                if decision is None:
+                    return WorldBossFlowResult(FlowStatus.MANUAL_RESOLUTION, events=(
+                        FlowEvent('world_boss.participation_unknown'),))
+                if not decision:
+                    return WorldBossFlowResult(FlowStatus.COMPLETED, events=(
+                        FlowEvent('world_boss.current_cycle_no_work'),))
         socket_relief_attempted = False
         equipment_combine_relief_attempted = False
         equipment_sell_attempted = False
@@ -978,6 +991,7 @@ class WorldBossActivity:
                     transitions=transitions,
                 )
 
+        self._record_best_effort('world_boss.raid_complete_verified', sequence=raid.sequence)
         common = dict(
             sapphires=sapphires,
             flow_events=flow_events,

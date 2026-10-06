@@ -419,7 +419,7 @@ def test_gui_callbacks_edit_positions_save_reopen_and_confirm_delete(store, monk
     app.available_flow_select = Combo()
     app.routine_var = Var()
     app.purchase_skip_var, app.continue_full_var = Var(False), Var(False)
-    monkeypatch.setattr(gui.simpledialog, 'askstring', lambda *args, **kwargs: 'New routine')
+    monkeypatch.setattr(app, '_ask_string', lambda *args, **kwargs: 'New routine')
     app._new_routine()
     assert app.selection.draft.name == 'New routine'
     app.available_flow_select.index = next(i for i, d in enumerate(store.registry.definitions) if d.id == 'monster_wave')
@@ -442,10 +442,10 @@ def test_gui_callbacks_edit_positions_save_reopen_and_confirm_delete(store, monk
     app._rename_routine()
     app._save_routine()
     previous = app.selection.draft.id
-    monkeypatch.setattr(gui.messagebox, 'askyesno', lambda *args, **kwargs: False)
+    monkeypatch.setattr(app, '_ask_confirmation', lambda *args, **kwargs: False)
     app._delete_routine()
     assert app.selection.draft.id == previous
-    monkeypatch.setattr(gui.messagebox, 'askyesno', lambda *args, **kwargs: True)
+    monkeypatch.setattr(app, '_ask_confirmation', lambda *args, **kwargs: True)
     app._delete_routine()
     assert previous not in {r.id for r in RoutineEditor(store).routines}
 

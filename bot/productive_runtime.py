@@ -27,6 +27,10 @@ from bot.catalog import (
 )
 from bot.config import RuntimeConfig
 from bot.character_identity import LobbyNameRecognizer
+from bot.character_state import (CharacterStateStore, CharacterStateEvents, ResetScheduler,
+                                 establish_character_state, character_state_scope, current_character_state, DEFAULT_DB_PATH)
+from bot.character_data import CharacterDataCollector, QuickMenuResourceReader, ResourceSnapshotMode
+from bot.world_boss_state import WorldBossEligibilityPolicy, WorldBossEligibilityMode, WorldBossStateReader
 from bot.ocr import RapidOcrEngine
 from bot.event_log import RuntimeEventConsumer, RuntimeEventStream, build_runtime_event_stream
 from bot.event_context import event_scope, operation_scope
@@ -60,7 +64,7 @@ from bot.semantic_actions import (
     OpenPets,
     SelectQuickMenuLobby,
 )
-from bot.session import CharacterContext, SessionPlan, SessionResult, SessionRunner
+from bot.session import CharacterContext, SessionPlan, SessionResult, SessionRunner, SessionStatus
 from bot.socket_inventory_relief import SocketInventoryRelief
 from bot.state import ResolutionStatus
 from bot.tap_through_animation import TapThroughAnimation
@@ -130,6 +134,8 @@ class ProductiveRuntime:
     # Readers keep their own facts/cursors/configs; no result cache is shared.
     ocr_engine: object | None = field(default=None, kw_only=True, repr=False)
     routine_continue_on_unavailable: bool = field(default=True, kw_only=True)
+    character_store: object | None = field(default=None, kw_only=True, repr=False)
+    resource_snapshot_mode: str = field(default=ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value, kw_only=True)
     _identity_snapshot: RuntimeSnapshot | None = field(default=None, init=False, repr=False)
     _identity_active: bool = field(default=False, init=False, repr=False)
 
@@ -138,7 +144,12 @@ class ProductiveRuntime:
         return self.cancel_token.is_requested
 
     def build_flow(self, definition: FlowDefinition) -> PerCharacterFlow:
-        return definition.build(self)
+        flow = definition.build(self)
+        if isinstance(flow, WorldBossFlow):
+            reader = WorldBossStateReader(self.ocr_engine) if self.ocr_engine is not None else None
+            flow.eligibility_policy = WorldBossEligibilityPolicy(reader=reader,events=self.events,store=self.character_store)
+            flow.activity.eligibility_policy = flow.eligibility_policy
+        return flow
 
     def build_flows(
         self, definitions: tuple[FlowDefinition, ...]
@@ -197,12 +208,17 @@ class ProductiveRuntime:
 
     def build_rotation(self, character_count: int) -> StandardRotation:
         main_transition = self.build_verified_transition()
+        collector = (CharacterDataCollector(QuickMenuResourceReader(self.ocr_engine,events=self.events),
+            events=self.events,mode=self.resource_snapshot_mode,
+            failure_directory=PROJECT_ROOT/'artifacts/character-state-unreadable')
+            if getattr(self,'character_store',None) is not None and getattr(self,'ocr_engine',None) is not None else None)
         return StandardRotation(
             self.observer,
             self.actions,
             self.events,
             character_count=character_count,
             verified_transition=main_transition,
+            quick_menu_ready=collector.before_rotation if collector else None,
             post_swipe_observer=scoped_observer_for(
                 self,
                 self.observer,
@@ -229,7 +245,8 @@ class ProductiveRuntime:
         )
 
     def run_flow(self, definition: FlowDefinition) -> FlowResult:
-        with event_scope(character_index=1, flow=definition.id, session_id=None), operation_scope(definition.id):
+        with event_scope(character_index=1, flow=definition.id, session_id=None), operation_scope(definition.id), character_state_scope():
+            self._identity_active = True
             try:
                 return self._run_flow(definition)
             except BaseException as error:
@@ -244,6 +261,9 @@ class ProductiveRuntime:
                 except Exception:
                     pass
                 raise
+            finally:
+                self._identity_active = False
+                self._identity_snapshot = None
 
     def _run_flow(self, definition: FlowDefinition) -> FlowResult:
         flow = self.build_flow(definition)
@@ -259,6 +279,8 @@ class ProductiveRuntime:
                     error=f"flow_precondition_failed: {ensured.error or 'unknown'}",
                 )
             else:
+                if self.character_store is not None:
+                    self._resolve_character_identity(getattr(ensured,'snapshot',None))
                 try:
                     # Nothing runs between ensure and flow start on this
                     # path, so the verified snapshot is still the latest
@@ -317,10 +339,15 @@ class ProductiveRuntime:
         positions = tuple(i for i, step in enumerate(routine.steps) if step.enabled and step.flow_id in available)
         with event_scope(routine_id=routine.id, routine_name=routine.name):
             self.events.record("routine.started", step_count=len(steps))
-            if character_count is None:
-                return self.run_flows_once(definitions, routine_steps=steps, routine_positions=positions)
-            return self.run_session(definitions, character_count=character_count,
-                                    routine_steps=steps, routine_positions=positions)
+            previous = self.resource_snapshot_mode
+            self.resource_snapshot_mode = routine.resource_snapshot_mode
+            try:
+                if character_count is None:
+                    return self.run_flows_once(definitions, routine_steps=steps, routine_positions=positions)
+                return self.run_session(definitions, character_count=character_count,
+                                        routine_steps=steps, routine_positions=positions)
+            finally:
+                self.resource_snapshot_mode = previous
 
     def _step_runtime(self, step):
         from bot.routines import config_overrides
@@ -357,31 +384,63 @@ class ProductiveRuntime:
         routine_steps=None,
         routine_positions=(),
         rotate=True,
+        character_data_only=False,
     ) -> SessionResult:
+        if character_data_only and (definitions or routine_steps or not rotate):
+            raise ValueError('Character Data Sweep cannot execute gameplay flows')
         if routine_steps is not None and len(routine_steps) != len(definitions):
             raise ValueError("one routine step is required per definition")
         flows = (tuple(self._step_runtime(step).build_flow(definition)
                        for definition, step in zip(definitions, routine_steps))
                  if routine_steps else self.build_flows(definitions))
+        policies = []
+        for position, flow in enumerate(flows):
+            if isinstance(flow, WorldBossFlow):
+                value = (routine_steps[position].config.get('world_boss',{}).get('eligibility') if routine_steps else None)
+                mode = value or (WorldBossEligibilityMode.DAILY_QUEST if rotate else WorldBossEligibilityMode.GENERAL)
+                if getattr(flow,'eligibility_policy',None) is not None:
+                    flow.eligibility_policy.mode = WorldBossEligibilityMode(mode)
+                policies.append(WorldBossEligibilityMode(mode))
+            else:
+                policies.append(None)
         zone = next((flow.zone for flow in flows if isinstance(flow, (WorldBossFlow, MonsterWaveFlow, ProductiveMonsterWaveFlow))), None)
         flows = tuple(flow.prepared(zone)
                       if isinstance(flow, (WorldBossFlow, MonsterWaveFlow, ProductiveMonsterWaveFlow)) else flow
                       for flow in flows)
         rotation = self.build_rotation(character_count)
+        saved_ids = set()
+        failed_snapshots = 0
+        if character_data_only:
+            collect = rotation.quick_menu_ready
+            if collect is None:
+                raise ValueError('Character Data Sweep requires the persistent collector')
+            def collect_sweep(snapshot, *, origin):
+                nonlocal failed_snapshots
+                scope = current_character_state()
+                cid = scope[1] if scope else None
+                saved = cid not in saved_ids and collect(snapshot,origin=origin) is True
+                if saved:
+                    saved_ids.add(cid)
+                else:
+                    failed_snapshots += 1
+                self.events.record('character_data_sweep.snapshot',character_id=cid,
+                    status='saved' if saved else 'acquisition_failure',source_sequence=snapshot.sequence)
+            rotation.quick_menu_ready = collect_sweep
         plan = SessionPlan.standard(
             flows=flows,
             rotate=rotate,
             rotation_strategy=rotation,
             character_count=character_count,
+            character_data_only=character_data_only,
             step_positions=tuple(routine_positions),
             controlled_unavailable=tuple(
                 definition.controlled_unavailable_events if step.continue_on_unavailable else frozenset()
                 for definition, step in zip(definitions, routine_steps or ())
             ),
             eligibility=tuple(
-                self.build_world_boss_daily_eligibility() if rotate and flow.name == "world_boss" else
+                self.build_world_boss_daily_eligibility() if policy is WorldBossEligibilityMode.DAILY_QUEST else
                 None
-                for flow in flows
+                for policy in policies
             ),
         )
         recognizer: LobbyNameRecognizer | None = None
@@ -389,29 +448,56 @@ class ProductiveRuntime:
         def character_context_factory(index: int) -> CharacterContext:
             nonlocal recognizer
             snapshot, self._identity_snapshot = self._identity_snapshot, None
-            if snapshot is None:
-                return CharacterContext()
             if recognizer is None:
                 # Construction is inside SessionRunner's non-fatal seam too.
-                recognizer = LobbyNameRecognizer(RapidOcrEngine())
-            identity = recognizer.recognize(snapshot)
-            if identity is None:
-                return CharacterContext()
-            return CharacterContext(identity.class_name, identity.confidence)
+                recognizer = LobbyNameRecognizer(self.ocr_engine or RapidOcrEngine())
+            return self._resolve_character_identity(snapshot, recognizer=recognizer)
 
         self._identity_snapshot = None
         self._identity_active = True
         try:
-            return SessionRunner(
+            result = SessionRunner(
                 plan,
                 preconditions=self.build_preconditions(),
                 events=self.events,
                 cancel_requested=self.cancel_requested,
                 character_context_factory=character_context_factory,
             ).run()
+            if character_data_only:
+                failures = failed_snapshots
+                if result.status is SessionStatus.COMPLETED:
+                    failures = max(failures,character_count-len(saved_ids))
+                status = (SessionStatus.MANUAL_RESOLUTION if failures and result.status is SessionStatus.COMPLETED else result.status)
+                result = replace(result,status=status,snapshots_updated=len(saved_ids),acquisition_failures=failures)
+                self.events.record('character_data_sweep.completed',status=result.status.value,
+                    characters_processed=result.characters_processed,identities_resolved=result.identities_resolved,
+                    snapshots_updated=result.snapshots_updated,rotations=result.advances_completed,
+                    acquisition_failures=failures,duration=result.duration)
+            return result
         finally:
             self._identity_snapshot = None
             self._identity_active = False
+
+    def run_character_data_sweep(self):
+        """Explicit full roster data refresh; no registry gameplay definitions."""
+        from bot.character_identity import CHARACTER_IDS
+        previous = self.resource_snapshot_mode
+        self.resource_snapshot_mode = ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value
+        try:
+            self.events.record('character_data_sweep.started',character_count=len(CHARACTER_IDS))
+            return self.run_session((),character_count=len(CHARACTER_IDS),character_data_only=True)
+        finally:
+            self.resource_snapshot_mode = previous
+
+    def _resolve_character_identity(self, snapshot, *, recognizer=None):
+        identity = (recognizer or LobbyNameRecognizer(self.ocr_engine or RapidOcrEngine())).recognize(snapshot)
+        establish_character_state(self.character_store,identity.character_id if identity else None)
+        if identity is None:
+            self.events.record('character.identity_unknown',reason='insufficient_evidence')
+            return CharacterContext()
+        self.events.record('character.identity_resolved',character_id=identity.character_id,
+            canonical_name=identity.personal_name,display_name=identity.class_name,method=identity.method)
+        return CharacterContext(identity.class_name,identity.confidence,identity.character_id)
 
     def build_world_boss_daily_eligibility(self) -> WorldBossDailyEligibility:
         """Only the daily session composition installs this check; registry is general."""
@@ -722,6 +808,7 @@ def open_productive_runtime(
     event_consumers: tuple[RuntimeEventConsumer, ...] = (),
     console: TextIO | None = sys.stdout,
     evidence_root: str | Path = PROJECT_ROOT / "artifacts" / "failure_evidence",
+    character_state_path: str | Path = DEFAULT_DB_PATH,
 ) -> Iterator[ProductiveRuntime]:
     """Acquire every productive runtime dependency and guarantee source cleanup."""
 
@@ -798,6 +885,10 @@ def open_productive_runtime(
                 events,
                 tap_through=tap_through,
             )
+            store = CharacterStateStore(character_state_path,events=events)
+            scheduler = ResetScheduler(store)
+            unsubscribe_state = events.subscribe(CharacterStateEvents())
+            scheduler.start()
             try:
                 yield ProductiveRuntime(
                     config,
@@ -812,8 +903,12 @@ def open_productive_runtime(
                     token,
                     registry,
                     ocr_engine=ocr_engine,
+                    character_store=store,
                 )
             finally:
+                unsubscribe_state()
+                scheduler.close()
+                store.close()
                 observer.flush_analysis_metrics()
         events.record("runtime.completed")
     except BaseException as error:

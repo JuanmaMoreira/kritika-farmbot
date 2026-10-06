@@ -20,6 +20,8 @@ La preparación del entorno está documentada en [docs/setup.md](docs/setup.md).
 
 ## GUI operacional
 
+Layout y settings vigentes: [Step / Routine / Application, Character State sorting y Light/Dark](docs/GUI_CONFIGURATION.md).
+
 Abrir desde la raíz del repositorio:
 
 ```powershell

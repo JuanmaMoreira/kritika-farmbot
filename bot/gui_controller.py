@@ -14,6 +14,7 @@ from bot.event_log import RuntimeEvent
 from bot.flow_contracts import FlowStatus
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY, FlowRegistry
 from bot.gui_model import GuiExecutionRequest, GuiRunMode
+from bot.config import DEFAULT_CHARACTER_COUNT
 from bot.productive_runtime import CancellationToken, default_log_path, open_productive_runtime
 from bot.session import SessionStatus
 from bot.session_report import SessionReport, build_session_report
@@ -45,6 +46,9 @@ class GuiExecutionResult:
     business_event_count: int = 0
     error: str | None = None
     report: SessionReport | None = field(default=None, kw_only=True)
+    identities_resolved: int = field(default=0, kw_only=True)
+    snapshots_updated: int = field(default=0, kw_only=True)
+    acquisition_failures: int = field(default=0, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -89,7 +93,12 @@ class GuiRuntimeController:
     def start(self, request: GuiExecutionRequest) -> None:
         if not isinstance(request, GuiExecutionRequest):
             raise ValueError("request must be GuiExecutionRequest")
-        definitions = self.registry.select(request.flow_ids)
+        if request.mode is GuiRunMode.CHARACTER_DATA_SWEEP:
+            if request.flow_ids or request.routine is not None or request.character_count != DEFAULT_CHARACTER_COUNT:
+                raise ValueError('Character Data Sweep requires ALL characters and no gameplay flows')
+            definitions = ()
+        else:
+            definitions = self.registry.select(request.flow_ids)
         token = CancellationToken()
         with self._lock:
             if self._active:
@@ -138,6 +147,8 @@ class GuiRuntimeController:
         kind = "flow_" + definitions[0].id if request.mode is GuiRunMode.FLOW_ONCE else "session"
         if request.mode is GuiRunMode.SELECTED_FLOWS:
             kind = "selected_flows"
+        elif request.mode is GuiRunMode.CHARACTER_DATA_SWEEP:
+            kind = 'character_data_sweep'
         log_path = self.log_path_factory(kind, directory=request.log_dir)
         try:
             with self.runtime_factory(
@@ -150,7 +161,13 @@ class GuiRuntimeController:
                 event_consumers=(self._enqueue_event,),
                 console=None,
             ) as runtime:
-                if request.mode is GuiRunMode.FLOW_ONCE:
+                if request.mode is GuiRunMode.CHARACTER_DATA_SWEEP:
+                    raw = runtime.run_character_data_sweep()
+                    result = GuiExecutionResult(_session_status(raw.status),max(0.,self.clock()-started),log_path,
+                        characters_processed=raw.characters_processed,advances_completed=raw.advances_completed,
+                        identities_resolved=raw.identities_resolved,snapshots_updated=raw.snapshots_updated,
+                        acquisition_failures=raw.acquisition_failures,error=raw.failure_cause)
+                elif request.mode is GuiRunMode.FLOW_ONCE:
                     raw = runtime.run_flow(definitions[0])
                     result = GuiExecutionResult(
                         _flow_status(raw.status),

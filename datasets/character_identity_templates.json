@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "source": "USER_GT labels / first calibration frame per identity",
+  "roi": [
+    0.08,
+    0.02,
+    0.19,
+    0.062
+  ],
+  "method": "White full-name ink >=.90; Unicode/suffix ink >=.90 with >=.06 margin; validation frames never used as templates",
+  "entries": [
+    {
+      "character_id": "burst_breaker",
+      "canonical_name": "DRAKEN三BB",
+      "raw": "artifacts/identity_name/20260907T000756_674036Z_draken3bb_seq1.png",
+      "raw_sha256": "d081467cd992a302be86fd5803451b101213e72c33d36b5f723992f7fa6b3a83",
+      "asset": "assets/character_identity/burst_breaker.png",
+      "asset_sha256": "d02859030e30490fe8bf5c67667f9351ad09e7baa95707ec194fa6d1557cd5f4"
+    },
+    {
+      "character_id": "berserker",
+      "canonical_name": "DRAKEN一BK",
+      "raw": "artifacts/identity_name/20260907T000438_500738Z_draken1bk_seq1.png",
+      "raw_sha256": "0a15c00c7b8bdc52ced595c8d30f6ff236f719ba9cab22b26f54c927a81ae163",
+      "asset": "assets/character_identity/berserker.png",
+      "asset_sha256": "6fcac4bd579d1431acccd5998c80d058dab2d9625ac2a2356019b829db7ce98a"
+    },
+    {
+      "character_id": "demon_blade",
+      "canonical_name": "DRAKEN二DB",
+      "raw": "artifacts/identity_name/20260907T000649_367351Z_draken2db_seq1.png",
+      "raw_sha256": "e0c2ee1c5540d599ab4d7d1185c756d3a6f16d0caa340c489e64f5335bd64472",
+      "asset": "assets/character_identity/demon_blade.png",
+      "asset_sha256": "4fe92c3afd999aa8d7dd690cf9ebdf9fd18ad781b07f20930c344443d3657100"
+    }
+  ]
+}

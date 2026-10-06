@@ -167,12 +167,12 @@ def test_session_identity_reuses_first_precondition_without_extra_observations(m
     assert trace == baseline_trace
     assert trace.count("observe") == 12
     assert trace.count("rotation.advance") == 2
-    assert [e for e, _ in events] == [e for e, _ in baseline_events]
+    assert [e for e, _ in events if not e.startswith('character.identity_')] == [e for e, _ in baseline_events]
     assert result.status == baseline.status
     report = build_session_report(result)
     assert [c.label for c in report.characters] == (
         ["Kaiserin", "Blade Dancer"] if mode == "recognized" else
-        ["Berserker", "Demon Blade"] if mode == "variants" else ["Character 1", "Character 2"])
+        ["Character 1", "Character 2"])
 
 
 def test_identity_snapshot_cannot_leak_after_unknown_probe(monkeypatch):
@@ -188,7 +188,7 @@ def test_identity_snapshot_cannot_leak_after_unknown_probe(monkeypatch):
     assert runtime._identity_snapshot is None
 
 
-def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monkeypatch):
+def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monkeypatch,tmp_path):
     source = Source()
     config = object()
     adb = Adb()
@@ -234,7 +234,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
         lambda *args, **kwargs: pet_summon_space_relief,
     )
 
-    with productive.open_productive_runtime(log_path="ignored.log") as runtime:
+    with productive.open_productive_runtime(log_path="ignored.log",character_state_path=tmp_path/'state.db') as runtime:
         assert runtime.config is config
         assert runtime.observer is observer
         assert runtime.actions is actions

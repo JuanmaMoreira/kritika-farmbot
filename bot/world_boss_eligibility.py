@@ -55,6 +55,11 @@ class WorldBossDailyEligibility:
                 return EligibilityResult(EligibilityStatus.UNKNOWN, "world_boss_daily_unconfirmed")
             if self.cancel_requested():
                 return EligibilityResult(EligibilityStatus.CANCELLED, "eligibility_cancelled")
+            from bot.character_state import current_character_state
+            scope=current_character_state()
+            if scope is not None:
+                store,cid=scope
+                store.wb_daily_quest(cid,decision is EligibilityStatus.ELIGIBLE)
             return EligibilityResult(
                 decision,
                 "World Boss Daily indicator active" if decision is EligibilityStatus.ELIGIBLE

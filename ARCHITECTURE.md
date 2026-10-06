@@ -29,6 +29,77 @@ Capture → Perception / Runtime Facts → ContextResolver
 
 El usuario selecciona objetivos/orden. La sesión solicita entries compatibles y puede compartir hub/contexto, sin reordenar. Failure/cancelación no dispara navegación ciega en un finally. AdsManager permanece separado de percepción normal.
 
+## Character Identity y estado persistente
+
+`LobbyNameRecognizer` resuelve el conjunto cerrado de28 nombres personales
+conocidos desde clean Lobby. Los25 nombres ordinarios requieren canonical OCR;
+los tres DRAKEN Unicode requieren además coincidencia visual del nombre y margen
+independiente del sufijo. Evidencia insuficiente devuelve UNKNOWN. Los IDs explícitos
+de `CHARACTER_IDS` son permanentes; ni posición de Character Select, índice de
+Rotation ni texto OCR crudo son claves. El display es metadata.
+
+`CharacterStateStore` posee `runtime/character_state.sqlite3` ignorado por Git,
+SQLite schema1, FK, WAL y transacciones atómicas. Separa `characters`, estado
+`operational`, snapshots informativos completos y procedencia compacta. Una DB
+nueva comienza con Ads/WB UNKNOWN en el epoch actual; no inventa disponibilidad.
+La inicialización versionada0→1 conserva archivos incompatibles para diagnóstico.
+
+Session establece scope por identidad usando el snapshot de su primera entrada
+compatible; también lo hace la ejecución standalone. UNKNOWN no permite escrituras.
+`CharacterStateEvents` consume Video count/efecto Sapphire/agotamiento/no-ad y Raid
+Complete existentes. Los recursos informativos nunca autorizan gasto. Los guards
+consumptivos frescos permanecen en sus owners.
+
+`ResetClock` calibra un anchor UTC absoluto desde countdown WB observado +30min.
+Proyecta resets diarios y ciclos WB de aproximadamente3 días entre observaciones;
+una lectura nueva recalibra el anchor, incluso ante desplazamiento estacional.
+No existe hora local permanente. Startup y lecturas operativas hacen catch-up;
+el runtime posee `ResetScheduler` cancelable y la GUI posee timer Tk. El reset
+diario pone Ads2 en los28; el ciclo WB nuevo pone participación NO. WB cierra
+en los30min previos a su reset. Historia y snapshots anteriores se conservan.
+
+`WorldBossEligibilityPolicy` configura cuándo ejecutar el único `WorldBossFlow`:
+DAILY_QUEST, CURRENT_WB_NOT_PARTICIPATED o GENERAL. Participación YES del ciclo
+actual permite NO_WORK; NO/UNKNOWN conduce a inspección física antes de Start.
+El reader usa reward anterior y pareja damage/rank acreditada en World Boss main;
+no interpreta ausencia OCR como NO. YES es monotónico dentro del ciclo, especialmente
+tras Raid Complete, emitido antes de Continue/cleanup. Daily Quest es un fact distinto.
+
+Routine v1 conserva compatibilidad mediante campos opcionales: eligibility por
+occurrence y `resource_snapshot_mode` por rutina. Default BEFORE_CHARACTER_ROTATION;
+OFF desactiva el collector. Config WB corrupta se recupera como DAILY_QUEST; modo
+snapshot corrupto como OFF. Duplicate/Save/reopen preservan ambas configuraciones.
+
+Session/runtime instala el hook `CharacterDataCollector` antes de Character Select,
+aprovechando el frame del Quick Menu que Rotation ya abrió. Rotation sólo entrega
+un callback genérico; no conoce balances. El collector hace cinco OCR focales;
+una lectura insuficiente admite un único reintento sobre el mismo crop con margen
+negro, conservando el mismo texto y el gate de confianza ≥0.95. Persiste sólo un
+snapshot completo; errores informativos se registran y no fallan la
+sesión ni reemplazan balances válidos. Abrir Quick Menu por otro motivo no es trigger.
+La GUI muestra28 filas y actualiza automáticamente epochs/ciclos sin visitar personajes.
+Sorting es una proyección tipada en memoria: UNKNOWN al final en ambos sentidos,
+sin escrituras ni cambios de Rotation; refresh conserva columna/dirección.
+Step Settings edita exclusivamente la occurrence seleccionada mediante Apply;
+Routine Settings posee Resource snapshot, independiente del step. Application
+posee Appearance Light/Dark en `runtime/gui_preferences.json`, separado de SQLite
+y routines. Ambos forms crecientes tienen scroll. Los tokens de tema están
+centralizados y el switch no inicia lógica de runtime. Detalle en
+[GUI_CONFIGURATION](docs/GUI_CONFIGURATION.md).
+
+La acción GUI **Character State → Character Data Sweep — All 28** compone una
+`SessionPlan.character_data_only` explícita, sin definitions/flows productivos.
+Reutiliza el resolver sobre la entrada de Rotation, scopes permanentes, collector
+y Rotation existentes. El modo fuerza captura para esa ejecución y restaura la
+policy normal al salir; no modifica configuraciones de rutina. Cada personaje
+usa el mismo QM para snapshot y Character Select. UNKNOWN/unreadable conserva
+datos previos; identidad repetida no escribe por segunda vez en la misma pasada.
+La adquisición incompleta se informa como MANUAL_RESOLUTION; errores de navegación
+mantienen el contrato técnico. Stop Safely conserva escrituras verificadas y limpia
+scope. El resumen distingue identities/snapshots/Rotations/failures; Ads/WB sólo
+cambian por sus eventos y ResetClock. Los fallos de lectura guardan evidencia local
+del frame ya disponible, sin captura adicional.
+
 ## Rutinas configurables v1
 
 ```text
