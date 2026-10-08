@@ -83,7 +83,7 @@ def execute_equipment_sell(
     before: EquipmentInventoryFact,
     select_candidate: Callable[[EquipmentSellCandidate], None],
     read_detail: Callable[[], EquipmentItemFact | None],
-    open_confirmation: Callable[[], None],
+    open_confirmation: Callable[[EquipmentItemFact], None],
     read_confirmation: Callable[[], EquipmentSellConfirmationFact | None],
     confirm_bulk: Callable[[], None],
     cancel_confirmation: Callable[[], None],
@@ -179,7 +179,7 @@ def execute_equipment_sell(
                 item=second,
             )
 
-        open_confirmation()
+        open_confirmation(second)
         inputs.append("open_confirmation")
         confirmation = read_confirmation()
         if not _fresh_confirmed(confirmation, after_sequence=second.sequence):
@@ -295,12 +295,7 @@ def _fresh_confirmed(fact, *, after_sequence: int) -> bool:
 
 
 def _item_key(item: EquipmentItemFact) -> tuple[object, ...]:
-    return (
-        " ".join(item.name.casefold().split()),
-        item.grade,
-        item.equipment_type,
-        item.enhance,
-    )
+    return item.selection_key
 
 
 def _cancel_result(

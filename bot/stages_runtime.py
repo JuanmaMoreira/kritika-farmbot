@@ -21,6 +21,7 @@ class StagesNavigation:
         self.observer,self.actions=observer,actions
         self.events,self.cancel_requested,self.clock=events,cancel_requested,clock
         self.sleeper=sleeper;self.claim_observer=None
+        self.results_observer=None
         self.cursor=0;self.dispatched_at=0.
         self.relief=None
 
@@ -30,8 +31,21 @@ class StagesNavigation:
         source=getattr(observer,'source',None)
         if callable(getattr(source,'refresh_native',None)):
             latest=source.get_frame()
-            if (latest.sequence<=self.cursor or latest.timestamp<=self.dispatched_at or
-                    self.clock()-latest.timestamp>1.):
+            recent=lambda frame: (frame.sequence>self.cursor and frame.timestamp>self.dispatched_at
+                and 0.<=self.clock()-frame.timestamp<=1.)
+            if not recent(latest):
+                # Allow the current stream to deliver the dispatched effect
+                # before paying for another native acquisition. Static/stalled
+                # streams still take the same real-capture fallback.
+                deadline=self.clock()+.15
+                for _ in range(8):
+                    if self.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
+                    remaining=deadline-self.clock()
+                    if remaining<=0.:break
+                    self.sleeper(min(.02,remaining))
+                    latest=source.get_frame()
+                    if recent(latest):break
+            if not recent(latest):
                 source.refresh_native()
         fresh_match=lambda s:s.timestamp>self.dispatched_at and 0.<=self.clock()-s.timestamp<2. and predicate(s)
         try:
@@ -71,7 +85,11 @@ class StagesNavigation:
     def change(self,control,snapshot,expected,timeout=6.):
         self.tap(control,snapshot)
         blockers={POPUP_EQUIPMENT_INVENTORY_FULL,POPUP_SOCKET_INVENTORY_FULL}
-        result=self.wait(lambda s:(exposed(s) and surface(s) in expected) or bool(blockers.intersection(s.state.overlays)),timeout)
+        # Only a verified Stages source bounds this modal family. Lobby entry
+        # and foreign/unknown sources retain the full observer.
+        panel=self.results_observer if snapshot.state.base_context=='screen.stages' else None
+        predicate=lambda s:(exposed(s) and surface(s) in expected) or bool(blockers.intersection(s.state.overlays))
+        result=self.wait(predicate,timeout,observer=panel) if panel is not None else self.wait(predicate,timeout)
         if blockers.intersection(result.state.overlays):
             if self.relief is None:raise ValueError('stages known relief not wired')
             return self.relief(control,result,expected)
@@ -153,26 +171,27 @@ class StagesNavigation:
         if video is None:raise ValueError('stages video count unverified')
         return s,video
 
-    def exit_to_lobby(self):
-        s=self.current()
+    def exit_to_lobby(self,snapshot=None,*,observer=None):
+        s=snapshot if snapshot is not None else self.current()
         for _ in range(5):
             layer=surface(s)
             if lobby(s):return s
             closes={'results':C.RESULTS_OK,'auto':C.CLOSE_AUTO,'start':C.CLOSE_START,'config':C.CLOSE_CONFIG,
                     'daily_exhausted':C.NO_ADS_OK,'no_ads':C.NO_ADS_OK}
             if layer in closes:
-                self.tap(closes[layer],s);s=self.wait(lambda a:surface(a)!=layer and surface(a) is not None)
+                self.tap(closes[layer],s);s=self.wait(lambda a:exposed(a) and surface(a)!=layer,
+                    observer=observer)
             elif layer in {'normal','elite'}:
                 self.tap(C.BACK,s);return self.wait(lobby,timeout=8.)
             else:raise ValueError('stages exit upper layer unverified')
         raise ValueError('stages exit bound')
 
     def acknowledge_results(self):
-        s=self.wait(lambda s:surface(s)=='results',timeout=4.)
+        s=self.wait(lambda s:exposed(s) and surface(s)=='results',timeout=4.,observer=self.results_observer)
         self.tap(C.RESULTS_OK,s)
-        s=self.wait(lambda s:surface(s)=='config')
+        s=self.wait(lambda s:exposed(s) and surface(s)=='config',observer=self.results_observer)
         record_best_effort(self.events,'stages.results_acknowledged')
-        return self.exit_to_lobby()
+        return self.exit_to_lobby(s,observer=self.results_observer)
 
 class MaoSupport:
     """Tickets complete is READY; activation is a separate one-shot action."""

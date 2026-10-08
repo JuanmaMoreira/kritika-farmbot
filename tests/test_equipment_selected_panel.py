@@ -28,12 +28,16 @@ def harness(grade=G.RARE,kind=T.GLOVES,*,policy=None,inconclusive=False,wrong_po
   return replace(before,sequence=f.sequence,observed_at=f.timestamp,sample_sequences=(f.sequence-1,f.sequence))
  def navigate(page,expected):return inventory()
  def next_fact(method,predicate=lambda _:True):
+  if method=='confirmation_sample':source.get_frame()  # Both consensus frames follow Open Sell.
   f=source.get_frame();n._latest=f;n._after_sequence=f.sequence
   if method=='detail_sample':
    if inconclusive:return None
    observed_grade=G.ETHEREAL_PLUS if source.changed else grade
    return EquipmentItemFact('Candidate',observed_grade,kind,enhance,f.sequence,10.,(f.sequence-1,f.sequence),sell_available=True,grade_visual=observed_grade)
-  if method=='confirmation_sample':return EquipmentSellConfirmationFact('Other' if wrong_popup else 'Candidate',B.ENHANCE_GRADE if enhance else B.TYPE_GRADE if grade==G.ETHEREAL else B.EQUIPMENT_GRADE,kind if grade==G.ETHEREAL and not enhance else None,f.sequence,10.,(f.sequence-1,f.sequence))
+  if method=='confirmation_sample':
+   group=B.ENHANCE_GRADE if enhance else B.TYPE_GRADE if grade==G.ETHEREAL else B.EQUIPMENT_GRADE
+   if wrong_popup:group=B.EQUIPMENT_GRADE if enhance else B.ENHANCE_GRADE
+   return EquipmentSellConfirmationFact('Candidate',group,kind if group==B.TYPE_GRADE else None,f.sequence,10.,(f.sequence-1,f.sequence))
   return EquipmentInventoryFact(100,112,7,22,f.sequence,10.,(f.sequence-1,f.sequence))
  n._inventory_after=inventory;n._navigate_page=navigate;n._read_next=next_fact
  original=n._tap

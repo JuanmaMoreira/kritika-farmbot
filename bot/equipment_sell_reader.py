@@ -1,4 +1,4 @@
-"""Local OCR reader for current Equipment Inventory sell facts.
+"""Local visual and OCR reader for current Equipment Inventory sell facts.
 
 The reader performs no sampling, navigation, policy or input.  One frame yields
 at most one unconfirmed sample; callers build consensus with
@@ -23,6 +23,7 @@ from bot.equipment_sell_semantics import (
 )
 from bot.geometry import RelativeRegion, relative_region_to_pixels
 from bot.ocr import OcrResult
+from bot.equipment_title_color import selected_title_color
 
 
 ITEM_COUNT_ROI: RelativeRegion = (0.687, 0.234, 0.817, 0.276)
@@ -145,6 +146,12 @@ def parse_confirmation(
     return None
 
 
+def parse_equipment_subtype(text: str) -> EquipmentType | None:
+    # The bracketed text provides layout only. Its spelling has no tier authority.
+    match = re.fullmatch(r"\s*\[[^]]+\]\s*([A-Za-z ]+?)\s*[.,]?\s*", text)
+    return _TYPE_NAMES.get(_clean_text(match.group(1)).casefold()) if match else None
+
+
 class EquipmentSellReader:
     """Read one fail-closed sample from a caller-owned frame."""
 
@@ -158,6 +165,9 @@ class EquipmentSellReader:
         self._sell_template = cv2.imread(str(assets / "sell_available.png"))
         self._sell_token_template = cv2.imread(str(assets / "sell_available_token.png"))
         self._expand_template = cv2.imread(str(assets / "expand_bag_prompt.png"))
+        self._enhance_mask = cv2.imread(str(assets / "title_enhance_mask.png"), cv2.IMREAD_GRAYSCALE)
+        self._ethereal_plus_template = cv2.imread(str(assets / "grade_ethereal_plus.png"))
+        self._sell_modal_template = cv2.imread(str(assets / "sell_modal_title.png"))
 
 
     def inventory_sample(
@@ -191,36 +201,55 @@ class EquipmentSellReader:
         self, frame: np.ndarray, *, sequence: int, observed_at: float
     ) -> EquipmentItemFact | None:
         _require_frame(frame)
-        title = self._read(frame, DETAIL_TITLE_ROI, scale=2.0)
-        grade_type = self._read(frame, DETAIL_GRADE_TYPE_ROI, scale=2.0)
-        parsed = (
-            parse_item_detail(title.text, grade_type.text)
-            if min(title.confidence, grade_type.confidence) >= 0.72
-            else None
-        )
-        self.last_detail_diagnostic = {
-            "title": {"text": title.text, "confidence": title.confidence},
-            "grade_type": {"text": grade_type.text, "confidence": grade_type.confidence},
-            "parsed": parsed,
-        }
-        if parsed is None:
+        color = selected_title_color(frame)
+        grade = color.grade
+        # Red alone cannot distinguish Ethereal from protected Ethereal+.
+        if grade is EquipmentGrade.ETHEREAL:
+            base = self._template_score(frame, self._grade_templates.get(grade), (.565,.322,.745,.372))
+            plus = self._template_score(frame, self._ethereal_plus_template, (.565,.322,.745,.372))
+            grade = (EquipmentGrade.ETHEREAL_PLUS if plus >= .92 and plus - base >= .08 else
+                     EquipmentGrade.ETHEREAL if base >= .92 and base - plus >= .08 else
+                     EquipmentGrade.UNKNOWN)
+            color.diagnostic.update(red_base_score=base, red_plus_score=plus)
+        enhance = self._title_enhance(frame, color.mask)
+        self.last_detail_diagnostic = {"tier_authority": "title_color", "color": color.diagnostic,
+                                       "grade": grade.value, "enhance": enhance}
+        if (grade is EquipmentGrade.UNKNOWN or enhance is None or
+                self._template_score(frame, self._sell_modal_template, (.475,.318,.530,.372)) >= .92):
             return None
-        name, grade, equipment_type, enhance = parsed
+        grade_type = self._read(frame, DETAIL_GRADE_TYPE_ROI, scale=2.0)
+        equipment_type = parse_equipment_subtype(grade_type.text) if grade_type.confidence >= .72 else None
+        self.last_detail_diagnostic.update(
+            grade_type={"text": grade_type.text, "confidence": grade_type.confidence},
+            parsed=("", grade.value, equipment_type.value, enhance) if equipment_type else None,
+        )
+        if equipment_type is None:
+            return None
         return EquipmentItemFact(
-            name=name,
+            name="",
             grade=grade,
             equipment_type=equipment_type,
             enhance=enhance,
             sequence=sequence,
             observed_at=observed_at,
             sample_sequences=(sequence,),
-            evidence=(f"title:{title.text}", f"grade_type:{grade_type.text}"),
+            evidence=(f"title_color:{grade.value}", f"subtype:{grade_type.text}", f"enhance_visual:{enhance}"),
             sell_available=(True if max(self._template_score(frame, template,
                                                (.765, .452, .817, .503))
                                        for template in (self._sell_template,self._sell_token_template)) >= .92 else None),
-            grade_visual=(grade if self._template_score(frame, self._grade_templates.get(grade),
-                                                        (.565,.322,.745,.372)) >= .92 else None),
+            grade_visual=grade,
+            tier_by_color=True,
         )
+
+    def _title_enhance(self, frame, mask):
+        if self._enhance_mask is None:
+            return None
+        template = cv2.resize(self._enhance_mask, None, fx=frame.shape[1]/2712,
+                              fy=frame.shape[0]/1224, interpolation=cv2.INTER_NEAREST)
+        if mask.shape[0] < template.shape[0] or mask.shape[1] < template.shape[1]:
+            return None
+        score = float(cv2.minMaxLoc(cv2.matchTemplate(mask, template, cv2.TM_CCOEFF_NORMED))[1])
+        return True if score >= .84 else False if score <= .55 else None
 
     def confirmation_sample(
         self, frame: np.ndarray, *, sequence: int, observed_at: float

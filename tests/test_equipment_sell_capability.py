@@ -122,7 +122,7 @@ class _Script:
     def read_detail(self):
         return self.details.pop(0) if self.details else None
 
-    def open_confirmation(self):
+    def open_confirmation(self, item):
         self.inputs.append(("open", None))
 
     def read_confirmation(self):

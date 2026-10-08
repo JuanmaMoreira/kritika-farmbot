@@ -1,0 +1,34 @@
+{
+  "title_enhance_mask.png": {
+    "source": "artifacts/session_stabilization/sell_tiers_normal_enhance.png",
+    "region": "TITLE_INK_ROI foreground mask, box [261,4,477,41]",
+    "meaning": "(Enhance) suffix glyphs; no item identity",
+    "source_sha256": "20920305989b158f7f904ef4242826ae46fb9bc18c111b9163b3cd45751951b1",
+    "asset_sha256": "3da188ff5eefcc0fd4eb6ff26ebdf9edd9c7c2414f7ff6978710330f03ea7259"
+  },
+  "grade_ethereal_plus.png": {
+    "source": "artifacts/mw_stabilization/equipment_detail_p1_s15.png",
+    "region": [
+      0.569,
+      0.322,
+      0.669,
+      0.365
+    ],
+    "trim_right_pixels": 56,
+    "meaning": "[Ethereal+] marker; red is shared with Ethereal",
+    "source_sha256": "30d42672aebd272ae733ebdcdf565a8df55285946de2defe6cfb9e5fd3a6cb69",
+    "asset_sha256": "6b15baa3bc101473d228ab51c6cb0b564b776def475555372ec652c852df05f0"
+  },
+  "sell_modal_title.png": {
+    "source": "artifacts/session_stabilization/campaign7_sell_coin_popup.png",
+    "region": [
+      0.48,
+      0.325,
+      0.52,
+      0.365
+    ],
+    "meaning": "Sell modal header; excludes detail reads while modal is above it",
+    "source_sha256": "6bf32bb209f02bcafe78c9374e445abf18a5674f423e6365ee7c494c57d5f9a9",
+    "asset_sha256": "dcd7a6065720fe3c1fc4f9cc7eca425f60dd59034ba5e258c01eaf1228c7293e"
+  }
+}

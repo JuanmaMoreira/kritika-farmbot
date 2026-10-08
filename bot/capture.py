@@ -376,9 +376,14 @@ class ScrcpyFrameSource:
         if height <= 0 or width <= 0:
             raise CaptureError("Decoder produced an empty frame")
         with self._frame_lock:
+            captured_at = self._clock() if timestamp is None else timestamp
+            # A queued PTS frame can finish decoding after refresh_native.
+            # Never replace newer acquisition evidence with older pixels.
+            if self._snapshot is not None and captured_at < self._snapshot.timestamp:
+                return
             self._sequence += 1
             self._snapshot = FrameSnapshot(
-                image=image.copy(), timestamp=self._clock() if timestamp is None else timestamp,
+                image=image.copy(), timestamp=captured_at,
                 sequence=self._sequence
             )
         self._frame_event.set()

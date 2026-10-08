@@ -40,11 +40,15 @@ def evaluate(manifest_path: Path = DEFAULT_MANIFEST) -> tuple[int, int]:
             image, sequence=sequence, observed_at=float(sequence)
         )
         actual = _actual(entry["kind"], inventory, detail, confirmation)
+        expected = entry["expected"]
+        if entry["kind"] == "detail" and expected is not None:
+            # Historical names remain provenance labels, not reader authority.
+            expected = {key: value for key, value in expected.items() if key != "name"}
         errors = []
         if digest != entry["sha256"]:
             errors.append("sha256")
-        if actual != entry["expected"]:
-            errors.append(f"expected={entry['expected']!r} actual={actual!r}")
+        if actual != expected:
+            errors.append(f"expected={expected!r} actual={actual!r}")
         if entry["kind"] == "inventory" and (detail is not None or confirmation is not None):
             errors.append("cross-kind false positive")
         if entry["kind"] == "detail" and (inventory is not None or confirmation is not None):
@@ -75,7 +79,6 @@ def _actual(kind, inventory, detail, confirmation):
         }
     if kind == "detail" and detail is not None:
         return {
-            "name": detail.name,
             "grade": detail.grade.value,
             "equipment_type": detail.equipment_type.value,
             "enhance": detail.enhance,

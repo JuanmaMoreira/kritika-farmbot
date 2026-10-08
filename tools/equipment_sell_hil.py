@@ -21,7 +21,7 @@ from bot.equipment_sell_operation import (
     EquipmentSellRequest,
 )
 from bot.equipment_sell_policy import EquipmentSellAuthorization
-from bot.equipment_sell_reader import EquipmentSellReader
+from bot.equipment_sell_reader import EquipmentSellReader, DETAIL_TITLE_ROI
 from bot.equipment_sell_runtime import EquipmentSellRuntime
 from bot.equipment_sell_semantics import (
     DISPOSABLE_GRADES,
@@ -104,7 +104,13 @@ class _ApprovedNameReader:
 
     def detail_sample(self, *args, **kwargs):
         fact = self.reader.detail_sample(*args, **kwargs)
-        if fact is None or " ".join(fact.name.casefold().split()) != self.approved_name:
+        if fact is None:
+            return None
+        # This standalone harness promises a human-approved exact name. Keep
+        # that extra authorization restriction without giving OCR tier authority
+        # or adding selected-name OCR to the productive Sell reader.
+        title = self.reader._read(args[0], DETAIL_TITLE_ROI, scale=2.0)
+        if title.confidence < .80 or " ".join(title.text.casefold().split()) != self.approved_name:
             return None
         return fact
 

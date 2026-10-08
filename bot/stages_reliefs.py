@@ -15,17 +15,29 @@ class StagesReliefs:
     def __init__(self, nav, dependencies, equipment):
         self.nav,self.dependencies,self.equipment=nav,dependencies,equipment
         self.used=set()
+        self.socket_retry_available=False
+        self.socket_retried=False
 
     def reset(self):
         """The relief bound belongs to one run(), never the next character."""
         self.used.clear()
+        self.socket_retry_available=False
+        self.socket_retried=False
 
     def __call__(self, control, initial, expected):
         n=self.nav
         blockers={POPUP_EQUIPMENT_INVENTORY_FULL,POPUP_SOCKET_INVENTORY_FULL}.intersection(initial.state.overlays)
         if len(blockers)!=1:raise ValueError('stages relief upper layer ambiguous')
         blocker=next(iter(blockers))
-        if blocker in self.used:raise ValueError('stages relief bound exhausted')
+        if blocker in self.used:
+            # Enhance effect need not free enough headroom for Start. A fresh
+            # recurring Socket blocker can authorize one more normal relief,
+            # only after an actual effect; no-effect and further repeats stop.
+            if (blocker!=POPUP_SOCKET_INVENTORY_FULL or
+                    not self.socket_retry_available or self.socket_retried):
+                raise ValueError('stages relief bound exhausted')
+            self.socket_retried=True
+            self.socket_retry_available=False
         self.used.add(blocker)
         record_best_effort(n.events,'stages.relief',blocker=blocker)
         def restored(s):return lobby(s) or (exposed(s) and surface(s) in {'normal','config'})
@@ -55,6 +67,7 @@ class StagesReliefs:
             result=coordinator_for(self.dependencies).socket_operation(self.dependencies.socket_relief).run(SocketReturnPlan(ExitSocket(),'screen.stages'),cancel_requested=n.cancel_requested)
             if result.outcome.value=='cancelled':raise RuntimeWaitCancelled('socket relief cancelled')
             if not result.succeeded:raise ValueError('stages socket relief: '+str(result.error))
+            self.socket_retry_available=result.outcome.value=='relieved'
             s=config(result.final_snapshot.sequence)
             return n.change(control,s,expected)
         first=True

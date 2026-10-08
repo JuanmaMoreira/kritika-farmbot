@@ -3,6 +3,19 @@
 Estado en [CONTEXT](CONTEXT.md); GT físico en [GAMEPLAY_GT](docs/GAMEPLAY_GT.md);
 contratos en [ARCHITECTURE](ARCHITECTURE.md) y [RESOURCE_ROUTING](docs/RESOURCE_ROUTING.md).
 
+## Checkpoint acumulativo Stability + Performance — 2026-10-07
+
+28 unique stable IDs COMPLETE across multiple runs: inicial2COMPLETE/1PARTIAL/
+25UNSEEN, final28COMPLETE. R6 Blade Dancer completó rutina+Rotation; no es una
+única Session28/28 verde. Equipment tier-color/binding, Socket recurrence acotado,
+SKIP expiry/preparation y capture chronology cerrados; Stages handoff y scope
+medidos. Ads live breadth debt **CLOSED**,51 returned sin Ads failures.
+Aceptación, límites y exclusiones en
+[checkpoint causal](docs/FULL_ROSTER_STABILITY_PERFORMANCE_CHECKPOINT.md).
+Trading confirm p951.593s/max1.688s (gate2s) es candidato medido no bloqueante,
+sin patch. Arena es el próximo frente autorizado sólo como recomendación de
+este cierre; Arena/Open Pets no iniciados, sin otra campaña28/28.
+
 ## Checkpoint Reliefs / MW / Trading — 2026-10-06
 
 Alcance causal sobre `d97e899b`: Reliefs de rutina con migración v2, coordinator
@@ -105,8 +118,9 @@ no implementarlo como parte de este frente.
    - SessionReport: reconocer el evento informativo `monster_wave.sapphire_effect` para
      no proyectar Gold como UNASSESSED cuando sus efectos y resultado están acreditados.
      La campaña2808930b conserva la proyección histórica; no convertirlo en failure.
-   - Lifecycle SKIP tras pausas muy largas; portabilidad del corpus; Fill All con Gold
-     insuficiente sigue UNKNOWN de baja prioridad.
+   - SKIP expiry durante relief cerrado: NEEDS/READY fresco reutiliza preparación
+     normal. Portabilidad del corpus histórico y Fill All con Gold insuficiente
+     siguen pendientes/UNKNOWN de baja prioridad.
 
 Estas deudas no bloquean el checkpoint. No fabricar Full/materiales/ads ni provocar
 variantes para validarlas. No repetir la campaña de tres personajes ni seguir optimizando

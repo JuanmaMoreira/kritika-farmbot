@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 import numpy as np
 import cv2
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from collections.abc import Callable
 
 from bot.action_executor import ActionExecutor, FrameGeometry
@@ -85,6 +85,7 @@ class EquipmentSellRuntime:
         self._latest = None
         self._after_sequence = 0
         self._not_before = 0.0
+        self._sale_origin = None
         self.events = events
         try:
             self.block_matcher = EquipmentBlockMatcher()
@@ -129,8 +130,8 @@ class EquipmentSellRuntime:
                 SelectEquipmentInventorySlot(candidate.slot)
             ),
             read_detail=lambda: self._read_next("detail_sample"),
-            open_confirmation=lambda: self._tap(OpenEquipmentSell()),
-            read_confirmation=lambda: self._read_next("confirmation_sample"),
+            open_confirmation=self._open_sale_confirmation,
+            read_confirmation=self._read_sale_confirmation,
             confirm_bulk=lambda: self._tap(ConfirmEquipmentBulkSale()),
             cancel_confirmation=lambda: self._tap(CancelEquipmentSale()),
             read_inventory=lambda: self._read_next("inventory_sample", predicate=lambda v: v.item_count < before.item_count),
@@ -138,6 +139,32 @@ class EquipmentSellRuntime:
             selected_item=selected.item if selected is not None else None,
             selection_current=lambda:self._selected_panel_current(selected),
         )
+
+    def _open_sale_confirmation(self, item):
+        # The operation has verified this exact panel and its policy immediately
+        # before this deterministic transition. Keep only its causal origin.
+        if (self._latest is None or self._latest.sequence < item.sequence or
+                not item.confirmed or not 0 <= self.clock() - item.observed_at <= 2.):
+            raise RuntimeError("sale_origin_unverified")
+        self._tap(OpenEquipmentSell())
+        self._sale_origin = (item.sequence, self._after_sequence, self._not_before)
+
+    def _read_sale_confirmation(self):
+        origin = self._sale_origin
+        if origin is None:
+            return None
+        fact = self._read_next("confirmation_sample")
+        item_sequence, open_sequence, barrier = origin
+        if (fact is None or not fact.confirmed or self._sale_origin is not origin or
+                self._not_before != barrier or
+                any(sequence <= open_sequence for sequence in fact.sample_sequences) or
+                fact.observed_at < barrier or
+                not 0 <= self.clock() - fact.observed_at <= 2.):
+            return None
+        record_best_effort(self.events, "equipment.sell.confirmation.origin",
+                          source_item_sequence=item_sequence, open_sequence=open_sequence,
+                          popup_sequence=fact.sequence, popup_name=fact.item_name)
+        return replace(fact, source_item_sequence=item_sequence)
 
     def execute_relief(self, policy):
         from bot.equipment_inventory_relief import execute_inventory_relief
@@ -311,10 +338,11 @@ class EquipmentSellRuntime:
                 self._latest=frame
                 self._after_sequence=frame.sequence
                 fresh=self._read_next("detail_sample")
-                fields=("name","grade","equipment_type","enhance","sell_available","grade_visual")
+                fields=("sell_available","grade_visual")
                 if (not isinstance(fresh,EquipmentItemFact) or not fresh.confirmed or
                         fresh.sequence<=frame.sequence or
                         not 0<=self.clock()-fresh.observed_at<=2. or
+                        fresh.selection_key != selected.item.selection_key or
                         any(getattr(fresh,key)!=getattr(selected.item,key) for key in fields) or
                         fresh.sell_available is not True or fresh.grade_visual is not fresh.grade or
                         self._selected_sale is not selected or self._not_before!=selected.input_barrier or
@@ -455,6 +483,7 @@ class EquipmentSellRuntime:
 
     def _tap(self, action) -> None:
         self._selected_sale=None
+        self._sale_origin=None
         if self.cancel_requested():
             raise RuntimeError("equipment_action_cancelled")
         if self._latest is None or not 0 <= self.clock() - self._latest.timestamp <= 2.0:

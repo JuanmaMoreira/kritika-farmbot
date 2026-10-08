@@ -1,5 +1,155 @@
 # Estado actual — Kritika FarmBot
 
+## Campaña acumulativa Stability + Performance cerrada — 2026-10-07
+
+28/28 stable `character_id` COMPLETE hoy: inicial2COMPLETE/1PARTIAL/25UNSEEN;
+26 restantes acreditados acumulativamente, sin reiniciar cobertura. Runs03:9,
+04:2,05:14,06:1 nuevos;02 preflight STOPPED y01 fallo de instrumentación.
+Run06 Blade Dancer completó rutina y Rotation; runtime cerrado. Ledger,
+procedencia, métricas/versiones y reporte en
+`artifacts/full_roster_performance_campaign/` (ignorados).
+
+Fixes locales nuevos: Stages permite un segundo Socket relief normal sólo tras
+efecto y blocker fresco (Yes, no salida No); MW prepara de nuevo SKIP en pass
+si observa NEEDS/READY fresco tras relief; Capture impide que PTS atrasado
+sobrescriba una adquisición más reciente. Blade Dancer tuvo un stall compatible
+con trabón PC (native7.36/11.32s, Config correcto pero viejo); causa OS específica
+no acreditada. La carrera de publicación sí fue reproducida y corregida, sin
+relabeling, gate más amplio ni input stale. Retry target1 SUCCESS.
+
+Performance adoptada con medición: Stages handoff stream≤150ms antes del fallback
+nativo; scope existente4detectors sólo dentro de Stages verificado. Lobby entry
+y completion conservan percepción completa. Misma cadena live n4/variante:
+A→B median9.420→4.957s, native16→1; stream reads64→153, no son capturas
+físicas ni ahorro de compute total. Mismo frame n30:81→4detectors,375.46→46.58ms
+mediana de cómputo; producto final D2smokes, median5.345s/native1 separados.
+Validación: Socket142tests, MW172, Capture47; Stages performance161 afectados,
+13replays equivalentes,12cadenas comparativas +2smokes de código productivo final.
+Equipment cromático natural:72Bulk SUCCESS, todos1confirm;51Ads returned durante
+campaña. Dos snapshots informativos de recursos rechazados por confianza<.95,
+sin acreditar valores. Trading confirm p951593ms/max1688ms (gate2s) queda como
+candidato medido sin patch especulativo. Cierre conjunto autorizado; aceptación y
+separación en [checkpoint causal](docs/FULL_ROSTER_STABILITY_PERFORMANCE_CHECKPOINT.md).
+Cierre offline: worktree1155/0failed/0skipped/3deselected; INDEX portable
+1126/0failed/12skipped/20deselected (corpus históricos ausentes separados).
+Arena/Open Pets no iniciados. Trabajo histórico/local independiente preservado.
+
+## Equipment Sell — smoke físico cromático SUCCESS 2026-10-07
+
+Ownership PC/teléfono/ADB autorizado por usuario; Inventory ya abierto en
+Drakenn22, página8/22, count135/128. Un único candidato slot15/índice127:
+Laoku's Destructive Gear físico, Helmet no Enhance. Tier LEGENDARY desde título
+naranja,2141 pixels interiores/22 glyphs, soporte/margen.9981317; selected-name
+OCR0, fact.name vacío. Subtype OCR.99844, Sell/guard visual positivos; policy
+productiva vigente autorizó. Select slot→Sell→ConfirmEquipmentBulkSale, exactamente
+un Sell intent y una confirmación. Item Count confirmado **135→134**, delta1;
+outcome SUCCESS/item_count_decreased. Sigue Full134/128: se detuvo tras el Bulk
+focal autorizado, sin otras ventas ni expansión.
+
+El popup volvió a leer `Laoku's Desructive Gear`, confianza.99925/.99926. Binding
+causal panel1295→OpenSell frame1302→popup1338/1357, sin input intermedio,
+source_item_sequence1295 y group equipment_grade exacto. Count after1412/1416.
+NCC title.998255<.999 activó una relectura semántica bounded sin input, exitosa;
+no divergencia ni patch productivo. Capturas verificadas, source cerrado,
+Inventory final limpio. Sin Back ni confirm/retry adicional.
+
+Live4 muestras: capture timestamp PTS→tier mediana146.4ms/rango95.6–221.4;
+→detail224.9ms/rango189.6–299.4; procesamiento detail86ms/rango63–94.
+Reloj monotonic local con granularidad≈16ms, valores aproximados y sin p95 n4;
+tier processing debajo de esa granularidad, no coste cero. Edad al Sell del
+panel ligado533.6ms/revalidación fresca299.4ms; popup al confirm609ms, gate2s.
+OCR detail1/muestra,4 total; nombre0. No demuestra mejora end-to-end frente al
+old live; benchmark offline anterior sin captura sigue independiente.
+
+Gear y popup live curados como nuevos replays con hashes (corpus20 contextos,
+seis nombres Legendary); no inventar pixels históricos de fd48d8bf. Validación
+smoke-sensitive:9 replays nuevos +63 binding/selected-panel passed; sin repetir
+543 ni modificar código productivo. Evidencia/métricas/resultados en
+`artifacts/equipment_color_validation/live_smoke_20261007/report.md`.
+Sin commit/push/staging/28/28; trabajo local independiente preservado.
+
+## Equipment Sell — tier por tinta del título 2026-10-07
+
+Selected detail productivo ya no transcribe el nombre libre ni usa grade OCR
+como tier authority. Reader focal separa tinta interior del título por color,
+soporte y margen; UNKNOWN no autoriza. Mapping físico curado: Poor blanco,
+Normal verde, Rare azul, Epic violeta/magenta, Legendary naranja; Ethereal y E+
+comparten rojo y requieren distinguir visualmente su marcador de grade. Enhance
+usa marcador visual genérico. Subtype mantiene un OCR focal del suffix finito;
+el API de autorización existente exige ese tipo para todos los tiers. Inventory
+y popup conservan sus OCR estructurales y grupos Bulk exactos. El harness HIL
+opcional con nombre humano aprobado conserva su guard adicional separado.
+
+Facts cromáticos omiten el nombre del consenso/recheck semántico bajo candidate,
+continuidad visual e input lineage existentes. Binding causal panel→Sell→popup
+fresco sin input intermedio sigue vigente; regression Destructive/Desructive
+pasó, incluido fact cromático sin nombre. No cambian ReliefPolicy, E+ protegido,
+confirmación única, Item Count efecto ni cancelación/retries. Corpus inicial18 contextos
+incluye cinco nombres Legendary, otros tiers, Enhance, negativos y variaciones
+de captura/AA/brillo/escala. Failures Earrings/Phantom/Shortsword tienen panel
+replay; Shortsword repetido usa el mismo item, Gear sólo log/regression semántico
+porque no quedaron pixels seleccionados. Sus causas históricas fueron popup,
+no un fallo demostrado del tier seleccionado.
+
+Validación:543 tests focales consolidados passed +4 directos del harness;
+evaluator Equipment Sell14/14. Benchmark120 muestras/frame nativo: tier median/
+p95 29.74/33.42ms→1.24/1.34ms; detail58.39/65.50→32.87/35.54ms. OCR detail2→1
+por muestra; sin coste de captura ni auditoría global. Probes live de lectura
+encontraron Lobby, cero taps/consumos; ese pendiente fue cerrado por el smoke
+físico documentado arriba. Sources cerrados. Sin commit/push/28/28; trabajo local
+independiente preservado. Auditoría causal completa y métricas en
+`artifacts/equipment_color_validation/audit.md`; corpus y assets tienen manifests
+con procedencia/hashes. El estado del fix previo de abajo permanece como historia
+de esa intervención, no como descripción de la autoridad perceptiva nueva.
+
+## FAILED Sell Equipment — origen causal corregido localmente 2026-10-07
+
+Último log `20261007T151933.728847Z_session_fd48d8bf`, personaje2 /
+Dimension Manipulator / MW investment. FAILED12:34:46 ART:
+`bulk_not_started:confirmation_item_mismatch`, count135/capacity128 y cero
+confirmaciones de ese Bulk. Panel9191/9193: Legendary Helmet,
+`Laoku's Destructive Gear`, guard visual y Sell positivos. Open Sell desde9193;
+popup9198/9202: `Laoku's Desructive Gear`, confianza.99925/.99922 y scope
+Equipment-grade correcto. Primera divergencia: igualdad literal entre dos OCR
+del nombre rechazó una transición determinista verificada; consenso repitió el
+mismo error de letra. Las capturas del failure bundle son anteriores al popup;
+la atribución usa los diagnósticos/acciones del log, no un replay de esos pixels.
+
+Solución general en el owner existente: Open Sell recibe el panel verificado;
+runtime acredita `source_item_sequence` sólo con dos muestras frescas posteriores
+al tap y sin input intermedio. Operación/policy usan ese origen para la relación
+panel→popup; nombres arbitrarios/transcripciones distintas no requieren assets,
+aliases ni tolerancia difusa. Scope Bulk exacto, policy/tier/type/Enhance, E+
+protegido, confirmación única y delta posterior permanecen. Cualquier input
+invalida el origen; su pérdida no permite fallback por igualdad de nombre.
+Facts standalone sin origen conservan comparación estricta.
+
+Validación offline:500 tests directos y consumidores afectados passed, incluido
+el par OCR del fallo, nueve tipos y las tres familias Bulk, origen incorrecto,
+input intermedio, stale/pre-tap/unconfirmed, scope incompatible y efecto inconcluso
+sin retry. Item Count posterior del replay semántico es simulado; no prueba venta
+física nueva. Sin cambio perceptivo ni evaluator, sin hardware ni nuevo smoke;
+reader/payment-wrap y todos los cambios locales previos preservados.
+
+## FAILED Stages post-ad — corregido localmente 2026-10-06
+
+Log `20261006T192430.058419Z_session_b2f41405`, session
+`fac392bee3cb41a09e84c66c772d9be4`, personaje2 / Gold step3 / Stages attempt1.
+FAILED16:29:37 ART tras ad RETURNED y un único Results OK. Capturas3092/3105/3146
+confirman Config: no faltó la transición. El scope de81 detectores gastó hasta
+2.5225s por análisis; la reacquisición nativa también agotó la guard2s
+(análisis2.3554s). Primera divergencia: rechazo por edad de Config matching.
+
+Fix focal: Results→Config→Normal observa cuatro detectores, con toda la familia
+upper de Stages, Quick Menu y blockers Equipment/Socket. Reutiliza Config fresco
+para su cierre; Back→Lobby conserva el observer completo. Guard2s, cancelación,
+timestamps reales, fallback nativo bounded y confirm único permanecen.
+Replay semántico curado reproduce timeout anterior y cierre corregido sin repetir
+OK; tests afectados y equivalencia perceptiva12/12 en corpus existente.
+Evaluator incremental48/48 pares reutilizados, cero invalidaciones de detectores.
+Informe local: `artifacts/stages_return_validation/report.json`.
+Sin nuevo smoke/campaña live, commit ni push; cambios previos preservados.
+
 ## Checkpoint causal Reliefs / MW / Trading — 2026-10-06
 
 Scope exclusivo posterior a `d97e899b`: policy/coordinator transversal de rutina,

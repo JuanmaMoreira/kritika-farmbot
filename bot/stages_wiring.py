@@ -12,6 +12,17 @@ from bot.stages_daily_flow import StagesDailyFlow
 from bot.ocr import RapidOcrEngine
 import re
 
+# Results -> Config -> Normal is an acquired modal-close chain. Keep Stages'
+# entire upper-layer family and the external blockers that can cover it;
+# clean Lobby is still verified by the full completion observer after Back.
+# The same bounded family is used by change only from verified Stages;
+# Lobby -> Stages entry retains the full observer.
+STAGES_RESULTS_RETURN_SCOPE = ScopeSpec('stages_results_return', frozenset({
+    'landmark.quick_menu_lobby_tile',
+    'landmark.equipment_inventory_full_prompt',
+    'landmark.socket_inventory_full_prompt',
+}), (StagesDetector,))
+
 def is_no_ads_alert(snapshot, balances):
     if surface(snapshot)=='no_ads':return True
     if surface(snapshot)!='alert':return False
@@ -39,6 +50,7 @@ def build_stages_daily(dependencies, monster_wave):
     nav = StagesNavigation(observer, dependencies.actions, events=dependencies.events,
                            cancel_requested=dependencies.cancel_requested)
     nav.claim_observer=observer.scoped(PerceptionEngine((StagesClaimDetector(detector),)))
+    nav.results_observer=observer.scoped(select_detectors(observer.perception, STAGES_RESULTS_RETURN_SCOPE))
     balances = StagesBalanceReader(nav, getattr(dependencies,"ocr_engine",None) or RapidOcrEngine())
     # Ad content never goes through the game's full landmark family or OCR.
     ads_scope = ScopeSpec('ads_android_return',

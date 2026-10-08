@@ -94,7 +94,7 @@ class EquipmentSellAuthorization:
         if not confirmation.confirmed or confirmation.group not in self.allowed_bulk_groups:
             return False
         assert item is not None
-        if _normalize_name(confirmation.item_name) != _normalize_name(item.name):
+        if not confirmation_matches_item(confirmation, item):
             return False
         if item.grade in LOW_BULK_GRADES:
             expected = (
@@ -167,7 +167,11 @@ def confirmation_matches_item(
         and confirmation.confirmed
         and isinstance(item, EquipmentItemFact)
         and item.confirmed
-        and _normalize_name(confirmation.item_name) == _normalize_name(item.name)
+        and (
+            confirmation.source_item_sequence == item.sequence
+            if confirmation.source_item_sequence is not None
+            else _normalize_name(confirmation.item_name) == _normalize_name(item.name)
+        )
     )
 
 

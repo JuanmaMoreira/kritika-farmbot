@@ -120,6 +120,7 @@ class EquipmentItemFact:
 
     sell_available: bool | None = None
     grade_visual: EquipmentGrade | None = None
+    tier_by_color: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str):
@@ -135,12 +136,14 @@ class EquipmentItemFact:
             raise ValueError("sell_available must be bool or None")
         if self.grade_visual is not None and not isinstance(self.grade_visual, EquipmentGrade):
             raise ValueError("grade_visual must be EquipmentGrade or None")
+        if type(self.tier_by_color) is not bool:
+            raise ValueError("tier_by_color must be bool")
         _validate_common_fact(self)
 
     @property
     def complete(self) -> bool:
         return (
-            bool(self.name)
+            (bool(self.name) or self.tier_by_color)
             and self.grade is not EquipmentGrade.UNKNOWN
             and self.equipment_type is not EquipmentType.UNKNOWN
             and (self.grade_visual is None or self.grade_visual is self.grade)
@@ -154,6 +157,12 @@ class EquipmentItemFact:
             and _confirmed(self.sample_sequences, self.sequence)
         )
 
+    @property
+    def selection_key(self):
+        # Under owned selection/input lineage, identity text is diagnostic.
+        return (None if self.tier_by_color else self.name.casefold(), self.grade,
+                self.equipment_type, self.enhance, self.tier_by_color)
+
 
 @dataclass(frozen=True)
 class EquipmentSellConfirmationFact:
@@ -165,6 +174,9 @@ class EquipmentSellConfirmationFact:
     sample_sequences: tuple[int, ...] = ()
     evidence: tuple[str, ...] = ()
     contradictory: bool = False
+    # Set only by the input owner after opening Sell from this verified panel.
+    # OCR readers cannot establish this causal relationship from the name.
+    source_item_sequence: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.item_name, str):
@@ -177,6 +189,12 @@ class EquipmentSellConfirmationFact:
         ):
             raise ValueError("group_type must be EquipmentType or None")
         _validate_common_fact(self)
+        if self.source_item_sequence is not None and (
+            isinstance(self.source_item_sequence, bool)
+            or not isinstance(self.source_item_sequence, Integral)
+            or not 0 <= self.source_item_sequence < self.sequence
+        ):
+            raise ValueError("source_item_sequence must precede the popup")
 
     @property
     def complete(self) -> bool:
@@ -252,8 +270,8 @@ def _fact_value(fact: FactT) -> tuple[object, ...]:
     if isinstance(fact, EquipmentInventoryFact):
         return (fact.item_count, fact.capacity, fact.page, fact.total_pages)
     if isinstance(fact, EquipmentItemFact):
-        return (fact.name.casefold(), fact.grade, fact.equipment_type, fact.enhance, fact.sell_available, fact.grade_visual)
-    return (fact.item_name.casefold(), fact.group, fact.group_type)
+        return (*fact.selection_key, fact.sell_available, fact.grade_visual)
+    return (fact.item_name.casefold(), fact.group, fact.group_type, fact.source_item_sequence)
 
 
 def _validate_common_fact(fact) -> None:

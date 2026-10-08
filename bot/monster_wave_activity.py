@@ -341,6 +341,33 @@ class MonsterWaveActivity:
                         continue
                 raise ValueError('entry normalization did not reach clean MW')
 
+        def prepare_skip(current):
+            # USER_GT: with sapphires to spend, missing tickets never ends
+            # the flow. NEEDS always attempts Fill All once (Gold), then
+            # READY must verify before Activate; ACTIVE skips both.
+            # purchase_skip_tickets no longer gates productive preparation.
+            if skip_state(current) is SkipState.NEEDS_TICKETS:
+                current = step('open_tickets', OpenMonsterWaveTickets(), current,
+                               lambda s: skip_state(s) is SkipState.NEEDS_TICKETS, popup(POPUP_MW_PURCHASE))
+                full = lambda s: popup(POPUP_MW_PURCHASE)(s) and has(s, MW_PURCHASE_FULL)
+                if not full(current):
+                    current = step('fill_tickets', FillMonsterWaveTickets(), current,
+                                   lambda s: popup(POPUP_MW_PURCHASE)(s) and not has(s, MW_PURCHASE_FULL), full)
+                    business('tickets_purchased')
+                current = step('close_tickets', CloseMonsterWaveTickets(), current, full,
+                               lambda s: skip_state(s) is SkipState.READY)
+            if skip_state(current) is SkipState.READY:
+                current = step('activate', ActivateMonsterWaveSkip(), current,
+                               lambda s: skip_state(s) is SkipState.READY, active)
+            # MAX persists for this character across independent preparations.
+            # A fresh selected state is verification, not permission to retap.
+            if has(current, MW_MAX):
+                if not max_ready(current):
+                    raise ValueError('mw_selected_max_not_ready')
+            else:
+                current = step('select_max', SelectMonsterWaveMax(), current, active, max_ready)
+            return current
+
         try:
             check_cancel()
             if phase == 'prepare':
@@ -368,30 +395,7 @@ class MonsterWaveActivity:
                     after_sequence=max(e.sequence for e in (*read.evidence, *fact.evidence)),
                     timeout=6, stable_for=.25, cancel_requested=self.cancel_requested)
                 current = enter(before)
-                # USER_GT: with sapphires to spend, missing tickets never ends
-                # the flow. NEEDS always attempts Fill All once (Gold), then
-                # READY must verify before Activate; ACTIVE skips both.
-                # purchase_skip_tickets no longer gates productive preparation.
-                if skip_state(current) is SkipState.NEEDS_TICKETS:
-                    current = step('open_tickets', OpenMonsterWaveTickets(), current,
-                                   lambda s: skip_state(s) is SkipState.NEEDS_TICKETS, popup(POPUP_MW_PURCHASE))
-                    full = lambda s: popup(POPUP_MW_PURCHASE)(s) and has(s, MW_PURCHASE_FULL)
-                    if not full(current):
-                        current = step('fill_tickets', FillMonsterWaveTickets(), current,
-                                       lambda s: popup(POPUP_MW_PURCHASE)(s) and not has(s, MW_PURCHASE_FULL), full)
-                        business('tickets_purchased')
-                    current = step('close_tickets', CloseMonsterWaveTickets(), current, full,
-                                   lambda s: skip_state(s) is SkipState.READY)
-                if skip_state(current) is SkipState.READY:
-                    current = step('activate', ActivateMonsterWaveSkip(), current,
-                                   lambda s: skip_state(s) is SkipState.READY, active)
-                # MAX persists for this character across independent preparations.
-                # A fresh selected state is verification, not permission to retap.
-                if has(current, MW_MAX):
-                    if not max_ready(current):
-                        raise ValueError('mw_selected_max_not_ready')
-                else:
-                    current = step('select_max', SelectMonsterWaveMax(), current, active, max_ready)
+                current = prepare_skip(current)
                 return finish(sapphires_initial=fact.value)
 
             if phase == 'reenter':
@@ -412,6 +416,12 @@ class MonsterWaveActivity:
                 if not clean_mw(current):
                     raise ValueError('mw_leave_requires_clean_screen')
                 return exit_hub(current)
+            if phase == 'pass' and skip_state(current) in {SkipState.NEEDS_TICKETS, SkipState.READY}:
+                # The account-wide timer may expire while a relief is running.
+                # Fresh positive NEEDS/READY reuses normal preparation; absence
+                # or an occluded context still cannot authorize any input.
+                business('skip_reprepare', reason='fresh_skip_inactive')
+                current = prepare_skip(current)
             if phase not in {'pass', 'finish'} or (phase == 'pass' and not max_ready(current)):
                 raise ValueError('mw_pass_requires_active_max')
             if phase == 'pass':

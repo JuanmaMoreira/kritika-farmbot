@@ -85,7 +85,9 @@ consumo adicional. Ver [auditoría combinada](COMBINED_28_ACCEPTANCE_AUDIT.md).
 El popup Sell con nombre largo y pago K Coins puede envolver el **nombre**
 antes del `]`. El reader lee una segunda línea física sólo tras prefijo fuerte
 `Selling [` sin cierre; requiere confianza suficiente en ambas y nombre completo
-concordante con detail. Identidad completa selecciona las regiones Bulk K Coin;
+estructuralmente cerrado. La relación con detail se acredita por el origen causal
+descrito en el contrato de handoff; no por igualdad de transcripciones OCR.
+Identidad completa selecciona las regiones Bulk K Coin;
 scope Bulk exacto independiente, consenso fresco y confirm único siguen vigentes.
 Regresión Blade Dancer 2026-10-05 y replay nativo en COMBINED_28_ACCEPTANCE_AUDIT.
 
@@ -185,9 +187,22 @@ Arena/ToT podrían tener capabilities propias si su dominio lo requiere; no se i
 
 ### Handoff del panel SELLABLE — USER_GT 2026-10-02
 
-El scanner mantiene abierto el mismo panel cuando el consenso fuerte fresco de nombre/tier/type y guards visuales cumple la policy. El handoff local conserva candidate, Inventory previo inmutable y panel/evidence de ese tap; Bulk usa ese panel directamente, sin close/reopen. Cualquier input intermedio, cambio de candidate o pérdida de freshness invalida el handoff sin consumo. La continuidad visual es el fast path; CV nunca autoriza Sell. **IMPLEMENTATION_CONTRACT 2026-10-05:** un miss de correlación del título/grade/Sell requiere una única relectura fuerte bounded, sin input, posterior al frame comparado. Debe confirmar el mismo nombre/tier/type/familia Enhance, Sell disponible y guard visual, con freshness/input lineage intactos; UNKNOWN, contradicción o cancelación deniegan sin consumo. PROTECTED/inconcluso durante discovery cierra y conserva el scan vigente.
+El scanner mantiene abierto el mismo panel cuando el consenso fuerte fresco de tier/type/familia Enhance y guards visuales cumple la policy. El handoff local conserva candidate, Inventory previo inmutable y panel/evidence de ese tap; Bulk usa ese panel directamente, sin close/reopen. Cualquier input intermedio, cambio de candidate o pérdida de freshness invalida el handoff sin consumo. La continuidad visual es el fast path; CV nunca autoriza Sell. **IMPLEMENTATION_CONTRACT actualizado 2026-10-07:** un miss de correlación del título/grade/Sell requiere una única relectura fuerte bounded, sin input, posterior al frame comparado. Debe confirmar el mismo tier/type/familia Enhance, Sell disponible y guard visual, con freshness/input lineage intactos; los facts cromáticos no exigen nombre OCR. UNKNOWN, contradicción o cancelación deniegan sin consumo. PROTECTED/inconcluso durante discovery cierra y conserva el scan vigente.
+
+Tier authority del detail es color de tinta aislada del título, con soporte y margen; no OCR de `[Legendary] ...`. La familia roja requiere distinguir visualmente Ethereal/Ethereal+ antes de policy. Subtype conserva una lectura OCR focal del suffix de tipo; el bracket no aporta tier. El API de autorización actual exige tipo incluso en tiers bajos, por lo que esa lectura permanece para todos los tiers sin ampliar permisos. Enhance se acredita por su marcador visual, independiente del nombre. El selected-name OCR queda fuera del camino productivo. Modal Sell sobre el panel invalida la lectura de detail; los grupos Bulk y el parsing del popup conservan sus autoridades y gates.
 
 El popup Bulk, policy Ethereal/Ethereal+, confirmación única y fresh Item Count/delta permanecen en el owner consumptivo existente. Un `before` anterior al panel sólo se acepta con `reuse_selected_panel`, el mismo strong item observado por el scan y secuencias monotónicas; las transformaciones lógicas tras Bulk no cambian. Telemetría: protected/sellable panel opens, same-item reopens, Bulks y elapsed.
+
+**IMPLEMENTATION_CONTRACT 2026-10-07:** la operación entrega el item verificado a
+Open Sell. Sólo el runtime de input puede añadir `source_item_sequence` al consenso
+del popup: ambas muestras posteriores al frame usado por Open Sell, timestamps
+posteriores al tap, freshness ≤2s y ningún input intermedio. Todo input invalida
+ese origen. Policy/operación comparan el origen con la secuencia del panel y
+mantienen scope Bulk/familia/tipo exactos; el nombre OCR del popup es diagnóstico
+para esa relación, sin diccionario ni fuzzy matching. Origen distinto deniega
+incluso con nombres iguales; pérdida del origen devuelve inconcluso sin fallback
+de nombre. Facts standalone sin origen conservan igualdad estricta. El parsing
+estructural, confianza y consenso OCR del popup no cambian.
 
 Live Sell selected-panel continuity: exact pixel equality was invalidated by H264/background noise on an unchanged strong Boots panel (name NCC 0.999999, grade/type 0.996757; protected Ethereal+ negatives 0.4928/0.6877). Fresh same-candidate/input-lineage guards remain; conservative ROI correlation only rejects continuity and never authorizes sale. Strong classification/policy and the fresh Bulk popup retain destructive ownership. Zero-confirm denials report bulk_not_started plus their real reason rather than effect_inconclusive.
 
@@ -354,6 +369,32 @@ ambas conserva Enhance primero y Sell sólo si no hubo efecto. Equipment encapsu
 sin configuración seguido de Sell con policy común. Treasure permite el recovery Gold Keys
 existente; Platinum sigue pendiente de GT e implementación. Schema/migración/GUI en
 [GUI_CONFIGURATION](GUI_CONFIGURATION.md).
+
+Stages: un efecto de Enhance no acredita por sí solo espacio suficiente para Start.
+USER_GT y smoke Steam Walker 2026-10-07: el popup inicial recurrente sigue llevando
+a Socket con Yes; un segundo relief normal permitió abrir Select Striker. El caller
+permite una segunda ejecución sólo ante ese blocker fresco y efecto del relief previo;
+sin efecto o ante una tercera recurrencia se detiene. No lo convierte en salida No
+ni en completion del personaje. Permisos y orden de Socket permanecen iguales.
+
+Stages waits dan hasta150ms al stream para entregar un frame posterior al input,
+con sequence nueva y edad≤1s, antes del fallback nativo existente. Stream estático
+o atrasado conserva captura real; cancelación y gate final2s no cambian. `change`
+reutiliza el scope de cuatro detectors de retorno sólo desde Stages ya verificado:
+familia superior completa + Quick Menu/Equipment Full/Socket Full. Entrada desde
+Lobby y completion Lobby conservan percepción completa. Campaña2026-10-07:
+misma cadena no consumptiva A→B n4/variante, mediana9.420→4.957s; native16→1.
+Aumentaron stream reads/detector calls: ahorro de adquisición/latencia, no compute
+total. Smokes de producto final y prototipos quedan separados en el
+[checkpoint causal](FULL_ROSTER_STABILITY_PERFORMANCE_CHECKPOINT.md).
+Mismo frame Normal n30:81→4 detectors, mediana375.46→46.58ms, p95403.53→49.52ms.
+
+MW SKIP lifecycle: el pass observa fresco antes de Start. Si el timer account-wide
+deja NEEDS_TICKETS o READY durante un relief, reutiliza la preparación normal
+(Fill All una vez, READY, Activate, verificación de MAX seleccionado) en la misma
+BASE, sin Back/re-entry. UNKNOWN/oclusiones no autorizan esa preparación. Regresión
+Wandering Master run04 2026-10-07: ACTIVE+MAX antes de Equipment relief, NEEDS
+fresco tras retornar; el antiguo retry fallaba `mw_pass_requires_active_max`.
 
 A1 board MW conserva resolver completo, pares concordantes dentro de 1 s y edad final
 máxima 2 s. Memoiza únicamente outputs CV puros por ROI **grayscale exacto**, por owner

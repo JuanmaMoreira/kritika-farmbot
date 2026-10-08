@@ -1,0 +1,1141 @@
+{
+  "provenance": "Existing native selected Equipment panels; labels from visible grade/type and existing curated USER_GT/live evidence. label_name is provenance only. No model predictions used as labels.",
+  "entries": [
+    {
+      "id": "poor",
+      "source": "artifacts/session_stabilization/sell_tiers_poor_gloves.png",
+      "source_sha256": "4fdd8b7cf195536016d2eed5798ce3ff147a6538ced2fdfc4dd24bb0d6e7e94c",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "poor",
+      "type": "gloves",
+      "enhance": false,
+      "label_name": "Laoku's Light Gloves",
+      "crops": [
+        {
+          "file": "poor_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "30b294146495dadda4441d7f145b2359c9c753a780e34ced5054f120fc359c63"
+        },
+        {
+          "file": "poor_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "8213e305abef3baab5dff802da6069b85a7d32d04c9cf45cf9012771c4399d8b"
+        },
+        {
+          "file": "poor_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "16aacc5769ed0c0e935f7ce0757bf1000eab047d90624c3fb6dfb6e227c35d72"
+        },
+        {
+          "file": "poor_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "fd949a8c161595cc05e288f881d8e688ec1324f047c090550b3206d45de39932"
+        }
+      ]
+    },
+    {
+      "id": "normal_chest",
+      "source": "artifacts/session_stabilization/sell_tiers_normal_chest.png",
+      "source_sha256": "696bd47ef0c9284f45ce493eaa4c6d1e2dfb19d6d639a302f3a38599e320054f",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "normal",
+      "type": "chest",
+      "enhance": false,
+      "label_name": "Laoku's Precise Tunic",
+      "crops": [
+        {
+          "file": "normal_chest_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "dd221343ab519d18e3961e74a02db4bc7175a0772f37fe35d4d1a027ee6536ce"
+        },
+        {
+          "file": "normal_chest_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "cc473a2f8599b300a4bc7da4aec96b4517b597ed344eeb7b6efb08b831a644d1"
+        },
+        {
+          "file": "normal_chest_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "33908b133008e4dc0e903f68ed728442fb79f0c3e30936bafd1f007385155a93"
+        },
+        {
+          "file": "normal_chest_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "6c726750dcea9f58b1e40c9b2bada767424049ae6b1e5ac2ffe0129e55cbb80a"
+        }
+      ]
+    },
+    {
+      "id": "normal_enhance",
+      "source": "artifacts/session_stabilization/sell_tiers_normal_enhance.png",
+      "source_sha256": "20920305989b158f7f904ef4242826ae46fb9bc18c111b9163b3cd45751951b1",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "normal",
+      "type": "weapon",
+      "enhance": true,
+      "label_name": "Weapon (Enhance)",
+      "crops": [
+        {
+          "file": "normal_enhance_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "4f840c368694d244240b9231cd899e682110a7d52645d1e920f9a3b3299b00aa"
+        },
+        {
+          "file": "normal_enhance_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "11ef003a8452e3586c3d5b44882d33462ceadb6ee8e0caa3cc8e7a529de9cf8a"
+        },
+        {
+          "file": "normal_enhance_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "058de84d2e3cb1de3c52b0a2eabf2240b358c50aa81f5be85e99e178704d7f8a"
+        },
+        {
+          "file": "normal_enhance_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "8cf9fac3b21f97266c0d839436e91c4234e8fe93d9a6efb5a461f373c72ffc9b"
+        }
+      ]
+    },
+    {
+      "id": "rare_helmet",
+      "source": "artifacts/mw_stabilization/equipment_detail_p8_s15.png",
+      "source_sha256": "0216546cbbe76c0fde532a48e3367d632aa0fabd5794d95e65339b97cd0e9861",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "rare",
+      "type": "helmet",
+      "enhance": false,
+      "label_name": "Laoku's Mighty Gear",
+      "crops": [
+        {
+          "file": "rare_helmet_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "279ec4b6d3640088f60d2abd9c193b1bf7f3a6ef9f1772465769a71668591608"
+        },
+        {
+          "file": "rare_helmet_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "f76716a0c7d414c71147b37e7664c6379cb24e645707408f7e38b29122948700"
+        },
+        {
+          "file": "rare_helmet_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "81fe99f677804f099f71adc20bb155c4e3d57fe8dc9313b489c88ddfc2013858"
+        },
+        {
+          "file": "rare_helmet_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "4ea74abae4c77144cf8428574ca3a878bc6da5fb1b8be55c46328c029ad28499"
+        }
+      ]
+    },
+    {
+      "id": "epic_chest",
+      "source": "artifacts/mw_stabilization/equipment_detail_p8_s12.png",
+      "source_sha256": "4aec0a6fa4ef19021ed206b6eadb71f484e0582d94340699c8e5a653d94d1e16",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "epic",
+      "type": "chest",
+      "enhance": false,
+      "label_name": "Laoku's Fatal Tunic",
+      "crops": [
+        {
+          "file": "epic_chest_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "6a078180c0f65c2a45a0b58e3203b7ea90f264d0125e5d9c435b6144f0bc92ad"
+        },
+        {
+          "file": "epic_chest_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "226a7221f66c4045a62675a74b63fe5c0fd863f09c8aaaa233e0cbc7abfa2743"
+        },
+        {
+          "file": "epic_chest_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "25d4a521f42e339f96b2eb1bd9b34d249aab4dac0cab79b04e8af5ebb76a91ed"
+        },
+        {
+          "file": "epic_chest_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "802b63648ae7f515c91c4f17641d6a2d9f8585ce978ea1dbe878818185e984a5"
+        }
+      ]
+    },
+    {
+      "id": "epic_enhance",
+      "source": "artifacts/mw_stabilization/equipment_detail_p8_s14.png",
+      "source_sha256": "9882cc94737b69be95860a031754d5866b388be04edff513c222c07f473c7523",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "epic",
+      "type": "chest",
+      "enhance": true,
+      "label_name": "Chest Armor (Enhance)",
+      "crops": [
+        {
+          "file": "epic_enhance_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "7a66bc1bb63332266cbc73babcf146600182ebfcc6d42b31f7fc3ada38fc3850"
+        },
+        {
+          "file": "epic_enhance_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "8a7eb97886a2d5c4b0031b2e090f4e908e48f91c03d0d05b95ba2296e3f288cf"
+        },
+        {
+          "file": "epic_enhance_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "5b304a246b31718cd9b978a10603a2bc189a4733a8f60cddfeffc07d1f90e636"
+        },
+        {
+          "file": "epic_enhance_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "ed92b49169e21e99fff0c62e49cc155d6f243ca0e80bdb56240519e77a7f13b6"
+        }
+      ]
+    },
+    {
+      "id": "legendary_alter",
+      "source": "artifacts/mw_stabilization/equipment_detail_p8_s0.png",
+      "source_sha256": "19d944a3a3f8d773e9d0e9f2ab7beb93b005a9c3d18cec2160e0141edcb6f9e7",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "legendary",
+      "type": "weapon",
+      "enhance": false,
+      "label_name": "Laoku's Destructive Alter",
+      "crops": [
+        {
+          "file": "legendary_alter_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "537a53884da5b0e65109484599ffac2efc33b7f04d5875308f5e2935d0d2cb6e"
+        },
+        {
+          "file": "legendary_alter_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "9a3c4198bdaa45d483c183da36014769682c1758c7d12329ac3d93ec4ba673b8"
+        },
+        {
+          "file": "legendary_alter_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "a26aedc8e809305597c09506ea3ef38969c138fe3647326cd9017ec2f4cfcb6a"
+        },
+        {
+          "file": "legendary_alter_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "e1f35f7df42bedc3787dbf58ca224840c5ea96b7bab823c4a8e3e349ccbc0c4e"
+        }
+      ]
+    },
+    {
+      "id": "legendary_earrings",
+      "source": "artifacts/session_stabilization/campaign7_sell_cancel.png",
+      "source_sha256": "3b687fb87e369300f585656dfa132da9bb85c95d8d69a8795f23c2d5bada10c5",
+      "geometry": [
+        2712,
+        1220
+      ],
+      "grade": "legendary",
+      "type": "earring",
+      "enhance": false,
+      "label_name": "Laoku's Destructive Earrings",
+      "crops": [
+        {
+          "file": "legendary_earrings_0.png",
+          "box": [
+            1393,
+            311,
+            1982,
+            378
+          ],
+          "sha256": "0f1b44ff9157231e5524f4bfdf68c255f02fe0ef81c5128e8ec027534f47dc4b"
+        },
+        {
+          "file": "legendary_earrings_1.png",
+          "box": [
+            1518,
+            384,
+            2034,
+            445
+          ],
+          "sha256": "d39c241ce1ef26cb18ba0fb39f8599d44f11be7f8d6b8b6a3a9122c9e9681cc3"
+        },
+        {
+          "file": "legendary_earrings_2.png",
+          "box": [
+            2074,
+            551,
+            2215,
+            613
+          ],
+          "sha256": "006fa39cff34d26ef39b7a871aa847970b20bfb7282681373dd95e7437e8245c"
+        },
+        {
+          "file": "legendary_earrings_3.png",
+          "box": [
+            1288,
+            387,
+            1437,
+            453
+          ],
+          "sha256": "5ed1b4506e94b5e962aa9113f57e244a067d34a71a878e881dca631fd16eb8b9"
+        }
+      ]
+    },
+    {
+      "id": "legendary_ring_enhance",
+      "source": "artifacts/session_stabilization/sell_tiers_slot_15.png",
+      "source_sha256": "17f95890083370b70cea6ed6ffff4bab3f81a762f2f1d121d3c5d0b09dd78aca",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "legendary",
+      "type": "ring",
+      "enhance": true,
+      "label_name": "Ring (Enhance)",
+      "crops": [
+        {
+          "file": "legendary_ring_enhance_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "40a0b4251e20ee20279505ff49d46ca9253afb51fe91b570011e347aba52ed7b"
+        },
+        {
+          "file": "legendary_ring_enhance_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "3b8b1e8320afe3c01b1cf76a4cd30aa4f058334967d54f2ee94ae4d6038dd345"
+        },
+        {
+          "file": "legendary_ring_enhance_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "3f57ed310a071623dbadd72d9bd475c65e731314704f8cd04b09cb6c9dff33f0"
+        },
+        {
+          "file": "legendary_ring_enhance_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "c79e8b72f9447bbea0eb5bb79f708974eac9d3edddf63addd8aa04f904aa8019"
+        }
+      ]
+    },
+    {
+      "id": "legendary_phantom",
+      "source": "artifacts/acceptance_28_20261005/sell_long_name/detail.png",
+      "source_sha256": "ba26f4959df70104bf6fe1efa8c16c7dc2a95d2120ef2f81978ac3fdad57ff81",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "legendary",
+      "type": "weapon",
+      "enhance": false,
+      "label_name": "Laoku's Destructive Phantom Sword",
+      "crops": [
+        {
+          "file": "legendary_phantom_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "b09ca384ca00cedd17e382a2b61f73d4dc7c38a145abf958677f66fcc8e9c8d9"
+        },
+        {
+          "file": "legendary_phantom_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "606faa723041013c733928a737390f4dcc03917ad939441ced8cd93aea204b11"
+        },
+        {
+          "file": "legendary_phantom_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "bff8d5dbae8201c18e816cce63ee6557fafb2dc592e70610e03e4d2e0ff38f37"
+        },
+        {
+          "file": "legendary_phantom_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "a89122a298a9ed74f418e76c10f4d85db86d77e0885dcfbce828e7204f2ac07a"
+        }
+      ]
+    },
+    {
+      "id": "legendary_shortsword",
+      "source": "artifacts/sell_shortsword_failure/current_popup.png",
+      "source_sha256": "787745ebba1742180d3c4b8d0b303222b068ee718f27818e5c9d337f02740540",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "legendary",
+      "type": "weapon",
+      "enhance": false,
+      "label_name": "Laoku's Destructive Shortsword",
+      "crops": [
+        {
+          "file": "legendary_shortsword_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "99bfd424bb9be45e8c1decf39409b160bbb99b183f69f0297b578560468888b8"
+        },
+        {
+          "file": "legendary_shortsword_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "80fc7ae610a932a99827c5bf183a90fe056081f9c5d8037315191b5cf3c08847"
+        },
+        {
+          "file": "legendary_shortsword_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "791ddd0b30084608c0189724a7da0f29639b3a80a27f6567b574bcc46462bc9b"
+        },
+        {
+          "file": "legendary_shortsword_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "d0ffc5fd17816442424a372e5a00c0e2dd4d7a11009ace086f67f636ff9c9dcc"
+        }
+      ]
+    },
+    {
+      "id": "ethereal_necklace",
+      "source": "artifacts/mw_stabilization/equipment_detail_p5_s15.png",
+      "source_sha256": "e3361fc3a5f378d359bcd9e352e4ed94b9b4f6248133e6329183b6cb7660084b",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "ethereal",
+      "type": "necklace",
+      "enhance": false,
+      "label_name": "Laoku's Awakened Pendant",
+      "crops": [
+        {
+          "file": "ethereal_necklace_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "852e375cf3fa15bc28adba874260ba4b5f5a5660331db7b1f99a40500ec32af4"
+        },
+        {
+          "file": "ethereal_necklace_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "506722aa574f33e20955be0e0fd595c7ca2029815d4cc204b9ccc804a2b1f228"
+        },
+        {
+          "file": "ethereal_necklace_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "fcae57a14426eae7593cc41843ad4f7393e3cfc9c073cb72c82bb8b719558990"
+        },
+        {
+          "file": "ethereal_necklace_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "16d1e03c205d6432c8e3375bbffd9dd6167ae385503dffdd7b986cc5a674a23f"
+        }
+      ]
+    },
+    {
+      "id": "ethereal_plus",
+      "source": "artifacts/mw_stabilization/equipment_detail_p1_s15.png",
+      "source_sha256": "30d42672aebd272ae733ebdcdf565a8df55285946de2defe6cfb9e5fd3a6cb69",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "ethereal+",
+      "type": "chest",
+      "enhance": false,
+      "label_name": "Laoku's Awakened Tunic+",
+      "crops": [
+        {
+          "file": "ethereal_plus_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "9c922d515b19eb6487296d78699100a4afbbce1b8d538570bbc6c6db156ba26b"
+        },
+        {
+          "file": "ethereal_plus_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "2fe84f0fc153fff4429284ea24eede64339d1efba2b755f4a35530f6c0d70d96"
+        },
+        {
+          "file": "ethereal_plus_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "443e016076fa2a2e25c3da59e4760abe4ffd4af53ec800b54767f6c5d13b2934"
+        },
+        {
+          "file": "ethereal_plus_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "00e3bffdec0d1393c5f22fa3abd2fa87c411de3952cc5dd370bc2deac1a96737"
+        }
+      ]
+    },
+    {
+      "id": "epic_gloves",
+      "source": "screencaps/semantic/equipment-sell/detail/01_epic_gloves_enhance.png",
+      "source_sha256": "8b0127b4a8fbc82b401686ef39761a4fca9903e6b47d6e10575c61b2c4e785d8",
+      "geometry": [
+        2712,
+        1220
+      ],
+      "grade": "epic",
+      "type": "gloves",
+      "enhance": true,
+      "label_name": "Gloves (Enhance)",
+      "crops": [
+        {
+          "file": "epic_gloves_0.png",
+          "box": [
+            1393,
+            311,
+            1982,
+            378
+          ],
+          "sha256": "76b5ee68ea5acf8082f36c37b3b0849ca6a901a57e58c86b749ee8254d4019d1"
+        },
+        {
+          "file": "epic_gloves_1.png",
+          "box": [
+            1518,
+            384,
+            2034,
+            445
+          ],
+          "sha256": "62291620a42ceb1496b87fd02d8ad5ff67587cfc557eb99c3f208b4cb0a6fee2"
+        },
+        {
+          "file": "epic_gloves_2.png",
+          "box": [
+            2074,
+            551,
+            2215,
+            613
+          ],
+          "sha256": "89d525f294938ecce6e23c3ad4009403ac0bbeea49289e10c015e8f36c643456"
+        },
+        {
+          "file": "epic_gloves_3.png",
+          "box": [
+            1288,
+            387,
+            1437,
+            453
+          ],
+          "sha256": "9809f235da211a65db0513b6c2c608a7b6812ccc0b90504bf8d4e05bfacfb85d"
+        }
+      ]
+    },
+    {
+      "id": "popup_over_detail",
+      "source": "artifacts/session_stabilization/campaign7_sell_coin_popup.png",
+      "source_sha256": "6bf32bb209f02bcafe78c9374e445abf18a5674f423e6365ee7c494c57d5f9a9",
+      "geometry": [
+        2712,
+        1220
+      ],
+      "grade": null,
+      "type": null,
+      "enhance": null,
+      "label_name": null,
+      "crops": [
+        {
+          "file": "popup_over_detail_0.png",
+          "box": [
+            1393,
+            311,
+            1982,
+            378
+          ],
+          "sha256": "59672f5345fee70cf9e28125b386b7b8d06f03f868d5bc6ce5ea5fd71a8d8aea"
+        },
+        {
+          "file": "popup_over_detail_1.png",
+          "box": [
+            1518,
+            384,
+            2034,
+            445
+          ],
+          "sha256": "7ced858516a55040a30ecfc2a77d2a3363d097353d8840b7dec932f51402f77a"
+        },
+        {
+          "file": "popup_over_detail_2.png",
+          "box": [
+            2074,
+            551,
+            2215,
+            613
+          ],
+          "sha256": "2429a054fa57d24faac5c9ae6687a3385a19ba7617ed0d9219a3bea4707c6781"
+        },
+        {
+          "file": "popup_over_detail_3.png",
+          "box": [
+            1288,
+            387,
+            1437,
+            453
+          ],
+          "sha256": "d0fc2f59b19c57e5befcf5b0e0a90a7790fc4d828be445ae8fb7ec9c1aae1d15"
+        }
+      ]
+    },
+    {
+      "id": "shortsword_popup",
+      "source": "artifacts/sell_shortsword_failure/confirmation.png",
+      "source_sha256": "a953a93a01f0428bc35883193e6aab97d736f6b12aaa83c235b64abf53e19a5c",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": null,
+      "type": null,
+      "enhance": null,
+      "label_name": null,
+      "crops": [
+        {
+          "file": "shortsword_popup_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "f57196d492f44901d8f85a90e529a2db56185a8c55e61d7d0c2edb25c4819b7b"
+        },
+        {
+          "file": "shortsword_popup_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "ce75f8f10c520654973836b8ebc3adf69c5b9f570e82cb634192de61d7764afd"
+        },
+        {
+          "file": "shortsword_popup_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "2184f4a5f2371eb05d1ba110b2665ad0b01ac519cfdc0d496a19962915fe304c"
+        },
+        {
+          "file": "shortsword_popup_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "b04ef10fd88b7cfc5110c196931e721b508f27b2bc07d02798f3c97701ab2b42"
+        }
+      ]
+    },
+    {
+      "id": "inventory",
+      "source": "screencaps/semantic/equipment-sell/inventory/02_tail.png",
+      "source_sha256": "59c94ddb9e7385ddc02e885d2072e458520c104181a4ee7e19fb2bf33fc6fe99",
+      "geometry": [
+        2712,
+        1220
+      ],
+      "grade": null,
+      "type": null,
+      "enhance": null,
+      "label_name": null,
+      "crops": [
+        {
+          "file": "inventory_0.png",
+          "box": [
+            1393,
+            311,
+            1982,
+            378
+          ],
+          "sha256": "4ef6e57b8ef632ffaac7e9dc8e43eae81aecd86cb7a418b0fba96e5c25de3fae"
+        },
+        {
+          "file": "inventory_1.png",
+          "box": [
+            1518,
+            384,
+            2034,
+            445
+          ],
+          "sha256": "b7a9bf68de16118853969a5c11e7f9e22441d93c0dca073314f4685b6099f248"
+        },
+        {
+          "file": "inventory_2.png",
+          "box": [
+            2074,
+            551,
+            2215,
+            613
+          ],
+          "sha256": "093e47407b5d5158103f806dd694a04dd75a72030d8cc8fff665fb435356b12c"
+        },
+        {
+          "file": "inventory_3.png",
+          "box": [
+            1288,
+            387,
+            1437,
+            453
+          ],
+          "sha256": "51f3e0034d5414f01be09a195925232b88c2441ef3e781e33b88457a6e62acbf"
+        }
+      ]
+    },
+    {
+      "id": "lobby",
+      "source": "screencaps/semantic/equipment-sell/negatives/01_lobby.png",
+      "source_sha256": "dcf8aac3a575eadfd7777be9b8746e3bdad429ed68a2f6fa3a849d7a3565a97c",
+      "geometry": [
+        2712,
+        1220
+      ],
+      "grade": null,
+      "type": null,
+      "enhance": null,
+      "label_name": null,
+      "crops": [
+        {
+          "file": "lobby_0.png",
+          "box": [
+            1393,
+            311,
+            1982,
+            378
+          ],
+          "sha256": "5450ba4b4ab50f21ed54779e0f7e11dabacc1564f1ff8ecae7f9036cb1caa283"
+        },
+        {
+          "file": "lobby_1.png",
+          "box": [
+            1518,
+            384,
+            2034,
+            445
+          ],
+          "sha256": "c007aa598c26ed63721a83cc049383f9c5c110147b7084af9e0deec63ef1ee8c"
+        },
+        {
+          "file": "lobby_2.png",
+          "box": [
+            2074,
+            551,
+            2215,
+            613
+          ],
+          "sha256": "266703e6a78c915e76748eedff43ec56003293f2c21c6be72bced9b017391d7c"
+        },
+        {
+          "file": "lobby_3.png",
+          "box": [
+            1288,
+            387,
+            1437,
+            453
+          ],
+          "sha256": "61880d66bd63c8f9b342566c7d29c0869c4d636adc69e6f8bb6d0a663840ce7d"
+        }
+      ]
+    },
+    {
+      "id": "legendary_gear_live",
+      "source": "artifacts/equipment_color_validation/live_smoke_20261007/frame_1295.png",
+      "source_sha256": "a82f3e94b05cda05a0a0ce7a0a6a685dd840014612c4137ea8b027f841d09d98",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": "legendary",
+      "type": "helmet",
+      "enhance": false,
+      "label_name": "Laoku's Destructive Gear",
+      "provenance": "2026-10-07 authorized single-intent live smoke. New capture of the same named item from the last failure; not retained pixels of that historical execution.",
+      "crops": [
+        {
+          "file": "legendary_gear_live_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "0becf0573575994ca0b7b1bee581e1b65d4b2ebdedb3c77edf0398c248f1e110"
+        },
+        {
+          "file": "legendary_gear_live_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "8e8c90d3ae89db5b280d6c91e7a4f8b44df3b941e0708d842e64b632ca420257"
+        },
+        {
+          "file": "legendary_gear_live_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "d3557f7bac541005c0b86766855f8ad9532d22b628d47d32e9f3dbe7453e7d59"
+        },
+        {
+          "file": "legendary_gear_live_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "da7e2586c2e2c11293bf46abc0227e29ef211c57f0fbe4523c170edeff3ab0bc"
+        }
+      ]
+    },
+    {
+      "id": "gear_popup_live",
+      "source": "artifacts/equipment_color_validation/live_smoke_20261007/frame_1357.png",
+      "source_sha256": "2eb450ec47cfe426cf0047675d27d00be108620458d5e6b887b26cb55833a237",
+      "geometry": [
+        2712,
+        1224
+      ],
+      "grade": null,
+      "type": null,
+      "enhance": null,
+      "label_name": "Sell modal over selected Legendary Gear",
+      "provenance": "2026-10-07 authorized single-intent live smoke. New capture of the same named item from the last failure; not retained pixels of that historical execution.",
+      "crops": [
+        {
+          "file": "gear_popup_live_0.png",
+          "box": [
+            1393,
+            312,
+            1982,
+            379
+          ],
+          "sha256": "863b2d5ee7a0ec8c08daa395ff33ba54d3ec65665fc63648a4017ea51f9be27c"
+        },
+        {
+          "file": "gear_popup_live_1.png",
+          "box": [
+            1518,
+            385,
+            2034,
+            446
+          ],
+          "sha256": "3814910c1c4cb1feb717bc14f31ef37573b925f9c0eac9ccbd8e822e6213c65d"
+        },
+        {
+          "file": "gear_popup_live_2.png",
+          "box": [
+            2074,
+            553,
+            2215,
+            615
+          ],
+          "sha256": "7c1245b2933f7b009910acb601cfe035344f438492c24e2891874260ec22e74b"
+        },
+        {
+          "file": "gear_popup_live_3.png",
+          "box": [
+            1288,
+            389,
+            1437,
+            455
+          ],
+          "sha256": "ef89eadbd545cc9cd47a1836402d940944856a8a5d936f18326a526c0db82a6c"
+        }
+      ]
+    }
+  ],
+  "failure_coverage": {
+    "20261005T043527.274126Z_session_52f9b450": {
+      "panel": "legendary_earrings",
+      "popup_fixture": "equipment_coin_wrap"
+    },
+    "20261005T184728.628013Z_session_fa1e054f": {
+      "panel": "legendary_phantom",
+      "popup_fixture": "equipment_name_wrap"
+    },
+    "20261006T135141.382747Z_session_f4663332": {
+      "panel": "legendary_shortsword",
+      "popup_fixture": "equipment_payment_wrap"
+    },
+    "20261006T153656.919297Z_session_4f3ae5ff": {
+      "panel": "legendary_shortsword",
+      "popup_fixture": "equipment_payment_wrap",
+      "limit": "same item, separate incident; this incident retained no selected panel pixels"
+    },
+    "20261007T151933.728847Z_session_fd48d8bf": {
+      "panel": null,
+      "semantic_test": "test_equipment_sell_origin",
+      "limit": "Gear selected pixels were not retained; failure bundle predates Sell. No invented native replay."
+    }
+  },
+  "live_followup": {
+    "failure": "20261007T151933.728847Z_session_fd48d8bf",
+    "panel": "legendary_gear_live",
+    "popup": "gear_popup_live",
+    "count": "135 -> 134",
+    "confirms": 1,
+    "tier_authority": "orange title ink",
+    "selected_name_ocr_calls": 0,
+    "historical_pixels_retained": false
+  }
+}
