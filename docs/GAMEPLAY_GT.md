@@ -8,7 +8,7 @@ Sólo `BASE | MODAL | OVERLAY | EXEMPT`. Cada BASE declara `battle_surface`. Nom
 
 | class | Superficies físicas | battle_surface |
 | --- | --- | --- |
-| BASE | Lobby; Battle Mode Select; Monster Wave; Craft; Equipment Inventory; Socket; Treasure; Combine; Guild; Pets Manage; Pet Summon; Pet Combine; World Boss | false |
+| BASE | Lobby; Battle Mode Select; Monster Wave; Craft; Equipment Inventory; Meteorites; Socket; Treasure; Combine; Guild; Pets Manage; Pet Summon; Pet Combine; World Boss | false |
 | BASE | World Boss Battle | true |
 | MODAL | Trading; Mailbox; Quests; Friends; Black Market; Previous Rewards | — |
 | MODAL | MW: purchase tickets; insufficient sapphires; resource board; CLEAR; Point Reward (por encima de CLEAR al cruzar ciertos conquest points; OK lo cierra y debajo queda CLEAR; tocar fuera no lo cierra); New Ranking; Weekly Results | — |
@@ -19,7 +19,7 @@ Sólo `BASE | MODAL | OVERLAY | EXEMPT`. Cada BASE declara `battle_surface`. Nom
 | MODAL | Craft: quantity/recipe selector y warning premium/Karats; Equipment: Sell dialog/confirmation; Trading: Item Trade y alerts | — |
 | MODAL | Ethereal Mass Combine insufficient-material warning (`popup.ethereal_no_material`), distinto de su confirmación; Pet Summon Premium insufficient-Gold warning (`popup.insufficient_gold`) | — |
 | OVERLAY | Quick Menu; Pet Summon Result; Pet Combine Result; Select Boss; Raid Complete; Pets Epic/Premium selectors | — |
-| OVERLAY | Craft result; Treasure selector y result/reward; MW Sapphires/MAX tooltip; Equipment detail; Combine animation/result | — |
+| OVERLAY | Craft result; Treasure selector y result/reward; MW Sapphires/MAX tooltip; Equipment detail; Meteorite detail; Combine animation/result | — |
 | EXEMPT | Character Select | — |
 
 Combine animation/result sigue siendo OVERLAY aunque casi opaque el fondo. EXEMPT excluye las reglas globales de oclusión de BASE y se usa con moderación. Nuevas batallas deberán declarar `battle_surface=true`; no se deduce del nombre.
@@ -126,6 +126,137 @@ en [manifest de replay](../tests/fixtures/craft_armor/manifest.json). No acredit
 de Accessories ni otros tiers/recetas por analogía.
 
 **USER_GT:** tras confirmar `Mass Combine` una sola vez en `[Ethereal] Random Part` aparece una animación de resultado cuyo item concreto es irrelevante y puede variar; no se modela por resultado y no requiere el landmark de espada. Se atraviesa con taps fuera del item/botón visible hasta recuperar de forma fresca y estable `Combine → Transmute → [Ethereal] Random Part`. Es la misma clase de mecánica que las demás animaciones cancelables: el contrato es recuperar el BASE, no reconocer el resultado.
+
+## Meteorites — USER_GT y adquisición 2026-10-08
+
+**USER_GT:** Meteorites es una BASE autónoma, `battle_surface=false`, accesible
+por Lobby directo y Quick Menu. Siempre entra en tab **Meteorites**, Bag página 1;
+el set activo 1/2/3 se recuerda por personaje. Tab, página y set son dimensiones
+independientes. Después de usar el set compartido se restaura **Set 1**.
+Los otros tabs son vistas internas: Combine, Evolve, Reforge y Reroll.
+
+**USER_GT, orden y contrato:** 16 meteoritos por página. Primero los equipados
+en algún set del personaje (incluidos Flare), luego Flare desequipados y luego
+normales desequipados; dentro de cada grupo, tier y nivel. El conjunto compartido
+contiene 10 normales y 1 Flare, todos Ethereal+ y nivel >0. Bajo las precondiciones,
+el Flare compartido está en las posiciones absolutas 1–12, página 1.
+
+Precondiciones **USER_GT**, asumidas por el algoritmo sin auditoría exhaustiva:
+
+1. El beneficiario no tiene Ethereal+ mejorados que alteren el orden esperado.
+2. Sus meteoritos originales, si existen, están en Set 1.
+3. Set 2 y Set 3 comienzan vacíos.
+4. Existe el conjunto compartido completo, desequipado: 10 normales + 1 Flare,
+   Ethereal+, nivel positivo.
+5. No hay otro conjunto desequipado con esas características que interfiera.
+
+**USER_GT aclarado en chat:** `berserker`, `demon_blade` y `kaiserin` omiten la
+preparación compartida completa. `burst_breaker` **no** es excepción. Son stable IDs,
+no inferencias desde el texto de stats. No son cinco verificadores nuevos.
+
+**USER_GT B2, lifecycle:** Change Meteorites pertenece a la rutina completa.
+Activarlo declara que el usuario preparó el set desequipado bajo los cinco supuestos;
+no hay confirmación por personaje ni auditoría completa. Setup precede al primer
+paso y cleanup sigue al último antes de Rotation o completion sin Rotation.
+Un flow que termina normalmente no finaliza el scope. Sólo stable ID acreditado
+permite operaciones; los tres exceptuados anteriores omiten ambos procedimientos.
+Stop Safely intenta liberación verificada únicamente desde contexto conocido;
+FAILED/estado incierto no autoriza cleanup ciego ni Rotation. Tras interrupción
+incierta se requiere restablecer manualmente el set desequipado antes de reanudar.
+
+**LIVE_EVIDENCE B2 2026-10-08:** rutina real Change Meteorites ON, stable ID
+`telumpel` acreditado:11 Equip → Send Stamina COMPLETED/Lobby →11 Unequip → Set 1
+→ Session COMPLETED sin Rotation. Flare+30pos1, frontera5/ancla14 estable. Set 2
+vacío por efectos individuales, Set 1 activo/página1/vacío, sin overlay/Loading;
+0 retries. Confirma ownership Session en finalización sin Rotation; no campaña roster
+ni prueba live de Stop Safely. [Informe B2](METEORITES_B2_20261008.md).
+
+**USER_GT, semántica:** hay 12 tipos contando Flare. Cada tipo conserva su sprite
+entre tiers; el marco expresa tier. Un mismo meteorito puede pertenecer a varios
+sets dentro del mismo personaje; el flow futuro no usará esa capacidad. Flare
+potencia los demás meteoritos: con los otros slots vacíos, equiparlo no cambia CP.
+El control lateral superior Equip/Unequip realiza la acción sobre el set activo;
+el botón inferior con candado y texto Unequip gestiona el lock, y se ignora.
+
+**LIVE_EVIDENCE**, personaje `rang`, corpus y límites en
+[manifest](../datasets/meteorites_hil_20261008_manifest.json) e
+[informe](METEORITES_HIL_ACQUISITION_20261008.md):
+
+- Lobby directo abrió Meteorites/página 1/Set 1. Sets 2 y 3 vacíos adquiridos.
+  Check amarillo encima del botón identifica set activo. Reroll/página 2 → Back
+  → Lobby → QM Meteorites volvió a Meteorites/página 1 y conservó Set 3.
+- Bag 4×4; la muestra mostró 1/40 y 2/40 con flechas adelante/atrás; página 1
+  no mostró flecha atrás. Esto no demuestra que todas las páginas estén llenas.
+- Inicialmente: posiciones 1–11 originales equipadas en Set 1; 12–15 Flare
+  desequipados; primer normal desequipado 16. Flare E+ +30 pasó de 12 a 1 al
+  equiparlo en Set 2, ocupó el centro y obtuvo E verde. CP permaneció igual.
+- Hipótesis posicional parcialmente acreditada: `anchor = 16 + 9 = 25`
+  (índices absolutos **uno-based**, página 2/celda 9). Equip desde ese índice tomó
+  Evasion +20, luego Shield +21; tras cada acción el siguiente normal quedó en 25.
+  La frontera normal avanzó 16→17→18: conservar el ancla inicial, no recalcularla
+  desde la frontera móvil. Dos normales prueban esos pasos; no un recorrido de diez
+  ni todas las configuraciones de inventario.
+- Los tres Equip cerraron detail, atravesaron Loading y retornaron a página 1,
+  con slot nuevo y marca E frescos. Los tres Unequip se adquirieron individualmente
+  desde posición 1, con identidad/acción lateral verificadas: Flare, Shield, Evasion.
+  Cada acción vació su slot, retiró E y reordenó Bag. No se repitió una acción incierta.
+- La E verde y la acción lateral reflejan el **set activo**. Al activar Set 2/3
+  vacío, desaparecieron las E de originales que seguían equipados en Set 1;
+  su overlay conservó `Equipped: DRAKEN四R` y ofreció Equip. Ausencia de E no
+  demuestra que el item esté globalmente desequipado.
+- Detail muestra tier/tipo/nivel positivo en el título: `Ethereal+ Meteorite
+  Flare (ATK) +30`, `(Evasion) +20`, `(Shield) +21`. En cero, el título omite el
+  sufijo; la barra inferior muestra `+0`. Concentration E+ y Flare Ethereal cero
+  adquiridos: no convertir un sufijo ilegible/ausente por fallo OCR en cero.
+- Ethereal y Ethereal+ tienen título rojo. Ethereal+ agrega ornamento dorado al
+  marco rojo; Ethereal simple carece de éste. Sprite Flare conservado entre ambos.
+  `+30`/`MAX` alternan en el mismo E+; glare diagonal cambia pixels sin cambiar item.
+- Selección tiene contorno amarillo en Bag. Tocar fondo vacío (.89,.30), geometría
+  normalizada del frame adquirido, cerró detail sin Back ni cambio de set/página.
+- Loading puede conservar Bag/slots anteriores y desaparecer después del cierre
+  del overlay. Check de set nuevo tampoco acredita por sí solo slots ya cargados.
+  CP/toast puede llegar después del efecto o persistir: no es gate único.
+- Cleanup físico acreditado: tres items de prueba desequipados, Set 2 vacío;
+  Set 1 activo, sus 11 slots originales y CP inicial restaurados, tab Meteorites/página 1.
+
+**USER_GT, no-efecto conocido:** ocasionalmente Equip no responde para un item;
+manualmente se resuelve seleccionando otro y regresando al ancla. No ocurrió en
+esta adquisición y no se ejercitó retry live. El recovery productivo acotado de
+Fase A/B1 está probado offline; el workaround manual no está implementado.
+Loading, timeout, OCR miss o UNKNOWN no acreditan no-efecto ni autorizan repetir.
+
+**USER_GT adicional 2026-10-08, Fase A:** Flare ocupa siempre el centro.
+Los diez normales se asignan secuencialmente en el orden físico:
+
+```text
+10   1   2   3
+ 9   FLARE  4
+ 8   7   6   5
+```
+
+E verde en Bag significa equipado en el set activo. Equip se acredita por
+centro/slot esperado EMPTY → OCCUPIED; Unequip por el mismo slot OCCUPIED → EMPTY.
+**LIVE_EVIDENCE 2026-10-08, smoke productivo Fase A:** selección directa desde
+los slots 0 (Flare +30), 2 (Shield +21) y 1 (Evasion +20) del Set 2 abrió su overlay
+con acción lateral Unequip. Un único tap por item cambió el mismo slot
+OCCUPIED → EMPTY, preservando los otros diez. La ruta desde slots queda acreditada;
+no se necesitó fallback Bag. Antes se acreditaron tres Equip EMPTY → OCCUPIED
+en centro/1/2. Final: Set 2 vacío, Set 1 activo con once originales, página 1.
+Procedencia/hash/lineage en `datasets/meteorites_phase_a_smoke_20261008_manifest.json`;
+capturas locales en `artifacts/meteorites_phase_a/20261008_131349/`.
+Cierre, Loading, CP y tap no prueban efecto.
+
+**LIVE_EVIDENCE 2026-10-08, aceptación B1:** cadena completa sobre personaje visible
+`Drakenn19` preparado por el usuario (stable ID no inferido), bajo precondiciones
+USER_GT: Flare E+ +30 posición2; Flare suffix hasta primer normal6; ancla inicial
+15 = 6 + 9, reutilizada en los diez Equip normales sin recalcular. Centro y slots
+1..10 acreditaron EMPTY→OCCUPIED individualmente. Cleanup directo10..1, centro al
+final: once OCCUPIED→EMPTY individuales; Set 1 activo/página1, originalslot10
+preservado, sin overlay/Loading. 22 inputs laterales, cero retries/reconciliación.
+Esta configuración acredita el recorrido completo; no prueba todas las cantidades
+posibles de inventario. Loading/CP/E no sustituyeron los cambios de slot.
+[Manifest B1](../datasets/meteorites_b1_smoke_20261008_manifest.json) y
+[informe](METEORITES_B1_20261008.md); raw ignorados. No-efecto sigue sin episodio live.
 
 ## Equipment Inventory / Sell — USER_GT definitivo 2026-10-02
 

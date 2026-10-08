@@ -98,6 +98,7 @@ class RoutineSpec:
     resource_snapshot_mode: str = ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value
     relief_policy: dict | None = None
     legacy_relief_configs: dict = field(default_factory=dict)
+    change_meteorites: bool = False
 
     def __post_init__(self):
         if not isinstance(self.id, str) or not self.id.strip():
@@ -107,6 +108,8 @@ class RoutineSpec:
         if any(not isinstance(step, RoutineStep) for step in self.steps):
             raise ValueError("steps must contain RoutineStep")
         object.__setattr__(self, "name", self.name.strip())
+        if type(self.change_meteorites) is not bool:
+            raise ValueError("change_meteorites must be bool")
         steps, migrated, legacy, _ = migrate_reliefs(self.steps)
         policy = migrated if self.relief_policy is None else ReliefPolicy.from_dict(self.relief_policy)
         object.__setattr__(self, "steps", steps)
@@ -162,7 +165,12 @@ class RoutineStore:
                 if not isinstance(mode,str) or mode not in {m.value for m in ResourceSnapshotMode}:
                     mode = ResourceSnapshotMode.OFF.value
                     self.warnings.append('Invalid resource snapshot mode; tracking OFF')
-                base = RoutineSpec(raw["id"], raw["name"], resource_snapshot_mode=mode)
+                change = raw.get('change_meteorites', False)
+                if type(change) is not bool:
+                    change = False
+                    self.warnings.append('Invalid Change Meteorites; using OFF')
+                    self._preserve_original = True
+                base = RoutineSpec(raw["id"], raw["name"], resource_snapshot_mode=mode, change_meteorites=change)
                 if base.id in ids:
                     raise ValueError("duplicate routine id")
                 steps = []
@@ -270,7 +278,8 @@ class RoutineEditor:
         mode = self.draft.resource_snapshot_mode if duplicate and self.draft else ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value
         policy = deepcopy(self.draft.relief_policy) if duplicate and self.draft else None
         archive = deepcopy(self.draft.legacy_relief_configs) if duplicate and self.draft else {}
-        self.draft = RoutineSpec(uuid4().hex, name, steps, mode, policy, archive)
+        self.draft = RoutineSpec(uuid4().hex, name, steps, mode, policy, archive,
+            change_meteorites=self.draft.change_meteorites if duplicate and self.draft else False)
         self.selected_id = self.draft.id
         self.routines.append(deepcopy(self.draft))
 
@@ -308,6 +317,9 @@ class RoutineEditor:
 
     def configure_reliefs(self, policy):
         self.draft = replace(self.draft, relief_policy=ReliefPolicy.from_dict(policy).to_dict())
+
+    def set_change_meteorites(self, enabled):
+        self.draft = replace(self.draft, change_meteorites=enabled)
 
     def set_resource_snapshot_mode(self, mode):
         self.draft = replace(self.draft, resource_snapshot_mode=ResourceSnapshotMode(mode).value)

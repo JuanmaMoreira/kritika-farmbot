@@ -122,6 +122,7 @@ def test_strong_lobby_completion_scope_covers_every_catalog_context_dependency()
         for requirement in rule.requires
     }
     specialized_outputs = {
+        "landmark.meteorites_main", "landmark.meteorites_detail", "activity.meteorites_loading",
         "indicator.daily_quests_progress_reward_claimable",
         "indicator.guild_attendance_active",
         "indicator.guild_attendance_completed",
@@ -137,7 +138,7 @@ def test_strong_lobby_completion_scope_covers_every_catalog_context_dependency()
     )
     assert context_requirements & local_names <= STRONG_LOBBY_COMPLETION_SPEC_NAMES
     assert len(STRONG_LOBBY_COMPLETION_SPEC_NAMES) == 74
-    assert len(STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES) == 6
+    assert len(STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES) == 7
 
 
 @pytest.mark.parametrize("rule", OVERLAY_RULES, ids=lambda rule: rule.name)
@@ -181,8 +182,8 @@ def test_lobby_return_scopes_reuse_exact_source_instances_and_order(scope):
 
     assert scoped.detectors == expected
     assert all(actual is original for actual, original in zip(scoped.detectors, expected))
-    assert len(scoped.detectors) == 80
-    assert len(scoped.detectors) < len(source.detectors) == 98
+    assert len(scoped.detectors) == 81
+    assert len(scoped.detectors) < len(source.detectors)
 
 
 @pytest.mark.parametrize("scope", SCOPES, ids=lambda scope: scope.name)
@@ -259,7 +260,7 @@ def test_productive_registry_routes_direct_lobby_returns_to_scoped_observation()
         market.close_transition.observer,
     ):
         assert scoped is not observer
-        assert len(scoped.perception.detectors) == 80
+        assert len(scoped.perception.detectors) == 81
         assert scoped.source is observer.source
         assert scoped.resolver is observer.resolver
     assert market.verified_transition is main
@@ -293,6 +294,6 @@ def test_productive_rotation_routes_only_confirmation_to_lobby_scope():
 
     assert rotation.verified_transition is main
     assert rotation.confirmation_transition is not main
-    assert len(rotation.confirmation_transition.observer.perception.detectors) == 80
+    assert len(rotation.confirmation_transition.observer.perception.detectors) == 81
     assert rotation.confirmation_transition.observer.source is observer.source
     assert rotation.confirmation_transition.observer.resolver is observer.resolver

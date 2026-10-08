@@ -35,6 +35,7 @@ def test_board_scope_keeps_all_resolver_dependencies_and_mw_facts():
     scoped = select_detectors(full, MONSTER_WAVE_BOARD_ACQUISITION_SCOPE)
     names = {getattr(getattr(d, "spec", None), "name", None) for d in scoped.detectors}
     specialized = {
+        "landmark.meteorites_main", "landmark.meteorites_detail", "activity.meteorites_loading",
         "indicator.daily_quests_progress_reward_claimable",
         "indicator.guild_attendance_active", "indicator.guild_attendance_completed",
         "indicator.pet_epic_available", "indicator.pet_epic_unavailable",

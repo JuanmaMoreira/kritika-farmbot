@@ -12,6 +12,12 @@ from typing import TYPE_CHECKING
 from bot.geometry import RelativePoint, relative_point_to_pixel
 from bot.craft_semantics import CraftFamily
 from bot.monster_wave_actions import MonsterWaveAction
+from bot.meteorites_actions import (
+    OpenMeteorites, SelectQuickMenuMeteorites, SelectMeteoritesSet,
+    SelectMeteoritesBagCell, SelectMeteoritesSlot, NextMeteoritesPage,
+    PreviousMeteoritesPage, EquipMeteorite, UnequipMeteorite,
+    CloseMeteoriteDetail, ExitMeteorites,
+)
 
 if TYPE_CHECKING:
     from bot.trading_row_facts import TradingRowFact
@@ -781,7 +787,11 @@ class DismissWorldBossBagFull:
 
 
 SemanticAction = (
-    StageAction | CloseAdAffordance |
+    OpenMeteorites | SelectQuickMenuMeteorites | SelectMeteoritesSet
+    | SelectMeteoritesBagCell | SelectMeteoritesSlot | NextMeteoritesPage
+    | PreviousMeteoritesPage | EquipMeteorite | UnequipMeteorite
+    | CloseMeteoriteDetail | ExitMeteorites
+    | StageAction | CloseAdAffordance |
     MonsterWaveAction
     | OpenBlackMarket
     | CloseBlackMarket

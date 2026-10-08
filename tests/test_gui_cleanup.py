@@ -370,3 +370,33 @@ def test_preferences_invalid_file_falls_back_light(tmp_path):
     for raw in ('{broken', '[]', '{}', '{"appearance":"SYSTEM"}'):
         path.write_text(raw)
         assert preferences.load() == 'Light'
+
+
+
+def test_change_meteorites_is_routine_only_apply_save_reopen_duplicate(app):
+    from bot.routines import RoutineEditor
+    steps(app,'mailbox','black_market')
+    assert not app.change_meteorites_var.get() and not app.selection.draft.change_meteorites
+    assert 'Change Meteorites' in labels(app.routine_scroll.content)
+    assert 'Change Meteorites' not in labels(app.step_scroll.content)
+    assert 'Change Meteorites' not in labels(app.relief_scroll.content)
+    app.change_meteorites_var.set(True);app._show_meteorites_notice()
+    assert app.meteorites_notice.winfo_manager()=='grid'
+    assert 'Antes de iniciar la sesión, desequipá el set' in app.meteorites_notice['text']
+    assert not app.selection.draft.change_meteorites
+    app._apply_routine_settings()
+    assert app.selection.draft.change_meteorites
+    persisted=RoutineEditor(app.selection.store)
+    assert not persisted.draft.change_meteorites
+    app.selection.save()
+    assert RoutineEditor(app.selection.store).draft.change_meteorites
+    app.selection.create('Copy meteorites',duplicate=True)
+    app._refresh_routines()
+    assert app.change_meteorites_var.get() and app.selection.draft.change_meteorites
+    app.selection.save()
+    assert RoutineEditor(app.selection.store).draft.change_meteorites
+    app.change_meteorites_var.set(False);app._show_meteorites_notice()
+    assert app.meteorites_notice.winfo_manager()=='' and app.selection.draft.change_meteorites
+    app._apply_routine_settings();app.selection.save()
+    assert not RoutineEditor(app.selection.store).draft.change_meteorites
+    assert all('change_meteorites' not in step.config for step in app.selection.draft.steps)

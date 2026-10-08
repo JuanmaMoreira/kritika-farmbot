@@ -76,6 +76,15 @@ y Rotation desde BASE capaz están implementados y validados offline; no push ni
 Los smokes históricos de MW y Stages/Ads conservan su resultado/procedencia; runs rojos
 anteriores permanecen rojos. No hay nuevo planner, DAG ni framework de workflow.
 
+## Meteorites B2 — preparación transversal aceptada 2026-10-08
+
+Routine Settings / Session incorporan Change Meteorites con default OFF, scope por
+stable character_id y cleanup antes de Rotation/completion normal. Operaciones B1
+preservadas. REPEAT_CURRENT y Arena/ToT/Stages Elite siguen fuera de alcance;
+repeat futuro debe mantener un scope del personaje durante varios ciclos.
+Smoke Session Telumpel completo con Send Stamina y sin Rotation:22/22 efectos,
+Set 2 vacío/Set 1 activo. Validación y métricas en [informe B2](docs/METEORITES_B2_20261008.md).
+
 ## Próximos frentes, en orden
 
 Character Identity + Persistent Character State: **cerrado como checkpoint conjunto**

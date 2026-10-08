@@ -78,12 +78,15 @@ class SessionPlan:
     rotation_strategy: RotationStrategy
     rotate: bool = field(default=True, kw_only=True)
     character_data_only: bool = field(default=False, kw_only=True)
+    change_meteorites: bool = field(default=False, kw_only=True)
     eligibility: tuple[EligibilityCheck | None, ...] = field(default=(), kw_only=True)
     controlled_unavailable: tuple[frozenset[str], ...] = field(default=(), kw_only=True)
     step_positions: tuple[int, ...] = field(default=(), kw_only=True)
 
     def __post_init__(self) -> None:
         count = _positive_integer(self.character_count, "character_count")
+        if type(self.change_meteorites) is not bool or self.character_data_only and self.change_meteorites:
+            raise ValueError("Change Meteorites requires a gameplay routine and bool flag")
         flows = tuple(self.flows)
         if type(self.character_data_only) is not bool or self.character_data_only and (flows or not self.rotate):
             raise ValueError('Character Data Sweep requires empty flows and Rotation')
@@ -139,10 +142,11 @@ class SessionPlan:
         controlled_unavailable: tuple[frozenset[str], ...] = (),
         step_positions: tuple[int, ...] = (),
         character_data_only: bool = False,
+        change_meteorites: bool = False,
     ) -> "SessionPlan":
         return cls(character_count, flows, rotation_strategy, rotate=rotate, eligibility=eligibility,
                    controlled_unavailable=controlled_unavailable, step_positions=step_positions,
-                   character_data_only=character_data_only)
+                   character_data_only=character_data_only, change_meteorites=change_meteorites)
 
 
 @dataclass(frozen=True)
@@ -152,6 +156,7 @@ class SessionCharacterResult:
     flow_results: tuple[FlowResult, ...]
     advance_result: RotationResult | None = None
     completed: bool = False
+    meteorites: dict | None = field(default=None, kw_only=True)
 
     @property
     def events(self) -> tuple[FlowEvent, ...]:
@@ -178,6 +183,7 @@ class SessionResult:
     failure_flow_position: int | None = field(default=None, kw_only=True)
     snapshots_updated: int = field(default=0, kw_only=True)
     acquisition_failures: int = field(default=0, kw_only=True)
+    change_meteorites: bool = field(default=False, kw_only=True)
 
     @property
     def identities_resolved(self):
@@ -220,6 +226,8 @@ class SessionRunner:
         events: EventSink,
         cancel_requested: Callable[[], bool] = lambda: False,
         character_context_factory: Callable[[int], CharacterContext] | None = None,
+        meteorites_scope_factory=None,
+        safe_stop_requested: Callable[[], bool] = lambda: False,
     ) -> None:
         if not isinstance(plan, SessionPlan):
             raise ValueError("plan must be SessionPlan")
@@ -240,19 +248,35 @@ class SessionRunner:
         self.events = events
         self.cancel_requested = cancel_requested
         self.character_context_factory = character_context_factory
+        if plan.change_meteorites and not callable(meteorites_scope_factory):
+            raise ValueError('Change Meteorites requires a character scope factory')
+        self.meteorites_scope_factory = meteorites_scope_factory
+        self.safe_stop_requested = safe_stop_requested
+        self._meteorites_scopes = {}
+        self._active_meteorites = None
         self._observation_cancelled = False
 
     def run(self) -> SessionResult:
         self._observation_cancelled = False
+        self._meteorites_scopes = {}
+        self._active_meteorites = None
         started = perf_counter()
         with event_scope(
             run_id=event_context()["run_id"] or getattr(self.events, "run_id", None) or new_correlation_id(),
             session_id=new_correlation_id(), character_index=None, flow=None,
             operation_id=None, parent_operation_id=None, step=None,
         ):
-            result = self._run()
+            try:
+                result = self._run()
+            except BaseException:
+                if self._active_meteorites is not None:
+                    self._active_meteorites.interrupt('execution_interrupted')
+                raise
             return replace(
                 result,
+                character_results=tuple(replace(c, meteorites=self._meteorites_scopes[c.index].report())
+                    if c.index in self._meteorites_scopes else c for c in result.character_results),
+                change_meteorites=self.plan.change_meteorites,
                 expected_character_count=self.plan.character_count,
                 flow_names=tuple(flow.name for flow in self.plan.flows),
                 duration=max(0.0, perf_counter() - started),
@@ -264,6 +288,7 @@ class SessionRunner:
         self._record("session.started", character_count=self.plan.character_count)
 
         for index in range(1, self.plan.character_count + 1):
+            self._active_meteorites = None
             if self._cancelled():
                 return self._cancel(character_results, advances_completed)
 
@@ -278,6 +303,24 @@ class SessionRunner:
                 flow_results: list[FlowResult] = []
                 identity_attempted = False
                 next_requested = None
+                if self.plan.change_meteorites:
+                    self._active_meteorites = self.meteorites_scope_factory()
+                    self._meteorites_scopes[index] = self._active_meteorites
+                    # Identity is acquired from the ordinary verified Lobby
+                    # seam before Meteorites or any productive occurrence.
+                    ensured = self._ensure(ComponentRequirement.exact_state('screen.lobby'),
+                        requested_flow='meteorites.setup', useful_flow='meteorites.setup')
+                    context = self._character_context(index)
+                    identity_attempted = True
+                    if self._cancelled():
+                        character_results.append(SessionCharacterResult(index, context, ()))
+                        return self._cancel(character_results, advances_completed)
+                    if not ensured.succeeded or not self._active_meteorites.begin(context):
+                        character_results.append(SessionCharacterResult(index, context, ()))
+                        if self._cancelled():
+                            return self._cancel(character_results, advances_completed)
+                        return self._fail(character_results, advances_completed, index=index,
+                            flow='meteorites.setup', cause=self._active_meteorites.reason or 'meteorites_setup_entry_unverified')
                 for flow_position, flow in enumerate(self.plan.flows):
                     with event_scope(flow=flow.name, flow_id=flow.name,
                                      step_index=self.plan.step_positions[flow_position] + 1,
@@ -501,6 +544,8 @@ class SessionRunner:
                                          flow=flow.name, character_index=index)
                             character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
                             self._record('session.manual_resolution', flow=flow.name, character_index=index)
+                            if self._active_meteorites is not None:
+                                self._active_meteorites.interrupt('routine_manual_resolution')
                             return SessionResult(
                                 SessionStatus.MANUAL_RESOLUTION,
                                 characters_processed=sum(item.completed for item in character_results),
@@ -556,6 +601,14 @@ class SessionRunner:
                             )
                             return self._cancel(character_results, advances_completed)
 
+                if self._active_meteorites is not None:
+                    if self._cancelled():
+                        character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                        return self._cancel(character_results, advances_completed)
+                    if not self._active_meteorites.finish():
+                        character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
+                        return self._fail(character_results, advances_completed, index=index,
+                            flow='meteorites.cleanup', cause=self._active_meteorites.reason or 'meteorites_cleanup_unverified')
                 if not self.plan.rotate:
                     character_results.append(SessionCharacterResult(index, context, tuple(flow_results), completed=True))
                     continue
@@ -835,6 +888,12 @@ class SessionRunner:
         character_results: list[SessionCharacterResult],
         advances_completed: int,
     ) -> SessionResult:
+        if self._active_meteorites is not None:
+            from bot.meteorites_session import MeteoritesState
+            if self.safe_stop_requested() and self._active_meteorites.state is MeteoritesState.READY:
+                self._active_meteorites.finish(safe_stop=True)
+            else:
+                self._active_meteorites.interrupt('session_interrupted')
         result = SessionResult(
             SessionStatus.CANCELLED,
             characters_processed=sum(item.completed for item in character_results),
@@ -859,6 +918,8 @@ class SessionRunner:
         flow_position: int | None = None,
         failure: FailureCause | None = None,
     ) -> SessionResult:
+        if self._active_meteorites is not None:
+            self._active_meteorites.interrupt('session_failed:' + cause)
         result = SessionResult(
             SessionStatus.FAILED,
             characters_processed=sum(item.completed for item in character_results),

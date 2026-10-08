@@ -1,0 +1,378 @@
+{
+  "schema_version": 1,
+  "authority": "LIVE_EVIDENCE curated + USER_GT geometry",
+  "assets": [
+    {
+      "asset": "assets/meteorites/main_bag_header.png",
+      "sha256": "dffd7bb47710e0ba5a3411eb43fc53e02438fcdd958aab16f94111534845643e",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.558,
+        0.231,
+        0.671,
+        0.279
+      ]
+    },
+    {
+      "asset": "assets/meteorites/tab_meteorites.png",
+      "sha256": "1920f0a5fa840d2384d75433c678d2380bd38a4b87f314023800dc9d28dc3718",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.171,
+        0.148,
+        0.257,
+        0.228
+      ]
+    },
+    {
+      "asset": "assets/meteorites/tab_combine.png",
+      "sha256": "b0b1ca21850fcee5cb53e8171c54c2295a6582e23f422a573e2bf677565f538c",
+      "source": "screencaps/semantic/meteorites/20261008/27_tab_combine_last.png",
+      "source_sha256": "64c615701936de29873efd726340feecd8928cf53dfee9666988ee13345d40ae",
+      "roi": [
+        0.258,
+        0.148,
+        0.338,
+        0.228
+      ]
+    },
+    {
+      "asset": "assets/meteorites/tab_evolve.png",
+      "sha256": "cf90d4cd3280af9a7189ea9f80ee5891c08d1336e63e980fe0b7c1127ba9b89c",
+      "source": "screencaps/semantic/meteorites/20261008/28_tab_evolve_last.png",
+      "source_sha256": "1b43badcd4625ca672bce48199c27ff54878d743bfc1c8a05cb77469d50b96e5",
+      "roi": [
+        0.343,
+        0.148,
+        0.423,
+        0.228
+      ]
+    },
+    {
+      "asset": "assets/meteorites/tab_reforge.png",
+      "sha256": "027b7c174b21e86b75d82da42890ecc3d79e93000c7bfde44996de885a0a4dcf",
+      "source": "screencaps/semantic/meteorites/20261008/29_tab_reforge_last.png",
+      "source_sha256": "8fd035ead4f8bef756062705e046e4cde77dc81a75b17aa689a57f4446d36ecb",
+      "roi": [
+        0.429,
+        0.148,
+        0.509,
+        0.228
+      ]
+    },
+    {
+      "asset": "assets/meteorites/tab_reroll.png",
+      "sha256": "81949713721decc88f7e5a130a374e72dad564b86e334908e057f72ff6370702",
+      "source": "screencaps/semantic/meteorites/20261008/30_tab_reroll_last.png",
+      "source_sha256": "80abea61e9ff31bed84ada8735b520b78e0026a183dd95bf5f7e585857c93136",
+      "roi": [
+        0.515,
+        0.148,
+        0.595,
+        0.228
+      ]
+    },
+    {
+      "asset": "assets/meteorites/detail_border.png",
+      "sha256": "f3634e1cdac61cf4c03b9d911412a9137ef150c61959b119086593b06dc22c6b",
+      "source": "screencaps/semantic/meteorites/20261008/04_flare_p12_overlay_last.png",
+      "source_sha256": "0f723305bd85fa6fb4af823ac0a4f85b236e628df2485b5b52d7a1561a0ab578",
+      "roi": [
+        0.508,
+        0.302,
+        0.517,
+        0.704
+      ]
+    },
+    {
+      "asset": "assets/meteorites/equip.png",
+      "sha256": "dad4e2052a0f68e4a03c97e7efda95218cd91920aec7e064188bcc7afdba892d",
+      "source": "screencaps/semantic/meteorites/20261008/04_flare_p12_overlay_last.png",
+      "source_sha256": "0f723305bd85fa6fb4af823ac0a4f85b236e628df2485b5b52d7a1561a0ab578",
+      "roi": [
+        0.197,
+        0.274,
+        0.246,
+        0.39
+      ]
+    },
+    {
+      "asset": "assets/meteorites/unequip.png",
+      "sha256": "d728cf555b2b1d485a09392dda2673a06a1a064aa92bcf6de4173a0e762ff88d",
+      "source": "screencaps/semantic/meteorites/20261008/18_flare_equipped_overlay_last.png",
+      "source_sha256": "ea39da10989b8b58e0d9bec517b17a6a7ed78a360caac2d3b2e46dffc19731b8",
+      "roi": [
+        0.197,
+        0.274,
+        0.246,
+        0.39
+      ]
+    },
+    {
+      "asset": "assets/meteorites/check.png",
+      "sha256": "0be2eb9ea440a4c35c74117a90995c4d679e4fc44d8608399813f9cc78a4580c",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.239,
+        0.241,
+        0.255,
+        0.264
+      ]
+    },
+    {
+      "asset": "assets/meteorites/check1.png",
+      "sha256": "bc1bbd5b5b0fe58aabfd4acf479a992ba4decb96ee5d274fdf87ef41248b8c6f",
+      "source": "screencaps/semantic/meteorites/20261008/02_lobby_direct_entry_last.png",
+      "source_sha256": "53df8100c4a0c6a17e7fda58750fe59b5e2b940f4cbb723f234df04581b8b3b0",
+      "roi": [
+        0.189,
+        0.241,
+        0.205,
+        0.264
+      ]
+    },
+    {
+      "asset": "assets/meteorites/flare.png",
+      "sha256": "20d8e76d1a7f9d3caacbd5d191c4c8b3d900d5e3ddddea1aa0bb40c6686d5927",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.566,
+        0.366,
+        0.596,
+        0.418
+      ]
+    },
+    {
+      "asset": "assets/meteorites/flare_glare.png",
+      "sha256": "39c2d28799ebfeab279a23e7426bd9b01acb199fbe425e222ed41b9fbfe12310",
+      "source": "screencaps/semantic/meteorites/20261008/38_restore_set1_last.png",
+      "source_sha256": "ca899898bb507973b2aa425d46c507d521494ab2478cd56a36e3264e39c581f1",
+      "roi": [
+        0.566,
+        0.366,
+        0.596,
+        0.418
+      ]
+    },
+    {
+      "asset": "assets/meteorites/ethereal_plus.png",
+      "sha256": "6adb6983d9bd5c0015448f1cff80fb195de5184e3335fc58ee32895e1f48e301",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.622,
+        0.306,
+        0.661,
+        0.327
+      ]
+    },
+    {
+      "asset": "assets/meteorites/ethereal_plus_equipped.png",
+      "sha256": "52eff50d8a7a59eacd719b691927343d610d37e912effa4e29c9022ea94643a7",
+      "source": "screencaps/semantic/meteorites/20261008/15_equip_normal_shield_last.png",
+      "source_sha256": "3cac1fd7c36dfb565eb163360acc7fea97886064e2fa6282f36a8c549ae96565",
+      "roi": [
+        0.555,
+        0.306,
+        0.594,
+        0.327
+      ]
+    },
+    {
+      "asset": "assets/meteorites/ethereal.png",
+      "sha256": "843e9a98577b198343bc41228f1b53321b19e08dc32ea8f80d354a28c5d94a55",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.555,
+        0.306,
+        0.594,
+        0.327
+      ]
+    },
+    {
+      "asset": "assets/meteorites/ethereal_equipped.png",
+      "sha256": "7e405f84d40abe1d563e5266b8067c9ae5abecf5428680eda4c0077351416331",
+      "source": "screencaps/semantic/meteorites/20261008/02_lobby_direct_entry_last.png",
+      "source_sha256": "53df8100c4a0c6a17e7fda58750fe59b5e2b940f4cbb723f234df04581b8b3b0",
+      "roi": [
+        0.555,
+        0.306,
+        0.594,
+        0.327
+      ]
+    },
+    {
+      "asset": "assets/meteorites/ethereal_detail.png",
+      "sha256": "f45c33bebd27a152bbfa14de6eeffbb72ec44b1cad21665812087fb449435acb",
+      "source": "screencaps/semantic/meteorites/20261008/36_ethereal_flare_zero_last.png",
+      "source_sha256": "c765b7cf4dbbf46173cb57a4d7de6f2a78937787e042ffc66eec35046732f065",
+      "roi": [
+        0.281,
+        0.306,
+        0.32,
+        0.327
+      ]
+    },
+    {
+      "asset": "assets/meteorites/ethereal_level.png",
+      "sha256": "1bd3cc7d6c1105c523b3efff3ef160b508bd3bb085146d8b24b68de2132b5511",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.555,
+        0.588,
+        0.594,
+        0.609
+      ]
+    },
+    {
+      "asset": "assets/meteorites/badge_e.png",
+      "sha256": "cd0ef8f09c1d8058baa8b2a8e4050292f259611fb424a8947693318ae1efc439",
+      "source": "screencaps/semantic/meteorites/20261008/02_lobby_direct_entry_last.png",
+      "source_sha256": "53df8100c4a0c6a17e7fda58750fe59b5e2b940f4cbb723f234df04581b8b3b0",
+      "roi": [
+        0.554,
+        0.305,
+        0.572,
+        0.343
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_0.png",
+      "sha256": "2447f934ef5229cdfdaae05d625fde85bfc36d77f57a4d90d4cdd557018bd7fd",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.33099999999999996,
+        0.576,
+        0.365,
+        0.632
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_1.png",
+      "sha256": "37aadb597e972c98f320c97ab10415bf7309ba6dc9e9cfc74d36dbc0eb557ca9",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.289,
+        0.376,
+        0.323,
+        0.43200000000000005
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_2.png",
+      "sha256": "64fd53d4fce52ce6e6e1448bb055e04ad4943325ccc820fffdb20a7fcc0ef027",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.369,
+        0.376,
+        0.403,
+        0.43200000000000005
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_3.png",
+      "sha256": "8445356829edd08acc61df5a42b8a11daef168c9e23f5ca2f916e88be57a9561",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.45,
+        0.376,
+        0.48400000000000004,
+        0.43200000000000005
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_4.png",
+      "sha256": "eeda8b88c17fa7ce5aa1b81b864215fa775dc051b99f4d6430fad1bf527ae08f",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.431,
+        0.576,
+        0.465,
+        0.632
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_5.png",
+      "sha256": "b9b545dfa37b0c44d1bff6a9b635061973fff46de3ed6b6d095aaa4ef63bfd4b",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.45,
+        0.774,
+        0.48400000000000004,
+        0.8300000000000001
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_6.png",
+      "sha256": "c6eb1bde0772aa11fe60f8636b5d74f8e6ecf525b401be483510737d5a1eeadf",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.369,
+        0.774,
+        0.403,
+        0.8300000000000001
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_7.png",
+      "sha256": "3a3cf594bdf0aebf420b39ee670e882c9de24960dd9c31512401dbed3f7c5a4c",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.289,
+        0.774,
+        0.323,
+        0.8300000000000001
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_8.png",
+      "sha256": "60d3c22352ae70b2905b4a50a3a1a95c2d2474e0e5095f3e1412113e09139b10",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.21000000000000002,
+        0.774,
+        0.244,
+        0.8300000000000001
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_9.png",
+      "sha256": "753b7ff264259a21011968e4e24b0cc36a618de892659704c65f841084eae74a",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.23199999999999998,
+        0.576,
+        0.266,
+        0.632
+      ]
+    },
+    {
+      "asset": "assets/meteorites/empty_10.png",
+      "sha256": "3d35fdd4e5c446ae6185fac82bdb8db0d1f5013f7a46f029847e35fdb88b7d75",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "roi": [
+        0.21000000000000002,
+        0.376,
+        0.244,
+        0.43200000000000005
+      ]
+    }
+  ]
+}

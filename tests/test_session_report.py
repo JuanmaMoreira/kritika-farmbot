@@ -39,7 +39,7 @@ def test_complete_report_and_reproducible_text():
     assert render_session_report(report) == (
         "Session completed — 2/2\nDuration: 01:29:58\nFlows completed: 2\n"
         "Advances / rotation: 2\n\nCharacters:\n2 complete\n"
-        "0 business / Daily incomplete\n0 technical failure\n0 cancelled\n\n"
+        "0 business / Daily incomplete\n0 technical failure\n0 cancelled\nMeteorites: DISABLED\n\n"
         "2 characters had no issues."
     )
     assert build_session_report(raw) == report

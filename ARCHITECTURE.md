@@ -103,7 +103,7 @@ del frame ya disponible, sin captura adicional.
 ## Rutinas configurables v2
 
 ```text
-RoutineSpec (id, name, ordered RoutineStep[], relief_policy)
+RoutineSpec (id, name, ordered RoutineStep[], relief_policy, change_meteorites=False)
   → ProductiveRuntime.run_routine
   → FlowRegistry existente (resolución por flow_id, una instancia por ocurrencia)
   → run_flows_once (personaje actual) / SessionPlan → SessionRunner → Rotation
@@ -131,7 +131,7 @@ hace backup + temporary/replace. Policy corrupta/faltante v2 desactiva suboperac
 productivas configurables, sin modificar el contrato Combine/low-tier Sell. Platinum es
 un slot futuro del objeto Treasure, sin permiso ejecutable/UI hasta contar con GT.
 
-Policy usa resultados existentes: COMPLETED incluye no trabajo; FAILED/CANCELLED cortan. El registry declara únicamente los eventos de indisponibilidad conocidos, y SessionPlan alinea su autorización por posición. MANUAL_RESOLUTION puede continuar sólo sin error/failure, con todos sus eventos declarados, policy habilitada y postcondition verificada. El resultado original se conserva; el reporte muestra incompletitud business. Resoluciones manuales no declaradas y RESOURCE_BOARD_PENDING conservan el corte previo. No navegar en cleanup tras failure/cancelación.
+Policy usa resultados existentes: COMPLETED incluye no trabajo; FAILED/CANCELLED cortan. El registry declara únicamente los eventos de indisponibilidad conocidos, y SessionPlan alinea su autorización por posición. MANUAL_RESOLUTION puede continuar sólo sin error/failure, con todos sus eventos declarados, policy habilitada y postcondition verificada. El resultado original se conserva; el reporte muestra incompletitud business. Resoluciones manuales no declaradas y RESOURCE_BOARD_PENDING conservan el corte previo. No navegar en cleanup tras failure o interrupción incierta. Stop Safely puede liberar Meteorites desde READY sólo con contexto limpio conocido y cancelación dura activa; no autoriza cleanup de otros owners.
 
 Basic Gold Farming selecciona la capability Gold Farming Cycle: hasta dos oportunidades de Stages Ads, readiness causal MW dentro de Stages e inversión MW posterior/final. El agotamiento diario explícito omite oportunidades restantes; MW productivo con Sapphires frescos <102 termina sin navegación. Stages e inversiones intermedia/final comparten `sapphire_pressure_passes`; tras cada CLEAR se verifica consenso fresco y se reevalúa pressure, sin aritmética simulada. Rutinas custom conservan su orden literal. Rotation sigue después de la rutina completa por personaje, nunca entre actividades del ciclo.
 
@@ -203,6 +203,128 @@ panel exacto, alcanzable por Navigation. No se infieren rutas de un contrato des
 Observabilidad mínima: `flow.completed.current_surface`, `navigation.handoff` con requested/
 useful step, ruta/destino/motivo y `*.base_restored` tras panel close. No policy económica
 en Session ni normalización general a Lobby porque exista Rotation.
+
+## Meteorites — primitivas Fase A (2026-10-08)
+
+`MeteoritesDetector` incorpora el landmark estructural del Bag principal,
+detail OVERLAY y Loading al catálogo/default perception y a los scopes que
+preservan todos los contextos. Los cuatro tabs hermanos son negativos del
+landmark principal; siguen siendo vistas físicas de la misma BASE por USER_GT.
+`MeteoritesReader` lee tab, set, página, once slots, sprite Flare, marco de tier,
+título/nivel y acción lateral de forma focal. UNKNOWN no autoriza input.
+
+`ProductiveRuntime.build_meteorites_runtime()` compone `MeteoritesRuntime` con
+el source, OCR, ActionExecutor, cancelación y events existentes. No está conectado
+directamente a Routine Settings ni a rotación; B2 lo compone desde el scope del personaje. `enter()` reutiliza
+VerifiedTransition y el handoff Quick Menu existente. Sólo el tile del layout
+Lobby está adquirido; un origen shifted no habilita una coordenada inferida.
+
+`equip(index)` selecciona una celda one-based de Bag; `unequip_slot(slot)`
+selecciona el slot 0 (Flare) o 1..10 (orden USER_GT). `unequip_bag(index, slot)`
+conserva la ruta adquirida y exige E del set activo y un slot único compatible.
+Candidate, set/página previos, sprite, overlay fresco, acción e input lineage
+vinculan selección e input. Continuidad fuerte conserva el panel sin OCR extra;
+pérdida de continuidad exige lectura semántica fresca. No se toca el lock inferior.
+La revalidación espera pasivamente un nuevo tick si el stream repite su último
+frame; conserva plazos, cota de samples, cancelación y rechazo de frames stale.
+
+Cada acción lateral se despacha una vez y acredita EMPTY→OCCUPIED u
+OCCUPIED→EMPTY del slot esperado, preservando los otros diez. La página/readiness
+se verifica después del efecto, separadamente de Loading, CP o cierre de overlay.
+Barriers de timestamp y sequence, edad máxima, plazos, cota de samples y cancelación
+limitan toda espera. Los budgets son configurables, no latencias físicas estimadas.
+
+Recovery local: positivo, `effect_not_ready`, `in_progress`, `no_effect` y ambiguo
+son resultados distintos. Sólo un overlay original retenido durante el budget,
+revalidado y cerrado mediante su ruta segura, seguido de Bag/item/set/slots
+explícitamente iguales y estables acredita no-efecto. `retry_no_effect=True`
+permite una nueva selección completa y un único retry. Timeout, Loading, input
+incierto, frame stale o overlay perdido no habilitan repetición. No hay workaround
+seleccionar otro/regresar, cleanup completo ni algoritmo de ancla.
+
+Métricas agregadas por operación: selección→overlay, tap→efecto,
+efecto→readiness, wall incluyendo navegación inicial, capture/perception,
+captures, OCR, consultas CV y matches de templates, retries y freshness rejects.
+El pager/readiness reutiliza el frame del efecto si todavía es fresco; de otro
+modo espera uno nuevo. Un efecto tardío durante la reconciliación cancela el retry.
+Efecto/readiness acreditados en el mismo sample no miden 0 ms físico. Evidencia bounded
+retiene before/overlay/action/effect/final en memoria; el smoke la escribe
+fuera del tramo cronometrado y preserva la primera divergencia.
+
+## Meteorites — procedimiento posicional B1 (2026-10-08)
+
+`SharedMeteoritesPreparation` (`bot/shared_meteorites.py`) es una support operation
+compuesta sobre las primitivas Fase A. B2 la reutiliza desde Session; el procedimiento
+no posee policy de personajes ni navegación de Arena/ToT/Elite. El caller asume
+las cinco precondiciones USER_GT; Set 2 es el único destino temporal.
+
+Setup: entry compatible → Set 2 activo/vacío → sprite Flare en 1–12 con overlay
+Ethereal+ positivo → recorrer suffix Flare hasta primer normal → calcular una vez
+`anchor = first_normal + 9`, índices absolutos one-based, 16 por página → Flare
+centro → diez normales desde el mismo anchor, slots 1..10. No OCR de todos los
+nombres en Bag. `group_cell` e `inspect` reutilizan readers, navegación y binding
+de selección existentes; `expected_slot`/`require_shared` rechazan antes del input
+lateral un destino incorrecto o propiedades insuficientes.
+
+Cleanup sólo desde setup completo acreditado: slots 10..1 → Flare central →
+Set 1 activo y ready. Las once verificaciones individuales acreditan Set 2 vacío;
+no segundo barrido. `required_set=2` impide Unequip desde otro set. `MeteoriteResult.effect`
+conserva el fact físico positivo independientemente de la readiness posterior.
+
+El progreso conserva cada efecto acreditado y cualquier acción pendiente incierta.
+Recovery local Fase A autoriza como máximo un retry por no-efecto estable fresco;
+B1 reconcilia resultados ambiguos únicamente observando slots Set 2 compatibles
+con el progreso, sin reselección ni repetición lateral. Loading conserva transición.
+Si no reconcilia/readiness falla/cancela, se detiene con estado conocido y progreso;
+no cleanup ciego, replay de setup ni restauración anticipada de Set 1.
+
+`tools.smoke_meteorites_b1` registra individualmente los 22 efectos, frames/hash,
+posiciones y métricas; requiere preparación humana por chat/steer y detiene inputs
+al primer desvío. El source y sus recursos se cierran por ProductiveRuntime. Wall
+setup/cleanup incluye la escritura de evidencia, informada aparte; wall de cada
+primitiva la excluye. Capture counts son consultas al source, no frames distintos.
+Tap→efecto es latencia observada (juego + captura/percepción), no tiempo puro del
+motor; capture/perception y navegación de Bag tienen mediciones separadas.
+
+## Meteorites — integración B2 de Routine/Session (2026-10-08)
+
+`RoutineSpec.change_meteorites` es booleano opcional del esquema v2; v1/v2 sin
+campo carga OFF. Valores corruptos cargan OFF con warning/backup conservador.
+Routine Settings muestra Change Meteorites y el aviso de las cinco precondiciones.
+Apply modifica draft; Save Routine persiste; reopen y Duplicate conservan el valor.
+No hay configuración en Step Settings ni Reliefs.
+
+`ProductiveRuntime.run_routine` instala/restaura la bandera en finally. Tanto
+personaje actual sin Rotation (`run_flows_once`) como roster (`run_session`) usan
+`SessionRunner`. Al comienzo del character scope, Session acredita Lobby e identidad
+estable antes del primer paso; `MeteoritesCharacterScope.begin(context)` delega setup
+B1. Al terminar todos los pasos normales, `finish()` delega cleanup B1 antes de Rotation
+o de completion sin Rotation. Un COMPLETED/no-work de un flow no cierra este scope.
+Meteorites sale por su X acreditada a Lobby y el caller sigue hacia el entry requerido;
+no se habilita geometría de Quick Menu desde Meteorites por esta configuración.
+
+La policy fija omite setup/cleanup para `berserker`, `demon_blade`, `kaiserin`;
+`burst_breaker` participa. Sólo `CharacterContext.character_id` acreditado mediante
+el owner de identidad puede autorizar setup. UNKNOWN corta sin Equip ni pasos.
+Los estados transitorios son NOT_REQUESTED, SETUP_IN_PROGRESS, READY,
+CLEANUP_IN_PROGRESS, RELEASED, INTERRUPTED; guards impiden callbacks duplicados.
+Cada ejecución/personaje obtiene scope/progreso nuevos; no persiste ni reusa READY.
+La frontera es el personaje, no la ocurrencia de flow ni una futura iteración repeat.
+
+Finalización normal exige RELEASED. Setup fallido bloquea pasos; cleanup fallido
+bloquea Rotation. FAILED/interrupción incierta registra progreso sin limpieza ciega.
+Stop Safely soft permite únicamente cleanup completo acreditado desde READY después
+de un gate fresco de BASE limpia conocida; UNKNOWN/overlay no navega. Un segundo
+Stop o señal dura conserva cancelación en cada input de los owners B1. El resultado
+de Session sigue CANCELLED aunque esa liberación alcance RELEASED.
+
+SessionResult/SessionReport incluyen DISABLED, SKIPPED_EXCEPTION, READY, RELEASED,
+INTERRUPTED, stable ID, outcomes, efectos, inputs/retries, duración y aviso explícito
+de desequipar manualmente antes de reanudar si quedó incierto. Los eventos
+`session.meteorites` conservan el progreso físico; no hay inventario/historia nuevos.
+`coordinator_seconds` mide transiciones/reporting fuera de callbacks setup/cleanup;
+`navigation_seconds` separa entrada de cleanup; B1 conserva métricas por operación.
+`tools.smoke_meteorites_b2` usa run_routine real con Send Stamina y sin Rotation.
 
 ## Navegación y economía
 

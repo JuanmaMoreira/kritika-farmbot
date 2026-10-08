@@ -1,0 +1,1561 @@
+{
+  "schema_version": 1,
+  "baseline": "ce44fe55ef0490e068f972b59e96c1e9a3c58350",
+  "authority": "USER_GT preconditions, chat listo/cable connected; LIVE_EVIDENCE actual Routine/Session",
+  "stable_character_id": "telumpel",
+  "canonical_name": "Drakenn26",
+  "routine_change_meteorites": true,
+  "routine_steps": [
+    "send_stamina"
+  ],
+  "rotation": false,
+  "report_path": "artifacts/meteorites_b2/20261008_151539/report.json",
+  "report_sha256": "212ab083da6da6786fae05ca4722c3f7859cbc4ff4ad62eb84bb9b58dc49065c",
+  "session_trace": {
+    "status": "completed",
+    "characters_processed": 1,
+    "advances_completed": 0,
+    "character_id": "telumpel",
+    "display_name": "Telumpel",
+    "business_events": [
+      "send_stamina.all_executed",
+      "send_stamina.completed"
+    ],
+    "lifecycle": [
+      {
+        "event": "session.started",
+        "event_sequence": 8,
+        "timestamp": "2026-10-08T18:15:42.999711+00:00"
+      },
+      {
+        "event": "session.meteorites",
+        "event_sequence": 12,
+        "timestamp": "2026-10-08T18:15:46.130882+00:00",
+        "status": "SETUP_IN_PROGRESS"
+      },
+      {
+        "event": "session.meteorites",
+        "event_sequence": 104,
+        "timestamp": "2026-10-08T18:16:12.541585+00:00",
+        "status": "READY"
+      },
+      {
+        "event": "flow.started",
+        "event_sequence": 111,
+        "timestamp": "2026-10-08T18:16:16.217829+00:00"
+      },
+      {
+        "event": "flow.completed",
+        "event_sequence": 121,
+        "timestamp": "2026-10-08T18:16:20.867076+00:00"
+      },
+      {
+        "event": "session.meteorites",
+        "event_sequence": 122,
+        "timestamp": "2026-10-08T18:16:20.867076+00:00",
+        "status": "CLEANUP_IN_PROGRESS"
+      },
+      {
+        "event": "session.meteorites",
+        "event_sequence": 209,
+        "timestamp": "2026-10-08T18:16:48.029399+00:00",
+        "status": "RELEASED"
+      },
+      {
+        "event": "session.completed",
+        "event_sequence": 210,
+        "timestamp": "2026-10-08T18:16:48.031476+00:00"
+      }
+    ],
+    "log_duration_seconds": 65.031765
+  },
+  "flare": {
+    "flare": true,
+    "tier": "Ethereal+",
+    "level": 30,
+    "action": "equip",
+    "sequence": 76,
+    "observed_at": 193830.015
+  },
+  "flare_position": 1,
+  "first_normal_position": 5,
+  "anchor": 14,
+  "final_verified": true,
+  "final_bag": {
+    "sequence": 659,
+    "observed_at": 193887.89,
+    "active_set": 1,
+    "page": 1,
+    "total_pages": 40,
+    "slots": [
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty"
+    ],
+    "loading": false,
+    "overlay": false
+  },
+  "set2_empty_after": {
+    "sequence": 644,
+    "observed_at": 193886.39,
+    "active_set": 2,
+    "page": 1,
+    "total_pages": 40,
+    "slots": [
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty"
+    ],
+    "loading": false,
+    "overlay": false
+  },
+  "original_preservation": "all 22 operations addressed Set 2; Set 1 untouched by Equip/Unequip; final Set 1 has no originals",
+  "retries": 0,
+  "reconciliations": 0,
+  "timing": {
+    "setup_seconds": 26.411453999986406,
+    "cleanup_seconds": 27.154868699988583,
+    "coordinator_seconds": 0.009605500032193959,
+    "navigation_seconds": 4.364502700045705,
+    "operation_seconds": 20.29599999997299
+  },
+  "routine_seconds": 65.03099999998813,
+  "evidence_io_seconds": 23.830000000016298,
+  "procedure_metrics": {
+    "entry_set_seconds": 3.25,
+    "entry_set_local": {
+      "captures": 35,
+      "capture_seconds": 0.062000000005355105,
+      "perception_seconds": 0.09499999997206032,
+      "freshness_rejects": 23,
+      "retries": 0,
+      "detector_calls": 60,
+      "ocr_calls": 4,
+      "cv_match_calls": 228
+    },
+    "discovery_seconds": 1.6400000000139698,
+    "discovery": {
+      "captures": 26,
+      "capture_seconds": 0.046000000031199306,
+      "perception_seconds": 0.28099999998812564,
+      "freshness_rejects": 16,
+      "retries": 0,
+      "bag_navigation_seconds": 0.35899999999674037,
+      "selection_to_overlay_seconds": 0.3590000000258442,
+      "detector_calls": 61,
+      "ocr_calls": 8,
+      "cv_match_calls": 181
+    },
+    "setup_seconds": 26.405999999988126,
+    "cleanup_seconds": 22.78200000000652
+  },
+  "export_repair": {
+    "source": "immutable existing runtime events + B1 progress",
+    "original_path": "artifacts/meteorites_b2/20261008_151539/report_export_original.json",
+    "original_sha256": "90d619d464d878c5209b7cb9589216b9ecff05def60e6879ad6c270ebc4231cb",
+    "validation": "portable mappingproxy/timestamp export regression passed; no new game inputs",
+    "projection_note": "SessionReport reconstructed from recorded facts; duration from lifecycle timestamps, not lost perf timer"
+  },
+  "operations": [
+    {
+      "name": "equip_0",
+      "slot": 0,
+      "index": 1,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 100,
+      "metrics": {
+        "captures": 21,
+        "capture_seconds": 0.030999999959021807,
+        "perception_seconds": 0.07700000001932494,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "bag_navigation_seconds": 0.030999999988125637,
+        "selection_to_overlay_seconds": 0.26500000001396984,
+        "tap_to_effect_seconds": 0.5160000000032596,
+        "effect_to_readiness_seconds": 0.014999999984866008,
+        "wall_seconds": 0.889999999984866,
+        "detector_calls": 45,
+        "ocr_calls": 3,
+        "cv_match_calls": 134
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_0_before.png",
+          "sequence": 91,
+          "timestamp_monotonic": 193831.5,
+          "sha256": "19c3a5af1245990286832ecbc8263c1b3fc5352f16bda0689b116a321c79559f"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_0_overlay.png",
+          "sequence": 94,
+          "timestamp_monotonic": 193831.812,
+          "sha256": "c1de8a94f53e017c7460c9a77cf79f4a67dc31697df1f8fd76dacae2e5ba3b63"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_0_action.png",
+          "sequence": 95,
+          "timestamp_monotonic": 193831.906,
+          "sha256": "7c03387528f8b529c2b7bde9403eeb4e7d9f6ed2db4a3843813c0fee210ab165"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_0_effect.png",
+          "sequence": 100,
+          "timestamp_monotonic": 193832.406,
+          "sha256": "d546a33cab0f2b4c1dcf544ae64dd33f6ecb8b3218062dd3f41fe04a3fa5ab69"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_0_final.png",
+          "sequence": 100,
+          "timestamp_monotonic": 193832.406,
+          "sha256": "d546a33cab0f2b4c1dcf544ae64dd33f6ecb8b3218062dd3f41fe04a3fa5ab69"
+        }
+      ]
+    },
+    {
+      "name": "equip_1",
+      "slot": 1,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 118,
+      "metrics": {
+        "captures": 22,
+        "capture_seconds": 0.01600000000325963,
+        "perception_seconds": 0.09300000002258457,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "bag_navigation_seconds": 0.015000000013969839,
+        "selection_to_overlay_seconds": 0.29699999999138527,
+        "tap_to_effect_seconds": 0.5160000000032596,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 0.9059999999881256,
+        "detector_calls": 47,
+        "ocr_calls": 3,
+        "cv_match_calls": 130
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_1_before.png",
+          "sequence": 109,
+          "timestamp_monotonic": 193833.296,
+          "sha256": "2e3663b39f8803edf45c89ef94410c6b3dbf14c270cac684338e84705bfad0a2"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_1_overlay.png",
+          "sequence": 112,
+          "timestamp_monotonic": 193833.593,
+          "sha256": "e3103437def37536e0ff6b4e84e36194bb098406c03b8407747a2ca83d6f5560"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_1_action.png",
+          "sequence": 113,
+          "timestamp_monotonic": 193833.703,
+          "sha256": "bf7bfe2ec19802a9370011c0e92f359137382b9ef3da8b96247de44c33fb3d1b"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_1_effect.png",
+          "sequence": 118,
+          "timestamp_monotonic": 193834.203,
+          "sha256": "f0d0451a12c4dd9c55136f6dba432a90b6febbc48f71699cf5a695c3e00bcfd1"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_1_final.png",
+          "sequence": 118,
+          "timestamp_monotonic": 193834.203,
+          "sha256": "f0d0451a12c4dd9c55136f6dba432a90b6febbc48f71699cf5a695c3e00bcfd1"
+        }
+      ]
+    },
+    {
+      "name": "equip_2",
+      "slot": 2,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 137,
+      "metrics": {
+        "captures": 24,
+        "capture_seconds": 0.030999999959021807,
+        "perception_seconds": 0.10999999998603016,
+        "freshness_rejects": 16,
+        "retries": 0,
+        "bag_navigation_seconds": 0.03200000000651926,
+        "selection_to_overlay_seconds": 0.28099999998812564,
+        "tap_to_effect_seconds": 0.6099999999860302,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 0.9849999999860302,
+        "detector_calls": 50,
+        "ocr_calls": 3,
+        "cv_match_calls": 139
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_2_before.png",
+          "sequence": 127,
+          "timestamp_monotonic": 193835.093,
+          "sha256": "45fc562b7509d4510e3d0044a6619e8911022d35d70d34f34fa9cf0f2e2a5c23"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_2_overlay.png",
+          "sequence": 130,
+          "timestamp_monotonic": 193835.406,
+          "sha256": "e0d1cf46ec655afa1b40bf360de26da9db138891e22c9f8cddd181187d026588"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_2_action.png",
+          "sequence": 131,
+          "timestamp_monotonic": 193835.5,
+          "sha256": "168d9289d5d3f53ffa5f3d6fe893a122a0ed79d9a27f4316039613f345a65786"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_2_effect.png",
+          "sequence": 137,
+          "timestamp_monotonic": 193836.093,
+          "sha256": "34fb1f07ab2a8aae5a13d536166e2b578529168c7404885275d2bc07c6f114d7"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_2_final.png",
+          "sequence": 137,
+          "timestamp_monotonic": 193836.093,
+          "sha256": "34fb1f07ab2a8aae5a13d536166e2b578529168c7404885275d2bc07c6f114d7"
+        }
+      ]
+    },
+    {
+      "name": "equip_3",
+      "slot": 3,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 155,
+      "metrics": {
+        "captures": 22,
+        "capture_seconds": 0.0,
+        "perception_seconds": 0.14200000002165325,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "bag_navigation_seconds": 0.03200000000651926,
+        "selection_to_overlay_seconds": 0.29699999999138527,
+        "tap_to_effect_seconds": 0.5160000000032596,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 0.9219999999913853,
+        "detector_calls": 47,
+        "ocr_calls": 3,
+        "cv_match_calls": 118
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_3_before.png",
+          "sequence": 146,
+          "timestamp_monotonic": 193837.0,
+          "sha256": "cc4474a8d367bded31e79260a04ee3901c1b48802b5b0d7dee6ce97cf1a7cf01"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_3_overlay.png",
+          "sequence": 149,
+          "timestamp_monotonic": 193837.296,
+          "sha256": "19dfa5d5ac2f482b7b206856b4f8c66d9e0d88f98bc74ffff4b892c219a7652c"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_3_action.png",
+          "sequence": 150,
+          "timestamp_monotonic": 193837.39,
+          "sha256": "3e380effec794e94fc90a9dd646ccab5aecf3a2b6327cb33f9ebe3d3728d659e"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_3_effect.png",
+          "sequence": 155,
+          "timestamp_monotonic": 193837.906,
+          "sha256": "82a375a8224081988d4a5040ffe53d6508e42ea3550d183de1df9e81652948c7"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_3_final.png",
+          "sequence": 155,
+          "timestamp_monotonic": 193837.906,
+          "sha256": "82a375a8224081988d4a5040ffe53d6508e42ea3550d183de1df9e81652948c7"
+        }
+      ]
+    },
+    {
+      "name": "equip_4",
+      "slot": 4,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 177,
+      "metrics": {
+        "captures": 25,
+        "capture_seconds": 0.0,
+        "perception_seconds": 0.15599999998812564,
+        "freshness_rejects": 16,
+        "retries": 0,
+        "bag_navigation_seconds": 0.046999999991385266,
+        "selection_to_overlay_seconds": 0.39000000001396984,
+        "tap_to_effect_seconds": 0.6099999999860302,
+        "effect_to_readiness_seconds": 0.031000000017229468,
+        "wall_seconds": 1.0780000000086147,
+        "detector_calls": 51,
+        "ocr_calls": 3,
+        "cv_match_calls": 120
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_4_before.png",
+          "sequence": 167,
+          "timestamp_monotonic": 193839.078,
+          "sha256": "1d1797b96aaca1fd092337e68b3b07fbf627af471f799aa876f804babaa7aeef"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_4_overlay.png",
+          "sequence": 170,
+          "timestamp_monotonic": 193839.421,
+          "sha256": "134a3842222f85cc7d5b39328c705f56087afe33dc1a9b2b4743d773a8f9926a"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_4_action.png",
+          "sequence": 171,
+          "timestamp_monotonic": 193839.484,
+          "sha256": "bcdb2dd0e9eacdfb0e5db2adddbab57519ee51e05ee15cf919d596a02582aa17"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_4_effect.png",
+          "sequence": 177,
+          "timestamp_monotonic": 193840.109,
+          "sha256": "9a388ad420331965d4f87d2805991fc21a0019cf9fb09e74b93cc717d7ea744b"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_4_final.png",
+          "sequence": 177,
+          "timestamp_monotonic": 193840.109,
+          "sha256": "9a388ad420331965d4f87d2805991fc21a0019cf9fb09e74b93cc717d7ea744b"
+        }
+      ]
+    },
+    {
+      "name": "equip_5",
+      "slot": 5,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 196,
+      "metrics": {
+        "captures": 21,
+        "capture_seconds": 0.031000000017229468,
+        "perception_seconds": 0.10899999996763654,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "bag_navigation_seconds": 0.030999999988125637,
+        "selection_to_overlay_seconds": 0.21900000001187436,
+        "tap_to_effect_seconds": 0.5,
+        "effect_to_readiness_seconds": 0.01600000000325963,
+        "wall_seconds": 0.8589999999967404,
+        "detector_calls": 45,
+        "ocr_calls": 3,
+        "cv_match_calls": 104
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_5_before.png",
+          "sequence": 187,
+          "timestamp_monotonic": 193841.109,
+          "sha256": "4a491fd53ee149e9ffdfc4c3f7cb5f8dd9d981a89eeaa581a98eaa1a13e5c887"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_5_overlay.png",
+          "sequence": 190,
+          "timestamp_monotonic": 193841.39,
+          "sha256": "a0357cfaa46ca94bae5c8bd92d136fd4af2de99887eb5240a07be4453a47174e"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_5_action.png",
+          "sequence": 191,
+          "timestamp_monotonic": 193841.484,
+          "sha256": "4abf72c8d75b3dbd58b2c3442b7c304ed5921d4c37d8305b800c4c8efde6fa73"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_5_effect.png",
+          "sequence": 196,
+          "timestamp_monotonic": 193842.0,
+          "sha256": "c7838c89ead42207f7f4774d6a86358e6fbec8511597ab948ea1c0ebff637236"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_5_final.png",
+          "sequence": 196,
+          "timestamp_monotonic": 193842.0,
+          "sha256": "c7838c89ead42207f7f4774d6a86358e6fbec8511597ab948ea1c0ebff637236"
+        }
+      ]
+    },
+    {
+      "name": "equip_6",
+      "slot": 6,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 214,
+      "metrics": {
+        "captures": 22,
+        "capture_seconds": 0.046000000002095476,
+        "perception_seconds": 0.10999999995692633,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "bag_navigation_seconds": 0.030999999988125637,
+        "selection_to_overlay_seconds": 0.29699999999138527,
+        "tap_to_effect_seconds": 0.46900000001187436,
+        "effect_to_readiness_seconds": 0.014999999984866008,
+        "wall_seconds": 0.889999999984866,
+        "detector_calls": 47,
+        "ocr_calls": 3,
+        "cv_match_calls": 100
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_6_before.png",
+          "sequence": 205,
+          "timestamp_monotonic": 193842.906,
+          "sha256": "cd1627417514e04c3cbd0c553ce42f7f604a54255120c7903bdbde64b13d7ecf"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_6_overlay.png",
+          "sequence": 208,
+          "timestamp_monotonic": 193843.203,
+          "sha256": "11f2be773592670e8c30d28a0894877ff1a83d268ad1cb638d43d7f993daf10c"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_6_action.png",
+          "sequence": 209,
+          "timestamp_monotonic": 193843.312,
+          "sha256": "e423612a17db73b5e2a4f332e012f105fc551a7bfe7cf9cc1806cc3a113e1273"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_6_effect.png",
+          "sequence": 214,
+          "timestamp_monotonic": 193843.796,
+          "sha256": "b0c92a6f2ccb131e3c15cf8c52cf817a79c07a37944c3a3105226a3ac47c2465"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_6_final.png",
+          "sequence": 214,
+          "timestamp_monotonic": 193843.796,
+          "sha256": "b0c92a6f2ccb131e3c15cf8c52cf817a79c07a37944c3a3105226a3ac47c2465"
+        }
+      ]
+    },
+    {
+      "name": "equip_7",
+      "slot": 7,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 232,
+      "metrics": {
+        "captures": 22,
+        "capture_seconds": 0.045000000041909516,
+        "perception_seconds": 0.09499999997206032,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "bag_navigation_seconds": 0.030999999988125637,
+        "selection_to_overlay_seconds": 0.2970000000204891,
+        "tap_to_effect_seconds": 0.5150000000139698,
+        "effect_to_readiness_seconds": 0.0159999999741558,
+        "wall_seconds": 0.9059999999881256,
+        "detector_calls": 47,
+        "ocr_calls": 3,
+        "cv_match_calls": 94
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_7_before.png",
+          "sequence": 223,
+          "timestamp_monotonic": 193844.703,
+          "sha256": "16141083ee781561e75fc785a289cb7a92ba00f724ea405c2f1faf170de286fd"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_7_overlay.png",
+          "sequence": 226,
+          "timestamp_monotonic": 193845.015,
+          "sha256": "2a0bd3d99379c602c792e722e143af8cbd062e810acadfb340678aa9944ecd9a"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_7_action.png",
+          "sequence": 227,
+          "timestamp_monotonic": 193845.093,
+          "sha256": "974b2644663dbf2f8d77d017b7c8c4d3485a2f555956539476ec07175768a099"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_7_effect.png",
+          "sequence": 232,
+          "timestamp_monotonic": 193845.609,
+          "sha256": "8faee2eec42b0b5a6c6c3710102bbb354ee42249389ad2c008705399bb64c0fd"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_7_final.png",
+          "sequence": 232,
+          "timestamp_monotonic": 193845.609,
+          "sha256": "8faee2eec42b0b5a6c6c3710102bbb354ee42249389ad2c008705399bb64c0fd"
+        }
+      ]
+    },
+    {
+      "name": "equip_8",
+      "slot": 8,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 250,
+      "metrics": {
+        "captures": 21,
+        "capture_seconds": 0.046999999991385266,
+        "perception_seconds": 0.11000000001513399,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "bag_navigation_seconds": 0.030999999988125637,
+        "selection_to_overlay_seconds": 0.25,
+        "tap_to_effect_seconds": 0.5160000000032596,
+        "effect_to_readiness_seconds": 0.01600000000325963,
+        "wall_seconds": 0.875,
+        "detector_calls": 45,
+        "ocr_calls": 3,
+        "cv_match_calls": 86
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_8_before.png",
+          "sequence": 241,
+          "timestamp_monotonic": 193846.5,
+          "sha256": "78d026cc5333fb495c31ba8250c7a50b9e442ff2a6ae900b740b33eaba074e99"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_8_overlay.png",
+          "sequence": 244,
+          "timestamp_monotonic": 193846.812,
+          "sha256": "b463b9edf617c92b0819ca5a04f17922242cf2c128febc2a9868e1ab6a17602a"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_8_action.png",
+          "sequence": 245,
+          "timestamp_monotonic": 193846.906,
+          "sha256": "c87e9c46a1b4ad714db192d4c509a46e946b9046d6ec19f503f7dc8c6e594487"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_8_effect.png",
+          "sequence": 250,
+          "timestamp_monotonic": 193847.39,
+          "sha256": "1b916c4797ea182ea31e7e5c46db376a532839a56ac9e82f735bad316a98607f"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_8_final.png",
+          "sequence": 250,
+          "timestamp_monotonic": 193847.39,
+          "sha256": "1b916c4797ea182ea31e7e5c46db376a532839a56ac9e82f735bad316a98607f"
+        }
+      ]
+    },
+    {
+      "name": "equip_9",
+      "slot": 9,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 269,
+      "metrics": {
+        "captures": 25,
+        "capture_seconds": 0.04800000000977889,
+        "perception_seconds": 0.1090000000258442,
+        "freshness_rejects": 16,
+        "retries": 0,
+        "bag_navigation_seconds": 0.030999999988125637,
+        "selection_to_overlay_seconds": 0.2970000000204891,
+        "tap_to_effect_seconds": 0.625,
+        "effect_to_readiness_seconds": 0.015000000013969839,
+        "wall_seconds": 1.0150000000139698,
+        "detector_calls": 52,
+        "ocr_calls": 3,
+        "cv_match_calls": 92
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_9_before.png",
+          "sequence": 259,
+          "timestamp_monotonic": 193848.312,
+          "sha256": "97a0dd1f835c009fb987c43ab349e00dc87762b057eac794b597cbefaf0e44b1"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_9_overlay.png",
+          "sequence": 262,
+          "timestamp_monotonic": 193848.609,
+          "sha256": "b9d8508dc9dbba5d7dbbc03eedfca6511dfad93e10749db71d8791778efb1c2e"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_9_action.png",
+          "sequence": 263,
+          "timestamp_monotonic": 193848.703,
+          "sha256": "205559ed89dc66a686798aaea773b1b665e69ef43f8e2c210394f8fadc635a9f"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_9_effect.png",
+          "sequence": 269,
+          "timestamp_monotonic": 193849.312,
+          "sha256": "ca167fe8211c532aeb0aedd3db58894af2e3cc4e46838210610c759b6164c6c8"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_9_final.png",
+          "sequence": 269,
+          "timestamp_monotonic": 193849.312,
+          "sha256": "ca167fe8211c532aeb0aedd3db58894af2e3cc4e46838210610c759b6164c6c8"
+        }
+      ]
+    },
+    {
+      "name": "equip_10",
+      "slot": 10,
+      "index": 14,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "empty",
+      "after": "occupied",
+      "effect_sequence": 288,
+      "metrics": {
+        "captures": 23,
+        "capture_seconds": 0.0,
+        "perception_seconds": 0.17100000000209548,
+        "freshness_rejects": 15,
+        "retries": 0,
+        "bag_navigation_seconds": 0.03200000000651926,
+        "selection_to_overlay_seconds": 0.360000000015134,
+        "tap_to_effect_seconds": 0.5310000000172295,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 1.0,
+        "detector_calls": 47,
+        "ocr_calls": 3,
+        "cv_match_calls": 76
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_10_before.png",
+          "sequence": 278,
+          "timestamp_monotonic": 193850.203,
+          "sha256": "feb43771c6c6e9f8b072ac35498563d3c4da9b324f4bb53c26c55e2ac2d66c39"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_10_overlay.png",
+          "sequence": 282,
+          "timestamp_monotonic": 193850.593,
+          "sha256": "31b5728b03623ede336ffc743c52224afe828b82f7f856b1a896881f1f77f0a1"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_10_action.png",
+          "sequence": 283,
+          "timestamp_monotonic": 193850.703,
+          "sha256": "f4d46701c5ff2ede8118f0e08555c28de78a4448f7dfa5ce8327b54a37004510"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_10_effect.png",
+          "sequence": 288,
+          "timestamp_monotonic": 193851.203,
+          "sha256": "d0530d8caf30b57ba16d50f76d7ffc7faae099f15c718e00c9f3df5db2a2e362"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/equip_10_final.png",
+          "sequence": 288,
+          "timestamp_monotonic": 193851.203,
+          "sha256": "d0530d8caf30b57ba16d50f76d7ffc7faae099f15c718e00c9f3df5db2a2e362"
+        }
+      ]
+    },
+    {
+      "name": "unequip_10",
+      "slot": 10,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 442,
+      "metrics": {
+        "captures": 23,
+        "capture_seconds": 0.046000000002095476,
+        "perception_seconds": 0.1090000000258442,
+        "freshness_rejects": 15,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.3120000000053551,
+        "tap_to_effect_seconds": 0.5,
+        "effect_to_readiness_seconds": 0.015000000013969839,
+        "wall_seconds": 0.9690000000118744,
+        "detector_calls": 42,
+        "ocr_calls": 3,
+        "cv_match_calls": 66
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_10_before.png",
+          "sequence": 433,
+          "timestamp_monotonic": 193865.296,
+          "sha256": "4e0b3dbb98d95cdfe95a652c440d98720c7a1ef1bb288d6ac13afd7dadac0a8d"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_10_overlay.png",
+          "sequence": 436,
+          "timestamp_monotonic": 193865.609,
+          "sha256": "806f961b364a83121fdbfcee49b6cc81f10b108e828744894fbacda1c49d99ea"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_10_action.png",
+          "sequence": 437,
+          "timestamp_monotonic": 193865.687,
+          "sha256": "e1d5b7ba399c035dbb2da2ae6ce4fed82e6a37dc5ce3f83a496835581c325f6b"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_10_effect.png",
+          "sequence": 442,
+          "timestamp_monotonic": 193866.218,
+          "sha256": "3187ccc0fba829b90b2deb33a567aaaa04a62cb7043028a5efa82a0ba146cf0d"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_10_final.png",
+          "sequence": 442,
+          "timestamp_monotonic": 193866.218,
+          "sha256": "3187ccc0fba829b90b2deb33a567aaaa04a62cb7043028a5efa82a0ba146cf0d"
+        }
+      ]
+    },
+    {
+      "name": "unequip_9",
+      "slot": 9,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 462,
+      "metrics": {
+        "captures": 22,
+        "capture_seconds": 0.01600000000325963,
+        "perception_seconds": 0.13900000002468005,
+        "freshness_rejects": 15,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.3129999999946449,
+        "tap_to_effect_seconds": 0.5320000000065193,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 0.9219999999913853,
+        "detector_calls": 40,
+        "ocr_calls": 3,
+        "cv_match_calls": 70
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_9_before.png",
+          "sequence": 453,
+          "timestamp_monotonic": 193867.312,
+          "sha256": "1be72cd07ea4f0c0e012ee97acb33e84709963116f57c859f73a0d1034685daf"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_9_overlay.png",
+          "sequence": 456,
+          "timestamp_monotonic": 193867.609,
+          "sha256": "3bd83486284fac4e51bb0ac479d8a3351ac24905c99d735b156faadae9066067"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_9_action.png",
+          "sequence": 457,
+          "timestamp_monotonic": 193867.703,
+          "sha256": "543996ac5e5954ac65784f39746f50788e6b7a0330e4998510835221a44d0552"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_9_effect.png",
+          "sequence": 462,
+          "timestamp_monotonic": 193868.218,
+          "sha256": "c59b437de4ff713f4a4a1b2b1d4f18354acc4dea6f9da55b86d411d4feeef6f8"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_9_final.png",
+          "sequence": 462,
+          "timestamp_monotonic": 193868.218,
+          "sha256": "c59b437de4ff713f4a4a1b2b1d4f18354acc4dea6f9da55b86d411d4feeef6f8"
+        }
+      ]
+    },
+    {
+      "name": "unequip_8",
+      "slot": 8,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 488,
+      "metrics": {
+        "captures": 20,
+        "capture_seconds": 0.09400000001187436,
+        "perception_seconds": 0.2019999999902211,
+        "freshness_rejects": 13,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.39000000001396984,
+        "tap_to_effect_seconds": 0.5629999999946449,
+        "effect_to_readiness_seconds": 0.046000000002095476,
+        "wall_seconds": 1.062000000005355,
+        "detector_calls": 40,
+        "ocr_calls": 3,
+        "cv_match_calls": 76
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_8_before.png",
+          "sequence": 478,
+          "timestamp_monotonic": 193869.812,
+          "sha256": "7ddf1777c7c1d06e7f5a07f254e5170fbde23cf823d2362801475f334bca839b"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_8_overlay.png",
+          "sequence": 481,
+          "timestamp_monotonic": 193870.093,
+          "sha256": "0e664cd4a1552e82b2cddfe0e6253b7ad71388a692857f0597e4cce594a73360"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_8_action.png",
+          "sequence": 482,
+          "timestamp_monotonic": 193870.203,
+          "sha256": "95683f1a23ff3dd63249a4eb24d3eac8e0a8af70cbe28bd5a0d6d9381212d39e"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_8_effect.png",
+          "sequence": 488,
+          "timestamp_monotonic": 193870.812,
+          "sha256": "df25a7313b3881faf3b0be0000574a9a0ba9300774806a492d04f3cf011ac6ff"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_8_final.png",
+          "sequence": 488,
+          "timestamp_monotonic": 193870.812,
+          "sha256": "df25a7313b3881faf3b0be0000574a9a0ba9300774806a492d04f3cf011ac6ff"
+        }
+      ]
+    },
+    {
+      "name": "unequip_7",
+      "slot": 7,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 511,
+      "metrics": {
+        "captures": 21,
+        "capture_seconds": 0.015000000013969839,
+        "perception_seconds": 0.15500000002793968,
+        "freshness_rejects": 13,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.35999999998603016,
+        "tap_to_effect_seconds": 0.48499999998603016,
+        "effect_to_readiness_seconds": 0.046000000002095476,
+        "wall_seconds": 0.9370000000053551,
+        "detector_calls": 42,
+        "ocr_calls": 3,
+        "cv_match_calls": 84
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_7_before.png",
+          "sequence": 502,
+          "timestamp_monotonic": 193872.203,
+          "sha256": "85ade23cbff23261773d36095184dd96510d6b492a6bc7c9c8015ff72252ba4f"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_7_overlay.png",
+          "sequence": 505,
+          "timestamp_monotonic": 193872.515,
+          "sha256": "b86470c01e388b53c72e547e2815c4ba40dba42fcda142dcdd5ead05d596cfd4"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_7_action.png",
+          "sequence": 506,
+          "timestamp_monotonic": 193872.609,
+          "sha256": "2495a0673e92de4c7a6092100bfe7436f9d1f82202a924f15f4c908eef15b658"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_7_effect.png",
+          "sequence": 511,
+          "timestamp_monotonic": 193873.093,
+          "sha256": "ad0d6864afd9a786c9ec49e10f4fa1c9cff46bc4893b109a464a6e55dbf417ad"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_7_final.png",
+          "sequence": 511,
+          "timestamp_monotonic": 193873.093,
+          "sha256": "ad0d6864afd9a786c9ec49e10f4fa1c9cff46bc4893b109a464a6e55dbf417ad"
+        }
+      ]
+    },
+    {
+      "name": "unequip_6",
+      "slot": 6,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 530,
+      "metrics": {
+        "captures": 21,
+        "capture_seconds": 0.030999999988125637,
+        "perception_seconds": 0.09400000001187436,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.28099999998812564,
+        "tap_to_effect_seconds": 0.5150000000139698,
+        "effect_to_readiness_seconds": 0.01600000000325963,
+        "wall_seconds": 0.875,
+        "detector_calls": 40,
+        "ocr_calls": 3,
+        "cv_match_calls": 88
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_6_before.png",
+          "sequence": 521,
+          "timestamp_monotonic": 193874.109,
+          "sha256": "759cf93e42b69b617e9e858187227ccc4b2ca6457fef31051681be1caaea5403"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_6_overlay.png",
+          "sequence": 524,
+          "timestamp_monotonic": 193874.406,
+          "sha256": "05e0f14587a3f73778ed0912af1108deebb40f0aee0ed306c877b1f35663b3dc"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_6_action.png",
+          "sequence": 525,
+          "timestamp_monotonic": 193874.5,
+          "sha256": "1bf9b921b1403dbe93c61e4bb527f7503cf500d90b7bc1afe4288a6acca96c10"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_6_effect.png",
+          "sequence": 530,
+          "timestamp_monotonic": 193875.015,
+          "sha256": "1f54536cf542923c6392ab6f759659380ede29b7a78281b653e42306b8c1c4ac"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_6_final.png",
+          "sequence": 530,
+          "timestamp_monotonic": 193875.015,
+          "sha256": "1f54536cf542923c6392ab6f759659380ede29b7a78281b653e42306b8c1c4ac"
+        }
+      ]
+    },
+    {
+      "name": "unequip_5",
+      "slot": 5,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 548,
+      "metrics": {
+        "captures": 22,
+        "capture_seconds": 0.0,
+        "perception_seconds": 0.09500000000116415,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.2960000000020955,
+        "tap_to_effect_seconds": 0.5,
+        "effect_to_readiness_seconds": 0.03200000000651926,
+        "wall_seconds": 0.9070000000065193,
+        "detector_calls": 42,
+        "ocr_calls": 3,
+        "cv_match_calls": 96
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_5_before.png",
+          "sequence": 539,
+          "timestamp_monotonic": 193875.906,
+          "sha256": "2d953610c67e8198922268527def9811102e8c9774007b680f567d9749e14003"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_5_overlay.png",
+          "sequence": 542,
+          "timestamp_monotonic": 193876.218,
+          "sha256": "f66f846bbe33a9302f604b7bfd93e24eccb11215f46d384a5d33c0d5e83ecd2d"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_5_action.png",
+          "sequence": 543,
+          "timestamp_monotonic": 193876.312,
+          "sha256": "69afc786bdb3054d7c567d9b8c120b387580a6ec439d157e5890b8626b4dacac"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_5_effect.png",
+          "sequence": 548,
+          "timestamp_monotonic": 193876.812,
+          "sha256": "cfcb29acf81a7a29ac2dde8a7aa2b1d214479e6c6a6187088ea4021aba23c434"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_5_final.png",
+          "sequence": 548,
+          "timestamp_monotonic": 193876.812,
+          "sha256": "cfcb29acf81a7a29ac2dde8a7aa2b1d214479e6c6a6187088ea4021aba23c434"
+        }
+      ]
+    },
+    {
+      "name": "unequip_4",
+      "slot": 4,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 566,
+      "metrics": {
+        "captures": 20,
+        "capture_seconds": 0.03199999997741543,
+        "perception_seconds": 0.09400000001187436,
+        "freshness_rejects": 13,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.23399999999674037,
+        "tap_to_effect_seconds": 0.4840000000258442,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 0.875,
+        "detector_calls": 39,
+        "ocr_calls": 3,
+        "cv_match_calls": 94
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_4_before.png",
+          "sequence": 557,
+          "timestamp_monotonic": 193877.703,
+          "sha256": "4e8a0f3202c18773eb0a576e1d080441e0dc1ee9b6a450a5d1ea56a2a7726a81"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_4_overlay.png",
+          "sequence": 560,
+          "timestamp_monotonic": 193878.0,
+          "sha256": "b012f0e962e79ab768c19c6700ed421a03b2f07b95c9afdabdcbaa11bf7bc885"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_4_action.png",
+          "sequence": 561,
+          "timestamp_monotonic": 193878.093,
+          "sha256": "a1b6d9a7d9d1f7f4a42f6e8ed8d0ff128df1ef20f8f405264578b96f109748a7"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_4_effect.png",
+          "sequence": 566,
+          "timestamp_monotonic": 193878.593,
+          "sha256": "9e5c5975fe2350f37d3c10a7a08b254086bfaf28d28cad6b18667fbfc0cc73e0"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_4_final.png",
+          "sequence": 566,
+          "timestamp_monotonic": 193878.593,
+          "sha256": "9e5c5975fe2350f37d3c10a7a08b254086bfaf28d28cad6b18667fbfc0cc73e0"
+        }
+      ]
+    },
+    {
+      "name": "unequip_3",
+      "slot": 3,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 583,
+      "metrics": {
+        "captures": 19,
+        "capture_seconds": 0.030999999988125637,
+        "perception_seconds": 0.07900000002700835,
+        "freshness_rejects": 13,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.25,
+        "tap_to_effect_seconds": 0.4379999999946449,
+        "effect_to_readiness_seconds": 0.031000000017229468,
+        "wall_seconds": 0.7970000000204891,
+        "detector_calls": 35,
+        "ocr_calls": 3,
+        "cv_match_calls": 91
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_3_before.png",
+          "sequence": 575,
+          "timestamp_monotonic": 193879.484,
+          "sha256": "f1be692ddce0a061f9463d903f0dd8905dc4692844da13c6e7bec0c6739d5882"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_3_overlay.png",
+          "sequence": 578,
+          "timestamp_monotonic": 193879.812,
+          "sha256": "2e2ce12ff487283dc035475ec34dee3879b52d03a288274f74e8933ae4c3df4f"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_3_action.png",
+          "sequence": 579,
+          "timestamp_monotonic": 193879.906,
+          "sha256": "0c550eb8b890b93e8ea37bc05aeb672ee8c855adb2ebac1db0f74e1b44240226"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_3_effect.png",
+          "sequence": 583,
+          "timestamp_monotonic": 193880.312,
+          "sha256": "9488cee8e39a97038c99147d4646299ecda3b72ef3658f9470b95b4fcdda0a5b"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_3_final.png",
+          "sequence": 583,
+          "timestamp_monotonic": 193880.312,
+          "sha256": "9488cee8e39a97038c99147d4646299ecda3b72ef3658f9470b95b4fcdda0a5b"
+        }
+      ]
+    },
+    {
+      "name": "unequip_2",
+      "slot": 2,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 604,
+      "metrics": {
+        "captures": 22,
+        "capture_seconds": 0.030999999988125637,
+        "perception_seconds": 0.1090000000258442,
+        "freshness_rejects": 14,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.32800000000861473,
+        "tap_to_effect_seconds": 0.5160000000032596,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 0.9219999999913853,
+        "detector_calls": 42,
+        "ocr_calls": 3,
+        "cv_match_calls": 114
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_2_before.png",
+          "sequence": 595,
+          "timestamp_monotonic": 193881.515,
+          "sha256": "df1f419638f1706341ccad3e0e6efb7b82098ac626f1c1f745089cf7c7c03514"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_2_overlay.png",
+          "sequence": 598,
+          "timestamp_monotonic": 193881.812,
+          "sha256": "b6b04c1a894d55d7d4eb8ed9195e91722c0bf9e906c7be4e312ac3294e4db413"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_2_action.png",
+          "sequence": 599,
+          "timestamp_monotonic": 193881.906,
+          "sha256": "4cd2e001997157d373feb857778f84773591bc3f5ff069f80d7df29df6bfd662"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_2_effect.png",
+          "sequence": 604,
+          "timestamp_monotonic": 193882.39,
+          "sha256": "ae85e4c8c7b96dfb0e1d2fce5604f10f0ed56867518cb363068a6447687364ca"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_2_final.png",
+          "sequence": 604,
+          "timestamp_monotonic": 193882.39,
+          "sha256": "ae85e4c8c7b96dfb0e1d2fce5604f10f0ed56867518cb363068a6447687364ca"
+        }
+      ]
+    },
+    {
+      "name": "unequip_1",
+      "slot": 1,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 624,
+      "metrics": {
+        "captures": 18,
+        "capture_seconds": 0.031000000017229468,
+        "perception_seconds": 0.10899999996763654,
+        "freshness_rejects": 12,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.26600000000325963,
+        "tap_to_effect_seconds": 0.4220000000204891,
+        "effect_to_readiness_seconds": 0.030999999988125637,
+        "wall_seconds": 0.7969999999913853,
+        "detector_calls": 35,
+        "ocr_calls": 3,
+        "cv_match_calls": 101
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_1_before.png",
+          "sequence": 616,
+          "timestamp_monotonic": 193883.593,
+          "sha256": "89aa26152ecf412b597647deb4a3d2cdd5ca455bc874e3095633bb09f55db24d"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_1_overlay.png",
+          "sequence": 619,
+          "timestamp_monotonic": 193883.906,
+          "sha256": "354b8483895cd77ef8782e690a41571337606b4bd7d15376fda595f2757a75b4"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_1_action.png",
+          "sequence": 620,
+          "timestamp_monotonic": 193884.0,
+          "sha256": "c1f57b78315da6e393a95c7dd3a7e529cf548a5f4b8bba9342e0a4780cb2f858"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_1_effect.png",
+          "sequence": 624,
+          "timestamp_monotonic": 193884.421,
+          "sha256": "4ae77fb5070084df9d0ce05e6369f3bbd0027cc56f25162678e26b94800a999c"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_1_final.png",
+          "sequence": 624,
+          "timestamp_monotonic": 193884.421,
+          "sha256": "4ae77fb5070084df9d0ce05e6369f3bbd0027cc56f25162678e26b94800a999c"
+        }
+      ]
+    },
+    {
+      "name": "unequip_0",
+      "slot": 0,
+      "index": null,
+      "outcome": "success",
+      "effect_verified": true,
+      "action_inputs": 1,
+      "before": "occupied",
+      "after": "empty",
+      "effect_sequence": 644,
+      "metrics": {
+        "captures": 20,
+        "capture_seconds": 0.0,
+        "perception_seconds": 0.15800000002491288,
+        "freshness_rejects": 12,
+        "retries": 0,
+        "selection_to_overlay_seconds": 0.35899999999674037,
+        "tap_to_effect_seconds": 0.48399999999674037,
+        "effect_to_readiness_seconds": 0.03200000000651926,
+        "wall_seconds": 0.9070000000065193,
+        "detector_calls": 42,
+        "ocr_calls": 3,
+        "cv_match_calls": 126
+      },
+      "frames": [
+        {
+          "role": "before",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_0_before.png",
+          "sequence": 635,
+          "timestamp_monotonic": 193885.484,
+          "sha256": "17957eb998a68819ef81ccaaa59957c92850437e5a909a9f45a8e9ca46b5c96a"
+        },
+        {
+          "role": "overlay",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_0_overlay.png",
+          "sequence": 638,
+          "timestamp_monotonic": 193885.796,
+          "sha256": "14f19a0b888756939f37882a1443d2b2a5b0670c24766ae67fabaa9d7337caf3"
+        },
+        {
+          "role": "action",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_0_action.png",
+          "sequence": 639,
+          "timestamp_monotonic": 193885.89,
+          "sha256": "71f0055ad7d4fc8338d253317b5ab17c5efe4de04f0bf866dd45b3f0b9f2aa4d"
+        },
+        {
+          "role": "effect",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_0_effect.png",
+          "sequence": 644,
+          "timestamp_monotonic": 193886.39,
+          "sha256": "a516acf132b69e420d4636c4df862bfb2b8d06889d5bd81f77932b93009df0c2"
+        },
+        {
+          "role": "final",
+          "path": "artifacts/meteorites_b2/20261008_151539/unequip_0_final.png",
+          "sequence": 644,
+          "timestamp_monotonic": 193886.39,
+          "sha256": "a516acf132b69e420d4636c4df862bfb2b8d06889d5bd81f77932b93009df0c2"
+        }
+      ]
+    }
+  ],
+  "restored_set1_frames": [
+    {
+      "role": "restored_set1",
+      "path": "artifacts/meteorites_b2/20261008_151539/restored_set1_restored_set1.png",
+      "sequence": 659,
+      "timestamp_monotonic": 193887.89,
+      "sha256": "a5632f0afe47da471d4d2f28d854fb9e76bdf1859fdbe2836390a77130b013d5"
+    }
+  ]
+}

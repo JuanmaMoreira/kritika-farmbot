@@ -116,6 +116,18 @@ class MinimalPreconditionEnsurer:
                 snapshot=before_snapshot,
             )
 
+        if before == 'screen.meteorites' and requirement.name in {
+                SCREEN_LOBBY, SCREEN_BATTLE_MODE_SELECT, SCREEN_GUILD, SCREEN_PETS_MANAGE, QUICK_MENU_ACCESSIBLE}:
+            lobby = self._navigate_and_verify(ComponentRequirement.exact_state(SCREEN_LOBBY),
+                before, self.navigate_to_lobby, 'exit_meteorites')
+            if not lobby.succeeded:
+                return self._failed(requirement, before, lobby.context_after, lobby.error)
+            if requirement.name == SCREEN_LOBBY:
+                return lobby
+            reached = self.ensure(requirement)
+            from dataclasses import replace
+            return replace(reached, context_before=before, route='exit_meteorites_then_' + (reached.route or reached.outcome.value))
+
         if requirement.kind is RequirementKind.EXACT_STATE:
             if requirement.name == SCREEN_BATTLE_MODE_SELECT and (
                 before in {SCREEN_LOBBY, SCREEN_MONSTER_WAVE}

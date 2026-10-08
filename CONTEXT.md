@@ -1,5 +1,27 @@
 # Estado actual — Kritika FarmBot
 
+## Shared Meteorites A+B1+B2 — checkpoint 2026-10-08
+
+Preparación transversal por personaje: Change Meteorites en Routine Settings,
+default OFF; Apply al draft/Save persistente. Session acredita stable ID, setup
+antes de pasos y cleanup después de todos, antes de Rotation/completion. Excepciones
+berserker/demon_blade/kaiserin; burst_breaker incluido. UNKNOWN no equipa, FAILED
+no libera a ciegas, Stop Safely sólo READY y contexto seguro. Ejecuciones nuevas
+no reutilizan READY; incertidumbre exige preparación manual antes de reanudar.
+
+Acceptance preservada: A3+3 con selección desde slots; B1 once+once/ancla15;
+B2 Telumpel once→Send Stamina→once→Set 1, ancla14/Flare1, sin retries/Ads/Rotation/
+compras. Set 2 vacío, compartidos desequipados, Set 1 activo y originales preservados,
+sin overlay/Loading. B2 setup26.411s/cleanup27.155s, coordinator9.606ms;
+I/O evidencia23.830s separado. Sin nuevo smoke ni cambios físicos de checkpoint.
+
+[Checkpoint](docs/SHARED_METEORITES_CHECKPOINT.md) posee selección/INDEX portable,
+procedencia, exclusiones y publicación; [A](docs/METEORITES_PHASE_A_20261008.md),
+[B1](docs/METEORITES_B1_20261008.md), [B2](docs/METEORITES_B2_20261008.md) poseen detalle.
+31 assets y28fixtures focales hash-verificables; raw/full-curated externos no son
+requisitos de pytest. No-efecto live y QM shifted no adquiridos; Arena/REPEAT_CURRENT/
+ToT/Elite no implementados. No iniciar otro frente automáticamente.
+
 ## Campaña acumulativa Stability + Performance cerrada — 2026-10-07
 
 28/28 stable `character_id` COMPLETE hoy: inicial2COMPLETE/1PARTIAL/25UNSEEN;

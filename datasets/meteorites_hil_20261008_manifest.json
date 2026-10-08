@@ -1,0 +1,1746 @@
+{
+  "schema_version": 1,
+  "acquired_local_date": "2026-10-08",
+  "baseline": "ce44fe55ef0490e068f972b59e96c1e9a3c58350",
+  "scope": "Meteorites semantic/physical acquisition only; no product flow",
+  "character_id": "rang",
+  "character_provenance": "live DRAKEN四R header + current bot/character_identity.py stable mapping; not stats text",
+  "authorization": "task + beneficiary confirmation; one input per capture; Set 2 Equip/Unequip; restore Set 1",
+  "initial_state": "Set 1 active with 11 original slots; Sets 2 and 3 empty (USER_GT and live views)",
+  "final_state": "three test items individually unequipped; Set 1 active, original 11 slots restored; main tab page 1",
+  "sources": {
+    "native": {
+      "shape": [
+        1220,
+        2712,
+        3
+      ],
+      "capture": "artifacts/meteorites_hil/20261008/00_lobby.png",
+      "seconds": 2.1559999999881256,
+      "sha256": "9732611d007db9401dd89321bed1b18171eb4cdaf3e7bd4a2befe0ff5563f5cd"
+    },
+    "scrcpy": {
+      "shape": [
+        1224,
+        2712,
+        3
+      ],
+      "max_fps": 30,
+      "sampling_pause_seconds": 0.05,
+      "video_bit_rate": 8000000,
+      "clock": "host monotonic mapped from PTS; includes stream/ADB uncertainty; not isolated game internals",
+      "sequence": "per capture lifetime",
+      "cleanup": "ScrcpyFrameSource context manager on successful and guard-aborted runs"
+    }
+  },
+  "summary": {
+    "captures": 38,
+    "inputs": 33,
+    "raw_saved_frames": 527,
+    "curated_samples": 63,
+    "operations": 6,
+    "live_ocr": 0,
+    "live_continuity_checks": 35,
+    "offline_ocr_calls": 18,
+    "effect_median_seconds": 1.0389999999897555,
+    "overlay_median_seconds": 0.180000000007567,
+    "full_hil_wall_median_seconds": 20.609499999991385,
+    "p95": null,
+    "p95_reason": "six heterogeneous operations are insufficient for a useful tail estimate"
+  },
+  "exceptions_omit_entire_preparation": [
+    "berserker",
+    "demon_blade",
+    "kaiserin"
+  ],
+  "burst_breaker_is_exception": false,
+  "ordering_observations": {
+    "initial_groups": {
+      "equipped_any_set": [
+        1,
+        11
+      ],
+      "unequipped_flare": [
+        12,
+        15
+      ],
+      "unequipped_normal_first": 16
+    },
+    "shared_flare_before": 12,
+    "shared_flare_after_equip": 1,
+    "anchor_initial_1_based": 25,
+    "first_normal_after_each_normal_equip": [
+      17,
+      18
+    ],
+    "anchor_targets": [
+      "Evasion +20",
+      "Shield +21",
+      "black normal +21 (type name not acquired)"
+    ],
+    "normal_equips_exercised": 2,
+    "anchor_recomputed_after_each_equip": false,
+    "all_ten_not_exercised": true
+  },
+  "known_no_effect": {
+    "provenance": "USER_GT only",
+    "observed_during_session": false,
+    "workaround": "select another item then return to anchor; not exercised or implemented"
+  },
+  "measurements": [
+    {
+      "selection": "08_flare_reselect",
+      "action": "09_equip_flare",
+      "overlay_ready_frame": "frame_002.png",
+      "overlay_ready_seconds": 0.15700000000651926,
+      "overlay_previous_seconds": 0.0629999999946449,
+      "overlay_ready_ncc": 0.9936251044273376,
+      "effect_frame": "frame_018.png",
+      "effect_seconds": 1.0469999999913853,
+      "effect_previous_seconds": 0.9530000000086147,
+      "effect_to_bag_stable_seconds": 0.0,
+      "bag_stable_frame": "frame_018.png",
+      "bag_stability_definition": "correct slot, reordered Bag, expected page, overlay/Loading absent; excludes CP banner and sprite glare",
+      "adb_command_seconds": 0.09400000001187436,
+      "selection_adb_seconds": 0.07800000000861473,
+      "full_hil_wall_seconds": 20.062999999994645,
+      "active_latency_sum_seconds": 1.2039999999979045,
+      "selection_frames": 13,
+      "action_frames": 29,
+      "live_ocr_calls": 0,
+      "live_continuity_checks": 2,
+      "offline_title_ncc_calls": 12,
+      "provenance": "LIVE_EVIDENCE reviewed offline",
+      "effect_interval_seconds": [
+        0.9530000000086147,
+        1.0469999999913853
+      ],
+      "overlay_interval_seconds": [
+        0.0629999999946449,
+        0.15700000000651926
+      ],
+      "effect_to_stable_resolution_note": "same sampled frame; cannot assert physically simultaneous or zero milliseconds"
+    },
+    {
+      "selection": "11_normal_anchor25_overlay",
+      "action": "12_equip_normal_evasion",
+      "overlay_ready_frame": "frame_003.png",
+      "overlay_ready_seconds": 0.21799999999348074,
+      "overlay_previous_seconds": 0.139999999984866,
+      "overlay_ready_ncc": 0.995110273361206,
+      "effect_frame": "frame_020.png",
+      "effect_seconds": 1.2189999999827705,
+      "effect_previous_seconds": 1.125,
+      "effect_to_bag_stable_seconds": 0.0,
+      "bag_stable_frame": "frame_020.png",
+      "bag_stability_definition": "correct slot, reordered Bag, expected page, overlay/Loading absent; excludes CP banner and sprite glare",
+      "adb_command_seconds": 0.0779999999795109,
+      "selection_adb_seconds": 0.09299999999348074,
+      "full_hil_wall_seconds": 21.155999999988126,
+      "active_latency_sum_seconds": 1.4369999999762513,
+      "selection_frames": 12,
+      "action_frames": 27,
+      "live_ocr_calls": 0,
+      "live_continuity_checks": 2,
+      "offline_title_ncc_calls": 11,
+      "provenance": "LIVE_EVIDENCE reviewed offline",
+      "effect_interval_seconds": [
+        1.125,
+        1.2189999999827705
+      ],
+      "overlay_interval_seconds": [
+        0.139999999984866,
+        0.21799999999348074
+      ],
+      "effect_to_stable_resolution_note": "same sampled frame; cannot assert physically simultaneous or zero milliseconds"
+    },
+    {
+      "selection": "14_normal2_anchor25_overlay",
+      "action": "15_equip_normal_shield",
+      "overlay_ready_frame": "frame_002.png",
+      "overlay_ready_seconds": 0.20300000000861473,
+      "overlay_previous_seconds": 0.14100000000325963,
+      "overlay_ready_ncc": 0.9945133328437805,
+      "effect_frame": "frame_017.png",
+      "effect_seconds": 1.0309999999881256,
+      "effect_previous_seconds": 0.9219999999913853,
+      "effect_to_bag_stable_seconds": 0.0,
+      "bag_stable_frame": "frame_017.png",
+      "bag_stability_definition": "correct slot, reordered Bag, expected page, overlay/Loading absent; excludes CP banner and sprite glare",
+      "adb_command_seconds": 0.0629999999946449,
+      "selection_adb_seconds": 0.11000000001513399,
+      "full_hil_wall_seconds": 23.25,
+      "active_latency_sum_seconds": 1.2339999999967404,
+      "selection_frames": 10,
+      "action_frames": 24,
+      "live_ocr_calls": 0,
+      "live_continuity_checks": 2,
+      "offline_title_ncc_calls": 9,
+      "provenance": "LIVE_EVIDENCE reviewed offline",
+      "effect_interval_seconds": [
+        0.9219999999913853,
+        1.0309999999881256
+      ],
+      "overlay_interval_seconds": [
+        0.14100000000325963,
+        0.20300000000861473
+      ],
+      "effect_to_stable_resolution_note": "same sampled frame; cannot assert physically simultaneous or zero milliseconds"
+    },
+    {
+      "selection": "18_flare_equipped_overlay",
+      "action": "19_unequip_flare",
+      "overlay_ready_frame": "frame_002.png",
+      "overlay_ready_seconds": 0.14100000000325963,
+      "overlay_previous_seconds": 0.125,
+      "overlay_ready_ncc": 0.9926741719245911,
+      "effect_frame": "frame_019.png",
+      "effect_seconds": 1.062999999994645,
+      "effect_previous_seconds": 0.9849999999860302,
+      "effect_to_bag_stable_seconds": 0.0,
+      "bag_stable_frame": "frame_019.png",
+      "bag_stability_definition": "correct slot, reordered Bag, expected page, overlay/Loading absent; excludes CP banner and sprite glare",
+      "adb_command_seconds": 0.0779999999795109,
+      "selection_adb_seconds": 0.07899999999790452,
+      "full_hil_wall_seconds": 19.28200000000652,
+      "active_latency_sum_seconds": 1.2039999999979045,
+      "selection_frames": 10,
+      "action_frames": 26,
+      "live_ocr_calls": 0,
+      "live_continuity_checks": 2,
+      "offline_title_ncc_calls": 9,
+      "provenance": "LIVE_EVIDENCE reviewed offline",
+      "effect_interval_seconds": [
+        0.9849999999860302,
+        1.062999999994645
+      ],
+      "overlay_interval_seconds": [
+        0.125,
+        0.14100000000325963
+      ],
+      "effect_to_stable_resolution_note": "same sampled frame; cannot assert physically simultaneous or zero milliseconds"
+    },
+    {
+      "selection": "20_shield_equipped_overlay",
+      "action": "21_unequip_shield",
+      "overlay_ready_frame": "frame_002.png",
+      "overlay_ready_seconds": 0.15700000000651926,
+      "overlay_previous_seconds": 0.09400000001187436,
+      "overlay_ready_ncc": 0.9932299256324768,
+      "effect_frame": "frame_007.png",
+      "effect_seconds": 0.45300000000861473,
+      "effect_previous_seconds": 0.39000000001396984,
+      "effect_to_bag_stable_seconds": 0.0,
+      "bag_stable_frame": "frame_007.png",
+      "bag_stability_definition": "correct slot, reordered Bag, expected page, overlay/Loading absent; excludes CP banner and sprite glare",
+      "adb_command_seconds": 0.09299999999348074,
+      "selection_adb_seconds": 0.07800000000861473,
+      "full_hil_wall_seconds": 19.110000000015134,
+      "active_latency_sum_seconds": 0.610000000015134,
+      "selection_frames": 11,
+      "action_frames": 26,
+      "live_ocr_calls": 0,
+      "live_continuity_checks": 2,
+      "offline_title_ncc_calls": 10,
+      "provenance": "LIVE_EVIDENCE reviewed offline",
+      "effect_interval_seconds": [
+        0.39000000001396984,
+        0.45300000000861473
+      ],
+      "overlay_interval_seconds": [
+        0.09400000001187436,
+        0.15700000000651926
+      ],
+      "effect_to_stable_resolution_note": "same sampled frame; cannot assert physically simultaneous or zero milliseconds"
+    },
+    {
+      "selection": "22_evasion_equipped_overlay",
+      "action": "23_unequip_evasion",
+      "overlay_ready_frame": "frame_003.png",
+      "overlay_ready_seconds": 0.23399999999674037,
+      "overlay_previous_seconds": 0.17100000000209548,
+      "overlay_ready_ncc": 0.9939359426498413,
+      "effect_frame": "frame_008.png",
+      "effect_seconds": 0.5,
+      "effect_previous_seconds": 0.42199999999138527,
+      "effect_to_bag_stable_seconds": 0.0,
+      "bag_stable_frame": "frame_008.png",
+      "bag_stability_definition": "correct slot, reordered Bag, expected page, overlay/Loading absent; excludes CP banner and sprite glare",
+      "adb_command_seconds": 0.09399999998277053,
+      "selection_adb_seconds": 0.10899999999674037,
+      "full_hil_wall_seconds": 21.687000000005355,
+      "active_latency_sum_seconds": 0.7339999999967404,
+      "selection_frames": 10,
+      "action_frames": 26,
+      "live_ocr_calls": 0,
+      "live_continuity_checks": 2,
+      "offline_title_ncc_calls": 9,
+      "provenance": "LIVE_EVIDENCE reviewed offline",
+      "effect_interval_seconds": [
+        0.42199999999138527,
+        0.5
+      ],
+      "overlay_interval_seconds": [
+        0.17100000000209548,
+        0.23399999999674037
+      ],
+      "effect_to_stable_resolution_note": "same sampled frame; cannot assert physically simultaneous or zero milliseconds"
+    }
+  ],
+  "probes": {
+    "ocr": [
+      "artifacts/meteorites_hil/20261008/ocr_probe.json",
+      "artifacts/meteorites_hil/20261008/ocr_probe_more.json"
+    ],
+    "templates": "artifacts/meteorites_hil/20261008/sprite_template_probe.json",
+    "glare": "artifacts/meteorites_hil/20261008/glare_probe.json",
+    "note": "offline exploratory comparisons; no runtime thresholds or classification promoted"
+  },
+  "captures": [
+    {
+      "id": "01_lobby_direct_entry",
+      "metadata": "artifacts/meteorites_hil/20261008/01_lobby_direct_entry/capture.json",
+      "input_count": 0,
+      "frame_count": 1,
+      "outcome": "guard_abort_before_input",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "444c16fe74ddbdc7479edbe1dd571ecaf19ef69874a700f9dd8fc7af6b4d95d4"
+    },
+    {
+      "id": "02_lobby_direct_entry",
+      "metadata": "artifacts/meteorites_hil/20261008/02_lobby_direct_entry/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "a9042c3b966d89930e400f4b94b6ff31fcca0fe204d2696587ac4a7832d043e2"
+    },
+    {
+      "id": "03_set2_empty",
+      "metadata": "artifacts/meteorites_hil/20261008/03_set2_empty/capture.json",
+      "input_count": 1,
+      "frame_count": 38,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "d2fb6950950f1aff2b4fbe20837bc15da4db59a110ae00eed20d51c4046a4feb"
+    },
+    {
+      "id": "04_flare_p12_overlay",
+      "metadata": "artifacts/meteorites_hil/20261008/04_flare_p12_overlay/capture.json",
+      "input_count": 1,
+      "frame_count": 23,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "f28f2154df7ba93d5872aec0997b0b16700f81816f64543cf800e9115198dfef"
+    },
+    {
+      "id": "05_equip_flare",
+      "metadata": "artifacts/meteorites_hil/20261008/05_equip_flare/capture.json",
+      "input_count": 0,
+      "frame_count": 0,
+      "outcome": "guard_abort_before_input",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "4012e5c6a5254bb537c2b8bc91061db17f478bf9ea1b61d168955692e582b236"
+    },
+    {
+      "id": "06_overlay_fresh",
+      "metadata": "artifacts/meteorites_hil/20261008/06_overlay_fresh/capture.json",
+      "input_count": 0,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "fb65baeb7702158ee31cb7c96729cccdcbe26c865ce49ea4b2befe1ae11c8101"
+    },
+    {
+      "id": "07_flare_reselect",
+      "metadata": "artifacts/meteorites_hil/20261008/07_flare_reselect/capture.json",
+      "input_count": 0,
+      "frame_count": 1,
+      "outcome": "guard_abort_before_input",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "e025b03d0087bfcd0cdb62c168df062c31c94b44919a263888d178d2aa9e3129"
+    },
+    {
+      "id": "08_flare_reselect",
+      "metadata": "artifacts/meteorites_hil/20261008/08_flare_reselect/capture.json",
+      "input_count": 1,
+      "frame_count": 13,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "92bee0725e03e5d981efb9b68165a87f483aa4e7f7c80d932130b1c09ec684d2"
+    },
+    {
+      "id": "09_equip_flare",
+      "metadata": "artifacts/meteorites_hil/20261008/09_equip_flare/capture.json",
+      "input_count": 1,
+      "frame_count": 29,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "3e2faca5a083854f4319163f3c81f498966ece677798b49e567ced1a3adf7542"
+    },
+    {
+      "id": "10_page2_before_normals",
+      "metadata": "artifacts/meteorites_hil/20261008/10_page2_before_normals/capture.json",
+      "input_count": 1,
+      "frame_count": 11,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "e35cdb6d425507c9c558222d8638b8718c65983add536d18bd9d05b7e9e3ca9f"
+    },
+    {
+      "id": "11_normal_anchor25_overlay",
+      "metadata": "artifacts/meteorites_hil/20261008/11_normal_anchor25_overlay/capture.json",
+      "input_count": 1,
+      "frame_count": 12,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "410b33da26cb9cfe30b1bbf8664d61519ae7e7856f0c4caf65942a8a2b58b52e"
+    },
+    {
+      "id": "12_equip_normal_evasion",
+      "metadata": "artifacts/meteorites_hil/20261008/12_equip_normal_evasion/capture.json",
+      "input_count": 1,
+      "frame_count": 27,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "da083c3747d84695c542d895ca6290bb1121ee2dfdca0a9d181f1cb9105966cd"
+    },
+    {
+      "id": "13_page2_anchor_after1",
+      "metadata": "artifacts/meteorites_hil/20261008/13_page2_anchor_after1/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "050590d26d829124ee676be0be514ee634eec0bc8ba449f5c80f2e3071aafbb6"
+    },
+    {
+      "id": "14_normal2_anchor25_overlay",
+      "metadata": "artifacts/meteorites_hil/20261008/14_normal2_anchor25_overlay/capture.json",
+      "input_count": 1,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "847674a204a1185afc869ceb67775f29d02dcbfb36ee79d9bcb3ad8668692b62"
+    },
+    {
+      "id": "15_equip_normal_shield",
+      "metadata": "artifacts/meteorites_hil/20261008/15_equip_normal_shield/capture.json",
+      "input_count": 1,
+      "frame_count": 24,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "3b97692cf27d7bda41c849ad3f5241b9dd4a526d73bd53e0396bf3b27a1d3976"
+    },
+    {
+      "id": "16_page2_anchor_after2",
+      "metadata": "artifacts/meteorites_hil/20261008/16_page2_anchor_after2/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "be57d715aa056df1b8d591b817676f84f165c3eb85bc1b9ad45ee9f75cd241dd"
+    },
+    {
+      "id": "17_return_page1",
+      "metadata": "artifacts/meteorites_hil/20261008/17_return_page1/capture.json",
+      "input_count": 1,
+      "frame_count": 8,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "8e902856ab097ab4b8fa71916bd7f312633788fb315e40ecf12fd04895791240"
+    },
+    {
+      "id": "18_flare_equipped_overlay",
+      "metadata": "artifacts/meteorites_hil/20261008/18_flare_equipped_overlay/capture.json",
+      "input_count": 1,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "87e89f6f8e7e16dd685d1de6179d8131b2f63d435ce129e23f89978dd909d105"
+    },
+    {
+      "id": "19_unequip_flare",
+      "metadata": "artifacts/meteorites_hil/20261008/19_unequip_flare/capture.json",
+      "input_count": 1,
+      "frame_count": 26,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "5191f84998daa3411f313f3988a7f6bea66191092ef85beffbabadd3cd671e04"
+    },
+    {
+      "id": "20_shield_equipped_overlay",
+      "metadata": "artifacts/meteorites_hil/20261008/20_shield_equipped_overlay/capture.json",
+      "input_count": 1,
+      "frame_count": 11,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "00c69c92c17dc7b866192dc48ce11c373fdea1fccccf52a17dda2874d89fd70a"
+    },
+    {
+      "id": "21_unequip_shield",
+      "metadata": "artifacts/meteorites_hil/20261008/21_unequip_shield/capture.json",
+      "input_count": 1,
+      "frame_count": 26,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "44c5e4477c9b4d9f510ff8055960b4938befc451694aad4c2bf3f8f482ecc7fd"
+    },
+    {
+      "id": "22_evasion_equipped_overlay",
+      "metadata": "artifacts/meteorites_hil/20261008/22_evasion_equipped_overlay/capture.json",
+      "input_count": 1,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "c778584bf418a448e17bd0114eafec8982ae5bc27d1f48a7664cc2c63b50b1b6"
+    },
+    {
+      "id": "23_unequip_evasion",
+      "metadata": "artifacts/meteorites_hil/20261008/23_unequip_evasion/capture.json",
+      "input_count": 1,
+      "frame_count": 26,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "042909706b5dc5162b6198a78adc81dcc806817e0747fbdfe1810492d1ab3323"
+    },
+    {
+      "id": "24_set3_empty",
+      "metadata": "artifacts/meteorites_hil/20261008/24_set3_empty/capture.json",
+      "input_count": 1,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "e217e67e551c593778396118eda98839b26287bff67411e187a54a0c310ac2be"
+    },
+    {
+      "id": "25_levelzero_other_set_overlay",
+      "metadata": "artifacts/meteorites_hil/20261008/25_levelzero_other_set_overlay/capture.json",
+      "input_count": 1,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "8327d2ce9fe14d6a15843b4a4b3b5f445e036e7ec5c243de4c0666246f11e03f"
+    },
+    {
+      "id": "26_close_detail_outside",
+      "metadata": "artifacts/meteorites_hil/20261008/26_close_detail_outside/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "57b9e48ca4afc00d2c6a2fa46dc44f903acb7914a859fd7481acc727de47a0d5"
+    },
+    {
+      "id": "27_tab_combine",
+      "metadata": "artifacts/meteorites_hil/20261008/27_tab_combine/capture.json",
+      "input_count": 1,
+      "frame_count": 11,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "a9b641aa7f5a4b74197b3edec165267b1dbc5fac3fce9efdccdff43649da7541"
+    },
+    {
+      "id": "28_tab_evolve",
+      "metadata": "artifacts/meteorites_hil/20261008/28_tab_evolve/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "f1da9ce07b9522adb2be26bd6dfb689537597d8a21231962e4b8ebb6d73c3525"
+    },
+    {
+      "id": "29_tab_reforge",
+      "metadata": "artifacts/meteorites_hil/20261008/29_tab_reforge/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "547654204b865c13153d9a8192df94776e5a4e5a96af7301680bd8e0cbc1b224"
+    },
+    {
+      "id": "30_tab_reroll",
+      "metadata": "artifacts/meteorites_hil/20261008/30_tab_reroll/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "57da36e06ab746b5d5b3ad32b5003d19e2d24ea7c4956cc3bba00ee9138d1935"
+    },
+    {
+      "id": "31_reroll_page2",
+      "metadata": "artifacts/meteorites_hil/20261008/31_reroll_page2/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "1dae65d2bf946c7fccb7f5f9bb61bd8fc1b4176386c3b9e31037358e511d65c8"
+    },
+    {
+      "id": "32_back_lobby_from_reroll",
+      "metadata": "artifacts/meteorites_hil/20261008/32_back_lobby_from_reroll/capture.json",
+      "input_count": 1,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "749302cbfabbeca0bf192983fdc94966687e3c63c2942376b8393ed08357bc78"
+    },
+    {
+      "id": "33_lobby_after_back",
+      "metadata": "artifacts/meteorites_hil/20261008/33_lobby_after_back/capture.json",
+      "input_count": 0,
+      "frame_count": 6,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "4bd02a882f865b15002b844124c7908f861cc76eb7a50734b67cb7cc7e888e69"
+    },
+    {
+      "id": "34_lobby_quick_menu",
+      "metadata": "artifacts/meteorites_hil/20261008/34_lobby_quick_menu/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "3d40eda8cf6835d06edc666a086dc8c06112dafa746a25f0367d20a6421fb787"
+    },
+    {
+      "id": "35_qm_meteorites_reentry",
+      "metadata": "artifacts/meteorites_hil/20261008/35_qm_meteorites_reentry/capture.json",
+      "input_count": 1,
+      "frame_count": 17,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "ca010faf66c0a0e11fc8c100cb3c584a0f27b794d045812b25a3690b3fe2b9b2"
+    },
+    {
+      "id": "36_ethereal_flare_zero",
+      "metadata": "artifacts/meteorites_hil/20261008/36_ethereal_flare_zero/capture.json",
+      "input_count": 1,
+      "frame_count": 10,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "e71b4f87a7cecb057a36277b8d28e797a49beca2703aacd9662237da230288c3"
+    },
+    {
+      "id": "37_close_ethereal_detail",
+      "metadata": "artifacts/meteorites_hil/20261008/37_close_ethereal_detail/capture.json",
+      "input_count": 1,
+      "frame_count": 9,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "c1205140c00b49a0c07e565ac195092fe5a4eca2d9490fbaa67ded97ce0e2ed0"
+    },
+    {
+      "id": "38_restore_set1",
+      "metadata": "artifacts/meteorites_hil/20261008/38_restore_set1/capture.json",
+      "input_count": 1,
+      "frame_count": 46,
+      "outcome": "captured",
+      "note": "sequence is scoped to this source lifetime; monotonic timestamps share the host clock",
+      "metadata_sha256": "b0bba68c73f910eee5232c981e76e326f3292ec15dbec71895e639fcd3267611"
+    }
+  ],
+  "samples": [
+    {
+      "id": "01_lobby_direct_entry_before",
+      "role": "guard_abort_no_input",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/01_lobby_direct_entry/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/01_lobby_direct_entry_before.png",
+      "sha256": "a76003ba13102951b2195d91334422342377827fb7b1d4ef50195a19354e8b4b",
+      "capture_id": "01_lobby_direct_entry",
+      "sequence": 1,
+      "timestamp_monotonic": 149414.81199999998
+    },
+    {
+      "id": "02_lobby_direct_entry_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/02_lobby_direct_entry/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/02_lobby_direct_entry_last.png",
+      "sha256": "53df8100c4a0c6a17e7fda58750fe59b5e2b940f4cbb723f234df04581b8b3b0",
+      "capture_id": "02_lobby_direct_entry",
+      "sequence": 66,
+      "timestamp_monotonic": 149440.75,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 1,
+        "occupied_slots": 11,
+        "overlay": false
+      }
+    },
+    {
+      "id": "03_set2_empty_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/03_set2_empty/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "capture_id": "03_set2_empty",
+      "sequence": 63,
+      "timestamp_monotonic": 149507.281,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "occupied_slots": 0,
+        "overlay": false
+      }
+    },
+    {
+      "id": "04_flare_p12_overlay_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/04_flare_p12_overlay/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/04_flare_p12_overlay_last.png",
+      "sha256": "0f723305bd85fa6fb4af823ac0a4f85b236e628df2485b5b52d7a1561a0ab578",
+      "capture_id": "04_flare_p12_overlay",
+      "sequence": 42,
+      "timestamp_monotonic": 149538.437,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "06_overlay_fresh_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/06_overlay_fresh/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/06_overlay_fresh_last.png",
+      "sha256": "4391f23d64b28bb2c4fb3a2287234da7a8fbd678b6c6652cd2aa494ad7f08956",
+      "capture_id": "06_overlay_fresh",
+      "sequence": 17,
+      "timestamp_monotonic": 149664.156,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "overlay": false
+      }
+    },
+    {
+      "id": "07_flare_reselect_before",
+      "role": "guard_abort_no_input",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/07_flare_reselect/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/07_flare_reselect_before.png",
+      "sha256": "beca620c1bc00b4b593d8c4c05c067de8b90a93b3790428645aa0dd0ac2526cf",
+      "capture_id": "07_flare_reselect",
+      "sequence": 1,
+      "timestamp_monotonic": 149687.593
+    },
+    {
+      "id": "08_flare_reselect_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/08_flare_reselect/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/08_flare_reselect_last.png",
+      "sha256": "ba3f60440d7adc1e7d53aa17a43a3079b16d9fce65a8e1c44c15a5784c0fa161",
+      "capture_id": "08_flare_reselect",
+      "sequence": 24,
+      "timestamp_monotonic": 149718.109,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "09_equip_flare_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/09_equip_flare/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/09_equip_flare_last.png",
+      "sha256": "fa580e18c64cd7cf2ee8957e8181ae38d5222b0d2d3398eb9b818b23bbae4712",
+      "capture_id": "09_equip_flare",
+      "sequence": 50,
+      "timestamp_monotonic": 149738.031,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "individual_effect": true,
+        "occupied_slots": 1,
+        "green_E_count": 1,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "09_equip_flare_before",
+      "role": "selected_overlay_before_action",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/09_equip_flare/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/09_equip_flare_before.png",
+      "sha256": "3dc7fa500f6d5f531700bd13367ae28c504a435ba83df34a3b8f2e3a5e4e016e",
+      "capture_id": "09_equip_flare",
+      "sequence": 1,
+      "timestamp_monotonic": 149736.375
+    },
+    {
+      "id": "09_equip_flare_frame_002",
+      "role": "transition_loading_not_authority",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/09_equip_flare/frame_002.png",
+      "curated": "screencaps/semantic/meteorites/20261008/09_equip_flare_frame_002.png",
+      "sha256": "6d20f8205572079d5e72b468aad8c7e66de75df96e6a44f376d3fa64b3c60414",
+      "capture_id": "09_equip_flare",
+      "sequence": 10,
+      "timestamp_monotonic": 149736.671
+    },
+    {
+      "id": "09_equip_flare_frame_017",
+      "role": "last_sample_before_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/09_equip_flare/frame_017.png",
+      "curated": "screencaps/semantic/meteorites/20261008/09_equip_flare_frame_017.png",
+      "sha256": "cab58dfe8f14b0be19acf2c66a8232c1f42c8e07e4c11b5027db2cb1c3c7bd73",
+      "capture_id": "09_equip_flare",
+      "sequence": 33,
+      "timestamp_monotonic": 149737.437
+    },
+    {
+      "id": "09_equip_flare_frame_018",
+      "role": "individual_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/09_equip_flare/frame_018.png",
+      "curated": "screencaps/semantic/meteorites/20261008/09_equip_flare_frame_018.png",
+      "sha256": "2354662c9a458674b531ecd4c220dd40ae1eaa5857a5d880635e26e55b05722b",
+      "capture_id": "09_equip_flare",
+      "sequence": 35,
+      "timestamp_monotonic": 149737.531,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "individual_effect": true,
+        "occupied_slots": 1,
+        "green_E_count": 1,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "10_page2_before_normals_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/10_page2_before_normals/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/10_page2_before_normals_last.png",
+      "sha256": "aed3d36a4d071953d0914f0228f379255016bc10bab84d6d595a01d41e3dc3c8",
+      "capture_id": "10_page2_before_normals",
+      "sequence": 21,
+      "timestamp_monotonic": 149766.843,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 2,
+        "active_set": 2,
+        "anchor_absolute_1_based": 25
+      }
+    },
+    {
+      "id": "11_normal_anchor25_overlay_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/11_normal_anchor25_overlay/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/11_normal_anchor25_overlay_last.png",
+      "sha256": "8e41ad77053d80cdbdebbb3f0e79f9de71be84b0f4ebc4aad6928a6dd5a747c2",
+      "capture_id": "11_normal_anchor25_overlay",
+      "sequence": 23,
+      "timestamp_monotonic": 149787.437,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "12_equip_normal_evasion_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/12_equip_normal_evasion/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/12_equip_normal_evasion_last.png",
+      "sha256": "82f9f1c0746d897a2e7c00e06efe46c045a21bedb5b670197c1291bf67a69365",
+      "capture_id": "12_equip_normal_evasion",
+      "sequence": 49,
+      "timestamp_monotonic": 149808.265,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "individual_effect": true,
+        "occupied_slots": 2,
+        "green_E_count": 2,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "12_equip_normal_evasion_before",
+      "role": "selected_overlay_before_action",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/12_equip_normal_evasion/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/12_equip_normal_evasion_before.png",
+      "sha256": "151e763a5a61ed8973facc6289882dd525a57a557166fec350c86833bba4918a",
+      "capture_id": "12_equip_normal_evasion",
+      "sequence": 1,
+      "timestamp_monotonic": 149806.64
+    },
+    {
+      "id": "12_equip_normal_evasion_frame_002",
+      "role": "transition_loading_not_authority",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/12_equip_normal_evasion/frame_002.png",
+      "curated": "screencaps/semantic/meteorites/20261008/12_equip_normal_evasion_frame_002.png",
+      "sha256": "5e6c29cf707abf3b3eecc14034bf9e2c465c5e5cae31172336b92fdc08bd21e0",
+      "capture_id": "12_equip_normal_evasion",
+      "sequence": 10,
+      "timestamp_monotonic": 149806.937
+    },
+    {
+      "id": "12_equip_normal_evasion_frame_019",
+      "role": "last_sample_before_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/12_equip_normal_evasion/frame_019.png",
+      "curated": "screencaps/semantic/meteorites/20261008/12_equip_normal_evasion_frame_019.png",
+      "sha256": "3b97870aeb71e397dacfbcc9e2cd510741e8156014430b0068f8d3ecb567e6ac",
+      "capture_id": "12_equip_normal_evasion",
+      "sequence": 39,
+      "timestamp_monotonic": 149807.89
+    },
+    {
+      "id": "12_equip_normal_evasion_frame_020",
+      "role": "individual_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/12_equip_normal_evasion/frame_020.png",
+      "curated": "screencaps/semantic/meteorites/20261008/12_equip_normal_evasion_frame_020.png",
+      "sha256": "884649aa820c0e89ef8e9cdcfb3642dbf87d7a46cbf0bde6556fb334203d77e9",
+      "capture_id": "12_equip_normal_evasion",
+      "sequence": 41,
+      "timestamp_monotonic": 149807.984,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "individual_effect": true,
+        "occupied_slots": 2,
+        "green_E_count": 2,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "13_page2_anchor_after1_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/13_page2_anchor_after1/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/13_page2_anchor_after1_last.png",
+      "sha256": "dd7264f1b9ab0fd64b39a66a93f32d4da52e3771bbcb6df780b4a0cecb795c58",
+      "capture_id": "13_page2_anchor_after1",
+      "sequence": 17,
+      "timestamp_monotonic": 149835.812,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 2,
+        "active_set": 2,
+        "anchor_absolute_1_based": 25
+      }
+    },
+    {
+      "id": "14_normal2_anchor25_overlay_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/14_normal2_anchor25_overlay/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/14_normal2_anchor25_overlay_last.png",
+      "sha256": "0e59f9a3e7ca2e54d8daae038c386aba605393f5cfe5151573d7cc77f4ef1713",
+      "capture_id": "14_normal2_anchor25_overlay",
+      "sequence": 20,
+      "timestamp_monotonic": 149857.125,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "15_equip_normal_shield_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/15_equip_normal_shield/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/15_equip_normal_shield_last.png",
+      "sha256": "3cac1fd7c36dfb565eb163360acc7fea97886064e2fa6282f36a8c549ae96565",
+      "capture_id": "15_equip_normal_shield",
+      "sequence": 42,
+      "timestamp_monotonic": 149880.109,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "individual_effect": true,
+        "occupied_slots": 3,
+        "green_E_count": 3,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "15_equip_normal_shield_before",
+      "role": "selected_overlay_before_action",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/15_equip_normal_shield/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/15_equip_normal_shield_before.png",
+      "sha256": "7b4246ee24b7400df99c57dc3217c3e248efa306332cfe4f3c78dce74144002d",
+      "capture_id": "15_equip_normal_shield",
+      "sequence": 1,
+      "timestamp_monotonic": 149878.734
+    },
+    {
+      "id": "15_equip_normal_shield_frame_002",
+      "role": "transition_loading_not_authority",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/15_equip_normal_shield/frame_002.png",
+      "curated": "screencaps/semantic/meteorites/20261008/15_equip_normal_shield_frame_002.png",
+      "sha256": "8d117f5160733b2c3e6fcc8cffa2decec8e511bf3d65c3c3ccc1d4049abad333",
+      "capture_id": "15_equip_normal_shield",
+      "sequence": 9,
+      "timestamp_monotonic": 149878.968
+    },
+    {
+      "id": "15_equip_normal_shield_frame_016",
+      "role": "last_sample_before_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/15_equip_normal_shield/frame_016.png",
+      "curated": "screencaps/semantic/meteorites/20261008/15_equip_normal_shield_frame_016.png",
+      "sha256": "35a0f979c7ffd0c02a4daa545d8f9ca9c0711ff6dbd9e613ef0db6124d43d1a7",
+      "capture_id": "15_equip_normal_shield",
+      "sequence": 32,
+      "timestamp_monotonic": 149879.734
+    },
+    {
+      "id": "15_equip_normal_shield_frame_017",
+      "role": "individual_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/15_equip_normal_shield/frame_017.png",
+      "curated": "screencaps/semantic/meteorites/20261008/15_equip_normal_shield_frame_017.png",
+      "sha256": "d9461da2638060b5a039d05b45876e2ddec1faaa01a0890d3b99b424abc366b7",
+      "capture_id": "15_equip_normal_shield",
+      "sequence": 34,
+      "timestamp_monotonic": 149879.843,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "individual_effect": true,
+        "occupied_slots": 3,
+        "green_E_count": 3,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "16_page2_anchor_after2_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/16_page2_anchor_after2/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/16_page2_anchor_after2_last.png",
+      "sha256": "0918eb78e705645d72d367e6557991a768e1af9d1077db86d9ea0e8898bf677b",
+      "capture_id": "16_page2_anchor_after2",
+      "sequence": 17,
+      "timestamp_monotonic": 149905.14,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 2,
+        "active_set": 2,
+        "anchor_absolute_1_based": 25
+      }
+    },
+    {
+      "id": "17_return_page1_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/17_return_page1/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/17_return_page1_last.png",
+      "sha256": "142e397b55ffab772102d241203295505ab7fee80ef862e3dacbb8d2184f82f7",
+      "capture_id": "17_return_page1",
+      "sequence": 17,
+      "timestamp_monotonic": 149927.843
+    },
+    {
+      "id": "18_flare_equipped_overlay_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/18_flare_equipped_overlay/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/18_flare_equipped_overlay_last.png",
+      "sha256": "ea39da10989b8b58e0d9bec517b17a6a7ed78a360caac2d3b2e46dffc19731b8",
+      "capture_id": "18_flare_equipped_overlay",
+      "sequence": 19,
+      "timestamp_monotonic": 149948.765,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "lateral_action": "Unequip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "19_unequip_flare_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/19_unequip_flare/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/19_unequip_flare_last.png",
+      "sha256": "bd3ecf004a33cef32e5416864ebb19d483077da42fbd688224541aa6c5de43b5",
+      "capture_id": "19_unequip_flare",
+      "sequence": 45,
+      "timestamp_monotonic": 149967.875,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "individual_effect": true,
+        "occupied_slots": 2,
+        "green_E_count": 2,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "19_unequip_flare_before",
+      "role": "selected_overlay_before_action",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/19_unequip_flare/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/19_unequip_flare_before.png",
+      "sha256": "892e8b7a4c414ab06add59f95fc16a3cb3e764c5e174917d23d4c7bcc3d94e80",
+      "capture_id": "19_unequip_flare",
+      "sequence": 1,
+      "timestamp_monotonic": 149966.437
+    },
+    {
+      "id": "19_unequip_flare_frame_002",
+      "role": "transition_loading_not_authority",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/19_unequip_flare/frame_002.png",
+      "curated": "screencaps/semantic/meteorites/20261008/19_unequip_flare_frame_002.png",
+      "sha256": "d75eb5e9933b7118e5818887a6b415719a021fb71185f7fec2bb23fb7cd98481",
+      "capture_id": "19_unequip_flare",
+      "sequence": 9,
+      "timestamp_monotonic": 149966.671
+    },
+    {
+      "id": "19_unequip_flare_frame_018",
+      "role": "last_sample_before_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/19_unequip_flare/frame_018.png",
+      "curated": "screencaps/semantic/meteorites/20261008/19_unequip_flare_frame_018.png",
+      "sha256": "00b546a9fad9ff04204389fd1a905ab636d20e35989126e3e7d81e0fbbc19b80",
+      "capture_id": "19_unequip_flare",
+      "sequence": 34,
+      "timestamp_monotonic": 149967.5
+    },
+    {
+      "id": "19_unequip_flare_frame_019",
+      "role": "individual_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/19_unequip_flare/frame_019.png",
+      "curated": "screencaps/semantic/meteorites/20261008/19_unequip_flare_frame_019.png",
+      "sha256": "40ca6c9a0e2f1bf484374de0ec8fecf37706c81454dcfa993f19a0838a7bbc31",
+      "capture_id": "19_unequip_flare",
+      "sequence": 36,
+      "timestamp_monotonic": 149967.578,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "individual_effect": true,
+        "occupied_slots": 2,
+        "green_E_count": 2,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "20_shield_equipped_overlay_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/20_shield_equipped_overlay/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/20_shield_equipped_overlay_last.png",
+      "sha256": "ec8bc990844f967c813e2597e74fe680dce2190d665664a36972936b7a75f3e2",
+      "capture_id": "20_shield_equipped_overlay",
+      "sequence": 20,
+      "timestamp_monotonic": 149993.75,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "lateral_action": "Unequip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "21_unequip_shield_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/21_unequip_shield/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/21_unequip_shield_last.png",
+      "sha256": "109d86fd4e8f50c14ef0e6e80e8d5d1c1f2cb3d800ee0ec939b56b4bd45149b0",
+      "capture_id": "21_unequip_shield",
+      "sequence": 44,
+      "timestamp_monotonic": 150013.234,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "individual_effect": true,
+        "occupied_slots": 1,
+        "green_E_count": 1,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "21_unequip_shield_before",
+      "role": "selected_overlay_before_action",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/21_unequip_shield/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/21_unequip_shield_before.png",
+      "sha256": "7acafb95b2bc1a034ac05f0fbbef46736f7f489420980053cf18a3aae43b8b29",
+      "capture_id": "21_unequip_shield",
+      "sequence": 1,
+      "timestamp_monotonic": 150011.781
+    },
+    {
+      "id": "21_unequip_shield_frame_002",
+      "role": "transition_loading_not_authority",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/21_unequip_shield/frame_002.png",
+      "curated": "screencaps/semantic/meteorites/20261008/21_unequip_shield_frame_002.png",
+      "sha256": "6c3be8682ecbe17a219baa2ec38e96e47c74430bdb21c681e56b020bee195f59",
+      "capture_id": "21_unequip_shield",
+      "sequence": 10,
+      "timestamp_monotonic": 150012.078
+    },
+    {
+      "id": "21_unequip_shield_frame_006",
+      "role": "last_sample_before_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/21_unequip_shield/frame_006.png",
+      "curated": "screencaps/semantic/meteorites/20261008/21_unequip_shield_frame_006.png",
+      "sha256": "c9e4cab66937063a6b8cf128325df82d2f98d6ec093a5709c1802e34e93d1a50",
+      "capture_id": "21_unequip_shield",
+      "sequence": 16,
+      "timestamp_monotonic": 150012.265
+    },
+    {
+      "id": "21_unequip_shield_frame_007",
+      "role": "individual_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/21_unequip_shield/frame_007.png",
+      "curated": "screencaps/semantic/meteorites/20261008/21_unequip_shield_frame_007.png",
+      "sha256": "8384275b3ea082dc6a6e0437e9bc3f09bea96c19eea37050fba7c8d83003b324",
+      "capture_id": "21_unequip_shield",
+      "sequence": 17,
+      "timestamp_monotonic": 150012.328,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "individual_effect": true,
+        "occupied_slots": 1,
+        "green_E_count": 1,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "22_evasion_equipped_overlay_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/22_evasion_equipped_overlay/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/22_evasion_equipped_overlay_last.png",
+      "sha256": "75a83ced7a27ec36e8bcef532d76c4eeb4b397ee7a4210633d7aaa228c853818",
+      "capture_id": "22_evasion_equipped_overlay",
+      "sequence": 21,
+      "timestamp_monotonic": 150037.39,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "lateral_action": "Unequip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "23_unequip_evasion_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/23_unequip_evasion/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/23_unequip_evasion_last.png",
+      "sha256": "ba894cfb06624cfb3018e3db67df9d689eaacc845bc9f29206070c7dd33f914b",
+      "capture_id": "23_unequip_evasion",
+      "sequence": 46,
+      "timestamp_monotonic": 150059.437,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "individual_effect": true,
+        "occupied_slots": 0,
+        "green_E_count": 0,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "23_unequip_evasion_before",
+      "role": "selected_overlay_before_action",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/23_unequip_evasion/before.png",
+      "curated": "screencaps/semantic/meteorites/20261008/23_unequip_evasion_before.png",
+      "sha256": "1ea74131b5f252d49b81d8debcb6dabc551a6e26b3b49274c525c1381ec039d7",
+      "capture_id": "23_unequip_evasion",
+      "sequence": 1,
+      "timestamp_monotonic": 150057.953
+    },
+    {
+      "id": "23_unequip_evasion_frame_002",
+      "role": "transition_loading_not_authority",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/23_unequip_evasion/frame_002.png",
+      "curated": "screencaps/semantic/meteorites/20261008/23_unequip_evasion_frame_002.png",
+      "sha256": "911558b38b0f626d8dbf853bd6899b1b10ab13c59688add3139ec0de08f26480",
+      "capture_id": "23_unequip_evasion",
+      "sequence": 10,
+      "timestamp_monotonic": 150058.218
+    },
+    {
+      "id": "23_unequip_evasion_frame_007",
+      "role": "last_sample_before_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/23_unequip_evasion/frame_007.png",
+      "curated": "screencaps/semantic/meteorites/20261008/23_unequip_evasion_frame_007.png",
+      "sha256": "468829e8ad280298dae90b4523a9e61318224fc1debc5d8d60374323338548d8",
+      "capture_id": "23_unequip_evasion",
+      "sequence": 17,
+      "timestamp_monotonic": 150058.484
+    },
+    {
+      "id": "23_unequip_evasion_frame_008",
+      "role": "individual_complete_effect",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/23_unequip_evasion/frame_008.png",
+      "curated": "screencaps/semantic/meteorites/20261008/23_unequip_evasion_frame_008.png",
+      "sha256": "ea5622e8fd99a134229ff552a5f954afba34797d27df3206e990a95d67c95574",
+      "capture_id": "23_unequip_evasion",
+      "sequence": 20,
+      "timestamp_monotonic": 150058.562,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "individual_effect": true,
+        "occupied_slots": 0,
+        "green_E_count": 0,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "24_set3_empty_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/24_set3_empty/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/24_set3_empty_last.png",
+      "sha256": "f700ce5b66cb2c447d8372fb260795fa5d3f792469b0356ef3306007b707d503",
+      "capture_id": "24_set3_empty",
+      "sequence": 22,
+      "timestamp_monotonic": 150098.906,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 3,
+        "occupied_slots": 0,
+        "overlay": false
+      }
+    },
+    {
+      "id": "25_levelzero_other_set_overlay_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/25_levelzero_other_set_overlay/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/25_levelzero_other_set_overlay_last.png",
+      "sha256": "e00c12551b584b8293efb4cf34ba6f04e5a121319a92f88b7c754c3664adb593",
+      "capture_id": "25_levelzero_other_set_overlay",
+      "sequence": 22,
+      "timestamp_monotonic": 150125.546,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Concentration",
+        "tier": "Ethereal+",
+        "level": 0,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": true
+      }
+    },
+    {
+      "id": "26_close_detail_outside_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/26_close_detail_outside/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/26_close_detail_outside_last.png",
+      "sha256": "5677b98cfbc7bc60c42c991783b2b6696e7d9ae1b905e2a2b5dc9a18872f6ad9",
+      "capture_id": "26_close_detail_outside",
+      "sequence": 19,
+      "timestamp_monotonic": 150156.906,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "overlay": false
+      }
+    },
+    {
+      "id": "27_tab_combine_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/27_tab_combine/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/27_tab_combine_last.png",
+      "sha256": "64c615701936de29873efd726340feecd8928cf53dfee9666988ee13345d40ae",
+      "capture_id": "27_tab_combine",
+      "sequence": 22,
+      "timestamp_monotonic": 150181.078,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Combine",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "28_tab_evolve_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/28_tab_evolve/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/28_tab_evolve_last.png",
+      "sha256": "1b43badcd4625ca672bce48199c27ff54878d743bfc1c8a05cb77469d50b96e5",
+      "capture_id": "28_tab_evolve",
+      "sequence": 16,
+      "timestamp_monotonic": 150207.39,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Evolve",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "29_tab_reforge_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/29_tab_reforge/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/29_tab_reforge_last.png",
+      "sha256": "8fd035ead4f8bef756062705e046e4cde77dc81a75b17aa689a57f4446d36ecb",
+      "capture_id": "29_tab_reforge",
+      "sequence": 16,
+      "timestamp_monotonic": 150225.656,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Reforge",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "30_tab_reroll_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/30_tab_reroll/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/30_tab_reroll_last.png",
+      "sha256": "80abea61e9ff31bed84ada8735b520b78e0026a183dd95bf5f7e585857c93136",
+      "capture_id": "30_tab_reroll",
+      "sequence": 16,
+      "timestamp_monotonic": 150247.046,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Reroll",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "31_reroll_page2_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/31_reroll_page2/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/31_reroll_page2_last.png",
+      "sha256": "4366c5a0604ad736b9cc75860feb5726323c9c9d7c04b63696f50b990f967221",
+      "capture_id": "31_reroll_page2",
+      "sequence": 18,
+      "timestamp_monotonic": 150269.656,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Reroll",
+        "page": 2,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "32_back_lobby_from_reroll_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/32_back_lobby_from_reroll/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/32_back_lobby_from_reroll_last.png",
+      "sha256": "97a5786ff299b6e55f79ae544ef67dfb6df8246027997135f619836486d5d054",
+      "capture_id": "32_back_lobby_from_reroll",
+      "sequence": 18,
+      "timestamp_monotonic": 150289.953,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Reroll",
+        "page": 2,
+        "loading": true,
+        "back_effect_not_yet_accredited": true
+      }
+    },
+    {
+      "id": "33_lobby_after_back_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/33_lobby_after_back/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/33_lobby_after_back_last.png",
+      "sha256": "9b16bdc4b598aebd54a0e1a694abac1dea410912eed0f22d8406f7f7935dde45",
+      "capture_id": "33_lobby_after_back",
+      "sequence": 10,
+      "timestamp_monotonic": 150306.875,
+      "semantic": {
+        "base": "Lobby",
+        "meteorites_base_negative": true
+      }
+    },
+    {
+      "id": "34_lobby_quick_menu_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/34_lobby_quick_menu/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/34_lobby_quick_menu_last.png",
+      "sha256": "8d5beb05c58c1075e23b78718a84033dd14c5e5b9e5b04a64a7d8b1cd0440a8b",
+      "capture_id": "34_lobby_quick_menu",
+      "sequence": 19,
+      "timestamp_monotonic": 150325.265,
+      "semantic": {
+        "base": "Lobby",
+        "overlay": "Quick Menu",
+        "meteorites_destination_tile": true
+      }
+    },
+    {
+      "id": "35_qm_meteorites_reentry_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/35_qm_meteorites_reentry/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/35_qm_meteorites_reentry_last.png",
+      "sha256": "b3b2248ea3fb4edb340be765ea0c0cce7499a242dbe9688126b67105a6070520",
+      "capture_id": "35_qm_meteorites_reentry",
+      "sequence": 28,
+      "timestamp_monotonic": 150347.14,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 3,
+        "occupied_slots": 0,
+        "overlay": false
+      }
+    },
+    {
+      "id": "36_ethereal_flare_zero_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/36_ethereal_flare_zero/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/36_ethereal_flare_zero_last.png",
+      "sha256": "c765b7cf4dbbf46173cb57a4d7de6f2a78937787e042ffc66eec35046732f065",
+      "capture_id": "36_ethereal_flare_zero",
+      "sequence": 20,
+      "timestamp_monotonic": 150385.187,
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Flare (ATK)",
+        "tier": "Ethereal",
+        "level": 0,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": true
+      }
+    },
+    {
+      "id": "37_close_ethereal_detail_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/37_close_ethereal_detail/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/37_close_ethereal_detail_last.png",
+      "sha256": "3ad35714065c2bb8bed9709f5ab550ae46a819a5e51316f58aae03d2912b9f3f",
+      "capture_id": "37_close_ethereal_detail",
+      "sequence": 18,
+      "timestamp_monotonic": 150406.015,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "overlay": false
+      }
+    },
+    {
+      "id": "38_restore_set1_last",
+      "role": "context_reviewed",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/38_restore_set1/last.png",
+      "curated": "screencaps/semantic/meteorites/20261008/38_restore_set1_last.png",
+      "sha256": "ca899898bb507973b2aa425d46c507d521494ab2478cd56a36e3264e39c581f1",
+      "capture_id": "38_restore_set1",
+      "sequence": 78,
+      "timestamp_monotonic": 150428.515,
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 1,
+        "occupied_slots": 11,
+        "overlay": false
+      }
+    },
+    {
+      "id": "38_restore_set1_frame_017",
+      "role": "set1_tick_but_loading_empty_slots_negative",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/38_restore_set1/frame_017.png",
+      "curated": "screencaps/semantic/meteorites/20261008/38_restore_set1_frame_017.png",
+      "sha256": "e0bc9c268aeeaf2cda57a00e0df3d6d542d2869aca9f7344485eb96cac2b7838",
+      "capture_id": "38_restore_set1",
+      "sequence": 33,
+      "timestamp_monotonic": 150427.0
+    },
+    {
+      "id": "38_restore_set1_frame_044",
+      "role": "set1_restored_glare_other_phase",
+      "labels_source": "human review of raw live image + explicit USER_GT; never a detector prediction",
+      "raw": "artifacts/meteorites_hil/20261008/38_restore_set1/frame_044.png",
+      "curated": "screencaps/semantic/meteorites/20261008/38_restore_set1_frame_044.png",
+      "sha256": "1a6540ab1a04236ecf930accbb7b8fbfa4bfb72fde4923961143bf8a5aef5777",
+      "capture_id": "38_restore_set1",
+      "sequence": 78,
+      "timestamp_monotonic": 150428.515
+    }
+  ],
+  "gaps": [
+    "one of the twelve distinct type sprites not catalogued; names of most normal glyphs not read",
+    "tier catalog below Ethereal not fully labeled; blue frame is visual-only",
+    "disabled Equip/Unequip states not encountered",
+    "explicit live no-effect and safe retry not encountered",
+    "active set persistence across character rotation is USER_GT only",
+    "general anchor beyond two normals and other inventory configurations remains bounded hypothesis",
+    "other BASE callers of Meteorites Quick Menu not newly exercised"
+  ],
+  "packaging": {
+    "portable_replay": "tests/fixtures/meteorites_phase_a/manifest.json",
+    "runtime_assets": "datasets/meteorites_visual_assets_manifest.json",
+    "full_curated": "external ignored corpus; 63 samples, optional evaluator/assets regeneration require --corpus-root",
+    "raw": "527 raw frames remain excluded",
+    "pytest_dependency": "only committed focal fixtures/assets, never raw"
+  }
+}

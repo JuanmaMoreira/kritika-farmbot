@@ -93,6 +93,7 @@ class KritikaFarmBotGui:
 
         self.routine_var = tk.StringVar()
         self.wb_eligibility_var = tk.StringVar(value=WorldBossEligibilityMode.DAILY_QUEST.value)
+        self.change_meteorites_var = tk.BooleanVar(value=False)
         self.resource_snapshot_var = tk.StringVar(value=ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value)
         self.available_flow_var = tk.StringVar()
         self.purchase_skip_var = tk.BooleanVar(value=False)
@@ -237,8 +238,19 @@ class KritikaFarmBotGui:
         ttk.Label(content, text='BEFORE_CHARACTER_ROTATION captures Lapiz, Dark, Light, Nature and K Coins '
                   'from Rotation’s Quick Menu before Character Select.\n\nChanging this setting updates the routine draft. '
                   'Use Save Routine to persist.', wraplength=340, style='Muted.TLabel').grid(row=3, column=0, sticky='ew', pady=12)
+        self.change_meteorites_check = ttk.Checkbutton(content, text='Change Meteorites',
+            variable=self.change_meteorites_var, command=self._show_meteorites_notice)
+        self.change_meteorites_check.grid(row=4, column=0, sticky='w', pady=(12, 4))
+        self.meteorites_notice = ttk.Label(content, wraplength=340, style='Muted.TLabel',
+            text='Antes de iniciar la sesión, desequipá el set de meteoritos que querés compartir de cualquier personaje que lo tenga equipado. El bot asumirá que el set está disponible y que se cumplen los requisitos del procedimiento.')
+        self.meteorites_notice.grid(row=5, column=0, sticky='ew', pady=8)
+        self.apply_routine_button = ttk.Button(content, text='Apply to routine', command=self._apply_routine_settings)
+        self.apply_routine_button.grid(row=6, column=0, sticky='ew', pady=6)
+        ttk.Label(content, text='Apply → routine draft. Save Routine → disk.',
+            style='Muted.TLabel').grid(row=7, column=0, sticky='ew')
+        self._show_meteorites_notice()
         self.routine_scroll.bind_content()
-        self.routine_controls.append(self.resource_select)
+        self.routine_controls.extend((self.resource_select, self.change_meteorites_check, self.apply_routine_button))
         self._build_relief_settings(settings)
         self.settings_tabs = settings
 
@@ -380,6 +392,9 @@ class KritikaFarmBotGui:
     def _refresh_routines(self):
         if self.selection.draft and hasattr(self,'resource_snapshot_var'):
             self.resource_snapshot_var.set(self.selection.draft.resource_snapshot_mode)
+            if hasattr(self, 'change_meteorites_var'):
+                self.change_meteorites_var.set(self.selection.draft.change_meteorites)
+                self._show_meteorites_notice()
             if hasattr(self, "relief_scroll"):
                 self._load_relief_settings()
         self.routine_select.configure(values=tuple(r.name for r in self.selection.routines))
@@ -634,6 +649,16 @@ class KritikaFarmBotGui:
         answer = AppDialog(self.root, self.theme, title, prompt,
                            choices=('Yes', 'No', 'Cancel') if cancel else ('Yes', 'No')).result
         return None if answer is None else answer == 'Yes'
+
+    def _show_meteorites_notice(self):
+        if hasattr(self, 'meteorites_notice'):
+            if self.change_meteorites_var.get(): self.meteorites_notice.grid()
+            else: self.meteorites_notice.grid_remove()
+
+    def _apply_routine_settings(self):
+        if self.selection.draft:
+            self.selection.set_change_meteorites(self.change_meteorites_var.get())
+            self.result_var.set('Routine settings applied; Save Routine to persist')
 
     def _set_snapshot_mode(self, _event=None):
         if self.selection.draft:

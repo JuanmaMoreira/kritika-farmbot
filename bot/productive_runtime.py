@@ -81,7 +81,8 @@ from bot.battle_mode_zone import BattleModeZone
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-_CLEAN_CONTEXTS = DEFAULT_QUICK_MENU_POLICY.accessible_from
+from bot.meteorites_semantics import SCREEN_METEORITES
+_CLEAN_CONTEXTS = DEFAULT_QUICK_MENU_POLICY.accessible_from | {SCREEN_METEORITES}
 _CLEAN_CONTEXT_TIMEOUT = 5.0
 _CLEAN_CONTEXT_STABLE_FOR = 0.25
 
@@ -91,9 +92,25 @@ class CancellationToken:
 
     def __init__(self) -> None:
         self._requested = threading.Event()
+        self._safe_stop = threading.Event()
+        self._hard_stop = threading.Event()
 
     def request(self) -> None:
+        self._hard_stop.set()
         self._requested.set()
+
+    def request_safe_stop(self) -> None:
+        if self._safe_stop.is_set():
+            self.request()  # a second stop cancels the bounded cleanup too
+        else:
+            self._safe_stop.set()
+            self._requested.set()
+
+    def is_safe_stop_requested(self) -> bool:
+        return self._safe_stop.is_set() and not self._hard_stop.is_set()
+
+    def is_hard_requested(self) -> bool:
+        return self._hard_stop.is_set()
 
     def is_requested(self) -> bool:
         return self._requested.is_set()
@@ -107,6 +124,7 @@ class FlowsOnceResult:
     flow_results: tuple[FlowResult, ...]
     error: str | None = None
     failure: FailureCause | None = None
+    session_result: SessionResult | None = field(default=None, kw_only=True)
 
     @property
     def flows_completed(self) -> int:
@@ -137,6 +155,7 @@ class ProductiveRuntime:
     routine_continue_on_unavailable: bool = field(default=True, kw_only=True)
     character_store: object | None = field(default=None, kw_only=True, repr=False)
     resource_snapshot_mode: str = field(default=ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value, kw_only=True)
+    change_meteorites: bool = field(default=False, kw_only=True)
     _identity_snapshot: RuntimeSnapshot | None = field(default=None, init=False, repr=False)
     _identity_active: bool = field(default=False, init=False, repr=False)
 
@@ -344,6 +363,8 @@ class ProductiveRuntime:
             previous_reliefs = self.reliefs
             self.reliefs = ReliefCoordinator(ReliefPolicy.from_dict(routine.relief_policy))
             previous = self.resource_snapshot_mode
+            previous_meteorites = self.change_meteorites
+            self.change_meteorites = routine.change_meteorites
             self.resource_snapshot_mode = routine.resource_snapshot_mode
             try:
                 if character_count is None:
@@ -352,6 +373,7 @@ class ProductiveRuntime:
                                         routine_steps=steps, routine_positions=positions)
             finally:
                 self.resource_snapshot_mode = previous
+                self.change_meteorites = previous_meteorites
                 self.reliefs = previous_reliefs
 
     def _step_runtime(self, step):
@@ -376,7 +398,7 @@ class ProductiveRuntime:
             flows = tuple(r for c in result.character_results for r in c.flow_results)
             if flows and flows[-1].status is FlowStatus.RESOURCE_BOARD_PENDING:
                 status = FlowStatus.RESOURCE_BOARD_PENDING
-            return FlowsOnceResult(status, flows, result.failure_cause, result.failure)
+            return FlowsOnceResult(status, flows, result.failure_cause, result.failure, session_result=result)
         except RuntimeWaitCancelled:
             return FlowsOnceResult(FlowStatus.CANCELLED, ())
         except Exception as error:
@@ -438,6 +460,7 @@ class ProductiveRuntime:
             rotation_strategy=rotation,
             character_count=character_count,
             character_data_only=character_data_only,
+            change_meteorites=self.change_meteorites and not character_data_only,
             step_positions=tuple(routine_positions),
             controlled_unavailable=tuple(
                 definition.controlled_unavailable_events if step.continue_on_unavailable else frozenset()
@@ -468,6 +491,8 @@ class ProductiveRuntime:
                 events=self.events,
                 cancel_requested=self.cancel_requested,
                 character_context_factory=character_context_factory,
+                meteorites_scope_factory=self.build_meteorites_character_scope if plan.change_meteorites else None,
+                safe_stop_requested=getattr(self.cancel_token, "is_safe_stop_requested", lambda: False),
             ).run()
             if character_data_only:
                 failures = failed_snapshots
@@ -517,6 +542,55 @@ class ProductiveRuntime:
             observer,
             cancel_requested=self.cancel_requested,
         )
+
+    def build_meteorites_runtime(self):
+        """Phase A individual capability used by the character preparation scope."""
+        from bot.meteorites_reader import MeteoritesReader
+        from bot.meteorites_runtime import MeteoritesRuntime
+        return MeteoritesRuntime(self.observer.source,
+            MeteoritesReader(self.ocr_engine or RapidOcrEngine()), self.actions,
+            cancel_requested=self.cancel_requested, events=self.events)
+
+    def build_meteorites_character_scope(self):
+        from types import SimpleNamespace
+        from time import perf_counter
+        from bot.meteorites_session import MeteoritesCharacterScope
+        from bot.shared_meteorites import SharedMeteoritesPreparation
+        procedure = SharedMeteoritesPreparation(self.build_meteorites_runtime())
+
+        def entry(runtime):
+            # Read-only fresh gate. UNKNOWN/overlays never authorize navigation.
+            initial = runtime.observer.observe()
+            if not _is_clean_known_context(initial): return False
+            if initial.state.base_context != SCREEN_METEORITES and not runtime._navigate_to_lobby():
+                return False
+            return procedure.rt.enter(runtime.observer, runtime.build_verified_transition()) is not None
+
+        def setup():
+            started = perf_counter()
+            # Session already acquired identity from a verified Lobby entry.
+            result = procedure.setup(self.observer, self.build_verified_transition())
+            scope.navigation_seconds += max(0., perf_counter()-started-result.metrics.get('setup_seconds', 0.))
+            return result
+
+        def cleanup(*, safe_stop=False):
+            # Stop Safely allows only this complete credited B1 cleanup. A hard
+            # cancellation (or second Stop) remains active at every input seam.
+            runtime = self
+            if safe_stop:
+                runtime = replace(self, cancel_token=SimpleNamespace(is_requested=self.cancel_token.is_hard_requested))
+            original_cancel = procedure.rt.cancel_requested
+            procedure.rt.cancel_requested = runtime.cancel_requested
+            started = perf_counter()
+            try:
+                if not entry(runtime):
+                    return procedure._stop('cleanup_entry_unverified')
+                scope.navigation_seconds += perf_counter()-started
+                return procedure.cleanup()
+            finally:
+                procedure.rt.cancel_requested = original_cancel
+        scope = MeteoritesCharacterScope(procedure, setup=setup, cleanup=cleanup, events=self.events)
+        return scope
 
     def _current_clean_context(self) -> str | None:
         context, _ = self._clean_context_entry()
@@ -635,6 +709,13 @@ class ProductiveRuntime:
         initial = self.observer.observe()
         if _is_clean_base(initial, SCREEN_LOBBY):
             return True
+        if _is_clean_base(initial, SCREEN_METEORITES):
+            from bot.meteorites_actions import ExitMeteorites
+            result = self.build_verified_transition().execute('meteorites.exit_to_lobby', ExitMeteorites(), initial,
+                precondition=lambda s:not self.cancel_requested() and _is_clean_base(s, SCREEN_METEORITES),
+                expected=lambda s:_is_clean_base(s, SCREEN_LOBBY),
+                policy=VerifiedTransitionPolicy(normal_timeout=6, grace_timeout=2, max_attempts=1))
+            return result.succeeded and not self.cancel_requested()
         if _is_clean_base(initial, SCREEN_BATTLE_MODE_SELECT):
             return self._navigation_succeeded(BattleModeZone(self.observer, self.build_verified_transition(),
                                   cancel_requested=self.cancel_requested).leave())

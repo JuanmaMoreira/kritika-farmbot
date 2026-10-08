@@ -121,7 +121,7 @@ class GuiRuntimeController:
                 return False
             self._status = GuiRunStatus.STOPPING
             token = self._token
-        token.request()
+        token.request_safe_stop()
         return True
 
     def drain(self, *, limit: int = 200) -> tuple[GuiWorkerMessage, ...]:
@@ -208,9 +208,10 @@ class GuiRuntimeController:
                         business_event_count=len(raw.events),
                         error=raw.failure_cause,
                     )
-            if request.mode is GuiRunMode.SESSION:
+            report_source = raw if request.mode is GuiRunMode.SESSION else getattr(raw, "session_result", None)
+            if report_source is not None:
                 result = replace(result, report=build_session_report(
-                    raw,
+                    report_source,
                     expected_character_count=request.character_count,
                     flow_names=tuple(item.id for item in definitions),
                     flow_labels={item.id: item.display_name for item in definitions},

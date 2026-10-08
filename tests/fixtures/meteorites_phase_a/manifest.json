@@ -1,0 +1,445 @@
+{
+  "authority": "curated LIVE_EVIDENCE and USER_GT; these are not raw acquisition",
+  "entries": [
+    {
+      "id": "02_lobby_direct_entry_last",
+      "source": "screencaps/semantic/meteorites/20261008/02_lobby_direct_entry_last.png",
+      "source_sha256": "53df8100c4a0c6a17e7fda58750fe59b5e2b940f4cbb723f234df04581b8b3b0",
+      "sha256": "1031bca64841065ebc49dc3ec419b085c0871452431148508a745130d4dfb877",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 1,
+        "occupied_slots": 11,
+        "overlay": false
+      }
+    },
+    {
+      "id": "03_set2_empty_last",
+      "source": "screencaps/semantic/meteorites/20261008/03_set2_empty_last.png",
+      "source_sha256": "b4cfbfffb07f7f5c7802af50797c23a2f7cb88ea28885973be4447c600d63649",
+      "sha256": "e65bcd6831c5efa4855c6122f2a1945c7522449a883efee94e40ae7c8a080022",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "occupied_slots": 0,
+        "overlay": false
+      }
+    },
+    {
+      "id": "07_flare_reselect_before",
+      "source": "screencaps/semantic/meteorites/20261008/07_flare_reselect_before.png",
+      "source_sha256": "beca620c1bc00b4b593d8c4c05c067de8b90a93b3790428645aa0dd0ac2526cf",
+      "sha256": "a402cc70981b41f02c794fde3f1bd99374625c8773fad3091a408c747d731c4e",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {}
+    },
+    {
+      "id": "08_flare_reselect_last",
+      "source": "screencaps/semantic/meteorites/20261008/08_flare_reselect_last.png",
+      "source_sha256": "ba3f60440d7adc1e7d53aa17a43a3079b16d9fce65a8e1c44c15a5784c0fa161",
+      "sha256": "5b35ab9a03967e8917e41fdd2f06533dfb88395feba4a8070daddd99d59d3eee",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "09_equip_flare_frame_002",
+      "source": "screencaps/semantic/meteorites/20261008/09_equip_flare_frame_002.png",
+      "source_sha256": "6d20f8205572079d5e72b468aad8c7e66de75df96e6a44f376d3fa64b3c60414",
+      "sha256": "3f7df075ce293fb2efaf09b92444bd9958cff09625161c4c0a2d9aa2e9c89466",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {}
+    },
+    {
+      "id": "09_equip_flare_frame_017",
+      "source": "screencaps/semantic/meteorites/20261008/09_equip_flare_frame_017.png",
+      "source_sha256": "cab58dfe8f14b0be19acf2c66a8232c1f42c8e07e4c11b5027db2cb1c3c7bd73",
+      "sha256": "6f611775a8212fc33705e970de4108c8326db8373aab82477ba1c9789e230a9a",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {}
+    },
+    {
+      "id": "09_equip_flare_frame_018",
+      "source": "screencaps/semantic/meteorites/20261008/09_equip_flare_frame_018.png",
+      "source_sha256": "2354662c9a458674b531ecd4c220dd40ae1eaa5857a5d880635e26e55b05722b",
+      "sha256": "7afa7737166eae6ddbdc345aa5a5d869ea568e5f0d8a6f2bd432155c2db0463a",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "individual_effect": true,
+        "occupied_slots": 1,
+        "green_E_count": 1,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "10_page2_before_normals_last",
+      "source": "screencaps/semantic/meteorites/20261008/10_page2_before_normals_last.png",
+      "source_sha256": "aed3d36a4d071953d0914f0228f379255016bc10bab84d6d595a01d41e3dc3c8",
+      "sha256": "08468cce1725eaa489fd22b15f43be5142eef24ce37ec5a971271a8440edf108",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 2,
+        "active_set": 2,
+        "anchor_absolute_1_based": 25
+      }
+    },
+    {
+      "id": "11_normal_anchor25_overlay_last",
+      "source": "screencaps/semantic/meteorites/20261008/11_normal_anchor25_overlay_last.png",
+      "source_sha256": "8e41ad77053d80cdbdebbb3f0e79f9de71be84b0f4ebc4aad6928a6dd5a747c2",
+      "sha256": "1b7b05f56ca5e26b024e78a1071ea6a1e0496045a0c1d341a5ea6ae22850c2da",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "12_equip_normal_evasion_last",
+      "source": "screencaps/semantic/meteorites/20261008/12_equip_normal_evasion_last.png",
+      "source_sha256": "82f9f1c0746d897a2e7c00e06efe46c045a21bedb5b670197c1291bf67a69365",
+      "sha256": "2aab3b1f232fd9b97a35226799444f092af6af6d0e0c6d49dcd05bc5baacfa90",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "individual_effect": true,
+        "occupied_slots": 2,
+        "green_E_count": 2,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "13_page2_anchor_after1_last",
+      "source": "screencaps/semantic/meteorites/20261008/13_page2_anchor_after1_last.png",
+      "source_sha256": "dd7264f1b9ab0fd64b39a66a93f32d4da52e3771bbcb6df780b4a0cecb795c58",
+      "sha256": "dbd13699c617c687607af432f2259cd8abfbf60ffdf9e9e1b324e068abcb459a",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 2,
+        "active_set": 2,
+        "anchor_absolute_1_based": 25
+      }
+    },
+    {
+      "id": "14_normal2_anchor25_overlay_last",
+      "source": "screencaps/semantic/meteorites/20261008/14_normal2_anchor25_overlay_last.png",
+      "source_sha256": "0e59f9a3e7ca2e54d8daae038c386aba605393f5cfe5151573d7cc77f4ef1713",
+      "sha256": "e26956924b5b73b5cabf1a299eb75287fce54c810aaf0f62e51d5cad31e0ddcb",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "15_equip_normal_shield_last",
+      "source": "screencaps/semantic/meteorites/20261008/15_equip_normal_shield_last.png",
+      "source_sha256": "3cac1fd7c36dfb565eb163360acc7fea97886064e2fa6282f36a8c549ae96565",
+      "sha256": "b32daeaffcf11b53d91bf2ebff68820ba3700389b1067c742715bf258c7a3f89",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Equip",
+        "item_type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "individual_effect": true,
+        "occupied_slots": 3,
+        "green_E_count": 3,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "18_flare_equipped_overlay_last",
+      "source": "screencaps/semantic/meteorites/20261008/18_flare_equipped_overlay_last.png",
+      "source_sha256": "ea39da10989b8b58e0d9bec517b17a6a7ed78a360caac2d3b2e46dffc19731b8",
+      "sha256": "0c3eac8e1130d874d78c7c3efb594ab60cb7300db9745b8a325f332ff6239859",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "lateral_action": "Unequip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "19_unequip_flare_last",
+      "source": "screencaps/semantic/meteorites/20261008/19_unequip_flare_last.png",
+      "source_sha256": "bd3ecf004a33cef32e5416864ebb19d483077da42fbd688224541aa6c5de43b5",
+      "sha256": "b29a187a391ea02acbc55f25d79419b92e9ca7fd6c80cfd3bc5f3ad8255fd310",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Flare (ATK)",
+        "tier": "Ethereal+",
+        "level": 30,
+        "individual_effect": true,
+        "occupied_slots": 2,
+        "green_E_count": 2,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "20_shield_equipped_overlay_last",
+      "source": "screencaps/semantic/meteorites/20261008/20_shield_equipped_overlay_last.png",
+      "source_sha256": "ec8bc990844f967c813e2597e74fe680dce2190d665664a36972936b7a75f3e2",
+      "sha256": "3b265561efc4cb35fbc1808dee62b1d4cbe058291807792fc5915fbf5419b34b",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "lateral_action": "Unequip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "21_unequip_shield_last",
+      "source": "screencaps/semantic/meteorites/20261008/21_unequip_shield_last.png",
+      "source_sha256": "109d86fd4e8f50c14ef0e6e80e8d5d1c1f2cb3d800ee0ec939b56b4bd45149b0",
+      "sha256": "0444d5473a6c68b763b81cf3d436723b46a35b14b8adc808ce3ca9fe54d89ffc",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Shield",
+        "tier": "Ethereal+",
+        "level": 21,
+        "individual_effect": true,
+        "occupied_slots": 1,
+        "green_E_count": 1,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "22_evasion_equipped_overlay_last",
+      "source": "screencaps/semantic/meteorites/20261008/22_evasion_equipped_overlay_last.png",
+      "source_sha256": "75a83ced7a27ec36e8bcef532d76c4eeb4b397ee7a4210633d7aaa228c853818",
+      "sha256": "ca9175871928dbf1fc7bf0ef1154321c298b32ed25bc847148796f6375e5400f",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "lateral_action": "Unequip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": false
+      }
+    },
+    {
+      "id": "23_unequip_evasion_last",
+      "source": "screencaps/semantic/meteorites/20261008/23_unequip_evasion_last.png",
+      "source_sha256": "ba894cfb06624cfb3018e3db67df9d689eaacc845bc9f29206070c7dd33f914b",
+      "sha256": "0b2b60a6a06c60531dd6737313672266380be74efab60fc95c5bd757634f063c",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 2,
+        "operation": "Unequip",
+        "item_type": "Evasion",
+        "tier": "Ethereal+",
+        "level": 20,
+        "individual_effect": true,
+        "occupied_slots": 0,
+        "green_E_count": 0,
+        "loading": false,
+        "overlay": false
+      }
+    },
+    {
+      "id": "24_set3_empty_last",
+      "source": "screencaps/semantic/meteorites/20261008/24_set3_empty_last.png",
+      "source_sha256": "f700ce5b66cb2c447d8372fb260795fa5d3f792469b0356ef3306007b707d503",
+      "sha256": "27daab3255e8c04ca1832971566794930b52eedf17758b84aa9ce04211eed3bb",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 3,
+        "occupied_slots": 0,
+        "overlay": false
+      }
+    },
+    {
+      "id": "25_levelzero_other_set_overlay_last",
+      "source": "screencaps/semantic/meteorites/20261008/25_levelzero_other_set_overlay_last.png",
+      "source_sha256": "e00c12551b584b8293efb4cf34ba6f04e5a121319a92f88b7c754c3664adb593",
+      "sha256": "5b5df0553dbbb37408db3b75c27ad0b419d820fde9d77e8de68e55eafff5b0b2",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Concentration",
+        "tier": "Ethereal+",
+        "level": 0,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": true
+      }
+    },
+    {
+      "id": "27_tab_combine_last",
+      "source": "screencaps/semantic/meteorites/20261008/27_tab_combine_last.png",
+      "source_sha256": "64c615701936de29873efd726340feecd8928cf53dfee9666988ee13345d40ae",
+      "sha256": "2bc6ed08504cbc4f6cf6b1f7caa87443077d8135d51d3dae43724063e5b4d6ed",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Combine",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "28_tab_evolve_last",
+      "source": "screencaps/semantic/meteorites/20261008/28_tab_evolve_last.png",
+      "source_sha256": "1b43badcd4625ca672bce48199c27ff54878d743bfc1c8a05cb77469d50b96e5",
+      "sha256": "0df216006b2083b59a3095f0fafd60a468829f0437e9cc8220a7e8c07b34bb5e",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Evolve",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "29_tab_reforge_last",
+      "source": "screencaps/semantic/meteorites/20261008/29_tab_reforge_last.png",
+      "source_sha256": "8fd035ead4f8bef756062705e046e4cde77dc81a75b17aa689a57f4446d36ecb",
+      "sha256": "36b1d72bad87fec6058e00065d1c8c132f86c6c22d38773df3b6d0c0d94e885e",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Reforge",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "30_tab_reroll_last",
+      "source": "screencaps/semantic/meteorites/20261008/30_tab_reroll_last.png",
+      "source_sha256": "80abea61e9ff31bed84ada8735b520b78e0026a183dd95bf5f7e585857c93136",
+      "sha256": "0c0af2903729b5082cc09d7ea21969a1116831ee891436a08e9b50e7854ae2f5",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Reroll",
+        "page": 1,
+        "main_tab_negative": true
+      }
+    },
+    {
+      "id": "36_ethereal_flare_zero_last",
+      "source": "screencaps/semantic/meteorites/20261008/36_ethereal_flare_zero_last.png",
+      "source_sha256": "c765b7cf4dbbf46173cb57a4d7de6f2a78937787e042ffc66eec35046732f065",
+      "sha256": "db21f1514105c26c78f0e1c635beb9a7bf21994ba0c4f493df6d145cb3802257",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "overlay": true,
+        "type": "Flare (ATK)",
+        "tier": "Ethereal",
+        "level": 0,
+        "lateral_action": "Equip",
+        "lower_lock_button_is_not_action": true,
+        "equipped_in_other_set": true
+      }
+    },
+    {
+      "id": "38_restore_set1_last",
+      "source": "screencaps/semantic/meteorites/20261008/38_restore_set1_last.png",
+      "source_sha256": "ca899898bb507973b2aa425d46c507d521494ab2478cd56a36e3264e39c581f1",
+      "sha256": "d17225dddf650430b7b937c2496bc85a140160648ec5edee5c41022be7bcd327",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {
+        "base": "Meteorites",
+        "tab": "Meteorites",
+        "page": 1,
+        "active_set": 1,
+        "occupied_slots": 11,
+        "overlay": false
+      }
+    },
+    {
+      "id": "38_restore_set1_frame_017",
+      "source": "screencaps/semantic/meteorites/20261008/38_restore_set1_frame_017.png",
+      "source_sha256": "e0bc9c268aeeaf2cda57a00e0df3d6d542d2869aca9f7344485eb96cac2b7838",
+      "sha256": "8c8c05c32afa56443e6ee145eaca117ebbe6758d3c117e34d66c4759ca1d28ed",
+      "transform": "resize 1356x612; preserve lossless union of focal reader ROIs with search padding; mask remaining pixels black",
+      "semantic": {}
+    }
+  ]
+}

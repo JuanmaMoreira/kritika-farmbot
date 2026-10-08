@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "baseline": "ce44fe55ef0490e068f972b59e96c1e9a3c58350",
+  "selection": [
+    "tests/test_meteorites_session.py",
+    "tests/test_gui_cleanup.py",
+    "tests/test_session.py",
+    "tests/test_session_report.py",
+    "tests/test_productive_runtime.py",
+    "tests/test_routines.py",
+    "tests/test_gui_controller.py",
+    "tests/test_gui_model.py",
+    "tests/test_rotation.py",
+    "tests/test_preconditions.py",
+    "tests/test_quick_menu.py",
+    "tests/test_quick_menu_flow_handoff.py",
+    "tests/test_shared_meteorites.py",
+    "tests/test_meteorites_phase_a.py",
+    "tests/test_lobby_return_scope.py",
+    "tests/test_character_identity.py",
+    "tests/test_precondition_snapshot_handoff.py",
+    "tests/test_productive_quick_menu_lobby.py",
+    "tests/test_productive_quick_menu_guild.py",
+    "tests/test_resolver.py",
+    "tests/test_state.py",
+    "tests/test_perception_engine.py",
+    "tests/test_scoped_perception_infra.py",
+    "tests/test_catalog.py",
+    "tests/test_equipment_sell_runtime.py",
+    "tests/test_equipment_sell_capability.py",
+    "tests/test_equipment_sell_origin.py"
+  ],
+  "audited_unfiltered": {
+    "passed": 1254,
+    "failed": 41,
+    "skipped": 4,
+    "deselected": 0
+  },
+  "worktree": {
+    "passed": 1254,
+    "failed": 0,
+    "skipped": 4,
+    "deselected": 41,
+    "seconds": 27.44
+  },
+  "index_portable": {
+    "passed": 1254,
+    "failed": 0,
+    "skipped": 4,
+    "deselected": 41,
+    "seconds": 53.97,
+    "source": "git archive of isolated staged tree; no ignored files/configs/DB; external Python dependency runtime only"
+  },
+  "excluded": [
+    {
+      "node": "tests/test_rotation.py::test_live_preselected_predecessor_succeeds_with_real_detectors",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_rotation.py::test_live_frame_detector_drives_predecessor_tap",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[friends_to_lobby-artifacts/daily-semantics/friends-close-lobby/20260831T153734_625140Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[friends_to_lobby-artifacts/daily-mail-live/lobby-after-quests-close-human-confirmed/20260829T235621_886849Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[friends_to_lobby-artifacts/daily-mail-live/lobby-after-mailbox-close-human-confirmed/20260830T000428_614592Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[friends_to_lobby-artifacts/world-boss-live/battle-mode-back-to-lobby-after/20260827T231741_947736Z_04.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[friends_to_lobby-artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[mailbox_to_lobby-artifacts/daily-semantics/friends-close-lobby/20260831T153734_625140Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[mailbox_to_lobby-artifacts/daily-mail-live/lobby-after-quests-close-human-confirmed/20260829T235621_886849Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[mailbox_to_lobby-artifacts/daily-mail-live/lobby-after-mailbox-close-human-confirmed/20260830T000428_614592Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[mailbox_to_lobby-artifacts/world-boss-live/battle-mode-back-to-lobby-after/20260827T231741_947736Z_04.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[mailbox_to_lobby-artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[daily_to_lobby-artifacts/daily-semantics/friends-close-lobby/20260831T153734_625140Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[daily_to_lobby-artifacts/daily-mail-live/lobby-after-quests-close-human-confirmed/20260829T235621_886849Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[daily_to_lobby-artifacts/daily-mail-live/lobby-after-mailbox-close-human-confirmed/20260830T000428_614592Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[daily_to_lobby-artifacts/world-boss-live/battle-mode-back-to-lobby-after/20260827T231741_947736Z_04.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[daily_to_lobby-artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[black_market_to_lobby-artifacts/daily-semantics/friends-close-lobby/20260831T153734_625140Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[black_market_to_lobby-artifacts/daily-mail-live/lobby-after-quests-close-human-confirmed/20260829T235621_886849Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[black_market_to_lobby-artifacts/daily-mail-live/lobby-after-mailbox-close-human-confirmed/20260830T000428_614592Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[black_market_to_lobby-artifacts/world-boss-live/battle-mode-back-to-lobby-after/20260827T231741_947736Z_04.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[black_market_to_lobby-artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[pets_to_lobby-artifacts/daily-semantics/friends-close-lobby/20260831T153734_625140Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[pets_to_lobby-artifacts/daily-mail-live/lobby-after-quests-close-human-confirmed/20260829T235621_886849Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[pets_to_lobby-artifacts/daily-mail-live/lobby-after-mailbox-close-human-confirmed/20260830T000428_614592Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[pets_to_lobby-artifacts/world-boss-live/battle-mode-back-to-lobby-after/20260827T231741_947736Z_04.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[pets_to_lobby-artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[quick_menu_to_lobby-artifacts/daily-semantics/friends-close-lobby/20260831T153734_625140Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[quick_menu_to_lobby-artifacts/daily-mail-live/lobby-after-quests-close-human-confirmed/20260829T235621_886849Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[quick_menu_to_lobby-artifacts/daily-mail-live/lobby-after-mailbox-close-human-confirmed/20260830T000428_614592Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[quick_menu_to_lobby-artifacts/world-boss-live/battle-mode-back-to-lobby-after/20260827T231741_947736Z_04.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[quick_menu_to_lobby-artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[rotation_to_lobby-artifacts/daily-semantics/friends-close-lobby/20260831T153734_625140Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[rotation_to_lobby-artifacts/daily-mail-live/lobby-after-quests-close-human-confirmed/20260829T235621_886849Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[rotation_to_lobby-artifacts/daily-mail-live/lobby-after-mailbox-close-human-confirmed/20260830T000428_614592Z_05.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[rotation_to_lobby-artifacts/world-boss-live/battle-mode-back-to-lobby-after/20260827T231741_947736Z_04.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_lobby_return_scope.py::test_real_clean_lobby_frames_preserve_global_success[rotation_to_lobby-artifacts/eligibility-live/lobby-after/20260908T010232_053425Z_03.png]",
+      "reason": "raw missing"
+    },
+    {
+      "node": "tests/test_precondition_snapshot_handoff.py::test_mailbox_initial_lobby_consumes_clean_seed",
+      "reason": "legacy removed _initial_lobby API"
+    },
+    {
+      "node": "tests/test_precondition_snapshot_handoff.py::test_mailbox_initial_lobby_falls_back_on_other_context",
+      "reason": "legacy removed _initial_lobby API"
+    },
+    {
+      "node": "tests/test_precondition_snapshot_handoff.py::test_daily_initial_lobby_consumes_clean_seed",
+      "reason": "legacy removed _initial_lobby API"
+    },
+    {
+      "node": "tests/test_precondition_snapshot_handoff.py::test_daily_initial_lobby_falls_back_on_other_context",
+      "reason": "legacy removed _initial_lobby API"
+    }
+  ],
+  "skips": [
+    {
+      "node": "tests/test_quick_menu.py::test_handoff_overlay_semantics_on_curated_real_frames[quick_menu_evidence_manifest.json-screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002478.png-screen.lobby]",
+      "reason": "curated local screencaps unavailable"
+    },
+    {
+      "node": "tests/test_quick_menu.py::test_handoff_overlay_semantics_on_curated_real_frames[world_boss_quick_menu_evidence_manifest.json-screencaps/semantic/world_boss/quick_menu/20260827T231126_760280Z_01.png-screen.world_boss]",
+      "reason": "curated local screencaps unavailable"
+    },
+    {
+      "node": "tests/test_quick_menu.py::test_handoff_overlay_semantics_on_curated_real_frames[world_boss_eligibility_return_manifest.json-screencaps/semantic/eligibility/world-boss-return/quick-menu-open/01.png-screen.battle_mode_select]",
+      "reason": "curated local screencaps unavailable"
+    },
+    {
+      "node": "tests/test_quick_menu.py::test_handoff_overlay_semantics_on_curated_real_frames[guild_semantic_manifest.json-screencaps/semantic/guild/quick-menu-from-guild/01.png-screen.guild]",
+      "reason": "curated local screencaps unavailable"
+    }
+  ],
+  "meteorites_tests": "all A/B1/B2 included; no skip/exclusion",
+  "corpus": "31 runtime assets, 28 focal fixtures plus manifests; 527 raw and 63 full-curated remain external; no local configs/DB required",
+  "environment_attempt": {
+    "passed": 1166,
+    "failed": 0,
+    "errors": 88,
+    "skipped": 4,
+    "deselected": 41,
+    "cause": "pytest basetemp parent artifacts absent in first fresh export; directory created, unchanged code revalidated green"
+  }
+}

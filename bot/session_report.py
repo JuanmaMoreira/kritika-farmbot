@@ -47,6 +47,8 @@ class CharacterReport:
     advance_completed: bool
     failure: FailureCause | None = None
     failure_component: str | None = None
+    meteorites: dict | None = None
+    character_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,7 @@ class SessionReport:
     data_gaps: tuple[str, ...] = ()
     run_id: str | None = None
     session_id: str | None = None
+    meteorites_requested: bool = False
 
 
 # Explicit projection of existing business contracts, not a failure taxonomy.
@@ -270,6 +273,7 @@ def build_session_report(
             (result.failure_flow or "rotation") if terminal_here else (
                 failed_flow.flow_id if failed_flow is not None else "rotation" if rotation_failed else None
             ),
+            meteorites=character.meteorites, character_id=character.character_context.character_id,
         ))
     if result.characters_processed > sum(c.completed for c in result.character_results):
         gaps.append("Some processed characters have no complete detailed result")
@@ -302,6 +306,7 @@ def build_session_report(
         status, result.status, result.duration, result.characters_processed, expected,
         sum(f.completed for c in characters for f in c.flows), result.advances_completed,
         counts, tuple(characters), failure, tuple(gaps), result.run_id, result.session_id,
+        meteorites_requested=result.change_meteorites,
     )
 
 
@@ -346,7 +351,21 @@ def render_session_report(report: SessionReport) -> str:
     if report.status is ReportStatus.TECHNICAL_FAILURE:
         lines.extend(_failure_lines(report.failure))
     hidden_complete = 0
+    if not any(c.meteorites is not None for c in report.characters):
+        lines.append('Meteorites: NOT_REQUESTED' if report.meteorites_requested else 'Meteorites: DISABLED')
     for character in report.characters:
+        meteorites = character.meteorites
+        if meteorites is not None:
+            lines.extend(('', f"{character.label}: Meteorites: {meteorites['status']}"
+                + (f" [{meteorites.get('character_id') or character.character_id}]" if meteorites.get('character_id') or character.character_id else '')))
+            lines.append(f"- Setup {meteorites.get('setup_outcome') or 'not run'}; cleanup {meteorites.get('cleanup_outcome') or 'not run'}; "
+                f"effects {len(meteorites['equip_effects'])}/11 Equip, {len(meteorites['unequip_effects'])}/11 Unequip; "
+                f"operations {meteorites['operation_count']}, retries {meteorites['retries']}; "
+                f"setup {meteorites['setup_seconds']:.3f}s, cleanup {meteorites['cleanup_seconds']:.3f}s; "
+                f"coordinator {meteorites['coordinator_seconds']:.4f}s, navigation {meteorites['navigation_seconds']:.3f}s")
+            if meteorites['manual_preparation_required']:
+                lines.append('- Intervención necesaria: desequipá manualmente el set compartido antes de reanudar.'
+                    + (' El set puede seguir equipado.' if meteorites['set_may_remain_equipped'] else ''))
         if character.status is ReportStatus.COMPLETE and character.failure is None:
             # Clean characters (including routine skips) stay counted above;
             # detail only shows characters needing attention.

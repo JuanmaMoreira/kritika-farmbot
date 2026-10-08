@@ -199,6 +199,9 @@ from .scope import ScopeSpec, select_detectors
 from bot.monster_wave_semantics import MW_DAILY, MW_OBSERVATIONS
 
 
+from bot.meteorites_reader import MeteoritesDetector
+
+
 def build_default_perception(
     asset_root: str | Path | None = None,
 ) -> PerceptionEngine:
@@ -217,6 +220,7 @@ def build_default_perception(
                              *TRADING_CENTER_SPECS, *TREASURE_CENTER_SPECS)
             ),
             StagesDetector(asset_root=root),
+            MeteoritesDetector(asset_root=root),
             BlackMarketGoldDetector(asset_root=root),
             BlackMarketPurchasedDetector(asset_root=root),
             SocketIncompatibleOpalDetector(asset_root=root),
@@ -822,6 +826,7 @@ STRONG_LOBBY_COMPLETION_SPEC_NAMES = frozenset(
 )
 
 STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES = (
+    MeteoritesDetector,
     CombineContextDetector,
     DailyQuestsProgressRewardDetector,
     GuildAttendanceDetector,

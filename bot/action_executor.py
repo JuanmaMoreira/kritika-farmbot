@@ -7,6 +7,7 @@ from numbers import Integral
 from time import monotonic
 
 from bot.stages_actions import StageAction, CloseAdAffordance, POINTS as STAGES_POINTS
+from bot.meteorites_actions import meteorites_target
 from bot.adb import AdbClient
 from bot.event_log import EventSink, record_best_effort
 from bot.monster_wave_actions import MONSTER_WAVE_TARGETS, SelectMonsterWaveMax
@@ -840,6 +841,9 @@ class ActionExecutor:
         return self._target_for(action)
 
     def _target_for(self, action: SemanticAction) -> RelativePoint:
+        meteorites_point = meteorites_target(action)
+        if meteorites_point is not None:
+            return meteorites_point
         if isinstance(action, StageAction):
             return STAGES_POINTS[action.control]
         if isinstance(action, CloseAdAffordance):
