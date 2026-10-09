@@ -130,7 +130,20 @@ class StagesNavigation:
 
     def enter_target(self):
         s=self.wait(lobby)
-        s=self.change(C.OPEN,s,{'normal','elite'})
+        try:
+            s=self.change(C.OPEN,s,{'normal','elite'})
+        except RuntimeWaitTimeout as error:
+            # OPEN is navigation only. A fresh, exposed Lobby proves that
+            # this entry had no effect; unknown/covered/old pixels do not.
+            last=error.last_snapshot
+            if (last is None or not lobby(last) or last.sequence<=self.cursor
+                    or last.timestamp<=self.dispatched_at
+                    or not 0.<=self.clock()-last.timestamp<2.):
+                raise
+            s=self.wait(lobby)
+            record_best_effort(self.events,'stages.entry.retry',reason='fresh_lobby_no_effect',
+                source_sequence=s.sequence,input_retries=1)
+            s=self.change(C.OPEN,s,{'normal','elite'})
         record_best_effort(self.events,'stages.mode',mode=surface(s))
         if surface(s)=='elite':s=self.change(C.NORMAL,s,{'normal'})
         # Verify the current episode on a fresh, exposed Normal frame before

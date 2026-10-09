@@ -518,6 +518,14 @@ Ante una nueva superficie real: describirla aquí como UNKNOWN, sin asignar clas
 
 ### Ads — evidencia física conocida
 
+- **USER_GT 2026-10-09:** el end card Google Play de
+  `artifacts/failure_evidence/failure_457cdceba7744755a472452078ce6352/frame_1581.png`
+  (Binance en esa captura) ya tenía la recompensa del anuncio completo lista;
+  la X negra circular superior derecha podía cerrarlo. No tenía el icono de
+  sonido del chrome de vídeo anterior. Se acredita ese layout fijo con X y
+  pie Google Play, bajo Google AdActivity/focus concordantes; la marca del
+  anuncio, una X genérica y un fin de parte no aportan autoridad.
+
 - **USER_GT (2026-10-05):** existen anuncios de aproximadamente5 s. Una duración corta no contradice una terminal authority fuerte ya acreditada (Reward granted/chrome SDK adquirido). Una X de contenido o sin estructura/posición SDK acreditada no prueba completion; acabar una parte tampoco prueba fin del anuncio completo. El contrato temporal pertenece a ARCHITECTURE.
 - **USER_GT actualizado (2026-10-05):** nunca cerrar antes de recompensa lista; al acreditarse, cerrar cuanto antes. Pasos intermedios como Next ad no acreditan por sí mismos recompensa del anuncio completo. Esto no establece un hitbox de Next ad ni autoriza tocar contenido: el control explícito necesita evidencia física de su chrome; el progreso/reset multipart adquirido ya se observa sin input.
 - **USER_GT posterior (2026-10-05):** el usuario confirma que la X negra dentro del círculo blanco de la esquina superior derecha del chrome Google SDK, igual a `ad_campaign6_char2_terminal.png`, estaba lista para cerrar el anuncio completo; quedó visible unos20 s extra antes del cierre. **LIVE_EVIDENCE de sólo lectura:** campaña719b4e4e, scope7,19 capturas del siguiente ad natural; partes explícitas previas sin esa X, después X circular y chrome de sonido con resumed/focus Google AdActivity concordantes. Primera captura acreditada a72.237 s, retorno runtime a109.609 s y Sapphire fresco. El movimiento del contenido después de esa X no es autoridad de espera. No se generaliza a otras X/SDKs ni a fin de una parte.

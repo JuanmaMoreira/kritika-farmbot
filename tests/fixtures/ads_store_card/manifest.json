@@ -1,0 +1,18 @@
+{
+  "source": "artifacts/failure_evidence/failure_457cdceba7744755a472452078ce6352/frame_1581.png",
+  "shape": [
+    432,
+    960
+  ],
+  "footer_box": [
+    0.33,
+    0.867,
+    0.457,
+    0.953
+  ],
+  "authority": "USER_GT 2026-10-09 confirms complete reward; only fixed SDK X + Google Play footer, no creative copied",
+  "sha256": {
+    "terminal.png": "b16c762a083db3a77f1a349323ffe3c00812729b9c187338276afe7641adf9de",
+    "footer.png": "a3037f190a1c39d48dc5d07f77c913a165c1b39af5809d989a90ae933d602135"
+  }
+}

@@ -1,4 +1,5 @@
 """Stages caller adapters; inventory policy and relief execution stay global."""
+from dataclasses import replace
 from bot.catalog import POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL, SCREEN_COMBINE, SCREEN_SOCKET, MENU_QUICK
 from bot.semantic_actions import (OpenEquipmentCombine, AcceptSocketInventoryFull,
     ExitCombine, ExitSocket, OpenQuickMenu, SelectQuickMenuInventory, ExitEquipmentInventory)
@@ -31,8 +32,8 @@ class StagesReliefs:
         blocker=next(iter(blockers))
         if blocker in self.used:
             # Enhance effect need not free enough headroom for Start. A fresh
-            # recurring Socket blocker can authorize one more normal relief,
-            # only after an actual effect; no-effect and further repeats stop.
+            # recurring blocker authorizes the remaining permitted strategy,
+            # not another enhancement whose effect already proved insufficient.
             if (blocker!=POPUP_SOCKET_INVENTORY_FULL or
                     not self.socket_retry_available or self.socket_retried):
                 raise ValueError('stages relief bound exhausted')
@@ -64,7 +65,13 @@ class StagesReliefs:
         if blocker==POPUP_SOCKET_INVENTORY_FULL:
             enter(AcceptSocketInventoryFull(),SCREEN_SOCKET)
             # Socket's existing return contract identifies Stages base after Back.
-            result=coordinator_for(self.dependencies).socket_operation(self.dependencies.socket_relief).run(SocketReturnPlan(ExitSocket(),'screen.stages'),cancel_requested=n.cancel_requested)
+            coordinator=coordinator_for(self.dependencies)
+            if self.socket_retried:
+                # Narrow permissions locally; retain the routine's sale policy
+                # and leave all other bindings and subsequent characters intact.
+                coordinator=replace(coordinator,policy=replace(coordinator.policy,
+                    socket=replace(coordinator.policy.socket,enhance_all=False)))
+            result=coordinator.socket_operation(self.dependencies.socket_relief).run(SocketReturnPlan(ExitSocket(),'screen.stages'),cancel_requested=n.cancel_requested)
             if result.outcome.value=='cancelled':raise RuntimeWaitCancelled('socket relief cancelled')
             if not result.succeeded:raise ValueError('stages socket relief: '+str(result.error))
             self.socket_retry_available=result.outcome.value=='relieved'

@@ -1,5 +1,16 @@
 # Estado actual — Kritika FarmBot
 
+## Gold Farming Cycle — 28/28 verificado 2026-10-09
+
+Campaña real de los28 completada con reanudaciones seguras; cinco flows y cierre
+por identidad,54 anuncios retornados, runtime activo3h26m31.9s. Fallos originales:
+terminal Store end card sin sonido no reconocida y OPEN Stage sin efecto desde
+Lobby fresco. Fixes acotados Ads/Stages; durante campaña se corrigieron ROI de
+coste Craft y segunda estrategia Socket. Llamada externa descalificada por USER_GT.
+Sin regresión reciente ni acumulación causal demostradas. Teléfono Lobby limpio,
+runtimes cerrados. Checkpoint Gold aislado sobre92667ee; Arena y trabajo histórico
+permanecen locales, fuera de este checkpoint. [Diagnóstico, evidencia y límites](docs/GOLD_CYCLE_DIAGNOSIS_20261009.md).
+
 ## Arena B2 — operación y rutina validadas 2026-10-08
 
 ArenaFlow SINGLE_BATTLE/AUTO_REPEAT, dificultad por ocurrencia y retorno externo

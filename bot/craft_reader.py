@@ -62,7 +62,9 @@ _SELECTED_RECIPE_ROIS: dict[
     ),
 }
 CRAFT_COST_LABEL_ROI: RelativeRegion = (0.325, 0.635, 0.460, 0.677)
-CRAFT_COST_ROI: RelativeRegion = (0.480, 0.570, 0.550, 0.680)
+# Digits only: the material icon/button decoration lowered live Armor cost
+# confidence to .78394 despite 49 being readable. Economics gates stay .80.
+CRAFT_COST_ROI: RelativeRegion = (0.499, 0.638, 0.526, 0.677)
 # Text-only selector crop: broad decoration reduced live 3/10 confidence.
 CRAFT_QUANTITY_ROI: RelativeRegion = (0.438, 0.735, 0.495, 0.783)
 

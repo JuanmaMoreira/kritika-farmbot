@@ -493,5 +493,35 @@
       0.094,
       0.119
     ]
+  },
+  "ad_store_card_close": {
+    "source": "USER_GT 2026-10-09; failure_457cdceba7744755a472452078ce6352/frame_1581.png (960x432 evidence; native geometry 2712x1224)",
+    "crop": [
+      0.906,
+      0.026,
+      0.939,
+      0.093
+    ],
+    "search": [
+      0.902,
+      0.012,
+      0.945,
+      0.108
+    ]
+  },
+  "ad_store_card_footer": {
+    "source": "USER_GT 2026-10-09; failure_457cdceba7744755a472452078ce6352/frame_1581.png (960x432 evidence; native geometry 2712x1224)",
+    "crop": [
+      0.335,
+      0.877,
+      0.452,
+      0.941
+    ],
+    "search": [
+      0.33,
+      0.867,
+      0.457,
+      0.953
+    ]
   }
 }

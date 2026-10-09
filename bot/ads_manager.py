@@ -325,6 +325,7 @@ class AndroidAdsObserver:
         light = self.detector.present(snapshot.frame.image, 'ad_reward_close_light')
         sdk_chrome = dark or light
         round_close = False
+        store_card_close = False
         intermediate = None
         reward_text = False
         if sdk_activity and activity == 'com.google.android.gms.ads.AdActivity':
@@ -350,6 +351,14 @@ class AndroidAdsObserver:
             # content X and part transitions never publish this authority.
             round_close = (not sdk_chrome and intermediate is None
                            and black_x >= .94 and sound >= .94)
+            # USER_GT 2026-10-09: the acquired Google Play end card has its
+            # own circular X and footer, without the video's sound chrome.
+            # Both fixed landmarks and concordant Google SDK ownership are
+            # required; the creative/title and elapsed time grant no input.
+            if not sdk_chrome and intermediate is None and not round_close:
+                store_card_close = (self.detector.present(snapshot.frame.image, 'ad_store_card_close')
+                                    and self.detector.present(snapshot.frame.image, 'ad_store_card_footer'))
+                round_close = store_card_close
         # Main activity plus old SDK pixels cannot authorize another Back.
         # Unacquired embedded layouts never authorize timer-only cleanup.
         active = sdk_activity
@@ -375,7 +384,7 @@ class AndroidAdsObserver:
             close_point=(.922,.059) if round_close else None,
             close_key=(('reward_granted_text' if reward_text else
                         'reward_granted_light' if light else 'reward_granted_dark')
-                       if sdk_chrome else 'sdk_round_close' if round_close else None),
+                       if sdk_chrome else ('sdk_store_card_close' if store_card_close else 'sdk_round_close') if round_close else None),
             activity=activity, exhausted=game_present and self.exhausted(snapshot),
             ad_compatible=ad_compatible,
             progress=read_sdk_progress(snapshot.frame.image) if sdk_activity else None,

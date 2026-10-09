@@ -1,0 +1,55 @@
+{
+  "source": "artifacts/gold_cycle_20261009/campaign/run_01/after.png",
+  "authority": "LIVE_EVIDENCE Flame Striker Hero Armor Helmet selector, confirmed GT existing recipe; no material confirm in failed attempt",
+  "shape": [
+    1224,
+    2712
+  ],
+  "boxes": {
+    "cost": [
+      0.48,
+      0.57,
+      0.55,
+      0.68
+    ],
+    "currency": [
+      0.325,
+      0.635,
+      0.46,
+      0.677
+    ],
+    "quantity": [
+      0.438,
+      0.735,
+      0.495,
+      0.783
+    ],
+    "tier": [
+      0.294,
+      0.282,
+      0.348,
+      0.322
+    ],
+    "item": [
+      0.28,
+      0.42,
+      0.37,
+      0.49
+    ]
+  },
+  "expected": {
+    "family": "armor",
+    "tier": "Hero",
+    "item": "Helmet",
+    "cost": 49,
+    "quantity": 1,
+    "cap": 10
+  },
+  "sha256": {
+    "cost.png": "e5266c60629320d1d4618fdbb3a1729e2acbd4cea37361aec1ba5cfc7ab91439",
+    "currency.png": "f86721799e7fbaf7160c489d3d04722148276a9ad403aa406ea0c0b680888672",
+    "quantity.png": "441b4fd3eaa7fc1ea9e0ace568998035483cfdaed06f2aa0c17174ac5908f9f2",
+    "tier.png": "3cea0e52b6684eea18754c93362532327c56cad99294253dff71fc1cfb99389d",
+    "item.png": "27ca089bdeca600fc06461d0a0ae333c1fdc008c2fa1a026c50520d128ee118a"
+  }
+}

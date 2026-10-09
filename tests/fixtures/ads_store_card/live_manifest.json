@@ -1,0 +1,26 @@
+{
+  "source": "artifacts\\gold_cycle_20261009\\campaign\\run_01\\store_card_terminal.png",
+  "source_authority": "LIVE_EVIDENCE, Google AdActivity; sequence7675; visual_close -> returned -> Sapphire effect; no creative crop",
+  "shape": [
+    1224,
+    2712
+  ],
+  "boxes": {
+    "live_close": [
+      0.902,
+      0.012,
+      0.945,
+      0.108
+    ],
+    "live_footer": [
+      0.33,
+      0.867,
+      0.457,
+      0.953
+    ]
+  },
+  "sha256": {
+    "live_close.png": "c8c3b1d6a2b20cf7cea4ff0ef7405538b837b1612c226fd8cc8f874700967e75",
+    "live_footer.png": "54813549692b7d4023f4b0ad2b0e4ee4d11e697429fccb47da63b646a1e9ad51"
+  }
+}

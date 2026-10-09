@@ -4,6 +4,7 @@ import pytest
 import bot.stages_reliefs as module
 from bot.stages_actions import StageControl as C
 from bot.semantic_actions import AcceptSocketInventoryFull
+from bot.relief_policy import ReliefCoordinator, ReliefPolicy, SocketReliefPolicy
 
 FULL='popup.socket_inventory_full'
 
@@ -14,11 +15,12 @@ def setup(monkeypatch,outcomes,repeats):
     entered=[];runs=[]
     nav=S(events=None,cancel_requested=lambda:False,cursor=0,
           wait=lambda *a,**kw:config,act=lambda action,s:entered.append(action))
-    relief=module.StagesReliefs(nav,S(socket_relief=object()),None)
+    relief=module.StagesReliefs(nav,S(socket_relief=S()),None)
     def run(*a,**kw):
-        outcome=next(outcomes);runs.append(outcome)
+        outcome=next(outcomes);runs.append((outcome,kw['policy']))
         return S(outcome=S(value=outcome),succeeded=True,final_snapshot=config)
-    monkeypatch.setattr(module,'coordinator_for',lambda deps:S(socket_operation=lambda op:S(run=run)))
+    relief.dependencies.socket_relief.run=run
+    relief.dependencies.reliefs=ReliefCoordinator()
     def change(*a):
         return relief(C.START,full,{'start'}) if next(repeats) else success
     nav.change=change
@@ -30,7 +32,10 @@ def setup(monkeypatch,outcomes,repeats):
 def test_effect_then_fresh_full_runs_normal_yes_relief_once_more(monkeypatch):
     relief,full,success,entered,runs=setup(monkeypatch,iter(['relieved','relieved']),iter([True,False]))
     assert relief(C.START,full,{'start'}) is success
-    assert runs==['relieved','relieved']
+    assert [r[0] for r in runs]==['relieved','relieved']
+    assert runs[0][1]==SocketReliefPolicy(True,True)
+    assert runs[1][1]==SocketReliefPolicy(False,True)
+    assert relief.dependencies.reliefs.policy.socket==SocketReliefPolicy(True,True)
     assert len(entered)==2 and all(isinstance(a,AcceptSocketInventoryFull) for a in entered)
 
 @pytest.mark.parametrize('outcomes,repeats,expected',[
@@ -48,3 +53,10 @@ def test_reset_clears_retry_authority(monkeypatch):
     relief.used.add(FULL);relief.socket_retry_available=True;relief.socket_retried=True
     relief.reset()
     assert not relief.used and not relief.socket_retry_available and not relief.socket_retried
+
+def test_recurring_full_never_enables_disabled_sale(monkeypatch):
+    relief,full,success,_,runs=setup(monkeypatch,iter(['relieved','no_relief_available']),iter([True,False]))
+    relief.dependencies.reliefs=ReliefCoordinator(ReliefPolicy(socket=SocketReliefPolicy(True,False)))
+    assert relief(C.START,full,{'start'}) is success
+    assert runs[1][1]==SocketReliefPolicy(False,False)
+    assert relief.dependencies.reliefs.policy.socket==SocketReliefPolicy(True,False)
