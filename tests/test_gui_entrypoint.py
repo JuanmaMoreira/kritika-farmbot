@@ -47,6 +47,27 @@ class Widget:
     def select(self, frame):
         self.selected = frame
 
+    def grid(self, **kwargs):
+        self.visible = True
+
+    def grid_remove(self):
+        self.visible = False
+
+
+class TableWidget(Widget):
+    def __init__(self):
+        super().__init__()
+        self.rows = []
+
+    def get_children(self):
+        return tuple(range(len(self.rows)))
+
+    def delete(self, *args):
+        self.rows = []
+
+    def insert(self, parent, where, *, values):
+        self.rows.append(values)
+
 
 class Controller:
     def __init__(self):
@@ -83,6 +104,9 @@ def build_gui_shell(clock):
     app.log_var = Var()
     app.session_elapsed_var = Var(app.session_timer.text)
     app.report_text = Widget()
+    app.arena_batch_table = TableWidget()
+    app.arena_batch_frame = Widget()
+    app.arena_batch_button = Widget()
     app.evidence_select = Widget()
     app.evidence_button = Widget()
     app.evidence_var = Var()

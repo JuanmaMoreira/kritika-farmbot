@@ -1,4 +1,4 @@
-"""Acquired Stages controls. There is no intent for manual battle/ad tickets."""
+"""Acquired Stages controls for Ads navigation and one manual battle entry."""
 from dataclasses import dataclass
 from enum import Enum
 
@@ -11,8 +11,21 @@ class StageControl(str,Enum):
     CLOSE_AUTO='close_auto'; DECLINE_AD_TICKET='decline_ad_ticket'; NO_ADS_OK='no_ads_ok'
     CURRENCY='currency'; STAMINA_ROW='stamina_row'; STAMINA_INCREMENT='stamina_increment'
     LOBBY_INVENTORY='lobby_inventory'
+    CHAOS='chaos'; STAGE6='stage6'; STAGE9='stage9'; X4='x4'
+    BUFF1='buff1'; BUFF2='buff2'; BUFF3='buff3'; BUFF4='buff4'
+    STRIKER_START='striker_start'; BATTLE_AUTO='battle_auto'; CLEAR_HOME='clear_home'
+    HELL='hell'
+    DEATH_ABANDON='death_abandon'; DEATH_GUIDE_CLOSE='death_guide_close'
 
 POINTS={
+    StageControl.CHAOS:(.253,.265), StageControl.STAGE6:(.762,.401),
+    StageControl.STAGE9:(.548,.699), StageControl.X4:(.808,.925),
+    StageControl.BUFF1:(.534,.515),StageControl.BUFF2:(.610,.515),
+    StageControl.BUFF3:(.687,.515),StageControl.BUFF4:(.762,.515),
+    StageControl.HELL:(.302,.906),StageControl.STRIKER_START:(.580,.876),
+    StageControl.BATTLE_AUTO:(.877,.057),
+    StageControl.CLEAR_HOME:(.258,.882),
+    StageControl.DEATH_ABANDON:(.430,.559),StageControl.DEATH_GUIDE_CLOSE:(.766,.186),
     StageControl.OPEN:(.82,.28),StageControl.BACK:(.805,.06),StageControl.NORMAL:(.807,.181),
     StageControl.CLAIM:(.426,.93),StageControl.WORLD_MAP:(.73,.18),
     StageControl.ABYSSAL_TAIL:(.36,.265),StageControl.STAGE8:(.656,.66),

@@ -205,27 +205,19 @@ def test_single_explicit_difficulty(difficulty):
 
 
 @pytest.mark.parametrize('stock',[0,6,7])
-def test_one_entry_gold_buff1_purchase_is_bounded_and_verified(stock):
+def test_one_entry_buff1_selected_without_count_gate(stock):
     w=SingleWorld(); w.stock[0]=stock
     r=single_flow(w).run()
-    assert r.succeeded and r.metrics['gold_buff1_spent']==(8-stock)*3000
+    assert r.succeeded and w.gold==1000000-(8-stock)*3000
     assert w.karats==1008 and w.start_count==1
 
 
-@pytest.mark.parametrize('failure',['price','gold','debit','premium'])
-def test_gold_guard_never_starts_on_unknown_price_or_wrong_economic_effect(failure):
-    w=SingleWorld(); w.stock[0]=6
-    if failure=='price': w.price_known=False
-    if failure=='gold': w.gold=100
-    original=w.execute
-    def execute(action,geometry,**kw):
-        original(action,geometry,**kw)
-        if action.control is C.BUFF1:
-            if failure=='debit': w.gold-=1
-            if failure=='premium': w.karats-=1
-    w.execute=execute
+@pytest.mark.parametrize('control',[C.BUFF1,C.BUFF2])
+def test_mandatory_buff_without_selected_effect_never_starts(control):
+    w=SingleWorld(); w.stock[0]=6; w.no_effect=control
     r=single_flow(w).run()
-    assert not r.succeeded and C.SINGLE_START not in w.inputs and C.BUFF3 not in w.inputs
+    assert not r.succeeded and C.SINGLE_START not in w.inputs
+    assert w.inputs.count(control)==1
 
 
 def test_single_buffs_use_only_one_entry_coverage_and_premium_is_off_when_unknown():

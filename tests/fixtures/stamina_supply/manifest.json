@@ -1,0 +1,51 @@
+{
+  "source": "artifacts\\stamina_budget\\payment_inspect_02\\panel.png",
+  "raw_sha256": "312337f18b4fac63e92ece271dc103e72543755ddaa1305819e63babf64513e6",
+  "shape": [
+    1224,
+    2712,
+    3
+  ],
+  "regions": [
+    {
+      "roi": [
+        0.54,
+        0.34,
+        0.65,
+        0.385
+      ],
+      "file": "panel_0.png",
+      "sha256": "e9c1dc854d5ae4f969b7c2c7b455f909084e24e95ab1f9066b5117d40ae12d36"
+    },
+    {
+      "roi": [
+        0.592,
+        0.78,
+        0.66,
+        0.84
+      ],
+      "file": "panel_1.png",
+      "sha256": "279199ae1e4eaae8e00c0813d4e0f94fc4c2cae215616a45bf81df63f319c940"
+    },
+    {
+      "roi": [
+        0.337,
+        0.495,
+        0.432,
+        0.566
+      ],
+      "file": "panel_2.png",
+      "sha256": "038c09738f85003abdeecb498703a1a10e8743bc6f4df342a7ab7a76f2db7214"
+    },
+    {
+      "roi": [
+        0.538,
+        0.29,
+        0.615,
+        0.35
+      ],
+      "file": "panel_3.png",
+      "sha256": "93891a63340e347ed0e317e7f4c570d574690c719760db5220071504d064302c"
+    }
+  ]
+}

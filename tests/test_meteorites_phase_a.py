@@ -313,6 +313,41 @@ def test_wrong_overlay_cannot_bind_to_selected_candidate(reader):
     assert rt.equip(12).outcome=='rejected' and actions.action_count==0
 
 
+def test_information_overlay_replay_and_ordinary_negatives(reader):
+    info=cv2.imread(str(FIXTURES.parent/'meteorites_information/overlay.png'))
+    assert reader.information_overlay(info)
+    assert reader.detail_sample(info,sequence=1,observed_at=1) is None
+    assert all(not reader.information_overlay(frame) for frame in IMAGES.values())
+
+
+@pytest.mark.parametrize('recurs,changed,cancel',[(False,False,False),(True,False,False),
+                                               (False,True,False),(False,False,True)])
+def test_information_overlay_reselection_requires_unchanged_bag_and_is_bounded(reader,recurs,changed,cancel):
+    rt,source,actions=runtime(reader)
+    info=cv2.imread(str(FIXTURES.parent/'meteorites_information/overlay.png'))
+    original=actions.execute
+    selections=[0]
+    def execute(action,*args,**kwargs):
+        if isinstance(action,SelectMeteoritesBagCell):
+            selections[0]+=1
+            if selections[0]==1 or recurs:
+                actions.inputs.append(action);source.queue=[];source.scene=info
+                return
+        if isinstance(action,CloseMeteoriteDetail):
+            if cancel:rt.cancel_requested=lambda:True
+            if changed:
+                actions.inputs.append(action);source.show(['24_']);return
+        original(action,*args,**kwargs)
+    actions.execute=execute
+    result=rt.equip(12)
+    succeeds=not(recurs or changed or cancel)
+    assert result.succeeded is succeeds
+    assert actions.action_count==int(succeeds)
+    assert sum(isinstance(a,CloseMeteoriteDetail) for a in actions.inputs)==1
+    assert selections[0]==(1 if changed or cancel else 2)
+    assert result.action_inputs==int(succeeds)
+
+
 def test_input_lineage_loss_invalidates_retained_panel(reader):
     rt,_,actions=runtime(reader)
     before=rt.ready()

@@ -232,7 +232,8 @@ class MeteoritesRuntime:
         self.evidence={}
         return self.clock(),dict(getattr(self.reader,'calls',{}))
 
-    def _select(self,before,action,slot,cell,expected,*,expected_slot=None,require_shared=False,required_set=None):
+    def _select(self,before,action,slot,cell,expected,*,expected_slot=None,require_shared=False,required_set=None,
+                information_reselect=True):
         if before is None or not before.ready or not self._fresh(self._latest): return None
         if required_set is not None and before.active_set!=required_set: return None
         if require_shared and before.active_set!=2: return None
@@ -266,7 +267,23 @@ class MeteoritesRuntime:
                         and (not require_shared or (i.tier=='Ethereal+' and i.level>0))
                         and (expected is None or (i.flare,i.tier,i.level)==expected),
                         kind='detail',timeout=self.bounds.selection_timeout)
-        if item is None or self._lineage!=lineage: return None
+        if self._lineage!=lineage: return None
+        if item is None:
+            # No Equip/Unequip has been dispatched. Only this positively known
+            # long-press overlay permits a close and one fresh selection.
+            if (not information_reselect or not self._fresh(self._latest)
+                    or not self._perceive(lambda:self.reader.information_overlay(self._latest.image))):
+                return None
+            self.evidence['information_overlay']=self._latest
+            if self._tap(CloseMeteoriteDetail()) is None:return None
+            restored=self._wait(lambda b:b.ready and b.active_set==before.active_set
+                and b.page==before.page and b.slots==before.slots)
+            if restored is None:return None
+            self.metrics['information_overlay_recoveries']=1
+            record_best_effort(self.events,'meteorites.information_overlay.closed',
+                selection=type(selection).__name__,source_sequence=restored.sequence)
+            return self._select(restored,action,slot,cell,expected,expected_slot=expected_slot,
+                require_shared=require_shared,required_set=required_set,information_reselect=False)
         self.evidence['overlay']=self._latest
         self.metrics['selection_to_overlay_seconds']=self.clock()-selected_at
         if self._perceive(lambda:sprite_score(normalize(self._latest.image),(.306,.372),sprite))<.78: return None

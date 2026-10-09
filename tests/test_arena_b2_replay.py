@@ -47,7 +47,7 @@ def test_native_economic_replay(name,badges,stocks):
     reader=ArenaFlowReader(RapidOcrEngine(),clock=lambda:100.)
     snap=FrameSnapshot(frame(name),100.,2)
     facts=reader.economy(snap)
-    assert facts is not None and facts.available_badges==badges and facts.free_buffs==stocks
+    assert facts is not None and facts.available_badges==badges and facts.free_buffs==(None,None,stocks[2])
 
 def test_single_closing_native_balances_replay():
     reader=ArenaFlowReader(RapidOcrEngine(),clock=lambda:100.)

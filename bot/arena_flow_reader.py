@@ -123,7 +123,7 @@ class ArenaFlowReader(ArenaResultReader):
     def prewarm(self, snapshot):
         # Lazy backend initialization outside preparation and terminal deadlines.
         self.ocr_calls += 1
-        self.engine.recognize(cv2.resize(crop(snapshot.image,ECONOMY_ROIS[1]),None,fx=3,fy=3))
+        self.engine.recognize(cv2.resize(crop(snapshot.image,ECONOMY_ROIS[0]),None,fx=3,fy=3))
 
     def single_terminal(self, snapshot, execution, *, run_id, source_id):
         return (isinstance(execution,ArenaSingleExecution) and execution.start_verified is True
@@ -154,18 +154,27 @@ class ArenaFlowReader(ArenaResultReader):
         prep=self.visuals.preparation(image)
         if prep.difficulty is None or prep.x8 is not True or any(v is None for v in prep.buffs):
             return None
-        values=[self._integer(image,roi,cancel_requested)[0] for roi in ECONOMY_ROIS]
-        if (values[1] is None and prep.buffs[0] is False
-                and self.visuals.clear(image,'buff1_depleted_plus')):
-            # Positive acquired depleted representation, never a missing OCR zero.
-            values[1]=0
-        for index in (0,1):
-            if values[index+1] is None and prep.buffs[index] is True:
-                values[index+1] = self._reserved_deficit(image, ECONOMY_ROIS[index+1], cancel_requested)
+        values=[self._integer(image,ECONOMY_ROIS[0],cancel_requested)[0]]
+        # USER_GT: buffs 1/2 need selection/effect only, never stock OCR.
+        # Only premium-sensitive Double Points retains ticket coverage authority.
+        values.extend((None, None, self._stock_integer(image,ECONOMY_ROIS[3],cancel_requested)))
         if (values[0] is None or cancel_requested()
                 or not 0 <= self.clock()-snapshot.timestamp <= self.max_age):
             return None
         return ArenaEconomyFacts(values[0],tuple(values[1:]),prep,snapshot.sequence,snapshot.timestamp)
+
+    def _stock_integer(self, image, roi, cancel_requested):
+        value = self._integer(image, roi, cancel_requested)[0]
+        if value is not None or cancel_requested():
+            return value
+        # Native 999 touches the stock box border; grayscale recognition lost
+        # confidence despite intact glyphs. Same-frame black margin restores
+        # segmentation. Both color/grayscale must still agree at >=.95.
+        # Confined to free buff stocks, never Badge balances or batch results.
+        region = crop(image, roi)
+        padding = max(1, round(region.shape[0] * .08))
+        padded = cv2.copyMakeBorder(region, padding, padding, padding, padding, cv2.BORDER_CONSTANT)
+        return self._integer(padded, (0, 0, 1, 1), cancel_requested)[0]
 
     def _reserved_deficit(self, image, roi, cancel_requested):
         """Signed red reservation display for mandatory Gold buffs only.

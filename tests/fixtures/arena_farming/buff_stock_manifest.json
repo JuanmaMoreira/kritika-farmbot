@@ -1,0 +1,14 @@
+{
+  "source": "artifacts\\arena_farming\\live-cycle-01\\physical_final.png",
+  "source_sha256": "b459c5637b58e2b800a71f55a7aa7d4f5ca7a0a461406b91eb46238ff66f284d",
+  "roi": [
+    0.573,
+    0.237,
+    0.603,
+    0.289
+  ],
+  "path": "tests/fixtures/arena_farming/buff1_stock_999.png",
+  "sha256": "78953fa8df184fb76274c0dcbf7f45ef13958357123056b2704a565456cdb33f",
+  "expected": 999,
+  "authority": "LIVE_EVIDENCE native Hard Challenge; stock visible 999; no buffs selected or consumption"
+}

@@ -1,0 +1,216 @@
+{
+  "auto_off_monk": {
+    "source": "artifacts/manual_stages/monk_hell_battle/auto_on.png",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.84,
+          0.01,
+          0.96,
+          0.105
+        ],
+        "file": "auto_off_monk_0.png",
+        "sha256": "b5e993ca0f788ea7ea743d18122b2a472f5c1099bbd445989838f0802d0d31c8"
+      }
+    ]
+  },
+  "auto_on": {
+    "source": "artifacts/manual_stages/bb_auto_recover/auto_on.png",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.84,
+          0.01,
+          0.96,
+          0.105
+        ],
+        "file": "auto_on_0.png",
+        "sha256": "d9e83272002ee8e0d82c29c6e85590755c47b8fc56cdbe76ac6eabdd3c631080"
+      }
+    ]
+  },
+  "clear": {
+    "source": "artifacts/manual_stages/bb_clear_acquire/after.png",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.278,
+          0.294,
+          0.422,
+          0.372
+        ],
+        "file": "clear_0.png",
+        "sha256": "26d1ff0cd2ddb99b5393710ae91ebd7fecb44e70cca71cfa30c878d908334be4"
+      },
+      {
+        "roi": [
+          0.196,
+          0.828,
+          0.326,
+          0.929
+        ],
+        "file": "clear_1.png",
+        "sha256": "a4114e083ab7a3f2c5c9d70afd9d7b9e9aaf7ccd4927c25f6372182e1dc82238"
+      }
+    ]
+  },
+  "death": {
+    "source": "artifacts/manual_stages/chaos_terminal/after.png",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.467,
+          0.251,
+          0.539,
+          0.302
+        ],
+        "file": "death_0.png",
+        "sha256": "9f3454cc72435cde2e485f698df9311ebb0f78bb744f24d065ff06aecb2720ff"
+      },
+      {
+        "roi": [
+          0.372,
+          0.524,
+          0.485,
+          0.595
+        ],
+        "file": "death_1.png",
+        "sha256": "877b481d753135027d9b7bd729db4b66ebe028752be7c644fd82c2da6551e220"
+      }
+    ]
+  },
+  "death_guide": {
+    "source": "artifacts/manual_stages/chaos_abandon/after.png",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.489,
+          0.193,
+          0.601,
+          0.243
+        ],
+        "file": "death_guide_0.png",
+        "sha256": "d9b4488a9d53025ddda63d4f5784244232da7e09f41450b23c0c4043ab5b1318"
+      },
+      {
+        "roi": [
+          0.747,
+          0.147,
+          0.785,
+          0.217
+        ],
+        "file": "death_guide_1.png",
+        "sha256": "363bd832d089534ef17039b6a22500cd40db8d630c15f4c5386a1e744b4bb9c0"
+      }
+    ]
+  },
+  "penance_relief_stream": {
+    "source": "artifacts/arena_e2e_20261009/cycle_recovery/manual_before.png",
+    "raw_sha256": "3d358d9ce2b707c631971a44b263b0cf8bfb3e9e2c814b6b72b924556a504f41",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.418,
+          0.823,
+          0.485,
+          0.963
+        ],
+        "file": "penance_relief_stream.png",
+        "sha256": "e34cce3653ebb616aa3e42a5319c0ac5403a1813a416e85e1fa9744b2b82d696"
+      }
+    ]
+  },
+  "penance_relief_native": {
+    "source": "artifacts/arena_e2e_20261009/20261009T214724.245007Z_session_1f66e6b8/0027_220111.png",
+    "raw_sha256": "c0256dd04b91275628a4aab8b6cf3f68481b50424936208299df4be4b33c50ef",
+    "shape": [
+      1220,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.418,
+          0.823,
+          0.485,
+          0.963
+        ],
+        "file": "penance_relief_native.png",
+        "sha256": "aff92b5f9af091eab65e6fccfad28143220ad307c736634450e708e95ca0ef82"
+      }
+    ]
+  },
+  "penance_off_hell": {
+    "source": "artifacts/manual_stages/monk_chaos_hell/after.png",
+    "raw_sha256": "3bf3b9a787f9941d90747d6c2b95f9cd732e6a5134ee13c0d089a49bb68b5c35",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.418,
+          0.823,
+          0.485,
+          0.963
+        ],
+        "file": "penance_off_hell.png",
+        "sha256": "7705011b4bc2a1e320596c5b1603070ec7237993b467145b2fbe961f64c2f818"
+      }
+    ]
+  },
+  "penance_on_prior": {
+    "source": "artifacts/manual_stages/chaos_config/after.png",
+    "raw_sha256": "d27de29a58e1d4346fbec1faf504975c7778cd7625b4e974481943e463d58149",
+    "shape": [
+      1224,
+      2712,
+      3
+    ],
+    "regions": [
+      {
+        "roi": [
+          0.418,
+          0.823,
+          0.485,
+          0.963
+        ],
+        "file": "penance_on_prior.png",
+        "sha256": "765d2ae37989140f9404c42870559923fa53b96eb4feeb7eccbd892f31f64b50"
+      }
+    ]
+  }
+}

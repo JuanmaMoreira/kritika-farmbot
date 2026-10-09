@@ -55,7 +55,7 @@ class ArenaFlow:
                  mode=ArenaMode.AUTO_REPEAT, return_context=SCREEN_ARENA):
         if not isinstance(difficulty,ArenaDifficulty):
             raise ValueError('explicit Arena difficulty required')
-        if not isinstance(mode,ArenaMode):
+        if not isinstance(mode, ArenaMode) or mode not in (ArenaMode.SINGLE_BATTLE, ArenaMode.AUTO_REPEAT):
             raise ValueError('explicit Arena mode required')
         if return_context not in (SCREEN_ARENA, 'screen.lobby'):
             raise ValueError('Arena return requires Challenge or Lobby')
@@ -210,38 +210,11 @@ class ArenaFlow:
         elif prep.x8 is not True:
             raise _Stop('x8_unknown')
         before,facts=self._economy()
-        prepaid=[0,0]
         for index,control in enumerate((C.BUFF1,C.BUFF2)):
-            free=facts.free_buffs[index]; selected=facts.preparation.buffs[index]
-            reserve=8 if selected is True else 0  # acquired x8 reservation for buffs 1/2
-            shortfall=max(0,8-free) if free is not None and selected is False else 0
-            gold_purchase=(index==0 and selected is False and free is not None and 0<=free<8
-                           and self._planned_consumption(facts)==8)
-            if free is None or (free+reserve<self._planned_consumption(facts) and not gold_purchase):
-                raise _Stop('gold_buff_purchase_requires_acquisition')
+            selected=facts.preparation.buffs[index]
             if selected is False:
-                old_free=free
-                currencies=None
-                if gold_purchase:
-                    currencies=self.reader.balances(before,cancel_requested=self.cancel_requested)
-                    self._cancel()
-                    if (currencies is None or currencies.gold<shortfall*3000 or not self._fresh(before)
-                            or not self.v.clear(before.image,'gold_buff1_price')):
-                        raise _Stop('gold_buff1_economy_uncredited')
-                    self._save('gold_buff1_before',before)
                 self._effect(control,before,lambda f,i=index:self._challenge(f) and self.v.preparation(f).buffs[i] is True)
                 before,facts=self._economy()
-                if facts.preparation.buffs[index] is not True or facts.free_buffs[index]!=old_free-8:
-                    raise _Stop('buff_reservation_uncredited')
-                if gold_purchase:
-                    after=self.reader.balances(before,cancel_requested=self.cancel_requested)
-                    self._cancel()
-                    if (after is None or not self._fresh(before) or after.badges!=currencies.badges
-                            or after.karats!=currencies.karats or currencies.gold-after.gold!=shortfall*3000):
-                        raise _Stop('gold_buff1_purchase_uncredited')
-                    prepaid[index]=shortfall
-                    self.metrics['gold_buff1_spent']=shortfall*3000
-                    self._save('gold_buff1_after',before)
             elif selected is not True:
                 raise _Stop('mandatory_buff_unknown')
         # ON with unknown reservation is safe only if FREE stock itself covers all.
@@ -261,7 +234,6 @@ class ArenaFlow:
                 self._effect(C.BUFF3,before,lambda f:self._challenge(f) and self.v.preparation(f).buffs[2] is False)
                 before,facts=self._economy()
         if (facts.preparation.buffs[:2]!=(True,True) or facts.preparation.x8 is not True
-                or any(v is None or v+8+prepaid[i]<self._planned_consumption(facts) for i,v in enumerate(facts.free_buffs[:2]))
                 or (facts.preparation.buffs[2] is not False and
                     (facts.preparation.buffs[2] is not True or facts.free_buffs[2] is None
                      or facts.free_buffs[2]+reserved<self._planned_consumption(facts)))):
@@ -348,7 +320,7 @@ class ArenaFlow:
         if (balances is None or balances.badges!=facts.available_badges or not self._fresh(before)
                 or facts.preparation.buffs[:2]!=(True,True) or facts.preparation.x8 is not True
                 or facts.available_badges!=self.metrics['prepared_resources']['badges']
-                or facts.free_buffs!=self.metrics['prepared_resources']['free_buffs']
+                or facts.free_buffs[2]!=self.metrics['prepared_resources']['free_buffs'][2]
                 or facts.preparation.buffs!=self.metrics['prepared_resources']['selected_buffs']):
             raise _Stop('single_start_balances_or_preparation_uncredited')
         self._save('single_start_native',before)

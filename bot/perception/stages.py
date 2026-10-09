@@ -102,7 +102,8 @@ class StagesDetector:
                     for flag in ('max300','video2','video1','video0'):
                         if self.present(frame,flag):found.append(obs(flag))
                 return tuple(found)
-        if self.present(frame,'world_map'):return (obs('surface','world_map'),obs('world_map'))
+        if self.present(frame,'world_map') or self.present(frame,'world_map_chrome'):
+            return (obs('surface','world_map'),obs('world_map'))
         for mode in ('normal','elite'):
             if self.present(frame,mode):
                 found=[obs('surface',mode),obs(mode),obs('base')]

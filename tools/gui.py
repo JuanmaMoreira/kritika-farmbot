@@ -43,12 +43,14 @@ from bot.flow_registry import DEFAULT_FLOW_REGISTRY
 from bot.productive_runtime import PROJECT_ROOT
 from bot.gui_evidence import locate_evidence, report_evidence_refs
 from bot.session_report import render_session_report
+from bot.arena_farming_report import BATCH_COLUMNS, arena_batch_rows
 
 
 POLL_INTERVAL_MS = 50
 SESSION_TIMER_INTERVAL_MS = 1000
 MAX_VISIBLE_CONSOLE_LINES = 5000
-ARENA_MODES = {'Single Battle': ArenaMode.SINGLE_BATTLE, 'Auto Repeat': ArenaMode.AUTO_REPEAT}
+ARENA_MODES = {'Single Battle': ArenaMode.SINGLE_BATTLE, 'Auto Repeat': ArenaMode.AUTO_REPEAT,
+               'Farming Cycle': ArenaMode.FARMING_CYCLE}
 ARENA_DIFFICULTIES = {'Easy': ArenaDifficulty.EASY, 'Normal': ArenaDifficulty.NORMAL, 'Hard': ArenaDifficulty.HARD}
 
 
@@ -99,6 +101,10 @@ class KritikaFarmBotGui:
         self.wb_eligibility_var = tk.StringVar(value=WorldBossEligibilityMode.DAILY_QUEST.value)
         self.arena_mode_var = tk.StringVar(value='Single Battle')
         self.arena_difficulty_var = tk.StringVar(value='Easy')
+        self.arena_min_badges_var = tk.StringVar(value='40')
+        self.arena_min_sapphires_var = tk.StringVar(value='100')
+        self.arena_zero_win_var = tk.StringVar(value='80')
+        self.arena_max_stamina_var = tk.StringVar(value='')
         self.change_meteorites_var = tk.BooleanVar(value=False)
         self.resource_snapshot_var = tk.StringVar(value=ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value)
         self.available_flow_var = tk.StringVar()
@@ -286,16 +292,39 @@ class KritikaFarmBotGui:
 
         self.report_frame = ttk.Frame(self.output_tabs, padding=8)
         self.output_tabs.add(self.report_frame, text="Session Report")
-        self.report_frame.columnconfigure(0, weight=1)
+        self.report_frame.columnconfigure(1, weight=1)
         self.report_frame.rowconfigure(0, weight=1)
         self.report_text = ScrolledText(self.report_frame, wrap="word", height=8, state="disabled")
         self._theme_text_scrollbar(self.report_text)
-        self.report_text.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        self.report_text.grid(row=0, column=0, columnspan=3, sticky="nsew")
+        self.arena_batch_frame = ttk.Frame(self.report_frame)
+        self.arena_batch_frame.grid(row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0))
+        self.arena_batch_frame.columnconfigure(0, weight=1)
+        self.arena_batch_table = ttk.Treeview(self.arena_batch_frame, columns=BATCH_COLUMNS,
+            show='headings', height=7, selectmode='browse')
+        for column in BATCH_COLUMNS:
+            self.arena_batch_table.heading(column, text=column)
+            self.arena_batch_table.column(column, width=90, minwidth=65, stretch=False)
+        self.arena_batch_table.column(BATCH_COLUMNS[0], width=290)
+        self.arena_batch_table.column('Battles won / total', width=145)
+        self.arena_batch_table.column('Owner duration', width=115)
+        self.arena_batch_table.column(BATCH_COLUMNS[-1], width=200)
+        self.arena_batch_table.grid(row=0, column=0, sticky='ew')
+        batch_xbar = ttk.Scrollbar(self.arena_batch_frame, orient='horizontal', command=self.arena_batch_table.xview)
+        batch_xbar.grid(row=1, column=0, sticky='ew')
+        batch_ybar = ttk.Scrollbar(self.arena_batch_frame, orient='vertical', command=self.arena_batch_table.yview)
+        batch_ybar.grid(row=0, column=1, sticky='ns')
+        self.arena_batch_table.configure(xscrollcommand=batch_xbar.set, yscrollcommand=batch_ybar.set)
+        self.arena_batch_frame.grid_remove()
+        self.arena_batch_button = ttk.Button(self.report_frame, text='Show Arena batches',
+            command=self._toggle_arena_batches, state='disabled')
+        self.arena_batch_button.grid(row=2, column=0, pady=(7, 0), padx=(0, 8))
+        self.arena_batches_visible = False
         self.evidence_select = ttk.Combobox(self.report_frame, textvariable=self.evidence_var, state="readonly")
-        self.evidence_select.grid(row=1, column=0, sticky="ew", pady=(7, 0))
+        self.evidence_select.grid(row=2, column=1, sticky="ew", pady=(7, 0))
         self.evidence_button = ttk.Button(self.report_frame, text="Locate evidence", command=self._locate_evidence, state="disabled")
-        self.evidence_button.grid(row=1, column=1, padx=(8, 0), pady=(7, 0))
-        ttk.Label(self.report_frame, textvariable=self.evidence_status_var).grid(row=2, column=0, columnspan=2, sticky="w")
+        self.evidence_button.grid(row=2, column=2, padx=(8, 0), pady=(7, 0))
+        ttk.Label(self.report_frame, textvariable=self.evidence_status_var).grid(row=3, column=0, columnspan=3, sticky="w")
         self.console_frame = ttk.Frame(self.output_tabs, padding=8)
         self.output_tabs.add(self.console_frame, text="Debug Console")
         self.console_frame.columnconfigure(0, weight=1)
@@ -575,6 +604,11 @@ class KritikaFarmBotGui:
             arena = values.get('arena', ArenaConfig())
             self.arena_mode_var.set(next(label for label, mode in ARENA_MODES.items() if mode is arena.mode))
             self.arena_difficulty_var.set(next(label for label, difficulty in ARENA_DIFFICULTIES.items() if difficulty is arena.difficulty))
+            self.arena_min_badges_var.set(str(arena.min_badges_for_arena))
+            self.arena_min_sapphires_var.set(str(arena.min_sapphires_for_mw))
+            self.arena_zero_win_var.set(str(arena.zero_win_threshold))
+            self.arena_max_stamina_var.set('' if arena.maximum_stamina_consumption is None
+                else str(arena.maximum_stamina_consumption))
         if hasattr(self, 'step_scroll'):
             self._render_step_settings(step)
 
@@ -597,15 +631,34 @@ class KritikaFarmBotGui:
         if not sections:
             note('No configurable settings for this step.' if step else 'Select a step to configure its occurrence.')
         if 'arena' in sections:
-            for text, variable, choices in (('Mode', self.arena_mode_var, ARENA_MODES),
-                    ('Difficulty', self.arena_difficulty_var, ARENA_DIFFICULTIES)):
+            farming = self.arena_mode_var.get() == 'Farming Cycle'
+            choices_to_show = [('Mode', self.arena_mode_var, ARENA_MODES)]
+            if not farming:
+                choices_to_show.append(('Difficulty', self.arena_difficulty_var, ARENA_DIFFICULTIES))
+            for text, variable, choices in choices_to_show:
                 ttk.Label(content, text=text).grid(row=row, column=0, sticky='w', pady=(4, 6))
                 row += 1
                 select = ttk.Combobox(content, textvariable=variable, values=tuple(choices), state='readonly', width=30)
                 select.grid(row=row, column=0, sticky='ew')
                 row += 1
                 self.step_controls.append(select)
-            note('Only this Arena occurrence. x8 is mandatory. Single Battle runs one entry; Auto Repeat runs one batch. Both return to Lobby before the next step.')
+                if text == 'Mode':
+                    select.bind('<<ComboboxSelected>>', lambda _event: self._render_step_settings(step))
+            if farming:
+                for text, variable in (
+                        ('Minimum Brawler Badges for Arena', self.arena_min_badges_var),
+                        ('Minimum Sapphires for Monster Wave', self.arena_min_sapphires_var),
+                        ('Minimum Badges for zero-win exceptions', self.arena_zero_win_var),
+                        ('Maximum Stamina Consumption — optional', self.arena_max_stamina_var)):
+                    ttk.Label(content, text=text).grid(row=row, column=0, sticky='w', pady=(4, 6))
+                    row += 1
+                    entry = ttk.Entry(content, textvariable=variable, width=30)
+                    entry.grid(row=row, column=0, sticky='ew')
+                    row += 1
+                    self.step_controls.append(entry)
+                note('Adaptive difficulty starts at Hard. Arena uses Auto Repeat x8. Monster Wave and Manual Stages generate resources when needed. Leave Maximum Stamina Consumption empty for no total consumption limit.')
+            else:
+                note('Only this Arena occurrence. x8 is mandatory. Single Battle runs one entry; Auto Repeat runs one batch. Both return to Lobby before the next step.')
         if 'world_boss' in sections:
             ttk.Label(content, text='Eligibility').grid(row=row, column=0, sticky='w', pady=(4, 6))
             row += 1
@@ -647,8 +700,19 @@ class KritikaFarmBotGui:
                                 self._equipment_sell_policy())
         current['world_boss'] = {'eligibility': self.wb_eligibility_var.get()} if 'world_boss' in sections else {}
         if 'arena' in sections:
-            current['arena'] = ArenaConfig(ARENA_MODES[self.arena_mode_var.get()],
-                ARENA_DIFFICULTIES[self.arena_difficulty_var.get()]).to_dict()
+            try:
+                mode = ARENA_MODES[self.arena_mode_var.get()]
+                thresholds = dict(min_badges_for_arena=int(self.arena_min_badges_var.get()),
+                    min_sapphires_for_mw=int(self.arena_min_sapphires_var.get()),
+                    zero_win_threshold=int(self.arena_zero_win_var.get())) if mode is ArenaMode.FARMING_CYCLE else {}
+                if mode is ArenaMode.FARMING_CYCLE:
+                    raw = self.arena_max_stamina_var.get().strip()
+                    thresholds['maximum_stamina_consumption'] = int(raw) if raw else None
+                current['arena'] = ArenaConfig(mode,
+                    ARENA_DIFFICULTIES[self.arena_difficulty_var.get()], **thresholds).to_dict()
+            except (KeyError, TypeError, ValueError) as error:
+                self._validation_error(str(error))
+                return
         for section in sections:
             settings[section] = current[section]
         try:
@@ -850,6 +914,13 @@ class KritikaFarmBotGui:
         self._set_running_controls(False)
 
     def _show_report(self, report) -> None:
+        self.arena_batch_table.delete(*self.arena_batch_table.get_children())
+        rows = arena_batch_rows(report)
+        for row in rows:
+            self.arena_batch_table.insert('', 'end', values=row)
+        self.arena_batches_visible = False
+        self.arena_batch_frame.grid_remove()
+        self.arena_batch_button.configure(text='Show Arena batches', state='normal' if rows else 'disabled')
         self.report_text.configure(state="normal")
         self.report_text.delete("1.0", "end")
         self.report_text.insert("end", render_session_report(report) if report is not None else "No session report available.")
@@ -862,6 +933,14 @@ class KritikaFarmBotGui:
         self.evidence_status_var.set("")
         if report is not None:
             self.output_tabs.select(self.report_frame)
+
+    def _toggle_arena_batches(self) -> None:
+        self.arena_batches_visible = not self.arena_batches_visible
+        if self.arena_batches_visible:
+            self.arena_batch_frame.grid()
+        else:
+            self.arena_batch_frame.grid_remove()
+        self.arena_batch_button.configure(text='Hide Arena batches' if self.arena_batches_visible else 'Show Arena batches')
 
     def _locate_evidence(self) -> None:
         self.evidence_status_var.set(locate_evidence(self.evidence_var.get()))

@@ -178,6 +178,13 @@ potencia los demás meteoritos: con los otros slots vacíos, equiparlo no cambia
 El control lateral superior Equip/Unequip realiza la acción sobre el set activo;
 el botón inferior con candado y texto Unequip gestiona el lock, y se ignora.
 
+**USER_GT 2026-10-09:** mantener un tap sobre un item/meteorito abre un OVERLAY
+informativo, distinto del detalle accionable con Equip/Unequip lateral. Se cierra
+con un tap en un costado no disruptivo. El panel Fury+30 desplazado de la aceptación
+Arena corresponde a ese long press; su botón inferior de lock no autoriza Equip.
+El log emitió `input tap`, sin medir DOWN→UP físico; no demuestra por qué Android
+lo interpretó como long press.
+
 **LIVE_EVIDENCE**, personaje `rang`, corpus y límites en
 [manifest](../datasets/meteorites_hil_20261008_manifest.json) e
 [informe](METEORITES_HIL_ACQUISITION_20261008.md):
@@ -372,9 +379,12 @@ observer y recuperación explícita, detalladas en [informe B1](ARENA_B1_2026100
 - **USER_GT, comparación futura:** Hard supera Normal si pHard > (2/3)pNormal;
   Normal supera Easy si pNormal > (7/12)pEasy; Hard supera Easy si
   pHard > (7/18)pEasy. No vuelve estacionario el matchmaking ni implementa policy.
-- **USER_GT, composición futura:** Badges suficientes→Arena; insuficientes con
+- **USER_GT, composición:** Badges suficientes→Arena; insuficientes con
   Sapphires suficientes→MW→Arena; ambos insuficientes→Manual Stage→MW→Arena.
-  Umbrales pendientes; conservar lifecycle transversal Shared Meteorites.
+  Defaults de decisión por ocurrencia:40Badges para Arena,100Sapphires para MW,
+  80Badges usados en un batch para excepciones cero victorias. No son costes;
+  entrada técnica x8 requiere8, no40. Manual Stages usa el contrato adquirido
+  abajo, independiente de Stages Daily Ads. Conservar lifecycle Shared Meteorites.
 - **LIVE_EVIDENCE:** Telumpel en Lobby (identidad USER_GT)→botón Battle→Select Mode
   con tarjeta Arena→Arena con columnas Beginner/Intermediate/Expert y Challenge.
   Ticket amarillo 106 visible en Lobby y ambas pantallas: Brawler Badges por
@@ -384,8 +394,9 @@ observer y recuperación explícita, detalladas en [informe B1](ARENA_B1_2026100
   Challenge no es modal/overlay. Auto Repeat abre un MODAL de configuración.
   Upon Defeat siempre desmarcado. X cierra configuración; inicio físico interno
   corregido por LIVE_EVIDENCE y steer posterior, descrito debajo.
-- **USER_GT:** seleccionar buffs 1/2 siempre; compra Gold permitida con coste y
-  confirmación acreditados, nunca Karats. Buff 3 Double Points consume una unidad
+- **USER_GT actualizado 2026-10-09:** buffs1/2 se activan y se verifica ON;
+  no leer sus contadores ni exigir cobertura de tickets. Su fallback Gold está
+  permitido; nunca Karats. Buff 3 Double Points consume una unidad
   por Badge, no por combate x8; activar sólo con saldo conocido ≥consumo previsto
   conocido. UNKNOWN mantiene buff 3 OFF. Auto Repeat no se detiene al agotarlo y
   puede comprarlo con Karats: compra premium prohibida.
@@ -498,6 +509,28 @@ Manifests curados: `datasets/arena_b2_acquisition_manifest.json`,
 `datasets/arena_b2_assets_manifest.json`, `tests/fixtures/arena_b2/manifest.json`.
 Evidencia nativa/stream y consumos: [informe B2](ARENA_B2_20261008.md).
 
+### Arena Farming — adquisición focal 2026-10-09
+
+- **LIVE_EVIDENCE:** Dimension Manipulator identificado por owner canónico de
+  identidad, ciclo desde Lobby119Badges/95Sapphires. Un único Auto Repeat HARD x8,
+  Upon DefeatOFF, buffs1/2/3 seleccionados desde stock999 y reserva8 verificada.
+  Modal nativo Used112 / Acquired Karats112;119→7Badges y103165→103277Karats.
+  Gold6930610473 intacto durante Arena. Cierres Insufficient/No y New Ranking/OK,
+  retorno Lobby y paso posterior Session completados sin reiniciar source/owner.
+- **LIVE_EVIDENCE / telemetría:** ControlledWait continuo526.906s,
+  175observaciones, intervalo medio3.028s/máximo3.172s, cero OCR. Autonomía
+  acreditada para este batch; no acredita una campaña de múltiples ciclos.
+- **LIVE_EVIDENCE:** refresh posterior100Sapphires/7Badges. El MW de presión
+  devolvió no_work sin input. La operación de generación única posterior acreditó
+  CLEAR, consumo fresco100Sapphires y saldos Lobby0Sapphires/106Badges, sin otro
+  Arena. Final Gold7127809094 yKarats103277; no compra de badges/Double Points con
+  Karats. El delta de Badges99 es esta observación, no recompensa fija contractual.
+- **IMPLEMENTATION_CONTRACT:** generar un pase MW no aplica la meta de presión102
+  de Gold Farming; reutiliza los mismos owners/guards físicos. Manual Stages
+  conserva operación y economía independientes de Stages Daily Ads.
+
+Fuentes crudas locales y límites: [informe Farming](ARENA_FARMING_VALIDATION_20261009.md).
+
 ## UNKNOWN deliberados
 
 - Fill All con Gold insuficiente: comportamiento no confirmado, baja prioridad; expectativa del usuario de compra parcial y aviso posterior **no es GT**. No adquirir ahora ni bloquear MW.
@@ -515,6 +548,72 @@ Ante una nueva superficie real: describirla aquí como UNKNOWN, sin asignar clas
 - Penance es la dificultad máxima requerida. Start abre MODAL Select Striker; Auto Repeat/Continue abre MODAL SKIP. `300(MAX)` y `Video(2)/(1)/(0)` son visibles. x4 manual equivale a60 Stamina: primer tap abre overlay, segundo selecciona/cierra. Esa interacción no se usa en ads-only.
 - Optional Video Pass Ticket: siempre No; No inicia el ad automáticamente. Adquirido popup con cinco tickets, nunca Yes. Tras ad: breve carga → Results → OK → configuración → X → Normal Abyssal → Back → Lobby. Saldo Sapphire after > before prueba producción, sin delta fijo adquirido.
 - **LIVE_EVIDENCE:** Video(0) mostró `You have used up all daily video watch attempts for this mode. Please come back tomorrow or try again with a different character.` Agotamiento diario explícito, distinto de No Ads Available temporal.
+
+### Manual Stages — USER_GT y adquisición 2026-10-09
+
+- **USER_GT:** Burst Breaker, Berserker, Demon Blade y Kaiserin pueden hacer
+  Abyssal Rion **09** directamente. Otro personaje sólo puede ir a09 con los11
+  meteoritos compartidos equipados y verificados para esa identidad; sin esa
+  garantía usa **Chaos06**. El flag de configuración no acredita equipamiento.
+  Chaos es el episodio de una estrella, dos antes de Rion. Stage08 sigue siendo Ads.
+- **USER_GT:** entrada manual requiere Stamina≥60 y Sapphires por debajo de su
+  capacidad fresca. **USER_GT posterior (presupuesto/abastecimiento):** se permite
+  comprar Stamina con la oferta K Coins acreditada cuando corresponda Manual;
+  supersede la prohibición inicial de abastecimiento, no autoriza recarga premium.
+  x4 puede seleccionarse en BASE o primer MODAL. **LIVE_EVIDENCE:** en BASE
+  el doble tap en x4 abre/cierra la selección y deja el check amarillo; yaON
+  se conserva. El primer MODAL muestra x1=15/x2=30/x3=45/**x4=60**.
+- **USER_GT actualizado:** Rion09 requiere Penance; Chaos06 requiere **Hell**,
+  segunda dificultad. **LIVE_EVIDENCE:** Chaos06 abre «Chamber of Reflections»;
+  Rion09, «Corrupted Hall of Dimensions». Ambos comparten controles de dificultad,
+  cuatro buffs y los dos MODAL. Primer Start abre Select Striker sin consumo
+  de Stamina; su Start inicia una sola entrada. No usar Auto Repeat.
+- **USER_GT:** buffs1–3ON; buff4 sólo con tickets suficientes, **nunca Karats**.
+  **USER_GT actualizado:** buffs1/2/3 requieren sólo selección y efecto ON,
+  sin leer contadores. El cuarto conserva cobertura de tickets; insuficiente
+  o ambiguo OFF, sin compra Karats, como el último buff de Arena.
+  **USER_GT:** Get Support debe estar activo igual que en Stage Ads: conservar
+  ACTIVE; NEEDS_TICKETS→Fill All→READY→activar→ACTIVE mediante el owner existente.
+  Revalidar Support después del relief.
+  **LIVE_EVIDENCE:** cada activación adquirida99→98 en x4; buff4 muestra precio
+  premium20 si faltan tickets. Al abandonar configuración por relief, la
+  selección puede resetearse y sus tickets reservados recuperarse. Rion09:
+  buff4 stock97→seleccionado96→post-entrada96; buffs1–3,98→97→97.
+  Cada buff consume **un ticket por entrada x4**, sin débito extra al Start.
+  Una selección ON ya reservó ese ticket; no exige otro ticket restante.
+  No trasladar el consumo Double Points de Arena a este control.
+  **LIVE_EVIDENCE 2026-10-09:** retorno de Equipment relief a Rion09 conserva
+  Penance seleccionado con variante del botón (posición/render de estrella y
+  borde). Template único previo produjo UNKNOWN: NCC0.9385 stream/0.8170 nativo.
+  Variante curada local con margen propio acredita ON al mismo threshold0.94;
+  conserva OFF y rechazo de controles dimmed. No autoriza otro Start por el miss.
+- **USER_GT:** el botón Auto permanece rojo en ambos estados; ON tiene destellos
+  intermitentes laterales, OFF carece de ellos. **LIVE_EVIDENCE / regresión:**
+  Monk perdió Chaos06 Hell por timeout con AutoOFF (confirmado por el usuario).
+  El bisel metálico brillante no prueba ON. El símbolo Pause y la palabra Auto
+  identifican esta superficie; fondos y animaciones de combate no prueban estado.
+- **USER_GT:** Clear Time con botones inferiores es **OVERLAY sobre batalla**;
+  Home lleva directamente a Lobby. La derrota con Revive/Abandon es MODAL:
+  usar Abandon, nunca Revive premium. El segundo MODAL «Get stronger» se cierra
+  con X. **LIVE_EVIDENCE:** Abandon→Get stronger→X→Lobby; timeout también mostró
+  Get stronger. Mystic61→1 y Monk111→51, sin incremento Sapphire en ambas derrotas;
+  los60 son el coste observado de una entrada x4, sin gasto adicional acreditado.
+- **LIVE_EVIDENCE:** Burst Breaker ganó Rion09 Penance tras activar AutoOFF→ON,
+  con Clear Time124s (incluye el retraso de recuperación inicial). Home→Lobby
+  limpio. Overlay mostró90Sapphires, pero saldo129→129 sin progreso porque ya
+  estaba sobre capacidad; esta prueba no acredita producción de saldo.
+- **LIVE_EVIDENCE:** segundo Rion09 Penance con AutoON conservado: Clear Time63s,
+  recompensa visible42 y saldo29→71 tras Home→Lobby. Primera salida Home no tuvo
+  efecto; un nuevo Home con Clear Time aún fresco cerró a Lobby, sin otro Start.
+- **LIVE_EVIDENCE:** Blade Dancer sin Shared Meteorites→Chaos06 Hell;
+  Support Activated conservado antes/después de Socket relief; cuatro buffsON,
+  AutoON conservado (20samples/2s, peak.158). Clear Time31s; overlay40Sapphires,
+  saldo28→68. Stamina Lobby89→Claim/pre-Start119→Lobby59: coste físico60,
+  no confundir delta neto30 con el coste. Un único Start en Select Striker;
+  Home sin efecto→Clear fresco→un retry Home→Lobby limpio.
+  Nueva invocación con59Stamina no inició y Session continuó/completó.
+
+Procedencia curada: [manifest Manual](../datasets/manual_stages_20261009_manifest.json).
 
 ### Ads — evidencia física conocida
 

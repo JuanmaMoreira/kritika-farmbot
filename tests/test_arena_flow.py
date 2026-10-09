@@ -216,10 +216,10 @@ def test_double_points_coverage_and_unknown_reserve(stock,selected,expected_taps
     assert all(isinstance(c,C) for c in w.inputs)  # no purchase vocabulary exists
 
 
-def test_bad_reservation_never_starts():
-    w=World(); w.reservation=7
+def test_mandatory_buffs_need_selected_effect_not_stock_reservation():
+    w=World(); w.reservation=7; w.stock[2]=0
     r=flow(w).run()
-    assert r.error=='buff_reservation_uncredited' and w.start_count==0
+    assert r.succeeded and w.start_count==1 and w.buffs[:2]==[True,True]
 
 
 @pytest.mark.parametrize('badges',[0,2,7])
@@ -229,10 +229,17 @@ def test_insufficient_badges_no_config_no_start(badges):
 
 
 @pytest.mark.parametrize('stock',[0,7,103,None])
-def test_gold_economic_branch_stops_without_purchase(stock):
-    w=World(); w.stock[0]=stock; r=flow(w).run()
-    assert r.error=='gold_buff_purchase_requires_acquisition' and w.start_count==0
-    assert C.BUFF1 not in w.inputs
+def test_first_two_stocks_do_not_gate_arena(stock):
+    w=World(); w.stock[:2]=[stock,stock]; w.stock[2]=0
+    original=w.execute
+    def execute(a,g,**kw):
+        if a.control in (C.BUFF1,C.BUFF2):
+            w.inputs.append(a.control);w.buffs[(C.BUFF1,C.BUFF2).index(a.control)]=True
+        else:original(a,g,**kw)
+    w.execute=execute
+    r=flow(w).run()
+    assert r.succeeded and w.start_count==1 and w.buffs[:2]==[True,True]
+    assert C.BUFF3 not in w.inputs
 
 
 def test_x8_from_off_only_once():
@@ -353,7 +360,18 @@ def test_portable_economy_real_ocr(fixture,badges,buffs):
     reader=ArenaFlowReader(RapidOcrEngine(),clock=lambda:100.)
     image=cv2.imread(f'tests/fixtures/arena_b1/{fixture}.png')
     facts=reader.economy(FrameSnapshot(image,100.,2))
-    assert facts.available_badges==badges and facts.free_buffs==buffs
+    assert facts.available_badges==badges and facts.free_buffs==(None,None,buffs[2])
+
+
+def test_economy_never_reads_first_two_buff_counts():
+    from bot.arena_flow_reader import ECONOMY_ROIS
+    reader=ArenaFlowReader(object(),clock=lambda:100.)
+    image=cv2.imread('tests/fixtures/arena_b1/off.png');rois=[]
+    def integer(image,roi,cancel):
+        rois.append(roi);return 106,1.
+    reader._integer=integer
+    assert reader.economy(FrameSnapshot(image,100.,2)).free_buffs==(None,None,106)
+    assert rois==[ECONOMY_ROIS[0],ECONOMY_ROIS[3]]
 
 
 def test_portable_navigation_loading_and_modal_occlusion():

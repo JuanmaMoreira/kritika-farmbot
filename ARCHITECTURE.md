@@ -327,10 +327,89 @@ no acredita ejecución continua ni performance de wait largo. [B1](docs/ARENA_B1
 `ArenaMode`/`ArenaConfig`: SINGLE_BATTLE o AUTO_REPEAT, dificultad fija
 EASY/NORMAL/HARD, exclusivamente x8. Default nuevo SINGLE_BATTLE/EASY; Arena es
 seleccionable en FlowRegistry pero OFF en defaults de rutinas. Config JSON por
-ocurrencia `arena: {mode, difficulty}`, validado sin opciones económicas/adaptive;
+ocurrencia Single/Auto `arena: {mode, difficulty}`, validado sin opciones económicas;
 draft→Apply→Save Routine existente. Esquema v2 admite la sección sin bump:
 faltante usa default conservador, inválido conserva datos y deshabilita el paso.
 `_step_runtime` resuelve cada ocurrencia y evita heredar Arena global accidentalmente.
+
+FARMING_CYCLE añade un tercer modo del mismo paso Arena, sin otra entrada de
+catálogo. `_build_arena` compone `ArenaFarmingCycle`: routing/refresh/bounds y
+terminaciones propios, `ArenaAdaptiveController` por ejecución, reader nativo de
+saldos Lobby y MW productivo existente. Su factory interno siempre pide
+`ArenaFlow(AUTO_REPEAT, return_context=Lobby)`; ArenaFlow rechaza FARMING_CYCLE.
+Config por ocurrencia guarda `min_badges_for_arena=40`,
+`min_sapphires_for_mw=100`, `zero_win_threshold=80`, sin dificultad fija. La GUI
+oculta Difficulty y muestra sólo esos tres thresholds; defaults B2 y JSON Single/
+Auto Repeat no cambian. El mínimo configurable de entrada Arena es >=8 para
+respetar la entrada técnica x8; el default operativo sigue40.
+
+Cada lectura adquiere dos frames nativos distintos concordantes, estado Lobby
+limpio del mismo frame, números color/gris >=.95, hash/secuencia/timestamp y edad
+máxima4s revalidada tras OCR. No saldo calculado ni estado económico persistente.
+Tras éxito de cada owner, el caller solicita Lobby por Navigation y vuelve a leer.
+MW expone `run_resource_pass()` para un solo pase de generación: readiness y
+preparación ordinarios, board/planner/reliefs existentes, CLEAR y lectura fresca
+de consumo. No aplica la meta Sapphire pressure102 de Gold Farming. `run()` y
+`prepared()` conservan esa policy previa; no se infiere coste desde el threshold100.
+MW requiere CLEAR acreditado y ganancia fresca de Badges; Arena exige batch tipado
+del owner y refresh posterior antes de alimentar al controlador. UNKNOWN detiene sin
+consumo/retry; errores subordinados conservan status/error/failure y operación.
+
+Fin Easy0, falta de progreso/ruta, presupuesto Stamina alcanzado, abastecimiento
+imposible, Stamina insuficiente, capacidad Sapphire llena,
+derrota Manual y límite de seguridad
+son COMPLETED con `ArenaFarmingResult.termination` y evento explícito. Session
+verifica el postcondition Lobby y continúa; no cambia cleanup/Rotation ni estado
+del personaje. Ambigüedad es MANUAL_RESOLUTION, fallo técnico FAILED y cancelación
+CANCELLED. El ledger por ejecución conserva receipts, controller y preparación
+tras interrupciones; una entrada Manual incierta se reconcilia en su owner, sin
+otro Start, antes de nuevas acciones. Incertidumbre de otros owners o routing
+detiene sin reinicio del ledger. No hay reanudación durable de Session por proceso.
+Presupuesto opcional permite sólo entradas completas60; primera preparación
+Manual con límite abastece saldo para floor(remaining/60) entradas, Claim primero.
+Sin límite abastece sólo al faltar60. `StaminaPurchase.supply` parametriza demanda
+con guards de KCoins/cantidad/efecto; Ads conserva300. Compra parcial se registra,
+una sola preparación anticipada por ejecución; Easy0 acepta saldo sobrante.
+`bot.manual_stages.ManualStagesOperation` ejecuta una entrada por invocación:
+StageBalances fresco (Stamina≥60/Sapphire<capacidad), selección09/06 según identidad
+y evidencia del lifecycle, x4 en BASE exclusivamente, Penance/Hell, MaoSupport
+del owner Ads y buffs, Start→Select Striker→Start→batalla. Buffs1/2/3 sólo verifican
+selección/effect ON sin contadores. Buff4 reserva un ticket en
+x4 con cobertura acreditada; nunca hay un intent de compra Karats.
+Reliefs transversales existentes restauran BASE/configuración y readiness;
+únicamente un blocker fresco acredita rechazo y permite reintentar Start.
+Auto usa la palabra/control Pause adquiridos en Stages y una ventana focal de
+dos segundos sobre destellos laterales: OFF permite una activación, ON se conserva,
+UNKNOWN impide espera normal. Después de ON: pausa cancelable30s, polling1.5s
+y bound adicional120s, sin OCR ni resolver global. Clear Time es el overlay
+`overlay.manual_stage_clear` sobre `screen.manual_stage_battle`; Home retorna
+Lobby limpio. Home admite un único retry no consumptivo después de timeout,
+únicamente si un nuevo frame posterior al input acredita el mismo Clear Time
+expuesto; UNKNOWN/Loading no permiten retry. Derrota: Abandon→Get stronger→X;
+nunca revive premium.
+Resultado tipado distingue reward/no_progress/stamina_insufficient/
+sapphire_capacity_full/defeated de lectura ambigua, cancelación y fallo técnico.
+Sapphire after>before acredita generación; no delta contractual fijo. Una entrada
+física incierta conserva latch y no se reinicia. La interfaz inyectable ausente
+conserva `manual_stages_not_implemented` sólo para composición sin dependencia.
+Session vincula el `MeteoritesCharacterScope` activo al scope del personaje;
+Manual consume READY + identidad +11effects equipados, sin pending/released ni
+excepción. Setup, comprobación física y cleanup permanecen en Shared Meteorites.
+La terminación funcional continúa los siguientes pasos antes de cleanup/Rotation.
+Política, escenarios y límites: [Arena Farming Cycle](docs/ARENA_FARMING_CYCLE.md).
+
+SessionReport proyecta cada ocurrencia Farming mediante `arena_farming_report`,
+sin IO/OCR ni inputs. Usa receipts terminales del owner y eventos del coordinador:
+identidad causal de batch/operación, multiplicador x8, duración disponible,
+decisión adaptativa, ledger, ganancias/debitos frescos y coste TC confirmado.
+Winrate global = sum(won)/sum(used); combates sólo si x8 está acreditado y ambos
+conteos son divisibles. Duplicados exactos cuentan una vez; conflictos y ausentes
+son información parcial/N/D, nunca victorias cero inferidas. No mezcla ejecuciones,
+personajes u ocurrencias. GUI muestra resumen y tabla de batches expandible.
+Duración nueva: wall time del owner, conservada al reanudar la misma instancia;
+histórica: intervalo explícito resources→termination si sólo está acreditado eso.
+Lifecycle final se consume del scope de Session; Gold/Single/Auto sin métricas
+Farming conservan su presentación. [Checkpoint](docs/ARENA_FARMING_CHECKPOINT_20261009.md).
 
 Preparación y owners B1 compartidos; SINGLE_BATTLE despacha únicamente
 `SINGLE_START`, sin configuración Auto Repeat. Loading/actividad positivos mintan
@@ -341,11 +420,12 @@ nativos antes/después del cierre, con provenance separada. No `won_tickets`;
 derrota no adquirida detiene observer sin input. AUTO_REPEAT conserva su reader,
 Upon DefeatOFF, cierre y `used_tickets/won_tickets` de B1.
 
-Gold buff1 sólo si stockOFF0..7, consumo previsto8, precio3000 positivo y balance
-fresco suficiente: input único, reserva exacta y debitGold esperado, Karats/badges
-intactos antes de Start. Buff2 agotado y reposición Gold de batches largos siguen
-deteniendo preparación. Double Points nunca compra Karats. Déficit rojo sólo cuenta
-con recibo local de la compra; stock ilegible nunca se convierte en cero.
+USER_GT vigente: buffs1/2 se seleccionan y se verifica ON, sin OCR de contadores
+ni gates por cobertura. La evidencia B2 de compra Gold buff1 a3000 por faltante
+queda como procedencia; la preparación actual también acepta stock desconocido.
+Sólo un efecto ON acreditado permite continuar los buffs1/2; un efecto inconcluso
+detiene sin repetir input. Double Points mantiene su cobertura propia y queda OFF
+con tickets insuficientes/desconocidos; nunca compra Karats.
 
 Single cierra a selección; batch a Challenge. Retorno externo exige BASE limpia y
 Backs positivos hasta `screen.arena_select_mode` y Lobby fresco acreditado por

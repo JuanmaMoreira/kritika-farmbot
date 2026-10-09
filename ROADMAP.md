@@ -93,7 +93,8 @@ un batch x8 por invocación desde Lobby limpio a BASE Arena acreditado. Configur
 y guardas sin compras, wait focal cancelable/bounded y retorno; validación en
 [B1](docs/ARENA_B1_20261008.md). Único smoke autorizado EASY x8:50→2Badges,
 48used/48won, retorno BASE limpio, sin compras. Hubo interrupciones del observer
-y handoff; aceptación continua/performance del wait largo aún no demostradas.
+y handoff; B1 no acreditó autonomía. Farming Cycle posterior acredita un batch
+Hard continuo112/112 y wait526.906s ([informe](docs/ARENA_FARMING_VALIDATION_20261009.md)).
 No repetir consumo para arreglar esa medición ni iniciar otro frente automáticamente.
 Actualización B2: Single Battle, Step Settings por ocurrencia, persistencia v2,
 registro/Session y retorno externo Back implementados. QM→Lobby y Start individual
@@ -103,8 +104,19 @@ Pendientes residuales: derrota individual, cancelación/pausa física,
 Gold buff2/batches largos, representación Upon Defeat ON y
 aceptación de rutas relief/retorno que no aparecieron en adquisición.
 Buff3 sólo con cobertura conocida y sin Karats; selección ON y reserva8 adquiridas
-en B1, refund propio aún no. Farming Cycle/controller/Manual Stages/
-REPEAT_CURRENT no implementados y no se inician automáticamente.
+en B1, refund propio aún no. Farming Cycle/controller y generación MW implementados
+([contrato](docs/ARENA_FARMING_CYCLE.md)); Manual Stages implementado con selección
+09/06, guards de Stamina/capacidad/Auto, una entrada y retorno Lobby.
+Presupuesto opcional por occurrence y abastecimiento TC implementados: contador
+causal60/entrada, Claim previo, preparación única con límite y refill bajo demanda
+sin límite; Ads300 conservado. Compra mínima50 verificada live, entrada posterior
+60 acreditada y Session continua; [informe](docs/ARENA_STAMINA_VALIDATION_20261009.md).
+REPEAT_CURRENT continúa fuera de alcance y no se inicia automáticamente.
+
+Aceptación integral Crimson Assassin cerrada: GUI→Shared11→6Rion09/4MW/4Arena→
+ledger360/360→cleanup11/11→SessionCOMPLETED. Session Report analítico por
+ocurrencia y tabla de batches, winrate ponderado, recursos/Trading y lifecycle
+verificados con replay real sin otra sesión live. [Checkpoint integral](docs/ARENA_FARMING_CHECKPOINT_20261009.md).
 
 **Deuda explícita de adquisición:** MODAL informativo al alcanzar determinados
 puntos de Arena (existencia y clase por USER_GT). Título podría ser «Points Reward»,

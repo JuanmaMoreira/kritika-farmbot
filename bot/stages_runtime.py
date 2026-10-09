@@ -1,4 +1,4 @@
-"""Concrete Normal/Abyssal Rion/Stage8 navigation and Mao preparation."""
+"""Shared Stages navigation and Mao preparation; callers own target and entry."""
 import time
 from bot.stages_actions import StageAction,StageControl as C
 from bot.perception.stages import has,surface
@@ -13,8 +13,9 @@ def lobby(s):return s.state.status is ResolutionStatus.RESOLVED and s.state.base
 
 def exposed(s):
     layer=surface(s)
+    upper='overlay.manual_stage_clear' if layer=='clear' else 'popup.stages_'+str(layer)
     return s.state.status is not ResolutionStatus.AMBIGUOUS and all(
-        overlay == 'popup.stages_'+layer for overlay in s.state.overlays) if layer else False
+        overlay == upper for overlay in s.state.overlays) if layer else False
 
 class StagesNavigation:
     def __init__(self,observer,actions,*,events=None,cancel_requested=lambda:False,clock=time.monotonic,sleeper=time.sleep):
@@ -128,7 +129,8 @@ class StagesNavigation:
         if not result.succeeded:raise ValueError('stages claim '+result.outcome.value)
         return result.final_snapshot
 
-    def enter_target(self):
+    def enter_episode(self, episode='abyssal'):
+        if episode not in {'abyssal','chaos'}:raise ValueError('unknown stages episode')
         s=self.wait(lobby)
         try:
             s=self.change(C.OPEN,s,{'normal','elite'})
@@ -149,23 +151,26 @@ class StagesNavigation:
         # Verify the current episode on a fresh, exposed Normal frame before
         # deciding whether World Map is needed, including Elite -> Normal.
         s=self.wait(lambda s:exposed(s) and surface(s)=='normal')
-        confirmed=has(s,'abyssal')
-        measured=s.observations.best('stages.abyssal_score')
+        confirmed=has(s,episode)
+        measured=s.observations.best('stages.'+episode+'_score')
         record_best_effort(self.events,'stages.episode_check',
-            episode='abyssal_rion' if confirmed else 'unconfirmed',world_map_required=not confirmed,
+            episode=('abyssal_rion' if episode=='abyssal' else episode) if confirmed else 'unconfirmed',world_map_required=not confirmed,
             score=measured.value if measured is not None else None,threshold=.94,
             source_sequence=s.sequence,frame_shape=s.frame.image.shape[:2],
             frame_age=self.clock()-s.timestamp,overlays=s.state.overlays)
         if not confirmed:
             s=self.change(C.WORLD_MAP,s,{'world_map'})
-            s=self.change(C.ABYSSAL_TAIL,s,{'world_map','normal'})
+            s=self.change(C.ABYSSAL_TAIL if episode=='abyssal' else C.CHAOS,s,{'world_map','normal'})
             if surface(s)=='world_map':s=self.change(C.WORLD_MAP,s,{'normal'})
-            s=self.wait(lambda s:surface(s)=='normal' and has(s,'abyssal'))
-        record_best_effort(self.events,'stages.episode',episode='abyssal_rion')
-        if not has(s,'stage8'):s=self.wait(lambda s:exposed(s) and surface(s)=='normal' and has(s,'abyssal') and has(s,'stage8'))
+            s=self.wait(lambda s:surface(s)=='normal' and has(s,episode))
+        record_best_effort(self.events,'stages.episode',episode='abyssal_rion' if episode=='abyssal' else episode)
         # Claims preserve the verified episode within this entry. Their toast
         # does not change context; no title recheck after generating it.
         s=self.claim_rewards(s)
+        return s
+
+    def enter_target(self):
+        s=self.enter_episode()
         s=self.wait(lambda s:exposed(s) and surface(s)=='normal' and has(s,'stage8'))
         return self.change(C.STAGE8,s,{'config'})
 

@@ -523,5 +523,20 @@
       0.457,
       0.953
     ]
+  },
+  "world_map_chrome": {
+    "source": "artifacts/manual_stages/map_01/after.png",
+    "crop": [
+      0.179,
+      0.265,
+      0.208,
+      0.296
+    ],
+    "search": [
+      0.175,
+      0.26,
+      0.213,
+      0.302
+    ]
   }
 }

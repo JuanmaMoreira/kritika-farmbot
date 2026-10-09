@@ -96,9 +96,13 @@ class ProductiveMonsterWaveFlow:
     def entry_readiness(self):
         return self.inner.entry_readiness(pressure_relief=True)
 
-    def run(self, *, yield_resource_board=False):
+    def run_resource_pass(self):
+        """Generate once for an economic caller; preserve all board/relief guards."""
+        return self.run(one_pass=True)
+
+    def run(self, *, yield_resource_board=False, one_pass=False):
         # Enter once, finish gameplay on a verified reusable surface.
-        ready=self.entry_readiness()
+        ready=self.inner.entry_readiness(pressure_relief=False) if one_pass else self.entry_readiness()
         if ready is not None:return ready
         entered = self.zone.enter()
         if not entered.succeeded:
@@ -107,7 +111,8 @@ class ProductiveMonsterWaveFlow:
                 transition_outcomes=entered.transition_outcomes,
                 transition_attempts=entered.transition_attempts,
             )
-        result = self._run_activity_l1(keep_current=True)
+        result = (self._run_activity_l1(keep_current=True, one_pass=True) if one_pass
+                  else self._run_activity_l1(keep_current=True))
         result = replace(result,
             transition_outcomes=entered.transition_outcomes + result.transition_outcomes,
             transition_attempts=entered.transition_attempts + result.transition_attempts)
@@ -125,10 +130,10 @@ class ProductiveMonsterWaveFlow:
         passed = self.activity.run_pass(resume_after_relief=True)
         return self.activity._merge(entered, passed)
 
-    def _run_activity_l1(self, *, return_to_lobby=False, keep_current=False) -> FlowResult:
+    def _run_activity_l1(self, *, return_to_lobby=False, keep_current=False, one_pass=False) -> FlowResult:
         """Prepare once; reevaluate pressure after each verified CLEAR effect."""
         try:
-            prepared = self.activity.prepare(pressure_relief=True)
+            prepared = self.activity.prepare(pressure_relief=not one_pass)
         except RuntimeWaitCancelled:
             return MonsterWaveResult(FlowStatus.CANCELLED)
         except Exception as error:
@@ -153,11 +158,11 @@ class ProductiveMonsterWaveFlow:
             return MonsterWaveResult(FlowStatus.FAILED, error='mw_initial_sapphires_unavailable',
                                      events=prepared.events)
         balance = initial
-        pass_budget = max(32, sapphire_pressure_passes(initial))
+        pass_budget = 1 if one_pass else max(32, sapphire_pressure_passes(initial))
         result = prepared
         consumed = 0
         for _ in range(pass_budget):
-            if sapphire_pressure_passes(balance) == 0:
+            if not one_pass and sapphire_pressure_passes(balance) == 0:
                 break
             try:
                 first = self._first_leg()
@@ -203,12 +208,15 @@ class ProductiveMonsterWaveFlow:
             record_best_effort(getattr(self.activity, 'events', None),
                 'monster_wave.sapphire_effect', before=balance, after=fact.value,
                 source_sequence=fact.sequence, passes_needed=sapphire_pressure_passes(fact.value))
+            if one_pass and fact.value >= balance:
+                return replace(result, status=FlowStatus.FAILED, error='mw_pass_without_verified_sapphire_consumption')
+            before = balance
             consumed += max(0, balance - fact.value)
             balance = fact.value
             result = replace(result, sapphires_consumed=consumed,
                 events=result.events + (FlowEvent('monster_wave.sapphire_effect', fields={
-                    'after':balance, 'source_sequence':fact.sequence}),))
-        if sapphire_pressure_passes(balance):
+                    'before':before, 'after':balance, 'source_sequence':fact.sequence}),))
+        if not one_pass and sapphire_pressure_passes(balance):
             return replace(result, status=FlowStatus.FAILED, error='mw_pressure_pass_budget_exhausted')
         left = finish_surface()
         return replace(left,

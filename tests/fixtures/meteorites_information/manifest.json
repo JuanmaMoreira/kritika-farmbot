@@ -1,0 +1,36 @@
+{
+  "source": "artifacts/arena_e2e_20261009/setup_divergence.png",
+  "source_sha256": "8b47e512db76948a3e7d68e9747397947c2726632603384d3a807e05bf985307",
+  "fixture_sha256": "a777ade32abc55c329f45fe0df353f8f33537e8331563a4f361ef3faf6363538",
+  "label": "USER_GT informational long-press OVERLAY; no lateral Equip",
+  "normalization": [
+    1356,
+    612
+  ],
+  "retained_rois": [
+    [
+      0.18,
+      0.231,
+      0.338,
+      0.274
+    ],
+    [
+      0.609,
+      0.292,
+      0.626,
+      0.714
+    ],
+    [
+      0.504,
+      0.292,
+      0.521,
+      0.714
+    ],
+    [
+      0.193,
+      0.264,
+      0.25,
+      0.4
+    ]
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "entries": [
+    {
+      "id": "b1_lobby_badges",
+      "path": "tests/fixtures/arena_farming/b1_lobby_badges.png",
+      "expected": 50,
+      "source": "screencaps/arena_hil/20261008/b1_lobby_native.png",
+      "source_sha256": "acb4608c6079e2c8de07c355c79055751b1154a5417e6b1ae740819daee67e19",
+      "roi": [
+        0.787,
+        0.608,
+        0.849,
+        0.648
+      ],
+      "sha256": "c8adecde50822ff89f79af7b1db27f5e602ad5594d1b75cfc456076730f355b8",
+      "authority": "Existing native LIVE_EVIDENCE B1/B2; source inspection; USER_GT resource identity"
+    },
+    {
+      "id": "b1_lobby_sapphires",
+      "path": "tests/fixtures/arena_farming/b1_lobby_sapphires.png",
+      "expected": 2,
+      "source": "screencaps/arena_hil/20261008/b1_lobby_native.png",
+      "source_sha256": "acb4608c6079e2c8de07c355c79055751b1154a5417e6b1ae740819daee67e19",
+      "roi": [
+        0.787,
+        0.455,
+        0.849,
+        0.494
+      ],
+      "sha256": "24c44c0e22d1ae412293cd69d84c2869d78cfc3e87f0500da8d250f7df448e77",
+      "authority": "Existing native LIVE_EVIDENCE B1/B2; source inspection; USER_GT resource identity"
+    },
+    {
+      "id": "b2_lobby_badges",
+      "path": "tests/fixtures/arena_farming/b2_lobby_badges.png",
+      "expected": 82,
+      "source": "artifacts/arena_b2/20261008/30-productive-smoke/physical_final.png",
+      "source_sha256": "887577d3a0c90fb5b4cf09b0629006219730f05d6e0e9eafed9ba6c231bc5bde",
+      "roi": [
+        0.787,
+        0.608,
+        0.849,
+        0.648
+      ],
+      "sha256": "c42937a2500a8b460c55b9580fac86c95e2fe8a622d2697040f259357bcce40c",
+      "authority": "Existing native LIVE_EVIDENCE B1/B2; source inspection; USER_GT resource identity"
+    },
+    {
+      "id": "b2_lobby_sapphires",
+      "path": "tests/fixtures/arena_farming/b2_lobby_sapphires.png",
+      "expected": 2,
+      "source": "artifacts/arena_b2/20261008/30-productive-smoke/physical_final.png",
+      "source_sha256": "887577d3a0c90fb5b4cf09b0629006219730f05d6e0e9eafed9ba6c231bc5bde",
+      "roi": [
+        0.787,
+        0.455,
+        0.849,
+        0.494
+      ],
+      "sha256": "d97589fb36ce14a58116624ce2e5b8d18ff5278dd2cc8fefab86d89d462de10c",
+      "authority": "Existing native LIVE_EVIDENCE B1/B2; source inspection; USER_GT resource identity"
+    },
+    {
+      "id": "cycle_preflight_badges",
+      "path": "tests/fixtures/arena_farming/cycle_preflight_badges.png",
+      "expected": 119,
+      "source": "artifacts/arena_farming/live-preflight-02/physical_final.png",
+      "source_sha256": "099d804c1ba6740d4e806a68eb3f957db93c9bc6234871e025abafe926a9fd81",
+      "roi": [
+        0.787,
+        0.608,
+        0.849,
+        0.648
+      ],
+      "sha256": "4e6fce95f67169079c95c9febc6db90ee81b262481dd9651a7035685dd1c9cfd",
+      "authority": "LIVE_EVIDENCE inspected native Farming Cycle preflight/MW final; no inferred balance"
+    },
+    {
+      "id": "cycle_preflight_sapphires",
+      "path": "tests/fixtures/arena_farming/cycle_preflight_sapphires.png",
+      "expected": 95,
+      "source": "artifacts/arena_farming/live-preflight-02/physical_final.png",
+      "source_sha256": "099d804c1ba6740d4e806a68eb3f957db93c9bc6234871e025abafe926a9fd81",
+      "roi": [
+        0.787,
+        0.455,
+        0.849,
+        0.494
+      ],
+      "sha256": "3e35cee28960ad8e5b86d687654533b4a0c97cd615fc6ecf02ff5675f0cbf36b",
+      "authority": "LIVE_EVIDENCE inspected native Farming Cycle preflight/MW final; no inferred balance"
+    },
+    {
+      "id": "mw_final_badges",
+      "path": "tests/fixtures/arena_farming/mw_final_badges.png",
+      "expected": 106,
+      "source": "artifacts/arena_farming/live-mw-01/physical_final.png",
+      "source_sha256": "254b7e76c4a78b59b21fd40523c1b46ac8fe9403771f936a57dc7655338fb35d",
+      "roi": [
+        0.787,
+        0.608,
+        0.849,
+        0.648
+      ],
+      "sha256": "65c5cf37d35429341a8e8b31e927d79abca087f916799b5ad1dfa5fe0758a990",
+      "authority": "LIVE_EVIDENCE inspected native Farming Cycle preflight/MW final; no inferred balance"
+    },
+    {
+      "id": "mw_final_sapphires",
+      "path": "tests/fixtures/arena_farming/mw_final_sapphires.png",
+      "expected": 0,
+      "source": "artifacts/arena_farming/live-mw-01/physical_final.png",
+      "source_sha256": "254b7e76c4a78b59b21fd40523c1b46ac8fe9403771f936a57dc7655338fb35d",
+      "roi": [
+        0.787,
+        0.455,
+        0.849,
+        0.494
+      ],
+      "sha256": "cf9580b9c9d29e5e4e315df780bf06ada4e02758306f5fcc72b5f22882d37bb4",
+      "authority": "LIVE_EVIDENCE inspected native Farming Cycle preflight/MW final; no inferred balance"
+    }
+  ]
+}

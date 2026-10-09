@@ -41,6 +41,37 @@ def ensure_lobby_entry(dependencies):
         raise ValueError(result.error or 'lobby_entry_unconfirmed')
     return result
 
+def build_manual_stages_navigation(dependencies, monster_wave):
+    from bot.manual_stages_reader import ManualStagesDetector
+    scope = ScopeSpec('manual_stages', STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+        (*STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES, StagesDetector))
+    selected = select_detectors(dependencies.observer.perception, scope)
+    detector = ManualStagesDetector()
+    observer = dependencies.observer.scoped(PerceptionEngine(tuple(
+        detector if isinstance(d, StagesDetector) else d for d in selected.detectors)))
+    nav = StagesNavigation(observer, dependencies.actions, events=dependencies.events,
+        cancel_requested=dependencies.cancel_requested)
+    nav.claim_observer = observer.scoped(PerceptionEngine((StagesClaimDetector(detector),)))
+    # Full Stages upper-layer family + existing inventory blockers; no global
+    # resolver/perception loop is used during battle's passive wait.
+    progress_scope=ScopeSpec('manual_stages_progress',STAGES_RESULTS_RETURN_SCOPE.spec_names,
+        (ManualStagesDetector,))
+    nav.results_observer = observer.scoped(select_detectors(observer.perception,progress_scope))
+    from bot.stages_reliefs import StagesReliefs
+    nav.relief = StagesReliefs(nav, dependencies, monster_wave.equipment_relief)
+    return nav, StagesBalanceReader(nav,dependencies.ocr_engine), detector
+
+def build_manual_stages(dependencies, monster_wave):
+    from bot.manual_stages import ManualStagesOperation
+    from bot.character_state import current_character_state
+    from bot.meteorites_session import current_meteorites_scope
+    nav,balances,visuals=build_manual_stages_navigation(dependencies,monster_wave)
+    def character():
+        state=current_character_state()
+        return state[1] if state is not None else None
+    return ManualStagesOperation(nav,balances,visuals,character=character,
+        meteorites=current_meteorites_scope,stamina_purchase=StaminaPurchase(nav,balances,visuals))
+
 
 def build_stages_daily(dependencies, monster_wave):
     scope = ScopeSpec('stages_daily', STRONG_LOBBY_COMPLETION_SPEC_NAMES,

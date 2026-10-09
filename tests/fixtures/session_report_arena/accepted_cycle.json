@@ -1,0 +1,313 @@
+{
+  "provenance": "LIVE_EVIDENCE: completed one-character GUI Session; business events in publication order",
+  "source": "20261009T220833.531536Z_session_7621171c.jsonl",
+  "source_sha256": "412b414d24baeff45e204ed3e1b4026d5fb133783506e56d0b7b3bf22851b98e",
+  "events": [
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.stamina_supply",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.tickets_purchased",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "collect_recent_batches"
+      }
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "adjacent_uncertainty"
+      }
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.manual_resolution",
+      "fields": {
+        "reason": "relief_return_not_acquired",
+        "relief_boundary_id": "a595c74317b741f99c8eddab1f84a1bc"
+      }
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.relief_resolved",
+      "fields": {
+        "relief_boundary_id": "a595c74317b741f99c8eddab1f84a1bc"
+      }
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "collect_recent_batches"
+      }
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.manual_resolution",
+      "fields": {
+        "reason": "relief_return_not_acquired",
+        "relief_boundary_id": "7b95f788510a473785846acb0cf50d3d"
+      }
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {}
+    },
+    {
+      "kind": "monster_wave.relief_resolved",
+      "fields": {
+        "relief_boundary_id": "7b95f788510a473785846acb0cf50d3d"
+      }
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "recent_reward_advantage"
+      }
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {}
+    },
+    {
+      "kind": "arena.farming.terminated",
+      "fields": {
+        "reason": "stamina_budget_reached",
+        "stamina_consumed": 360,
+        "remaining_stamina_budget": 0
+      }
+    }
+  ]
+}

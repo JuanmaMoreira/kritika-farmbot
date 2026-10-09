@@ -1,5 +1,126 @@
 # Estado actual — Kritika FarmBot
 
+## Arena Farming — Session Report analítico y checkpoint 2026-10-09
+
+Proyección por ocurrencia sin IO/OCR/input: resumen visible y tabla de batches
+expandible en GUI. Receipts únicos por batch/operación, conflictos y ausentes N/D;
+winrate ponderado408/336/72→82,35%, x8 íntegro51/42/9. Replay Crimson real:
+6Manual/4MW, ledger360/360, Sapphire408/400, TC100/400KCoins, RELEASED11/11.
+Duración histórica sólo routing observado49m53,965s; runtime51m09,776s separado.
+Owners registran vínculo causal/multiplicador/wall y coste confirmado ya conocidos;
+wall de ciclo nueva conservada al reanudar en misma instancia. Sin nuevo gameplay.
+GUI revisada con replay offline; ninguna Session ni acceso al teléfono.
+Gold/Single/Auto y reportes antiguos siguen compatibles. Checkpoint aislado por
+paths/hunks; Ads multipart, Equipment payment wrap, MW readiness scope, Summon Pet,
+helpers Gold y eliminación histórica del plan permanecen fuera.
+[Fuentes, snapshot y validación](docs/ARENA_FARMING_CHECKPOINT_20261009.md).
+Snapshot afectado:1055passed; evaluatorsArena9/Manual20/Stamina3, wrong0.
+Suite amplia5085passed/296failed/27skipped; mismos296 fallos reproducidos en
+parent limpio, sin test nuevo fallando. INDEX130paths/hunks; residual preservado.
+
+## Arena Farming — aceptación GUI integral PASS 2026-10-09
+
+GUI real `a360`, Characters1: Arena único/Farming40/100/80, máximo360,
+Change MeteoritesON, Apply/Save/recarga acreditados; rutinas previas preservadas.
+Crimson Assassin/Drakenn09 (`crimson_assassin`), necesita Shared para Rion09.
+Run `ffb31f514a074ad5bcb82db1e17874d4`, Session `d6205777fdc14ecd971a28b4095b20a5`:
+once Equip→READY21.866s; seis Manual Rion09, cuatro MW, cuatro Arena.
+Controller nuevo Hard104/80→Hard104/88→Normal96/72→Normal104/96; próximaHard
+por recent_reward_advantage, no otro batch elegible. Sin Easy0.
+Claim comprobado antes de déficit; compra anticipada única100Stamina/400KCoins,
+282→382, una confirmación. Ledger nuevo0→6×60=360/restante0; saldo final físico
+27Stamina/88Sapphires/2Badges. Corte funcional stamina_budget_reached.
+Cleanup normal once Unequip→Set2vacío→Set1original→RELEASED16.389s;
+CP41,829,408 restaurado. SessionCOMPLETED, processed1/advance1, runtime cerrado
+51m09.776s. Rotation habitual sólo después de cleanup; Lobby limpio del siguiente
+HUD DRAKEN六FS, sin setup/farming sobre él. Probe final independiente sin overlays.
+
+Primer setup interrumpido tras7Equip recuperado íntegro, cero farming. USER_GT:
+panel informativo por tap mantenido/cierre lateral; causa del hold Android no
+demostrada por dispatch ADB. Fix local positivo+cierre/reselect único antes de
+Equip, estado fresco idéntico, sin retry económico;197tests afectados pasan.
+Primer farming parcial: Hard104/88, dosRion09/ledger120, compra250/1000KCoins;
+tercera preparación PenanceON tras Equipment relief no reconocido. Corte seguro
+MANUAL_RESOLUTION, recovery onceUnequip/Set1/Lobby; nueva Session independiente,
+sin reconstruir ledger120. Template local ON threshold0.94 intacto;129tests y
+cinco casos existentes de evaluator correctos. PASS ejercitó dosreliefsPenance.
+Reporte GUI antiguo mostraba assessmentunavailable pese a COMPLETED: fix local
+SessionReport para eventos conocidos y terminación budget/Easy0; replay71 eventos
+reales y116tests afectados pasan, unknown/fallos/relief incierto preservados.
+GUI abierta conserva la proyección previa; no necesita otro farming.
+
+Campaña total480Stamina causal,350comprada/1400KCoins; PASS sólo360/400KCoins.
+[Informe completo y evidencia](docs/ARENA_E2E_ACCEPTANCE_20261009.md).
+Sin commit/push/staging; baseline c607b601, rebuild/stable-baseline, todo trabajo
+previo preservado. Cleanup completo y alcance cerrado; no iniciar otro frente.
+
+## Arena Farming — presupuesto/abastecimiento Stamina 2026-10-09
+
+Campo opcional Maximum Stamina Consumption sólo Farming Step Settings;
+Apply/Save/recarga conservadores, vacío sin límite. Ledger por ejecución/carácter,
+receipts de60 por entrada física (fallida también), independiente de Claim,
+compra y regeneración;500→ocho entradas480. Preparación anticipada única con
+presupuesto, sólo en ruta Manual después de Claim y refresh; sin presupuesto,
+refill sólo al faltar60. `StaminaPurchase.supply` reutiliza TC/KCoin200→50,
+demanda parametrizada, cap/coste/cobertura frescos, Trade único, efecto/retorno.
+Ads conserva300 y protocolo previo. Parcial/imposible funcional con saldo real;
+UNKNOWN no repite Trade. Reanudación en misma instancia conserva ledger y
+preparación, reconcilia entrada/pago pendientes antes de más consumo. No resume
+durable de Session al cerrar proceso, ni REPEAT_CURRENT/controller alterado.
+Easy0 puede terminar con Stamina comprada sobrante; Session/Meteorites intactos.
+
+USER_GT posterior: Manual buffs1/2/3ON sólo selección/effect, cero OCR contadores;
+cuarto coverage/insufOFF sin Karats como último Arena. Divergencia live: config
+se resolvía durante animación antes de Hell legible; fix espera señal conocida
+bounded, sin nuevo template/threshold/tap UNKNOWN.
+
+Live: Cat Acrobat `payment_inspect_02`:140471KCoins/200,1/20, cero compras.
+`cycle_supply_01`: Claim57→87; una compra50 por200→137; preparación registrada;
+stopped antes de Start por dificultad transitoria, ceroStamina consumida.
+Tras cierre verificado, `cycle_prepared_retry_02`: ceroTC compras, Chaos06Hell,
+socket relief transversal, AutoON, Clear Time, Home retry guardado→Lobby limpio.
+137→78 por entrada60 más regeneración1;66→110Sapphires (+44); receipt60,
+remaining60/presupuesto120, siguiente routing MW para esa occurrence107/100.
+Bound smoke1operación, Session y Lobby probe COMPLETED. No nuevo batch Arena/MW.
+Estado final medido: Cat Acrobat, Lobby limpio,78Stamina/110Sapphires/106Badges,
+runtime/source cerrados; worktree preservado, sin commit/push.
+Validación afectada584tests +132receipt/cycle y57del ciclo tras últimos guards; evaluator
+de pago3/3. Reporte y límites en [informe](docs/ARENA_STAMINA_VALIDATION_20261009.md).
+
+## Manual Stages — tercera rama Arena completada 2026-10-09
+
+Owner productivo conectado a Farming Cycle: identidad fuerte o once efectos
+Shared Meteorites acreditados→Rion09/Penance; resto→Chaos06/Hell. No Stage08 ni
+reequipamiento por entrada. Stamina≥60 y Sapphire<capacidad frescos; x4 sólo en
+BASE, MaoSupport del owner Ads, buffs1/2ON sin OCR de contador, buff3con ticket y
+buff4ticket seguro sin Karats. Dos Start distintos, una entrada, AutoON adquirido
+antes de pausa30s/polling1.5s; Clear Time overlay y Home→Lobby.
+
+Smokes: Burst Breaker Rion09 produjo29→71Sapphires (+42). Blade Dancer sin set
+verificado completó Chaos06Hell, Clear Time31s,28→68Sapphires (+40), Stamina
+89→Claim119→59 (coste60). Socket relief transversal recuperó configuración y
+SupportACTIVE; un único Start en Select Striker. Home temprano sin efecto admite
+un retry sólo con Clear fresco, validado live. Nueva invocación con59Stamina
+terminó `stamina_insufficient`; Session siguió al siguiente paso y COMPLETED.
+
+Regresión AutoOFF de Monk corregida: brillo del bisel estático no cuenta; destellos
+laterales en ventana2s distinguen ON/OFF. Muerte→Abandon→Get stronger→X adquirida.
+Capacidad llena explica primer Rion sin ganancia129→129; ahora es precondición.
+USER_GT vigente Arena buffs1/2: activar y verificar ON, sin contadores/gates; x2
+insuficiente queda OFF y Arena sigue. Controlador adaptativo intacto.
+
+Tests dirigidos/regresiones afectados PASS; evaluator Manual20/20 (18reusados,
+2nuevos), recursos Arena9/9. Cadena Manual→MW→Arena validada por composición/tests;
+smokes previos MW y Arena reutilizados, sin otro batch largo ni campaña28/28.
+Shared Meteorites conserva setup/cleanup al final del personaje; integración
+Session/scope verificada offline. Límites/evidencia en
+[informe Manual](docs/MANUAL_STAGES_VALIDATION_20261009.md).
+
+Final: Blade Dancer, Lobby limpio,59Stamina/68Sapphires/106Badges, runtime y sources
+cerrados. Baseline c607b601 intacta, `rebuild/stable-baseline`, sin commit/push;
+Arena no publicado y todo trabajo independiente preservados. Los estados físicos
+de los informes anteriores son los finales de sus respectivos smokes.
+
 ## Gold Farming Cycle — 28/28 verificado 2026-10-09
 
 Campaña real de los28 completada con reanudaciones seguras; cinco flows y cierre
@@ -10,6 +131,39 @@ coste Craft y segunda estrategia Socket. Llamada externa descalificada por USER_
 Sin regresión reciente ni acumulación causal demostradas. Teléfono Lobby limpio,
 runtimes cerrados. Checkpoint Gold aislado sobre92667ee; Arena y trabajo histórico
 permanecen locales, fuera de este checkpoint. [Diagnóstico, evidencia y límites](docs/GOLD_CYCLE_DIAGNOSIS_20261009.md).
+
+## Arena Farming Cycle — implementación y validación focal 2026-10-09
+
+Un único paso Arena: Single Battle / Auto Repeat B2 conservados, tercer modo
+Farming Cycle con thresholds por ocurrencia40/100/80, Apply/Save compatible y sin
+dificultad fija visible. Coordinator propio, controller reciente por ejecución,
+siempre ArenaFlow AUTO_REPEAT x8 y MW productivo `run_resource_pass()` de un pase.
+Routing exacto por saldos nativos frescos; Manual Stages es owner independiente
+conectado, con cierre y validación descritos arriba.
+No REPEAT_CURRENT. [Contrato/policy](docs/ARENA_FARMING_CYCLE.md).
+
+Smoke real en Dimension Manipulator: Hard112used/112won,119→7Badges,
+Karats103165→103277, Gold6930610473 intacto. Un único Start, wait continuo526.906s,
+175observaciones, intervalo medio3.028s/máximo3.172s, cero OCR y sin handoff.
+Autonomía prolongada acreditada para ese batch, no campaña multi-ciclo.
+Refresh expuso100Sapphires; MW anterior devolvía no_work por presión102.
+Fix de composición local: operación MW de generación única, guards/economía/
+board/planner/reliefs existentes; `run()`/`prepared()` de Gold mantienen presión.
+Smoke MW focal posterior:100→0Sapphires,7→106Badges, CLEAR y consumo frescos;
+Lobby y paso posterior Session COMPLETED, bound de smoke1operación.
+
+Primer smoke se detuvo sin gasto/Start por OCR del stock999: margen negro focal
+en buffs conserva gate>=.95/color-gris; no cambia lectura Badge/result ni precios.
+Recuperación pre-start con tres Back adquiridos. No se repitió el batch largo;
+repetición de MW sólo validó la operación nueva. Evaluator incremental9/9,
+cinco resultados reutilizados y cuatro crops live nuevos calculados.
+
+Final físico Lobby limpio, Dimension Manipulator,106Badges,0Sapphires,
+Gold7127809094,Karats103277; sin operación activa. Runtimes/sources cerrados.
+Persisten derrota Single, modal informativo de umbral,
+Gold agotamiento buffs, cancelación física y retorno tras relief. Validación y
+residual del worktree: [informe](docs/ARENA_FARMING_VALIDATION_20261009.md).
+Sin commit/push; cambios independientes Ads/MW/Sell/Summon y demás preservados.
 
 ## Arena B2 — operación y rutina validadas 2026-10-08
 

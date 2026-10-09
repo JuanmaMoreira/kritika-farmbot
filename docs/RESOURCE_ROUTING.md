@@ -321,6 +321,38 @@ y recalcula; no supone un decremento de100. Un efecto inconcluso corta, no consu
 otra entrada. Guards de CLEAR y relief no cambian. Los smokes históricos anteriores
 registran la policy anterior; la recalibración presente se verifica offline.
 
+Arena Farming Cycle utiliza `run_resource_pass()` del mismo owner MW para generar
+una vez desde su routing (default>=100Sapphires). Esa operación no es alivio de
+presión: conserva preparación ordinaria, board/planner/reliefs, CLEAR y consenso
+fresco de consumo, sin drenaje hasta<102. `run()` y `prepared()` mantienen la
+policy Gold anterior. El ciclo reevalúa saldos frescos y ganancia de Badges después
+de ese único pase; el threshold100 no se usa como coste físico ni saldo calculado.
+
+La tercera rama de Arena Farming Cycle invoca Manual Stages sólo cuando ambos
+recursos son insuficientes. Su owner exige StageBalances fresco: Stamina≥60 y
+Sapphire<capacidad; devuelve terminación funcional explícita por insuficiencia o
+capacidad llena. El ciclo abastece previamente según su presupuesto opcional;
+el owner no repite Start consumptivo. Una entrada x4, configuración acreditada,
+  AutoON, terminal positiva y Home→Lobby preceden a los balances posteriores.
+Sólo ganancia Sapphire fresca autoriza continuar; derrota/no progreso cortan.
+El coordinador refresca Badges/Sapphires con su autoridad nativa antes del nuevo
+routing Arena/MW/Manual. No cleanup adelantado ni REPEAT_CURRENT.
+
+Farming Cycle admite `maximum_stamina_consumption` opcional por ocurrencia:
+remaining≥60 antes de Manual; receipts de entradas físicas cuentan60, incluso
+fallidas, sin restar Claim/compra/regeneración. Límite500→480 consumibles.
+Primera selección Manual con límite: Claim normal→Lobby→refresh routing→saldo
+requerido floor(remaining/60)×60; preparación única conservada al reanudar.
+Sin límite, abastecimiento sólo con Stamina<60, objetivo60. Ninguna compra cuando
+Arena/MW son elegibles; después de Claim/compra y cada entrada, refresh fresco.
+El mismo `StaminaPurchase` conserva Ads300; `supply` acepta demanda Manual,
+KCoin200/50Stamina, par de pago C4 fresco, cap≤20 y confirmación única. Compra
+limitada por KCoins/cap; registra cobertura parcial y continúa sólo con saldo
+real. Trade incierto no se repite: reconciliar pago/gain antes de más consumo.
+Límite alcanzado, compra imposible y Easy0 son finales funcionales, con saldo
+remanente permitido y sin cambiar Session/Meteorites. Contrato y límites en
+[Arena Farming Cycle](ARENA_FARMING_CYCLE.md#presupuesto-y-abastecimiento-de-stamina).
+
 CraftStep aprovecha el panel abierto para las familias Hero habilitadas por ReliefPolicy
 (Weapons, Armor y Accessories; todas habilitadas por migración para conservar comportamiento)
 elegibles, en ese orden; costo/material ya visibles permiten decidir sin abrir

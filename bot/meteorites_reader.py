@@ -108,6 +108,13 @@ class MeteoritesReader:
         self.calls['detector']+=1
         return self.score(f,'detail_border',DETAIL_ROI)>=.94
 
+    def information_overlay(self,frame):
+        """USER_GT long-press panel; it has no lateral equipment authority."""
+        f=normalize(frame)
+        return (self.score(f,'detail_border',(.613,.302,.622,.704))>=.94
+                and self.active_set(f) in (1,2,3)
+                and not self.detail(f) and self.action(f) is None)
+
     def loading(self,f):
         self.calls['detector']+=1
         hsv=cv2.cvtColor(crop(f,(.490,.478,.509,.524)),cv2.COLOR_BGR2HSV)
@@ -159,7 +166,7 @@ class MeteoritesReader:
         f=normalize(frame)
         if not self.main(f):
             return None
-        overlay=self.detail(f)
+        overlay=self.detail(f) or self.information_overlay(f)
         loading=self.loading(f)
         page=None
         if read_page and not loading:

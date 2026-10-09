@@ -1,4 +1,6 @@
 from dataclasses import FrozenInstanceError, replace
+import json
+from pathlib import Path
 
 import pytest
 
@@ -372,3 +374,45 @@ def test_manual_resolution_headline_preserves_stopped_execution():
     assert text.startswith('Session stopped for manual resolution — 0/3')
     assert 'Ad returned without verified reward' in text
     assert 'Session completed' not in text
+
+
+def accepted_arena_flow():
+    replay = json.loads((Path(__file__).parent / 'fixtures/session_report_arena/accepted_cycle.json').read_text(encoding='utf8'))
+    return FlowResult(FlowStatus.COMPLETED, tuple(FlowEvent(**event) for event in replay['events']))
+
+
+def test_live_arena_budget_completion_is_assessed_after_resolved_reliefs():
+    raw = accepted_arena_flow()
+    report = build_session_report(session(character(1, raw), names=('arena',)))
+    assert report.status is ReportStatus.COMPLETE
+    assert report.counts.complete == 1 and report.counts.unassessed == 0
+    assert report.data_gaps == ()
+
+
+@pytest.mark.parametrize('reason', ['easy_zero_wins', 'future_stop', None])
+def test_arena_termination_reason_controls_assessment_without_guessing(reason):
+    raw = accepted_arena_flow()
+    events = tuple(replace(event, fields={'reason': reason}) if event.kind == 'arena.farming.terminated'
+                   else event for event in raw.events)
+    report = build_session_report(session(character(1, replace(raw, events=events)), names=('arena',)))
+    assert report.status is (ReportStatus.COMPLETE if reason == 'easy_zero_wins' else None)
+
+
+@pytest.mark.parametrize('status', [FlowStatus.FAILED, FlowStatus.CANCELLED, FlowStatus.MANUAL_RESOLUTION])
+def test_arena_known_termination_does_not_mask_stopped_execution(status):
+    raw = replace(accepted_arena_flow(), status=status)
+    session_status = {FlowStatus.FAILED: SessionStatus.FAILED, FlowStatus.CANCELLED: SessionStatus.CANCELLED,
+                      FlowStatus.MANUAL_RESOLUTION: SessionStatus.MANUAL_RESOLUTION}[status]
+    report = build_session_report(session(character(1, raw, completed=False), status=session_status, names=('arena',)))
+    assert report.status is {FlowStatus.FAILED: ReportStatus.TECHNICAL_FAILURE,
+        FlowStatus.CANCELLED: ReportStatus.CANCELLED, FlowStatus.MANUAL_RESOLUTION: ReportStatus.BUSINESS_INCOMPLETE}[status]
+
+
+@pytest.mark.parametrize('event,expected', [
+    (FlowEvent('future.new_outcome'), None),
+    (FlowEvent('monster_wave.manual_resolution', fields={'relief_boundary_id': 'unresolved'}), ReportStatus.BUSINESS_INCOMPLETE),
+])
+def test_arena_completion_keeps_unknown_events_and_unresolved_reliefs(event, expected):
+    raw = accepted_arena_flow()
+    raw = replace(raw, events=(*raw.events, event))
+    assert build_session_report(session(character(1, raw), names=('arena',))).status is expected

@@ -1019,6 +1019,22 @@ def _build_gold_farming(dependencies):
 
 def _build_arena(dependencies):
     settings = getattr(getattr(dependencies, 'config', None), 'arena', ArenaConfig())
+    from bot.arena_config import ArenaMode
+    if settings.mode is ArenaMode.FARMING_CYCLE:
+        from bot.arena_farming_cycle import ArenaFarmingCycle
+        from bot.arena_farming_resources import ArenaFarmingResourceReader
+        from bot.ocr import RapidOcrEngine
+        from bot.stages_wiring import ensure_lobby_entry, build_manual_stages
+        monster_wave = _build_monster_wave(dependencies)
+        return ArenaFarmingCycle(
+            ArenaFarmingResourceReader(dependencies.observer,
+                getattr(dependencies, 'ocr_engine', None) or RapidOcrEngine(),
+                cancel_requested=dependencies.cancel_requested),
+            lambda difficulty: dependencies.build_arena_flow(difficulty,
+                mode=ArenaMode.AUTO_REPEAT, return_context='screen.lobby'),
+            monster_wave, manual_stages=build_manual_stages(dependencies,monster_wave),
+            ensure_lobby=lambda: ensure_lobby_entry(dependencies), config=settings,
+            cancel_requested=dependencies.cancel_requested)
     return dependencies.build_arena_flow(settings.difficulty, mode=settings.mode,
                                          return_context='screen.lobby')
 

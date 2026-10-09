@@ -76,3 +76,7 @@ class MonsterWaveFlow:
         if not result.succeeded:
             return result
         return result
+
+    def run_resource_pass(self):
+        """One ordinary verified pass, without a Gold Farming pressure target."""
+        return self.run()

@@ -9,6 +9,7 @@ from typing import Mapping
 from bot.failure_cause import FailureCause
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.session import SessionResult, SessionStatus
+from bot.arena_farming_report import ArenaFarmingReport, project_arena_farming, render_arena_farming
 
 
 class ReportStatus(str, Enum):
@@ -36,6 +37,7 @@ class FlowReport:
     reasons: tuple[ReportReason, ...] = ()
     failure: FailureCause | None = None
     no_op: bool = False
+    arena_farming: ArenaFarmingReport | None = None
 
 
 @dataclass(frozen=True)
@@ -116,6 +118,10 @@ _INFORMATIONAL = _NOOPS | frozenset({
     'monster_wave.completed', 'monster_wave.tickets_purchased',
     'monster_wave.resource_board_pending', 'monster_wave.no_work',
     'monster_wave.relief_resolved',
+    'monster_wave.sapphire_effect', 'manual_stages.rewarded',
+    'arena.farming.resources', 'arena.farming.routing', 'arena.farming.progress',
+    'arena.farming.difficulty', 'arena.farming.stamina_supply',
+    'arena.farming.manual_entry',
     "send_stamina.all_executed", "send_stamina.completed",
     "summon_pet_daily.completed", "guild_check_in.tap_executed",
     "guild_check_in.attendance_completed", "daily_quests.claim_all_executed",
@@ -166,13 +172,20 @@ def _flow_report(raw: FlowResult, name: str | None, label: str) -> FlowReport:
         reasons = (ReportReason("daily_pending", "Daily remains pending"),)
     if not reasons and getattr(raw, "claims_leftover", False) is True:
         reasons = (ReportReason("claims_leftover", "unclaimed mail remains"),)
+    informational = _INFORMATIONAL
+    terminations = tuple(event for event in raw.events if event.kind == 'arena.farming.terminated')
+    # Budget exhaustion and a valid Easy zero batch are functional completion.
+    # Unknown/missing reasons retain the existing unassessed projection.
+    if terminations and all(event.fields.get('reason') in {'stamina_budget_reached', 'easy_zero_wins'}
+                            for event in terminations):
+        informational = informational | {'arena.farming.terminated'}
     if raw.status is FlowStatus.CANCELLED:
         status = ReportStatus.CANCELLED
     elif raw.status is FlowStatus.FAILED:
         status = ReportStatus.TECHNICAL_FAILURE
     elif reasons:
         status = ReportStatus.BUSINESS_INCOMPLETE
-    elif any(kind not in _INFORMATIONAL for kind in kinds):
+    elif any(kind not in informational for kind in kinds):
         status = None
     else:
         status = ReportStatus.COMPLETE
@@ -180,6 +193,7 @@ def _flow_report(raw: FlowResult, name: str | None, label: str) -> FlowReport:
         name, label, status, raw.status is FlowStatus.COMPLETED, reasons,
         raw.failure if status is ReportStatus.TECHNICAL_FAILURE else None,
         bool(_NOOPS.intersection(kinds)) or getattr(raw, "no_op", False) is True,
+        project_arena_farming(raw),
     )
 
 
@@ -354,6 +368,13 @@ def render_session_report(report: SessionReport) -> str:
     if not any(c.meteorites is not None for c in report.characters):
         lines.append('Meteorites: NOT_REQUESTED' if report.meteorites_requested else 'Meteorites: DISABLED')
     for character in report.characters:
+        occurrence = 0
+        for flow in character.flows:
+            if flow.arena_farming is not None:
+                occurrence += 1
+                lines.extend(('', render_arena_farming(flow.arena_farming,
+                    character=character.label, character_id=character.character_id,
+                    occurrence=occurrence, meteorites=character.meteorites)))
         meteorites = character.meteorites
         if meteorites is not None:
             lines.extend(('', f"{character.label}: Meteorites: {meteorites['status']}"

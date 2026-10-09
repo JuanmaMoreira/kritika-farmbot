@@ -6,6 +6,8 @@ Este archivo registra únicamente milestones, migraciones, releases y capacidade
 
 ### Added
 
+- Arena Farming Cycle integral: controlador adaptativo por ejecución, routing Arena/MW/Manual, Rion09 según identidad o Shared Meteorites verificados, presupuesto causal de Stamina y abastecimiento único K Coins. GUI/Session con setup y cleanup11/11 acreditados en Crimson Assassin; Session Report analítico por ocurrencia con winrate ponderado, recursos y tabla expandible de batches. Gold/Single/Auto compatibles; sin REPEAT_CURRENT ni recargas premium.
+
 - Shared Meteorites A+B1+B2: BASE/readers y operaciones frescas Equip/Unequip, ancla posicional única del set de once, Change Meteorites por rutina y lifecycle por personaje en Session con cleanup antes de Rotation/completion. Acceptance individual/completa/Telumpel preservada; corpus focal portable y recovery acotado, sin Arena/REPEAT_CURRENT/ToT/Elite.
 
 - Character Identity mínima: nombre personal del HUD Lobby mediante OCR y lookup Unicode exacto a clase, con fallback cerrado separado para cuatro variantes completas de tres nombres; contexto no fatal y etiqueta en SessionReport/GUI. Sin capturas o inputs adicionales ni cambios de Rotation; baja confianza conserva `Character N` con threshold 0,95 intacto.

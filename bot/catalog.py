@@ -796,7 +796,9 @@ def build_default_resolver() -> ContextResolver:
     """Build a fresh resolver for the current minimal Kritika catalog."""
 
     return ContextResolver(
-        base_rules=(*BASE_CONTEXT_RULES, ContextRule("screen.stages", ("stages.base",), .8)),
+        base_rules=(*BASE_CONTEXT_RULES, ContextRule("screen.stages", ("stages.base",), .8),
+            ContextRule("screen.manual_stage_battle", ("stages.battle_base",), .8)),
         overlay_rules=(*OVERLAY_RULES, *(ContextRule("popup.stages_"+name, ("stages."+name,), .8)
-            for name in ("config", "start", "auto", "results", "support_purchase", "skip_ticket", "no_ads", "daily_exhausted", "alert"))),
+            for name in ("config", "start", "auto", "results", "support_purchase", "skip_ticket", "no_ads", "daily_exhausted", "alert", "death", "death_guide")),
+            ContextRule("overlay.manual_stage_clear", ("stages.clear",), .8)),
     )

@@ -1,0 +1,695 @@
+{
+  "provenance": {
+    "authority": "LIVE_EVIDENCE and USER_GT accepted Crimson execution",
+    "source": "20261009T220833.531536Z_session_7621171c.jsonl",
+    "source_sha256": "412b414d24baeff45e204ed3e1b4026d5fb133783506e56d0b7b3bf22851b98e",
+    "joins": "One Session/flow operation. Routing intervals link decisions to Arena finished receipts; no campaign mixing.",
+    "batch_identity": "Derived Session run/flow-operation/attempt identity, not a fabricated Arena UUID.",
+    "multiplier": "USER_GT accepted x8; valid decision requires ArenaBatchResult x8 via existing controller contract. No new OCR.",
+    "budget": "Persisted GUI routine a360 and terminal ledger360/restante0; manual entries use six verified second Start receipts.",
+    "duration": "No invented owner cycle duration. Historical interval uses actual first resource and termination created_at."
+  },
+  "run_id": "ffb31f514a074ad5bcb82db1e17874d4",
+  "session_id": "d6205777fdc14ecd971a28b4095b20a5",
+  "character": "Crimson Assassin",
+  "character_id": "crimson_assassin",
+  "session_duration": 3062.064406,
+  "meteorites": {
+    "status": "RELEASED",
+    "character_id": "crimson_assassin",
+    "setup_outcome": "equipped",
+    "cleanup_outcome": "complete",
+    "equip_effects": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "unequip_effects": [
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "operation_count": 22,
+    "retries": 0,
+    "setup_seconds": 21.86620849999599,
+    "cleanup_seconds": 16.388883300009184,
+    "coordinator_seconds": 0.0030846999725326896,
+    "navigation_seconds": 4.307900600018911,
+    "manual_preparation_required": false,
+    "set_may_remain_equipped": false
+  },
+  "events": [
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 80
+      },
+      "created_at": "2026-10-09T22:09:15.755351+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "manual_stages",
+        "operation_index": 1
+      },
+      "created_at": "2026-10-09T22:09:15.755351+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 80
+      },
+      "created_at": "2026-10-09T22:09:28.431701+00:00"
+    },
+    {
+      "kind": "arena.farming.stamina_supply",
+      "fields": {
+        "required": 360,
+        "purchased": 100,
+        "stamina": 382,
+        "covered": true,
+        "outcome": "purchased",
+        "operation_index": 1,
+        "kcoin_cost": 400
+      },
+      "created_at": "2026-10-09T22:09:37.646841+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 80
+      },
+      "created_at": "2026-10-09T22:09:44.220265+00:00"
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {
+        "attempt_index": 1
+      },
+      "created_at": "2026-10-09T22:11:02.673427+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 134
+      },
+      "created_at": "2026-10-09T22:11:10.516159+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "manual_stages",
+        "badges_before": 2,
+        "badges_after": 2,
+        "sapphires_before": 80,
+        "sapphires_after": 134,
+        "operation_index": 1
+      },
+      "created_at": "2026-10-09T22:11:10.516159+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "monster_wave",
+        "operation_index": 2
+      },
+      "created_at": "2026-10-09T22:11:10.516159+00:00"
+    },
+    {
+      "kind": "monster_wave.tickets_purchased",
+      "fields": {
+        "attempt_index": 2
+      },
+      "created_at": "2026-10-09T22:11:33.109454+00:00"
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {
+        "attempt_index": 2
+      },
+      "created_at": "2026-10-09T22:11:44.104824+00:00"
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {
+        "attempt_index": 2
+      },
+      "created_at": "2026-10-09T22:11:55.253529+00:00"
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {
+        "attempt_index": 2,
+        "after": 34,
+        "before": 134
+      },
+      "created_at": "2026-10-09T22:12:01.975799+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 106,
+        "sapphires": 34
+      },
+      "created_at": "2026-10-09T22:12:16.733890+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "monster_wave",
+        "badges_before": 2,
+        "badges_after": 106,
+        "sapphires_before": 134,
+        "sapphires_after": 34,
+        "operation_index": 2
+      },
+      "created_at": "2026-10-09T22:12:16.733890+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "arena",
+        "operation_index": 3
+      },
+      "created_at": "2026-10-09T22:12:16.733890+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 34
+      },
+      "created_at": "2026-10-09T22:21:09.737238+00:00"
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "collect_recent_batches",
+        "difficulty": "HARD",
+        "next": "HARD",
+        "used_tickets": 104,
+        "won_tickets": 80,
+        "operation_index": 3,
+        "batch_id": "ffb31f514a074ad5bcb82db1e17874d4:9dc2dc6a27cf47f8ae53fb55a74070d4:3",
+        "multiplier": 8,
+        "duration": 525.1665977999801
+      },
+      "created_at": "2026-10-09T22:21:09.737238+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "manual_stages",
+        "operation_index": 4
+      },
+      "created_at": "2026-10-09T22:21:09.737238+00:00"
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {
+        "attempt_index": 4
+      },
+      "created_at": "2026-10-09T22:23:21.577634+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 94
+      },
+      "created_at": "2026-10-09T22:23:30.041309+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "manual_stages",
+        "badges_before": 2,
+        "badges_after": 2,
+        "sapphires_before": 34,
+        "sapphires_after": 94,
+        "operation_index": 4
+      },
+      "created_at": "2026-10-09T22:23:30.041309+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "manual_stages",
+        "operation_index": 5
+      },
+      "created_at": "2026-10-09T22:23:30.041309+00:00"
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {
+        "attempt_index": 5
+      },
+      "created_at": "2026-10-09T22:24:53.069966+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 154
+      },
+      "created_at": "2026-10-09T22:25:01.265845+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "manual_stages",
+        "badges_before": 2,
+        "badges_after": 2,
+        "sapphires_before": 94,
+        "sapphires_after": 154,
+        "operation_index": 5
+      },
+      "created_at": "2026-10-09T22:25:01.265845+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "monster_wave",
+        "operation_index": 6
+      },
+      "created_at": "2026-10-09T22:25:01.265845+00:00"
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {
+        "attempt_index": 6
+      },
+      "created_at": "2026-10-09T22:25:22.311998+00:00"
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {
+        "attempt_index": 6
+      },
+      "created_at": "2026-10-09T22:25:35.180571+00:00"
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {
+        "attempt_index": 6,
+        "after": 54,
+        "before": 154
+      },
+      "created_at": "2026-10-09T22:25:40.597160+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 106,
+        "sapphires": 54
+      },
+      "created_at": "2026-10-09T22:25:55.975981+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "monster_wave",
+        "badges_before": 2,
+        "badges_after": 106,
+        "sapphires_before": 154,
+        "sapphires_after": 54,
+        "operation_index": 6
+      },
+      "created_at": "2026-10-09T22:25:55.975981+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "arena",
+        "operation_index": 7
+      },
+      "created_at": "2026-10-09T22:25:55.975981+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 54
+      },
+      "created_at": "2026-10-09T22:34:26.115188+00:00"
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "adjacent_uncertainty",
+        "difficulty": "HARD",
+        "next": "NORMAL",
+        "used_tickets": 104,
+        "won_tickets": 88,
+        "operation_index": 7,
+        "batch_id": "ffb31f514a074ad5bcb82db1e17874d4:9dc2dc6a27cf47f8ae53fb55a74070d4:7",
+        "multiplier": 8,
+        "duration": 502.1350010000169
+      },
+      "created_at": "2026-10-09T22:34:26.115188+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "manual_stages",
+        "operation_index": 8
+      },
+      "created_at": "2026-10-09T22:34:26.115188+00:00"
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {
+        "attempt_index": 8
+      },
+      "created_at": "2026-10-09T22:36:33.452216+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 138
+      },
+      "created_at": "2026-10-09T22:36:42.408996+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "manual_stages",
+        "badges_before": 2,
+        "badges_after": 2,
+        "sapphires_before": 54,
+        "sapphires_after": 138,
+        "operation_index": 8
+      },
+      "created_at": "2026-10-09T22:36:42.408996+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "monster_wave",
+        "operation_index": 9
+      },
+      "created_at": "2026-10-09T22:36:42.408996+00:00"
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {
+        "attempt_index": 9
+      },
+      "created_at": "2026-10-09T22:37:02.248165+00:00"
+    },
+    {
+      "kind": "monster_wave.manual_resolution",
+      "fields": {
+        "reason": "relief_return_not_acquired",
+        "relief_boundary_id": "a595c74317b741f99c8eddab1f84a1bc",
+        "attempt_index": 9
+      },
+      "created_at": "2026-10-09T22:37:06.978045+00:00"
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {
+        "attempt_index": 9
+      },
+      "created_at": "2026-10-09T22:37:48.968483+00:00"
+    },
+    {
+      "kind": "monster_wave.relief_resolved",
+      "fields": {
+        "relief_boundary_id": "a595c74317b741f99c8eddab1f84a1bc",
+        "attempt_index": 9
+      },
+      "created_at": "2026-10-09T22:37:51.535177+00:00"
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {
+        "attempt_index": 9,
+        "after": 38,
+        "before": 138
+      },
+      "created_at": "2026-10-09T22:37:53.907935+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 101,
+        "sapphires": 38
+      },
+      "created_at": "2026-10-09T22:38:09.036779+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "monster_wave",
+        "badges_before": 2,
+        "badges_after": 101,
+        "sapphires_before": 138,
+        "sapphires_after": 38,
+        "operation_index": 9
+      },
+      "created_at": "2026-10-09T22:38:09.036779+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "arena",
+        "operation_index": 10
+      },
+      "created_at": "2026-10-09T22:38:09.036779+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 5,
+        "sapphires": 38
+      },
+      "created_at": "2026-10-09T22:46:09.601119+00:00"
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "collect_recent_batches",
+        "difficulty": "NORMAL",
+        "next": "NORMAL",
+        "used_tickets": 96,
+        "won_tickets": 72,
+        "operation_index": 10,
+        "batch_id": "ffb31f514a074ad5bcb82db1e17874d4:9dc2dc6a27cf47f8ae53fb55a74070d4:10",
+        "multiplier": 8,
+        "duration": 472.3338232000242
+      },
+      "created_at": "2026-10-09T22:46:09.601119+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "manual_stages",
+        "operation_index": 11
+      },
+      "created_at": "2026-10-09T22:46:09.601119+00:00"
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {
+        "attempt_index": 11
+      },
+      "created_at": "2026-10-09T22:47:37.580015+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 5,
+        "sapphires": 104
+      },
+      "created_at": "2026-10-09T22:47:45.711789+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "manual_stages",
+        "badges_before": 5,
+        "badges_after": 5,
+        "sapphires_before": 38,
+        "sapphires_after": 104,
+        "operation_index": 11
+      },
+      "created_at": "2026-10-09T22:47:45.711789+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "monster_wave",
+        "operation_index": 12
+      },
+      "created_at": "2026-10-09T22:47:45.711789+00:00"
+    },
+    {
+      "kind": "monster_wave.resource_board_pending",
+      "fields": {
+        "attempt_index": 12
+      },
+      "created_at": "2026-10-09T22:48:05.389544+00:00"
+    },
+    {
+      "kind": "monster_wave.manual_resolution",
+      "fields": {
+        "reason": "relief_return_not_acquired",
+        "relief_boundary_id": "7b95f788510a473785846acb0cf50d3d",
+        "attempt_index": 12
+      },
+      "created_at": "2026-10-09T22:48:10.678067+00:00"
+    },
+    {
+      "kind": "monster_wave.completed",
+      "fields": {
+        "attempt_index": 12
+      },
+      "created_at": "2026-10-09T22:48:50.437535+00:00"
+    },
+    {
+      "kind": "monster_wave.relief_resolved",
+      "fields": {
+        "relief_boundary_id": "7b95f788510a473785846acb0cf50d3d",
+        "attempt_index": 12
+      },
+      "created_at": "2026-10-09T22:48:52.947219+00:00"
+    },
+    {
+      "kind": "monster_wave.sapphire_effect",
+      "fields": {
+        "attempt_index": 12,
+        "after": 4,
+        "before": 104
+      },
+      "created_at": "2026-10-09T22:48:55.369288+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 106,
+        "sapphires": 4
+      },
+      "created_at": "2026-10-09T22:49:10.926606+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "monster_wave",
+        "badges_before": 5,
+        "badges_after": 106,
+        "sapphires_before": 104,
+        "sapphires_after": 4,
+        "operation_index": 12
+      },
+      "created_at": "2026-10-09T22:49:10.926606+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "arena",
+        "operation_index": 13
+      },
+      "created_at": "2026-10-09T22:49:10.926606+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 4
+      },
+      "created_at": "2026-10-09T22:57:40.712258+00:00"
+    },
+    {
+      "kind": "arena.farming.difficulty",
+      "fields": {
+        "reason": "recent_reward_advantage",
+        "difficulty": "NORMAL",
+        "next": "HARD",
+        "used_tickets": 104,
+        "won_tickets": 96,
+        "operation_index": 13,
+        "batch_id": "ffb31f514a074ad5bcb82db1e17874d4:9dc2dc6a27cf47f8ae53fb55a74070d4:13",
+        "multiplier": 8,
+        "duration": 501.7675196999917
+      },
+      "created_at": "2026-10-09T22:57:40.712258+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "manual_stages",
+        "operation_index": 14
+      },
+      "created_at": "2026-10-09T22:57:40.712258+00:00"
+    },
+    {
+      "kind": "manual_stages.rewarded",
+      "fields": {
+        "attempt_index": 14
+      },
+      "created_at": "2026-10-09T22:59:01.143453+00:00"
+    },
+    {
+      "kind": "arena.farming.resources",
+      "fields": {
+        "badges": 2,
+        "sapphires": 88
+      },
+      "created_at": "2026-10-09T22:59:09.713954+00:00"
+    },
+    {
+      "kind": "arena.farming.progress",
+      "fields": {
+        "activity": "manual_stages",
+        "badges_before": 2,
+        "badges_after": 2,
+        "sapphires_before": 4,
+        "sapphires_after": 88,
+        "operation_index": 14
+      },
+      "created_at": "2026-10-09T22:59:09.713954+00:00"
+    },
+    {
+      "kind": "arena.farming.routing",
+      "fields": {
+        "activity": "manual_stages",
+        "operation_index": 15
+      },
+      "created_at": "2026-10-09T22:59:09.713954+00:00"
+    },
+    {
+      "kind": "arena.farming.terminated",
+      "fields": {
+        "reason": "stamina_budget_reached",
+        "stamina_consumed": 360,
+        "remaining_stamina_budget": 0,
+        "maximum_stamina_consumption": 360,
+        "manual_entries": 6,
+        "monster_wave_passes": 4
+      },
+      "created_at": "2026-10-09T22:59:09.720490+00:00"
+    }
+  ]
+}

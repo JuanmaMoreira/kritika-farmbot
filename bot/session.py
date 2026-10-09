@@ -28,6 +28,7 @@ from bot.preconditions import EnsureResult, PreconditionEnsurer
 from bot.prepared_activity import PreparedActivity
 from bot.character_resources import character_resource_scope
 from bot.character_state import character_state_scope
+from bot.meteorites_session import meteorites_character_scope, bind_meteorites_scope
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.rotation import RotationResult, RotationStrategy
 
@@ -292,7 +293,7 @@ class SessionRunner:
             if self._cancelled():
                 return self._cancel(character_results, advances_completed)
 
-            with event_scope(character_index=index), character_resource_scope(), character_state_scope():
+            with event_scope(character_index=index), character_resource_scope(), character_state_scope(), meteorites_character_scope():
                 context = CharacterContext()
                 self._record(
                     "session.character.started",
@@ -305,6 +306,7 @@ class SessionRunner:
                 next_requested = None
                 if self.plan.change_meteorites:
                     self._active_meteorites = self.meteorites_scope_factory()
+                    bind_meteorites_scope(self._active_meteorites)
                     self._meteorites_scopes[index] = self._active_meteorites
                     # Identity is acquired from the ordinary verified Lobby
                     # seam before Meteorites or any productive occurrence.

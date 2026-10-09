@@ -2,11 +2,28 @@
 from dataclasses import asdict
 from enum import Enum
 from time import perf_counter
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from bot.character_identity import CHARACTER_IDS
 from bot.event_log import record_best_effort
 
 METEORITES_EXCEPTIONS = frozenset({'berserker', 'demon_blade', 'kaiserin'})
+_active_scope = ContextVar('shared_meteorites_character_scope', default=None)
+
+@contextmanager
+def meteorites_character_scope():
+    token = _active_scope.set(None)
+    try:
+        yield
+    finally:
+        _active_scope.reset(token)
+
+def current_meteorites_scope():
+    return _active_scope.get()
+
+def bind_meteorites_scope(scope):
+    _active_scope.set(scope)
 
 
 class MeteoritesState(str, Enum):
@@ -124,3 +141,11 @@ class MeteoritesCharacterScope:
                 and (bool(set(progress.equipped)-set(progress.released)) or bool(progress.pending)
                     or self.setup_outcome == 'exception' or self.cleanup_outcome == 'exception')),
             progress=asdict(progress))
+
+    def full_set_equipped_verified(self, character_id):
+        """Consume B1's eleven credited effects only inside the READY lifecycle."""
+        p = self.procedure.progress
+        return (character_id is not None and character_id == self.character_id
+            and self.state is MeteoritesState.READY and not self.skipped_exception
+            and p.phase == 'equipped' and p.equipped == list(range(11))
+            and not p.released and p.pending is None)

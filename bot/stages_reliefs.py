@@ -41,7 +41,7 @@ class StagesReliefs:
             self.socket_retry_available=False
         self.used.add(blocker)
         record_best_effort(n.events,'stages.relief',blocker=blocker)
-        def restored(s):return lobby(s) or (exposed(s) and surface(s) in {'normal','config'})
+        def restored(s):return lobby(s) or (exposed(s) and surface(s) in {'normal','config','start'})
         def enter(action,destination):
             s=n.wait(lambda s:blocker in s.state.overlays)
             n.act(action,s)
@@ -57,6 +57,8 @@ class StagesReliefs:
         def config(after=None):
             if after is not None:n.cursor=max(n.cursor,after)
             s=n.wait(restored)
+            manual=getattr(n,'manual_restore_config',None)
+            if manual is not None:return manual(s)
             if lobby(s):return n.enter_target()
             if surface(s)=='normal':
                 from bot.stages_actions import StageControl as C
@@ -76,7 +78,8 @@ class StagesReliefs:
             if not result.succeeded:raise ValueError('stages socket relief: '+str(result.error))
             self.socket_retry_available=result.outcome.value=='relieved'
             s=config(result.final_snapshot.sequence)
-            return n.change(control,s,expected)
+            resume=getattr(n,'resume_after_relief',None)
+            return resume(control,s,expected) if resume is not None else n.change(control,s,expected)
         first=True
         def acquire(after):
             if after is None:s=n.wait(lambda s:blocker in s.state.overlays)
@@ -85,7 +88,8 @@ class StagesReliefs:
         def execute(_,s):
             nonlocal first
             if first:first=False;return initial
-            return n.change(control,s,expected)
+            resume=getattr(n,'resume_after_relief',None)
+            return resume(control,s,expected) if resume is not None else n.change(control,s,expected)
         def enter_inventory(_):
             n.exit_to_lobby()
             s=n.wait(lobby);n.act(OpenQuickMenu(),s)
@@ -101,7 +105,7 @@ class StagesReliefs:
             self.equipment.sell_runtime._tap(ExitEquipmentInventory())
             n.cursor=result.after.sequence;n.dispatched_at=n.clock()
             n.wait(lobby,timeout=8.)
-            return n.enter_target().sequence
+            return (getattr(n,'target_entry',None) or n.enter_target)().sequence
         request=EquipmentReliefRequest(control,acquire,execute,
             lambda s:blocker in s.state.overlays,
             lambda _:enter(OpenEquipmentCombine(),SCREEN_COMBINE),
