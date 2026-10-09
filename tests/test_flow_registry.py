@@ -27,6 +27,7 @@ def test_default_registry_is_explicit_and_preserves_selection_order():
         "mailbox",
         "guild_check_in",
         "gold_farming",
+        "arena",
     ]
     assert [item.id for item in registry.select(["world_boss", "black_market"])] == [
         "world_boss",

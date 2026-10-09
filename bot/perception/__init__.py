@@ -200,6 +200,12 @@ from bot.monster_wave_semantics import MW_DAILY, MW_OBSERVATIONS
 
 
 from bot.meteorites_reader import MeteoritesDetector
+from bot.arena_reader import ArenaDetector, ArenaVisuals
+
+
+def build_arena_perception(asset_root: str | Path | None = None) -> PerceptionEngine:
+    """Standalone focal Arena semantics; no gameplay owner or global polling."""
+    return PerceptionEngine(detectors=(ArenaDetector(asset_root=asset_root),))
 
 
 def build_default_perception(
@@ -221,6 +227,7 @@ def build_default_perception(
             ),
             StagesDetector(asset_root=root),
             MeteoritesDetector(asset_root=root),
+            ArenaDetector(asset_root=root),
             BlackMarketGoldDetector(asset_root=root),
             BlackMarketPurchasedDetector(asset_root=root),
             SocketIncompatibleOpalDetector(asset_root=root),
@@ -826,6 +833,7 @@ STRONG_LOBBY_COMPLETION_SPEC_NAMES = frozenset(
 )
 
 STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES = (
+    ArenaDetector,
     MeteoritesDetector,
     CombineContextDetector,
     DailyQuestsProgressRewardDetector,
@@ -1056,6 +1064,9 @@ def mailbox_claim_perception(
 
 
 __all__ = (
+    "ArenaDetector",
+    "ArenaVisuals",
+    "build_arena_perception",
     "BLACK_MARKET_GOLD_ASSET",
     "BLACK_MARKET_GOLD_CALIBRATION",
     "BLACK_MARKET_GOLD_CONFIDENCE_THRESHOLD",

@@ -1,5 +1,57 @@
 # Estado actual — Kritika FarmBot
 
+## Arena B2 — operación y rutina validadas 2026-10-08
+
+ArenaFlow SINGLE_BATTLE/AUTO_REPEAT, dificultad por ocurrencia y retorno externo
+Lobby implementados reutilizando B1. Editor draft/Apply/Save persiste modos distintos;
+default nuevo SINGLE_BATTLE/EASY, Arena OFF en defaults existentes. Single posee
+receipt/reader/result propios (VICTORY, consumo8/deltaKarats8, sin won_tickets).
+Start individual automático, WIN OVERLAY sobre BASE Arena Battle, cierre a selección;
+Back adquirido a Select Mode Arena distinto de Survival y luego Lobby. QM→Lobby
+adquirido pero no cambia navegación global. Gold buff1 autorizado/acreditado a3000
+por faltante, sólo entrada8 con controles antes/después; nunca Karats.
+
+Smoke continuo productivo EASY x8:90→82badges,101084→101092Karats,24000Gold para
+buff1; único Start, cero OCR durante wait, resultado/cierre/retorno y siguiente
+paso Session de sólo lectura COMPLETED. Adquisición+smoke fallido recuperado+
+única repetición causal:3 entradas/24badges/24Karats,54000Gold total. Fallos CV
+de pausa/prompt corregidos con fixtures; los stops no repitieron Start. El test
+continuo Single no acredita autonomía prolongada de Auto Repeat B1.
+
+Final físico Lobby limpio,82badges,Gold9045329472,Karats101092; runtime cerrado.
+Deudas: derrota individual, Goldbuff2/batches largos, umbral de puntos, cancelación
+física, Upon DefeatON, refund3 y retorno tras relief. Sin controller/Farming Cycle/
+Manual Stages/REPEAT_CURRENT ni generación MW. B2 aceptado; checkpoint aislado
+Arena A/B1/B2 autorizado, conservando trabajo independiente. Evidencia, gaps y
+validación: [B2](docs/ARENA_B2_20261008.md).
+
+Checkpoint de publicación: revisión aislada Arena A/B1/B2,966tests PASS;
+11fallos GUI functional reproducidos en baseline y separados de Arena. Evidencia
+live/evaluators B2 reutilizados, sin teléfono ni otro batch.
+
+## Arena A+B1 — checkpoint anterior 2026-10-08
+
+USER_GT cierra Acquired Karats→won_tickets, independiente de Double Points
+(sólo duplica Victory Points). Batch adquirido EASY x8:104used/104won,100%.
+ArenaVisuals/Detector, catálogo/scopes, result reader tipado y wait focal pasivo
+implementados; validación offline/corpus en [informe](docs/ARENA_HIL_ACQUISITION_20261008.md).
+ArenaFlow standalone B1 ejecuta un batch x8 por invocación, dificultad explícita,
+entrada Lobby→Battle→Select Mode→Arena→Challenge y salida BASE Arena limpio al
+caller. Buffs/stock sin compras, inicio interno único, wait focal cancelable,
+reader y cierre positivo; [B1](docs/ARENA_B1_20261008.md). Único smoke autorizado:
+50→2Badges,48used/48won,100%, sin compras. Hubo interrupciones del observer,
+handoff pasivo y cleanup verificado; no aceptación continua/performance de wait largo.
+New Ranking de entrada y configuración transitoria incorporados; retorno no acepta
+Challenge detrás de Insufficient y maneja aparición tardía sin repetir OK.
+Sin controller, Farming Cycle,
+Manual Stages ni REPEAT_CURRENT; no wiring de rutina/Rotation ni generadores MW.
+Modal informativo de umbral: existencia/clase MODAL USER_GT; título/umbral/cierre
+pendientes de adquisición natural, sin detector ni taps ciegos. QM, cancelación y
+Start standalone siguen pendientes. Final físico: Challenge EASY limpio BASE Arena,
+2Badges, x8ON, buffsON707/796/887; Gold6436020953, Karats101068.
+Sources/procesos del bot cerrados; teléfono conserva ese estado. No otro batch.
+Sin commit/push; trabajo independiente preservado. No iniciar siguiente frente.
+
 ## Shared Meteorites A+B1+B2 — checkpoint 2026-10-08
 
 Preparación transversal por personaje: Change Meteorites en Routine Settings,

@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "transform": "half-size INTER_AREA; same-shape focal ROI canvas with preserved search margins; outside zeroed; synthetic numeric entries explicit",
+  "entries": [
+    {
+      "id": "selection",
+      "path": "tests/fixtures/arena_phase_a/selection.png",
+      "sha256": "3848076b10529eb1e66e80cdad4bc79a413fb09657413d640fadd0e884cdcac3",
+      "source": "screencaps/arena_hil/20261008/mode-arena-after.png",
+      "source_sha256": "66b1414b34a18b81c71446272d87d4d0ce237dc2a80f9ef74b580684d2a6f183",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_select",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "easy_off",
+      "path": "tests/fixtures/arena_phase_a/easy_off.png",
+      "sha256": "e38b837b0644b1ac54fed92ca29e3ac8aa338d0dc44a4fa451da96a4a4597450",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "buff1_on",
+      "path": "tests/fixtures/arena_phase_a/buff1_on.png",
+      "sha256": "5ac2015342f2441560724da161941d898536ff9493902741cb8a551fc74f6f57",
+      "source": "screencaps/arena_hil/20261008/20261008T202604_101057Z_01.png",
+      "source_sha256": "d46de59ca6bfc5cb3f0a8ec0c08b364e0597210ea10d57ec598b5afda7b8b61c",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy_buff1_on",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "buff12_on",
+      "path": "tests/fixtures/arena_phase_a/buff12_on.png",
+      "sha256": "82ed2bf9488b213976dd61893541a9cc51f043065a1c03d1ba55d58b3fd6d0c9",
+      "source": "screencaps/arena_hil/20261008/20261008T202606_281310Z_01.png",
+      "source_sha256": "af4db134938394e1d2eb5ba5dc7d4ba0c96651eca45323e7cb8aef07eb79ba39",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy_buffs12_on",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "config",
+      "path": "tests/fixtures/arena_phase_a/config.png",
+      "sha256": "e111955c01f8c56105a6f57aaa1679b02e297d0c2e00ef0fa3dd3287b6d27ae0",
+      "source": "screencaps/arena_hil/20261008/20261008T202624_437999Z_01.png",
+      "source_sha256": "b5c06a30ba22d77998a9a0c641ecfb41e86b6035434d8c4b1a53c03b2f31e6ca",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "insufficient",
+      "path": "tests/fixtures/arena_phase_a/insufficient.png",
+      "sha256": "ea076d385ac3838890fdc66e1ba53a7b85df33ac762e5636928989739d7150a4",
+      "source": "screencaps/arena_hil/20261008/20261008T204254_817132Z_01.png",
+      "source_sha256": "10a5afd635486d800ddd3f0684a930eb3d2dff5ab63f498f28c493ce3c5b8f13",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "insufficient_badges_purchase_prompt",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "ranking",
+      "path": "tests/fixtures/arena_phase_a/ranking.png",
+      "sha256": "5cf617e00fad91c00aedb7ef6506101b904081abb81da3ebd402425d09c10cb9",
+      "source": "screencaps/arena_hil/20261008/20261008T204446_758432Z_01.png",
+      "source_sha256": "612424c519462094f44c66909031409a8bb418c7b798f1268e513232a288f886",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_new_ranking",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "normal",
+      "path": "tests/fixtures/arena_phase_a/normal.png",
+      "sha256": "fda7ddb1a1245dd2b9ba8b7f7da9f773d9682804b7332098b8be71a27e79deda",
+      "source": "screencaps/arena_hil/20261008/20261008T204551_059903Z_01.png",
+      "source_sha256": "51d5e2af286fcc7d313538ee2b81717e8d63dda746bd3b71dd16bb14891cb7b8",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_normal_loading",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "hard",
+      "path": "tests/fixtures/arena_phase_a/hard.png",
+      "sha256": "a7cad13439b3ac667c9514ef589aafe0d89dd39f8da72031f323dd81fb3898b5",
+      "source": "screencaps/arena_hil/20261008/20261008T204700_756081Z_01.png",
+      "source_sha256": "3681e1952d9d9fce034642f9643aacac08c7f8a2a0fc89f5db3a12c515b2b204",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_hard",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "hard_buff1_off",
+      "path": "tests/fixtures/arena_phase_a/hard_buff1_off.png",
+      "sha256": "443c1f7f5760275c7a642fc7b73f60e6e36e124f090101a6b51f39020c73f0c2",
+      "source": "screencaps/arena_hil/20261008/20261008T204753_193016Z_01.png",
+      "source_sha256": "8fea7df788f867d32ae783c6fd4bb4015c3723be7d37ee0adc478ad095486993",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_hard_buff1_off_buff2_on",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "hard_off",
+      "path": "tests/fixtures/arena_phase_a/hard_off.png",
+      "sha256": "cc7b57202bd9b36e064b02ce7e54fa503e15ff581a7ce4d2c9c82f8df3cec162",
+      "source": "screencaps/arena_hil/20261008/20261008T204836_360403Z_01.png",
+      "source_sha256": "84e83762523a1cf014a2d2b2f19506cdc343f7faa42288ef5bc90211f6af2314",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_hard_all_buffs_off",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "native",
+      "path": "tests/fixtures/arena_phase_a/native.png",
+      "sha256": "c897da0c796d99671c1a2b711bb80349b45cbcd3d74be7c986964a6edd4efe98",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_final_clean",
+      "numeric_read_authorized": true
+    },
+    {
+      "id": "stream",
+      "path": "tests/fixtures/arena_phase_a/stream.png",
+      "sha256": "2a4ed4c4bbd16f0f4f8c8e19517bf0212809623792b14af4baec8d00f4f18883",
+      "source": "screencaps/arena_hil/20261008/20261008T204254_173966Z_01.png",
+      "source_sha256": "bb1b353bfe76d289b748d5c4b26968bf081d3f0e71865a56f3f599a57bcc77e7",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_final_clean",
+      "numeric_read_authorized": true
+    },
+    {
+      "id": "loading",
+      "path": "tests/fixtures/arena_phase_a/loading.png",
+      "sha256": "c8e1da96b26b2d53f9b123ff759830554f4b5f830523f16a73c814e44099b6cb",
+      "source": "screencaps/arena_hil/20261008/20261008T203244_431763Z_01.png",
+      "source_sha256": "db6ff3b931f992ce6d61c8233f49d10d946a3e0a7a54c755b9b4e33b26755801",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "loading_after_batch_start",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "foreign_lobby",
+      "path": "tests/fixtures/arena_phase_a/foreign_lobby.png",
+      "sha256": "be6a695eb6e7dcd3769c2fae926963db5c4e4847887e4a6c166a7180ec9ac3cf",
+      "source": "screencaps/arena_hil/20261008/initial.png",
+      "source_sha256": "6c48cac9adc77e926e6e5127b2c948661440bdcf4796abd5740821b50aee76cd",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "lobby",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "foreign_battle_select",
+      "path": "tests/fixtures/arena_phase_a/foreign_battle_select.png",
+      "sha256": "e949de0f0315acb86d3f1c73c738f77a9602275bcde764771ef11bf50c55ec95",
+      "source": "screencaps/arena_hil/20261008/lobby-battle-after.png",
+      "source_sha256": "f8b6ad546e37d2b8f0f1ec560287c6e2e8fed6b14f992a778de18ee3a902fbc5",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "battle_select_mode",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "bag_full",
+      "path": "tests/fixtures/arena_phase_a/bag_full.png",
+      "sha256": "f0da39111fc28f188136523bbbc980a25b723057e28107ecab0ee0ee9d35f569",
+      "source": "screencaps/arena_hil/20261008/20261008T202917_989820Z_01.png",
+      "source_sha256": "5ef4e4f215a5da3f7421f1f8d691b1e404273014f424747095ddb24c1946ffb6",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "bag_full_above_auto_config",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "battle",
+      "path": "tests/fixtures/arena_phase_a/battle.png",
+      "sha256": "7445388c2333234f46cd3aae404890a155ffbb9e9559d62d084eb522154fa84f",
+      "source": "screencaps/arena_hil/20261008/frame_202_1791491590849235900.png",
+      "source_sha256": "1186dcfdb93b47c51f4371dda1240a4ee7e6029a08d1da285807bf63ae0b1a5b",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_battle_auto_active",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "partial1",
+      "path": "tests/fixtures/arena_phase_a/partial1.png",
+      "sha256": "e693f83150cf12704218292a1a79548e386c342c43376c426ed16c607d697389",
+      "source": "screencaps/arena_hil/20261008/frame_5019_1791492058750833600.png",
+      "source_sha256": "8581895ba7252e1dd8839a314abaa50d7c508d40268d9c7304fd44e0f5882b20",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_final_partial",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "partial2",
+      "path": "tests/fixtures/arena_phase_a/partial2.png",
+      "sha256": "e693f83150cf12704218292a1a79548e386c342c43376c426ed16c607d697389",
+      "source": "screencaps/arena_hil/20261008/frame_5220_1791492078779799800.png",
+      "source_sha256": "aefe0534715ecabab474f4cae2bc89e3d7482a6e01769df85a0b115951eb947d",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_final_partial",
+      "numeric_read_authorized": false
+    },
+    {
+      "id": "stream_late",
+      "path": "tests/fixtures/arena_phase_a/stream_late.png",
+      "sha256": "d15e0317acbea05c856143b57d0d06d3a5f6b9397553fa7b49ed0f03b8feed23",
+      "source": "screencaps/arena_hil/20261008/frame_5420_1791492098819990400.png",
+      "source_sha256": "2caa06c80d1b6be3ecd555f15da02fd8514fabfe9c15c16360a2d21e9558f1f3",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_final_clean",
+      "numeric_read_authorized": true
+    },
+    {
+      "id": "synthetic_partial_win",
+      "path": "tests/fixtures/arena_phase_a/synthetic_partial_win.png",
+      "sha256": "0d4baf60029af3a493478674da4718710cbdf278adec56ea4e1d1d5ea0ca6b6e",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "authority": "SYNTHETIC software fixture; no physical gameplay authority",
+      "physical_state": "synthetic_terminal_contract",
+      "numeric_read_authorized": false,
+      "expected_terminal": true,
+      "expected_reader": [
+        104,
+        72
+      ]
+    },
+    {
+      "id": "synthetic_zero",
+      "path": "tests/fixtures/arena_phase_a/synthetic_zero.png",
+      "sha256": "9eee8c00a7cbe4f539dc90cc57a7fb347b0408ab74e049d6c561d0181eeb6bdc",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "authority": "SYNTHETIC software fixture; no physical gameplay authority",
+      "physical_state": "synthetic_terminal_contract",
+      "numeric_read_authorized": false,
+      "expected_terminal": true,
+      "expected_reader": [
+        104,
+        0
+      ]
+    },
+    {
+      "id": "synthetic_invalid_won",
+      "path": "tests/fixtures/arena_phase_a/synthetic_invalid_won.png",
+      "sha256": "5e60125a97dc38ad4b9261c99ac06656d8a5d85060cd51e14c164d384cb343e6",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "authority": "SYNTHETIC software fixture; no physical gameplay authority",
+      "physical_state": "synthetic_terminal_contract",
+      "numeric_read_authorized": false,
+      "expected_terminal": true,
+      "expected_reader": null
+    }
+  ]
+}

@@ -1,0 +1,679 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "id": "select_easy",
+      "path": "assets/arena/select_easy.png",
+      "roi": [
+        0.23,
+        0.3,
+        0.33,
+        0.36
+      ],
+      "source_roi": [
+        0.23,
+        0.3,
+        0.33,
+        0.36
+      ],
+      "threshold": 0.9,
+      "sha256": "eb6756f8f96a0b5f35fea9c398beae7befa045b0f0918069558dcbc9e21bd18e",
+      "source": "screencaps/arena_hil/20261008/mode-arena-after.png",
+      "source_sha256": "66b1414b34a18b81c71446272d87d4d0ce237dc2a80f9ef74b580684d2a6f183",
+      "reusable_indicator": false
+    },
+    {
+      "id": "select_normal",
+      "path": "assets/arena/select_normal.png",
+      "roi": [
+        0.456,
+        0.3,
+        0.538,
+        0.357
+      ],
+      "source_roi": [
+        0.456,
+        0.3,
+        0.538,
+        0.357
+      ],
+      "threshold": 0.84,
+      "sha256": "b364b10bbcc288b8db2208335d4c36d4dd2c9616379d2e3c33208a02f20e0ae5",
+      "source": "screencaps/arena_hil/20261008/mode-arena-after.png",
+      "source_sha256": "66b1414b34a18b81c71446272d87d4d0ce237dc2a80f9ef74b580684d2a6f183",
+      "reusable_indicator": false
+    },
+    {
+      "id": "select_hard",
+      "path": "assets/arena/select_hard.png",
+      "roi": [
+        0.662,
+        0.3,
+        0.764,
+        0.36
+      ],
+      "source_roi": [
+        0.662,
+        0.3,
+        0.764,
+        0.36
+      ],
+      "threshold": 0.9,
+      "sha256": "e2877eab4526e99debbc79bf0d4567ea70c8f0ee18800b9ec198cf60232acdb8",
+      "source": "screencaps/arena_hil/20261008/mode-arena-after.png",
+      "source_sha256": "66b1414b34a18b81c71446272d87d4d0ce237dc2a80f9ef74b580684d2a6f183",
+      "reusable_indicator": false
+    },
+    {
+      "id": "difficulty_easy",
+      "path": "assets/arena/difficulty_easy.png",
+      "roi": [
+        0.331,
+        0.307,
+        0.414,
+        0.37
+      ],
+      "source_roi": [
+        0.331,
+        0.307,
+        0.414,
+        0.37
+      ],
+      "threshold": 0.9,
+      "sha256": "e1242fd97be7ee251f903e87bd88cc4fe5aa83c4f713e88779684e0134b90c05",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": false
+    },
+    {
+      "id": "difficulty_normal",
+      "path": "assets/arena/difficulty_normal.png",
+      "roi": [
+        0.331,
+        0.307,
+        0.414,
+        0.37
+      ],
+      "source_roi": [
+        0.331,
+        0.307,
+        0.414,
+        0.37
+      ],
+      "threshold": 0.9,
+      "sha256": "64b3530cd1bace2994243cef753ceb68ed016a0eaf9b976062fc9877af290ec4",
+      "source": "screencaps/arena_hil/20261008/20261008T204551_059903Z_01.png",
+      "source_sha256": "51d5e2af286fcc7d313538ee2b81717e8d63dda746bd3b71dd16bb14891cb7b8",
+      "reusable_indicator": false
+    },
+    {
+      "id": "difficulty_hard",
+      "path": "assets/arena/difficulty_hard.png",
+      "roi": [
+        0.331,
+        0.307,
+        0.414,
+        0.37
+      ],
+      "source_roi": [
+        0.331,
+        0.307,
+        0.414,
+        0.37
+      ],
+      "threshold": 0.9,
+      "sha256": "067891a62f7282f699009fce0ed36da022b6897257ffab4278b668dd857c22c6",
+      "source": "screencaps/arena_hil/20261008/20261008T204700_756081Z_01.png",
+      "source_sha256": "3681e1952d9d9fce034642f9643aacac08c7f8a2a0fc89f5db3a12c515b2b204",
+      "reusable_indicator": false
+    },
+    {
+      "id": "challenge_controls",
+      "path": "assets/arena/challenge_controls.png",
+      "roi": [
+        0.704,
+        0.815,
+        0.828,
+        0.992
+      ],
+      "source_roi": [
+        0.704,
+        0.815,
+        0.828,
+        0.992
+      ],
+      "threshold": 0.9,
+      "sha256": "2f4e1596ecb012ee92cd2fe597256a25383000c432a7da748bc67355967992ae",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": false
+    },
+    {
+      "id": "challenge_vs",
+      "path": "assets/arena/challenge_vs.png",
+      "roi": [
+        0.167,
+        0.423,
+        0.244,
+        0.646
+      ],
+      "source_roi": [
+        0.167,
+        0.423,
+        0.244,
+        0.646
+      ],
+      "threshold": 0.9,
+      "sha256": "09444c1c8e87e509041f6f67b49e8fa79d5c0505a03bb81ee653d9f8032eed46",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": false
+    },
+    {
+      "id": "config_text",
+      "path": "assets/arena/config_text.png",
+      "roi": [
+        0.332,
+        0.157,
+        0.667,
+        0.488
+      ],
+      "source_roi": [
+        0.332,
+        0.157,
+        0.667,
+        0.488
+      ],
+      "threshold": 0.93,
+      "sha256": "8a2d3b592b10fc72c8bdc4a58643a380650e43021e8e9ba9410fa2985e1b9ca6",
+      "source": "screencaps/arena_hil/20261008/20261008T202624_437999Z_01.png",
+      "source_sha256": "b5c06a30ba22d77998a9a0c641ecfb41e86b6035434d8c4b1a53c03b2f31e6ca",
+      "reusable_indicator": false
+    },
+    {
+      "id": "config_start",
+      "path": "assets/arena/config_start.png",
+      "roi": [
+        0.425,
+        0.833,
+        0.572,
+        0.925
+      ],
+      "source_roi": [
+        0.425,
+        0.833,
+        0.572,
+        0.925
+      ],
+      "threshold": 0.9,
+      "sha256": "b78081902f0c946946edce93c7a0d9f0554d58146038787452307da76254c5cb",
+      "source": "screencaps/arena_hil/20261008/20261008T202624_437999Z_01.png",
+      "source_sha256": "b5c06a30ba22d77998a9a0c641ecfb41e86b6035434d8c4b1a53c03b2f31e6ca",
+      "reusable_indicator": false
+    },
+    {
+      "id": "upon_defeat_off",
+      "path": "assets/arena/upon_defeat_off.png",
+      "roi": [
+        0.647,
+        0.737,
+        0.67,
+        0.81
+      ],
+      "source_roi": [
+        0.647,
+        0.737,
+        0.67,
+        0.81
+      ],
+      "threshold": 0.94,
+      "sha256": "d0e021e95d90f859a5c4cc46b7d9720786ea895148304efd1efce3f9203799f4",
+      "source": "screencaps/arena_hil/20261008/20261008T202624_437999Z_01.png",
+      "source_sha256": "b5c06a30ba22d77998a9a0c641ecfb41e86b6035434d8c4b1a53c03b2f31e6ca",
+      "reusable_indicator": false
+    },
+    {
+      "id": "result_title",
+      "path": "assets/arena/result_title.png",
+      "roi": [
+        0.313,
+        0.195,
+        0.69,
+        0.245
+      ],
+      "source_roi": [
+        0.313,
+        0.195,
+        0.69,
+        0.245
+      ],
+      "threshold": 0.9,
+      "sha256": "c6e4865e361234a4b694335c99ecb03aeb8e43dee93e78bbe1a4f34155136622",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "reusable_indicator": false
+    },
+    {
+      "id": "badge_label",
+      "path": "assets/arena/badge_label.png",
+      "roi": [
+        0.264,
+        0.321,
+        0.403,
+        0.36
+      ],
+      "source_roi": [
+        0.264,
+        0.321,
+        0.403,
+        0.36
+      ],
+      "threshold": 0.92,
+      "sha256": "52dfd292e311c6e2670b8f7c501dc80522c62f0e635bb5ac35821db27a053d2e",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "reusable_indicator": false
+    },
+    {
+      "id": "karats_label",
+      "path": "assets/arena/karats_label.png",
+      "roi": [
+        0.264,
+        0.63,
+        0.403,
+        0.67
+      ],
+      "source_roi": [
+        0.264,
+        0.63,
+        0.403,
+        0.67
+      ],
+      "threshold": 0.92,
+      "sha256": "4cbf24e4a0dd71747bea8c7399419a8d2515cedbc6f3c7b6f23baa328a9c4577",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "reusable_indicator": false
+    },
+    {
+      "id": "result_panel",
+      "path": "assets/arena/result_panel.png",
+      "roi": [
+        0.748,
+        0.28,
+        0.767,
+        0.803
+      ],
+      "source_roi": [
+        0.748,
+        0.28,
+        0.767,
+        0.803
+      ],
+      "threshold": 0.9,
+      "sha256": "2bf26fc528b596fa680de5901d5f14eb45ce1940e3b89bcecda07256c90b5ce4",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "reusable_indicator": false
+    },
+    {
+      "id": "result_ok",
+      "path": "assets/arena/result_ok.png",
+      "roi": [
+        0.434,
+        0.819,
+        0.565,
+        0.914
+      ],
+      "source_roi": [
+        0.434,
+        0.819,
+        0.565,
+        0.914
+      ],
+      "threshold": 0.9,
+      "sha256": "4baef55ab0dc93f0b02491fc526168ff1f8300ac8769f1630829fb424e0020e9",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "reusable_indicator": false
+    },
+    {
+      "id": "used_padding",
+      "path": "assets/arena/used_padding.png",
+      "roi": [
+        0.482,
+        0.321,
+        0.488,
+        0.355
+      ],
+      "source_roi": [
+        0.482,
+        0.321,
+        0.488,
+        0.355
+      ],
+      "threshold": 0.9,
+      "sha256": "cf6a787b956721ba6014f74c7e42bc78edd521eb11e493bb5c3d8cc439d1ad4f",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "reusable_indicator": false,
+      "max_color_error": 12
+    },
+    {
+      "id": "won_padding",
+      "path": "assets/arena/won_padding.png",
+      "roi": [
+        0.482,
+        0.621,
+        0.487,
+        0.662
+      ],
+      "source_roi": [
+        0.482,
+        0.621,
+        0.487,
+        0.662
+      ],
+      "threshold": 0.9,
+      "sha256": "e0532217cafcaf8ad87ae538cbd43b77073ac7bc7e480ed5c2b78178cb214ce9",
+      "source": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "source_sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "reusable_indicator": false,
+      "max_color_error": 12
+    },
+    {
+      "id": "insufficient",
+      "path": "assets/arena/insufficient.png",
+      "roi": [
+        0.346,
+        0.35,
+        0.65,
+        0.494
+      ],
+      "source_roi": [
+        0.346,
+        0.35,
+        0.65,
+        0.494
+      ],
+      "threshold": 0.92,
+      "sha256": "d3e0437ffd3e190f5fa7a9dd32a213f5879585b7a44ec7e4f0e0582e9a6dbb77",
+      "source": "screencaps/arena_hil/20261008/20261008T204254_817132Z_01.png",
+      "source_sha256": "10a5afd635486d800ddd3f0684a930eb3d2dff5ab63f498f28c493ce3c5b8f13",
+      "reusable_indicator": false
+    },
+    {
+      "id": "bag_full",
+      "path": "assets/arena/bag_full.png",
+      "roi": [
+        0.349,
+        0.375,
+        0.65,
+        0.497
+      ],
+      "source_roi": [
+        0.349,
+        0.375,
+        0.65,
+        0.497
+      ],
+      "threshold": 0.92,
+      "sha256": "6135253f244f62ac00fab59a64c4ebc66e4d404828972f9b7ecfd11fd4570f50",
+      "source": "screencaps/arena_hil/20261008/20261008T202917_989820Z_01.png",
+      "source_sha256": "5ef4e4f215a5da3f7421f1f8d691b1e404273014f424747095ddb24c1946ffb6",
+      "reusable_indicator": false
+    },
+    {
+      "id": "ranking",
+      "path": "assets/arena/ranking.png",
+      "roi": [
+        0.393,
+        0.136,
+        0.603,
+        0.225
+      ],
+      "source_roi": [
+        0.393,
+        0.136,
+        0.603,
+        0.225
+      ],
+      "threshold": 0.9,
+      "sha256": "9ce8b10797c81b371a0a1817b9dd89d05af663331332bf908f13627ad0e7a042",
+      "source": "screencaps/arena_hil/20261008/20261008T204446_758432Z_01.png",
+      "source_sha256": "612424c519462094f44c66909031409a8bb418c7b798f1268e513232a288f886",
+      "reusable_indicator": false
+    },
+    {
+      "id": "ranking_arena",
+      "path": "assets/arena/ranking_arena.png",
+      "roi": [
+        0.451,
+        0.27,
+        0.509,
+        0.313
+      ],
+      "source_roi": [
+        0.451,
+        0.27,
+        0.509,
+        0.313
+      ],
+      "threshold": 0.9,
+      "sha256": "d8b4a2d68f928acf0a47df71848500e91bead900ce39be4e933ae82c22838da5",
+      "source": "screencaps/arena_hil/20261008/20261008T204446_758432Z_01.png",
+      "source_sha256": "612424c519462094f44c66909031409a8bb418c7b798f1268e513232a288f886",
+      "reusable_indicator": false
+    },
+    {
+      "id": "battle_vs",
+      "path": "assets/arena/battle_vs.png",
+      "roi": [
+        0.484,
+        0.058,
+        0.516,
+        0.1
+      ],
+      "source_roi": [
+        0.484,
+        0.058,
+        0.516,
+        0.1
+      ],
+      "threshold": 0.88,
+      "sha256": "e617bdee4c585145b553fc9872ade45a7794d761d7e8834329f4df9f2ae92efa",
+      "source": "screencaps/arena_hil/20261008/frame_202_1791491590849235900.png",
+      "source_sha256": "1186dcfdb93b47c51f4371dda1240a4ee7e6029a08d1da285807bf63ae0b1a5b",
+      "reusable_indicator": false
+    },
+    {
+      "id": "auto_band",
+      "path": "assets/arena/auto_band.png",
+      "roi": [
+        0.438,
+        0.728,
+        0.565,
+        0.761
+      ],
+      "source_roi": [
+        0.438,
+        0.728,
+        0.565,
+        0.761
+      ],
+      "threshold": 0.78,
+      "sha256": "6cb25e3273c12293cefa0252d5d7a52e4b46362b1d19fc0db951c9f813c8cae4",
+      "source": "screencaps/arena_hil/20261008/frame_202_1791491590849235900.png",
+      "source_sha256": "1186dcfdb93b47c51f4371dda1240a4ee7e6029a08d1da285807bf63ae0b1a5b",
+      "reusable_indicator": false
+    },
+    {
+      "id": "buff1_off",
+      "path": "assets/arena/buff1_off.png",
+      "roi": [
+        0.507,
+        0.236,
+        0.547,
+        0.304
+      ],
+      "source_roi": [
+        0.507,
+        0.236,
+        0.547,
+        0.304
+      ],
+      "threshold": 0.9,
+      "sha256": "e2657916796275816bf366c587401c0df291fad6f47a5bc66d0802affce7bbfe",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": false
+    },
+    {
+      "id": "buff1_on",
+      "path": "assets/arena/buff1_on.png",
+      "roi": [
+        0.507,
+        0.236,
+        0.547,
+        0.304
+      ],
+      "source_roi": [
+        0.507,
+        0.236,
+        0.547,
+        0.304
+      ],
+      "threshold": 0.9,
+      "sha256": "f4f104c68d3f0abb09ae339c0f8b09555e062264fae21e1773fa504ee6fc6b41",
+      "source": "screencaps/arena_hil/20261008/20261008T202606_281310Z_01.png",
+      "source_sha256": "af4db134938394e1d2eb5ba5dc7d4ba0c96651eca45323e7cb8aef07eb79ba39",
+      "reusable_indicator": false
+    },
+    {
+      "id": "buff2_off",
+      "path": "assets/arena/buff2_off.png",
+      "roi": [
+        0.613,
+        0.236,
+        0.653,
+        0.304
+      ],
+      "source_roi": [
+        0.613,
+        0.236,
+        0.653,
+        0.304
+      ],
+      "threshold": 0.9,
+      "sha256": "eb5284aac21c7cdde9f9d31137f0cd84d41c55d103bf5c6596e7a0c1db50a5f1",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": false
+    },
+    {
+      "id": "buff2_on",
+      "path": "assets/arena/buff2_on.png",
+      "roi": [
+        0.613,
+        0.236,
+        0.653,
+        0.304
+      ],
+      "source_roi": [
+        0.613,
+        0.236,
+        0.653,
+        0.304
+      ],
+      "threshold": 0.9,
+      "sha256": "96811f69f2cd57a34a98a6be97c1f80aee341e71c034dca903ccdb73e0f85f0e",
+      "source": "screencaps/arena_hil/20261008/20261008T202606_281310Z_01.png",
+      "source_sha256": "af4db134938394e1d2eb5ba5dc7d4ba0c96651eca45323e7cb8aef07eb79ba39",
+      "reusable_indicator": false
+    },
+    {
+      "id": "buff3_off",
+      "path": "assets/arena/buff3_off.png",
+      "roi": [
+        0.72,
+        0.236,
+        0.76,
+        0.304
+      ],
+      "source_roi": [
+        0.72,
+        0.236,
+        0.76,
+        0.304
+      ],
+      "threshold": 0.9,
+      "sha256": "a70ab088f171a4daf966830d43db596b9e5a8d4f672368a5ec41e90be0febf77",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": false
+    },
+    {
+      "id": "buff3_on",
+      "path": "assets/arena/buff3_on.png",
+      "roi": [
+        0.72,
+        0.236,
+        0.76,
+        0.304
+      ],
+      "source_roi": [
+        0.507,
+        0.236,
+        0.547,
+        0.304
+      ],
+      "threshold": 0.9,
+      "sha256": "f4f104c68d3f0abb09ae339c0f8b09555e062264fae21e1773fa504ee6fc6b41",
+      "source": "screencaps/arena_hil/20261008/20261008T202606_281310Z_01.png",
+      "source_sha256": "af4db134938394e1d2eb5ba5dc7d4ba0c96651eca45323e7cb8aef07eb79ba39",
+      "reusable_indicator": true
+    },
+    {
+      "id": "x8_on",
+      "path": "assets/arena/x8_on.png",
+      "roi": [
+        0.771,
+        0.692,
+        0.784,
+        0.724
+      ],
+      "source_roi": [
+        0.771,
+        0.692,
+        0.784,
+        0.724
+      ],
+      "threshold": 0.9,
+      "sha256": "d158099e064c151bf7ee9c4dd966b23514cc501050c13e60f37da179089980bb",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": false
+    },
+    {
+      "id": "x8_off",
+      "path": "assets/arena/x8_off.png",
+      "roi": [
+        0.771,
+        0.692,
+        0.784,
+        0.724
+      ],
+      "source_roi": [
+        0.728,
+        0.692,
+        0.741,
+        0.724
+      ],
+      "threshold": 0.9,
+      "sha256": "d952f3a54ba44d79931a14ded208d898bcdaff47839788e841cf16fdb8ea1479",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "reusable_indicator": true
+    }
+  ]
+}

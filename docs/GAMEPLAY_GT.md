@@ -342,6 +342,162 @@ posibles de inventario. Loading/CP/E no sustituyeron los cambios de slot.
 - Tras Raid Complete el panel puede tardar en actualizar rank/damage. Guiones stale
   no contradicen una participación recién acreditada dentro del mismo ciclo.
 
+## Arena — USER_GT y adquisición 2026-10-08
+
+Un batch EASY x8 completo observado; [informe y gaps](ARENA_HIL_ACQUISITION_20261008.md).
+B1 añadió un único batch EASY x8 autorizado y retorno verificado; hubo pausas del
+observer y recuperación explícita, detalladas en [informe B1](ARENA_B1_20261008.md).
+
+- **USER_GT:** Beginner=EASY izquierda, Intermediate=NORMAL centro, Expert=HARD derecha. Victoria x1:
+  70/120/180 puntos respectivamente; x8 multiplica por ocho; derrota cero.
+  El juego calcula los puntos; no se necesita leerlos/acumularlos para esa policy.
+- **USER_GT:** matchmaking depende de puntos acumulados. Winrate por personaje y
+  dificultad no es estacionario; controller futuro usa resultados recientes,
+  exploración e histéresis, sin implementar en esta adquisición.
+- **USER_GT:** un Auto Repeat completo suele durar unos ocho minutos, variable
+  por personaje. No es una espera fija. El modal final no requiere un campo Wins.
+- **USER_GT definitivo, Fase A:** cada Brawler Badge con el que se ganó entrega
+  exactamente un Karat; los badges con los que se perdió entregan cero.
+  `Brawler's Badge Used` → `used_tickets`; `Acquired Karats` → `won_tickets`.
+  `winrate = won_tickets / used_tickets`; no hay un campo `wins` separado.
+  No deducir victorias de puntos, saldo de Karats, resultados individuales ni
+  divisiones por ocho. Un cero explícito acreditado es válido; ilegible no es cero.
+- **USER_GT adicional:** Double Points (buff 3) duplica únicamente Victory Points,
+  **no Karats**. La correspondencia Acquired Karats → won_tickets es independiente
+  del estado de ese buff; el result reader no necesita consultarlo.
+- **USER_GT, policy futura:** sólo batch válido con ≥80 Brawler Badges consumidos
+  (diez entradas x8) permite Hard 0%→Easy o Easy 0%→terminación funcional de
+  Arena Farming Cycle. Batch menor no habilita ninguna excepción; esa terminación
+  no es FAILED técnico ni necesariamente termina toda la rutina.
+- **USER_GT, comparación futura:** Hard supera Normal si pHard > (2/3)pNormal;
+  Normal supera Easy si pNormal > (7/12)pEasy; Hard supera Easy si
+  pHard > (7/18)pEasy. No vuelve estacionario el matchmaking ni implementa policy.
+- **USER_GT, composición futura:** Badges suficientes→Arena; insuficientes con
+  Sapphires suficientes→MW→Arena; ambos insuficientes→Manual Stage→MW→Arena.
+  Umbrales pendientes; conservar lifecycle transversal Shared Meteorites.
+- **LIVE_EVIDENCE:** Telumpel en Lobby (identidad USER_GT)→botón Battle→Select Mode
+  con tarjeta Arena→Arena con columnas Beginner/Intermediate/Expert y Challenge.
+  Ticket amarillo 106 visible en Lobby y ambas pantallas: Brawler Badges por
+  USER_GT confirmado al retomar. La moneda plateada 422 sigue sin identificar.
+  Capturas scrcpy 2712×1224, secuencias por lifetime, en manifest del informe.
+- **USER_GT:** Arena selección y Challenge son vistas de una misma BASE no-battle;
+  Challenge no es modal/overlay. Auto Repeat abre un MODAL de configuración.
+  Upon Defeat siempre desmarcado. X cierra configuración; inicio físico interno
+  corregido por LIVE_EVIDENCE y steer posterior, descrito debajo.
+- **USER_GT:** seleccionar buffs 1/2 siempre; compra Gold permitida con coste y
+  confirmación acreditados, nunca Karats. Buff 3 Double Points consume una unidad
+  por Badge, no por combate x8; activar sólo con saldo conocido ≥consumo previsto
+  conocido. UNKNOWN mantiene buff 3 OFF. Auto Repeat no se detiene al agotarlo y
+  puede comprarlo con Karats: compra premium prohibida.
+- **USER_GT:** x2/x3/x5/x8 existen; usar sólo x8. Observar selección actual,
+  no tocar si ya activo; de lo contrario doble tap específico como MAX MW.
+  Tap aislado abre overlay; memoria personaje/cuenta no resuelta ni requerida.
+- **USER_GT:** Socket Inventory Full puede aparecer en Arena; Equipment Full
+  posible no confirmado. Reusar ReliefCoordinator, sin forzar blockers.
+  ArenaFlow ejecuta un batch por invocación; ciclos pertenecen al caller.
+- **LIVE_EVIDENCE:** EASY Challenge muestra x8 con check dorado ya seleccionado;
+  buffs 1/2 inicialmente 923/999 sin check, selección los deja 915/991 con check
+  y borde iluminado, Badges aún 106. Costes visibles Gold 3000/5000 y buff 3
+  8 Karats, saldo 999 sin check. No compra. Una captura con notificación externa
+  se descartó por instrucción; el estado posterior limpio conserva los checks.
+- **LIVE_EVIDENCE:** Auto Repeat abrió configuración con Upon Defeat vacío;
+  X devolvió Challenge con buffs 1/2 y x8 activos, buff 3 OFF. Texto del modal:
+  termina al agotar Badges y compra items automáticamente con Gold/Karats.
+  No hay selector de número de entradas en el modal observado.
+- **LIVE_EVIDENCE, corrección causal:** tras X, Auto Repeat de Challenge vuelve
+  a abrir configuración; el botón verde interno es el inicio autorizado por
+  steer posterior. Primer inicio produjo “The bag is full. Would you like to
+  organize your bag?” con Yes/No sobre configuración, Badges 106 sin consumo.
+  Usuario preparó espacio y restauró Challenge; inventario intervenido no nombrado.
+  Literal coincide con Socket blocker curado existente; no prueba Equipment Full.
+- **LIVE_EVIDENCE:** ejecución efectiva EASY x8, Upon Defeat OFF y buff3 OFF:
+  Loading→batalla (HUD versus, timer, pausa, banda Auto Repeat)→WIN transitorio
+  sin input→Challenge con próximo oponente→batalla. Challenge no prueba término.
+  NORMAL/HARD Challenge también adquiridas sin combatir; x8 y buffs1/2 persisten.
+  Start/Auto Repeat conservan apariencia activa con saldo2: no es readiness.
+- **LIVE_EVIDENCE:** batch consumió **104 Badges (13 entradas x8), 106→2**;
+  x8 no ejecutó entrada residual x2. Final “Auto Repeat/Auto Continue/SKIP
+  Results”: Brawler's Badge Used104, Acquired Victory Points7280,
+  Acquired Karats104, Rewards vacío. **Sin campo wins ni attempted**.
+  USER_GT cierra la correspondencia: used_tickets104 / won_tickets104,
+  lost_tickets0, winrate100%. Cifra nativa limpia y OCR concordantes; OCR no es GT.
+- **LIVE_EVIDENCE:** OK final descubre insufficient Brawler's Badge / purchase
+  Yes-No; No devuelve Challenge limpio. Back→selección puede mostrar Loading y
+  New Ranking/OK antes de quedar limpia. Resultado no reapareció en NORMAL/HARD.
+- **LIVE_EVIDENCE:** buffs1/2 seleccionados reservan8 unidades con x8. Después
+  de batch 811/887 ON; deselección devuelve8, OFF819/895. Neto104 unidades de
+  cada buff (inicial923/999). Buff3 OFF999 sin consumo. Gold post-relief manual
+  6228489654 igual al final; Karats100868→100972, +104 sin compra.
+- **LIVE_EVIDENCE / límite temporal:** inicio 20:32:44 UTC aprox.; último raw
+  de batalla20:40:39.699, primer raw final20:40:58.751. Duración verificable
+  ~475–495s, estimación por telemetría8min12s; no instante exacto. Final permanece
+  hasta ACK manual. Stream con artefactos no autoriza cifras; native fresco limpio.
+- **HEURISTIC de previsión, no contabilidad real:** para saldo B y x8 constante,
+  batch natural hasta insuficiencia, `floor(B/8)*8` explica106→104+2. No80 fijo,
+  no garantía si blocker/interrupción. Mantener buff3 OFF ante consumo desconocido.
+- **LIVE_EVIDENCE B1:** New Ranking apareció también al entrar desde Select Mode;
+  un OK acreditado devolvió selección sin iniciar batalla. Captura portable curada.
+  Recuperación pre-start autorizada: X configuración→Challenge; Back→selección;
+  Back→Select Mode; Back→Lobby. Son transiciones adquiridas, no wiring QM.
+- **LIVE_EVIDENCE B1, único consumo autorizado:** Telumpel EASY x8,50Badges,
+  tres buffs ON con stock libre755/844/935 y reserva inicial8 verificada al seleccionar.
+  Upon Defeat OFF; único botón verde interno→Loading→batalla activa. Resultado
+  nativo Brawler's Badge Used48 y Acquired Karats48: used48/won48,100%.
+  OK único→Insufficient Brawler's Badge; No único→Challenge limpio BASE Arena
+  acreditado. Final nativo:2Badges, x8ON, buffsON707/796/887, Gold6436020953
+  sin cambio, Karats101020→101068. Buff3 ON no modifica correspondencia Karats.
+  Detener/reabrir el observer no detuvo el juego. Hubo handoff explícito;
+  no se midió instante de final ni duración precisa del batch. Capturas/procedencia
+  en manifest portable B1 e informe. No compra, segundo batch ni generadores.
+- **USER_GT / deuda de adquisición:** al alcanzar determinados puntos puede
+  aparecer otro **MODAL informativo** de Arena, similar al de Monster Wave.
+  Título/literal (podría ser «Points Reward»), umbral y cierre **UNKNOWN**.
+  Capturar cuando aparezca naturalmente; no provocar el evento, inventar detector
+  ni bloquear A/B1. ArenaFlow debe distinguirlo del final; estado
+  no reconocido conserva evidencia y nunca autoriza taps ciegos de cierre.
+- **UNKNOWN residual B1:** derrota; pausa/cancelación física; compras Gold no
+  cubiertas por la adquisición B2 debajo; retorno tras relief. Configuración,
+  resultado Auto Repeat, insuficiencia y New Ranking son MODAL; Challenge es
+  otra vista de la BASE Arena. Single tiene un resultado distinto, descrito debajo.
+  No se readquiere x8 desde OFF porque estaba ON; doble tap sigue USER_GT.
+  Estado histórico al cerrar la adquisición inicial: Challenge HARD limpio, Badges2 y tres buffsOFF;
+  ADB perdió dispositivo antes del intento QM, sin input. Los nombres legacy
+  del censo semántico no clasifican estas superficies.
+
+### Arena B2 — Single y salida externa (2026-10-08)
+
+- **USER_GT:** resultado individual es OVERLAY sobre Arena Battle; Arena Battle
+  es BASE battle; Select Mode de Arena es BASE distinta de la de Survival.
+- **LIVE_EVIDENCE:** Challenge limpio permite Quick Menu mediante el control
+  compartido; su tile Lobby retorna a Lobby. Ruta Back adquirida sin combate:
+  Challenge→selección (puede aparecer New Ranking→OK)→Select Mode Arena→Lobby.
+  No se habilita una regla global de QM por conveniencia del flow.
+- **USER_GT:** Start ejecuta una entrada; seleccionar buff 1 insuficiente compra
+  directamente con Gold, gasto pequeño. **LIVE_EVIDENCE:** x8 con stock6 compra2
+  unidades a3000Gold: debit6000, muestra reserva roja `-2`, sin cambiar Karats
+  ni badges. Stock0 muestra `+` con buffOFF; selección x8 compra8, debit24000 y
+  reserva `-8`. El signo negativo es reserva pagada, nunca inventario libre.
+- **LIVE_EVIDENCE:** un Start individual EASY x8→batalla automática, sin activar
+  Auto Battle ni enviar otro input de combate→WIN con estadísticas, Reward
+  Karat1×8/puntos70×16 y «Tap the screen». No campos Used Tickets/Acquired Karats;
+  el reader de Auto Repeat no posee autoridad sobre este resultado.
+- **LIVE_EVIDENCE:** un tap al prompt devuelve selección de dificultad, no
+  Challenge. Primera entrada106→98badges y101068→101076Karats. Reentrada a
+  Challenge muestra buffsOFF, stock0/309/706 y x8ON. Segunda entrada registrada
+  una sola vez98→90badges y101076→101084Karats; cierre y Back externos verificados.
+- **LIVE_EVIDENCE:** New Ranking reapareció naturalmente después de Back desde
+  Challenge; OK adquirido restituyó selección. Es distinto de la deuda informativa
+  por umbral de puntos, que no apareció. Derrota individual sigue UNKNOWN y no
+  se deduce de ausencia de WIN. No se provocaron derrotas ni cancelación física.
+- **LIVE_EVIDENCE:** repetición causal productiva tras corregir CV pausa/prompt:
+  EASY x8 único Start90→82badges/101084→101092Karats, buff1Gold24000;
+  resultado/cierre/Back/Lobby y paso posterior Session completados continuamente.
+  Total B2: tres entradas,24badges,24Karats,54000Gold; cero gasto Karats.
+
+Manifests curados: `datasets/arena_b2_acquisition_manifest.json`,
+`datasets/arena_b2_assets_manifest.json`, `tests/fixtures/arena_b2/manifest.json`.
+Evidencia nativa/stream y consumos: [informe B2](ARENA_B2_20261008.md).
+
 ## UNKNOWN deliberados
 
 - Fill All con Gold insuficiente: comportamiento no confirmado, baja prioridad; expectativa del usuario de compra parcial y aviso posterior **no es GT**. No adquirir ahora ni bloquear MW.

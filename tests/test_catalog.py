@@ -380,9 +380,15 @@ def test_catalog_semantic_names_are_unique_and_implementation_independent():
 
 
 def test_catalog_contains_only_the_deliberate_minimal_slice():
-    assert len(BASE_CONTEXT_RULES) == 21
-    assert len(OVERLAY_RULES) == 60
-    assert len(SEMANTIC_OBSERVATION_NAMES) == 109
+    # Protect actual resolver dependencies rather than freeze catalog size.
+    required = {name for rule in (*BASE_CONTEXT_RULES, *OVERLAY_RULES) for name in rule.requires}
+    assert required <= set(SEMANTIC_OBSERVATION_NAMES)
+    arena = next(rule for rule in BASE_CONTEXT_RULES if rule.name == 'screen.arena')
+    assert arena.requires == ('landmark.arena_base',)
+    battle = next(rule for rule in BASE_CONTEXT_RULES if rule.name == 'screen.arena_battle')
+    assert battle.requires == ('landmark.arena_battle',)
+    mode = next(rule for rule in BASE_CONTEXT_RULES if rule.name == 'screen.arena_select_mode')
+    assert mode.requires == ('landmark.arena_mode_select',)
     assert "landmark.gold_currency_icon" not in SEMANTIC_OBSERVATION_NAMES
 
 

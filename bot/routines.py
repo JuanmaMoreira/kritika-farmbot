@@ -16,6 +16,7 @@ from bot.world_boss_state import WorldBossEligibilityMode
 
 
 from bot.relief_policy import ReliefPolicy
+from bot.arena_config import ArenaConfig
 
 SCHEMA_VERSION = 2
 
@@ -45,9 +46,11 @@ def migrate_reliefs(steps):
 
 def config_overrides(config: dict) -> dict:
     """Reconstruct canonical config objects, never duplicate their policy fields."""
-    if not isinstance(config, dict) or set(config) - {"monster_wave", "equipment_sell", "world_boss"}:
+    if not isinstance(config, dict) or set(config) - {"monster_wave", "equipment_sell", "world_boss", "arena"}:
         raise ValueError("unsupported step configuration")
     overrides = {}
+    if 'arena' in config:
+        overrides['arena'] = ArenaConfig.from_dict(config['arena'])
     if 'world_boss' in config:
         value = config['world_boss']
         if not isinstance(value, dict) or set(value) != {'eligibility'}:
@@ -125,7 +128,7 @@ class RoutineSpec:
 def default_routines(registry):
     # Presets are ordinary editable specs. No runtime depends on these IDs.
     return (
-        RoutineSpec("custom", "Custom", tuple(RoutineStep(d.id) for d in registry.definitions if d.id != "gold_farming")),
+        RoutineSpec("custom", "Custom", tuple(RoutineStep(d.id) for d in registry.definitions if d.id not in {"gold_farming", "arena"})),
         RoutineSpec("basic-gold", "Basic Gold Farming", (RoutineStep("gold_farming"),)),
     )
 
@@ -302,7 +305,8 @@ class RoutineEditor:
         self.registry.get(flow_id)
         if self.draft is None:
             raise ValueError("Create a routine first")
-        self.draft = replace(self.draft, steps=self.draft.steps + (RoutineStep(flow_id),))
+        config = {'arena': ArenaConfig().to_dict()} if flow_id == 'arena' else {}
+        self.draft = replace(self.draft, steps=self.draft.steps + (RoutineStep(flow_id, config=config),))
 
     def remove(self, index):
         steps = list(self.draft.steps)

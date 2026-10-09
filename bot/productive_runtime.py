@@ -379,6 +379,11 @@ class ProductiveRuntime:
     def _step_runtime(self, step):
         from bot.routines import config_overrides
         overrides = config_overrides(step.config)
+        if step.flow_id == 'arena':
+            from bot.arena_config import ArenaConfig
+            # Missing occurrence settings use the conservative occurrence default,
+            # never the ambient/global configuration.
+            overrides['arena'] = ArenaConfig.from_dict(step.config.get('arena', {}))
         overrides.pop("equipment_sell", None)  # legacy data is owned by routine migration
         if not overrides and self.routine_continue_on_unavailable == step.continue_on_unavailable:
             return self
@@ -550,6 +555,20 @@ class ProductiveRuntime:
         return MeteoritesRuntime(self.observer.source,
             MeteoritesReader(self.ocr_engine or RapidOcrEngine()), self.actions,
             cancel_requested=self.cancel_requested, events=self.events)
+
+    def build_arena_flow(self, difficulty, *, authorized_badge_ceiling=None, mode=None,
+                         return_context='screen.arena'):
+        """Compose the B1 owner; routine bindings request a verified Lobby return."""
+        from bot.arena_config import ArenaMode
+        from bot.arena_flow import ArenaFlow
+        from bot.arena_flow_reader import ArenaFlowReader
+        from bot.relief_policy import coordinator_for
+        return ArenaFlow(self.observer,self.actions,
+            ArenaFlowReader(self.ocr_engine or RapidOcrEngine()),difficulty,
+            socket_relief=self.socket_relief,reliefs=coordinator_for(self),
+            transition=self.build_verified_transition(),cancel_requested=self.cancel_requested,
+            events=self.events,authorized_badge_ceiling=authorized_badge_ceiling,
+            mode=ArenaMode.AUTO_REPEAT if mode is None else mode,return_context=return_context)
 
     def build_meteorites_character_scope(self):
         from types import SimpleNamespace

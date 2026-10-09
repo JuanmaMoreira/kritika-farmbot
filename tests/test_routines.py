@@ -32,7 +32,7 @@ def test_missing_file_defaults_are_normal_specs_with_exact_gold_sequence(store):
     values, selected = store.load()
     assert not store.path.exists()
     assert selected == 'custom'
-    assert tuple(s.flow_id for s in values[0].steps) == tuple(d.id for d in store.registry.definitions if d.id != 'gold_farming')
+    assert tuple(s.flow_id for s in values[0].steps) == tuple(d.id for d in store.registry.definitions if d.id not in {'gold_farming', 'arena'})
     assert values[1].name == 'Basic Gold Farming'
     assert tuple(s.flow_id for s in values[1].steps) == ('gold_farming',)
 

@@ -204,6 +204,158 @@ Observabilidad mínima: `flow.completed.current_surface`, `navigation.handoff` c
 useful step, ruta/destino/motivo y `*.base_restored` tras panel close. No policy económica
 en Session ni normalización general a Lobby porque exista Rotation.
 
+## Arena — percepción, resultado y operación B1 (2026-10-08)
+
+`bot/arena_semantics.py` posee dificultad, preparación, receipt de ejecución,
+provenance y `ArenaBatchResult(difficulty, multiplier, used_tickets, won_tickets,
+observed_at, provenance)`. Winrate/lost_tickets se derivan en badges, no combates.
+Acquired Karats acredita won_tickets por USER_GT, independiente de Double Points;
+Victory Points nunca participa del reader. La previsión `(badges//8)*8` es sólo
+candidata para repetición natural x8; interrupciones/blockers pueden reducirla.
+`double_points_covered` requiere saldo libre, consumo previsto y reserva conocidos;
+no extrapola el refund de buffs1/2 al tercero ni autoriza gasto.
+
+`ArenaVisuals`/`ArenaDetector` en `bot/arena_reader.py` poseen CV focal sin OCR:
+selección y Challenge identifican la misma BASE `screen.arena`; configuración,
+resultado, insuficiencia y New Ranking son MODAL. Ranking combina título compartido
+con label Arena; no invade el owner MW. Buffs/dificultad/x8 son facts de Challenge
+limpio. Buff3 ON y x8 OFF reutilizan indicadores adquiridos de controles hermanos,
+con pruebas sintéticas explícitas; no acreditan nuevas transiciones físicas.
+Upon Defeat OFF está adquirido; otras lecturas devuelven UNKNOWN. Batalla con
+versus y banda Auto Repeat publica actividad positiva; B2 USER_GT además acredita
+BASE Arena Battle y el overlay individual. Ausencia de banda/Challenge/WIN nunca
+acredita final. WIN transitorio de batch no equivale al resultado individual.
+`build_arena_perception()` compone el scope focal; default y scopes que preservan
+dependencias del resolver incluyen el nuevo detector. No hay ruta Arena en el hub
+Survival. B1 compone un owner standalone, descrito debajo.
+
+`ArenaResultReader` devuelve resultado tipado o `None` (UNKNOWN). Exige título,
+Badge Used, Acquired Karats, estructura y OK del modal final, con ROIs desde shape.
+Padding numérico se compara en color absoluto para rechazar tails corruptos que
+OCR podría leer como prefijos plausibles. Ambos enteros vienen de una copia del
+mismo snapshot, OCR focal color/gris concordante ≥.95 y una sola línea, sin caché
+de campos entre frames: used>0 y0≤won≤used. Zero explícito válido; missing no es0.
+Provenance conserva run/source lifetime, secuencia, hash de pixels y confianza.
+
+`ArenaBatchExecution` es el receipt **del owner ArenaFlow**, de un único inicio verde
+efectivo dentro del modal, dificultad/x8 conocidos y post-start positivo acreditado.
+No se crea leyendo el resultado ni con un tap intentado. El reader rechaza receipt
+no verificado, run/source distintos, frames anteriores al inicio/secuencia,
+stale/futuros; revalida edad después de OCR (default2s). El owner debe
+invalidarlo por cancelación, otro batch, discontinuidad de source o navegación
+ajena. La identidad causal no se puede inferir de los pixels del modal; Phase A
+valida este contrato sin ejecutar un inicio real.
+
+`wait_terminal` reutiliza `ControlledWait`, deadline configurable obligatorio,
+sondeo focal3s inicial, secuencia/timestamp crecientes y cancelación. No usa OCR
+durante polling; devuelve snapshot terminal positivo para lectura fresca separada.
+El callback de observación puede usar refresh nativo existente ante ambigüedad;
+UNKNOWN requiere otra observación, nunca rescate por plausibilidad. Cancelar el
+wait no cancela físicamente el juego. Fase A validó sólo esta interfaz pasiva.
+
+`ArenaFlow` (`bot/arena_flow.py`) posee una operación acotada, navegación,
+preparación, lineage y retorno. `ProductiveRuntime.build_arena_flow(difficulty)`
+compone observer/source/actions/OCR compartidos y los reliefs existentes; no está
+acoplado a Rotation, Meteorites, budget de Stamina ni generadores de badges. Entrada
+contractual Lobby limpio: Battle→Select Mode con tarjeta Arena→selección→Challenge.
+New Ranking acreditado al entrar se cierra con un único OK antes de la dificultad.
+Challenge solo no acredita idle, pues es transitorio dentro del batch. Salida
+standalone legacy conserva `screen.arena` sin overlays. B2 registra la ocurrencia
+de rutina con contrato Lobby→Lobby y ruta Back adquirida; el caller posee la
+navegación desde ese Lobby al próximo contexto.
+
+`ArenaFlowReader`/`ArenaFlowVisuals` poseen navegación/economía focal B1; reutilizan
+result reader de A. B1 permite edad máxima4s por coste nativo medido conservando
+timestamps; A mantiene default2s. Extienden autoridades con brillo absoluto y
+exclusión de modales conocidos para no aceptar Challenge detrás de insuficiencia.
+Economía requiere captura nativa fresca en
+el sequence space del source, enteros OCR color/gris del mismo frame y x8/dificultad
+acreditados. Prewarm precede un nuevo snapshot. Buffs1/2 ON se conservan; OFF se
+seleccionan y se verifica reserva8. Requieren stock para toda la previsión ordinaria:
+faltante detiene preparación salvo la compra acotada de buff1 B2 para una entrada8.
+Buff3 ON
+sin reserva conocida exige cobertura por saldo libre; insuficiente/UNKNOWN→OFF
+verificado. Activación OFF sólo con cobertura; reserva3 se acredita por delta8
+observado, sin inferir refund. No intención de compra Karats ni badges. Un techo
+opcional de autorización rechaza batches naturales mayores; nunca los fragmenta.
+
+`ArenaAction`/`ArenaControl` poseen targets normalizados adquiridos independientes
+de Survival. `ActionExecutor` aplica doble tap x8 únicamente desde OFF acreditado.
+Configuración debe acreditar Upon Defeat OFF; ON sólo puede corregirse con evidencia
+positiva (detector ON aún no adquirido). Start usa un input interno verde y exige
+Loading/batalla posteriores antes de emitir receipt. Un inicio incierto no se repite.
+Socket blocker + contador nativo sin consumo acreditan no-inicio: entrada verificada
+a Socket→ReliefCoordinator→relief existente→retorno limpio fresco→revalidación total.
+Máximo un relief y un nuevo intento sólo tras ese no-inicio; retorno desconocido
+detiene el owner. Equipment Full sigue UNKNOWN. No nuevos reliefs.
+
+Wait productivo `ControlledWait`: sondeo focal3s configurable, bound1800s ajustable
+(safety heuristic, no duración contractual), cero OCR durante wait, secuencias/edad
+reales y cancelación. Challenge/WIN transitorio/Loading no terminan el wait de batch. Configuración
+propia transitoria tras Loading se observa sin input bajo el bound UNKNOWN persistente.
+Modales conocidos
+distintos o superficie desconocida persistente conservan evidencia y detienen el
+observer, sin cerrar. Terminal positivo→nativo fresco→reader de A; máximo dos lecturas
+frescas, sin otro Start. Resultado con used superior a badges acreditados al inicio
+se reporta ambiguo. OK único, Insufficient→No y New Ranking→OK sólo por autoridad
+positiva; retorno BASE fresco. `ArenaFlowResult` conserva resultado, fase, receipt,
+evidencia y `physical_operation_may_be_active`; detener observer invalida receipt
+de lectura y no declara cancelación física. La misma instancia no reinicia una
+operación física incierta/activa. Métricas separan capturas, CV, OCR, intervalos/edad,
+elapsed y trabajo del observer; aparición terminal sólo tiene bracket observado,
+no una latencia física inventada. Sources/ADB/process cleanup sigue en runtime.
+`observe_started_batch(execution, started_badges)` continúa sólo observación/cierre
+de un batch ya acreditado: nunca preparación/Start. El caller acredita handoff
+explícito con inicio histórico positivo, ownership físico sin inputs intermedios
+y un nuevo segmento source/sequence; conserva run/configuración/started_at.
+Actividad/Loading/terminal frescos son obligatorios. El receipt archivado sigue
+invalidado; no se resucita ni se deduce un inicio desde el resultado. Safety bound
+mantiene el tiempo del inicio original. Insufficient tardío durante acreditación
+global del retorno se adopta fresco y se cierra con No, sin repetir OK del resultado.
+
+Modal de umbral de puntos: deuda explícita de adquisición, literal/umbral/cierre
+UNKNOWN; no detector inventado. ArenaFlow conserva evidencia/no taps ciegos
+ante ese modal no reconocido. Cancelación física sigue abierta. Farming Cycle,
+controller adaptativo, Manual Stages y REPEAT_CURRENT
+quedan fuera de A/B1. Smoke físico B1 cerrado: único batch EASY x8,48used/48won,
+2Badges finales y BASE Arena limpio. Hubo interrupciones del observer y handoff;
+no acredita ejecución continua ni performance de wait largo. [B1](docs/ARENA_B1_20261008.md) y
+[adquisición/A](docs/ARENA_HIL_ACQUISITION_20261008.md) poseen evidencia y límites.
+
+### Arena B2 — modos y ocurrencias
+
+`ArenaMode`/`ArenaConfig`: SINGLE_BATTLE o AUTO_REPEAT, dificultad fija
+EASY/NORMAL/HARD, exclusivamente x8. Default nuevo SINGLE_BATTLE/EASY; Arena es
+seleccionable en FlowRegistry pero OFF en defaults de rutinas. Config JSON por
+ocurrencia `arena: {mode, difficulty}`, validado sin opciones económicas/adaptive;
+draft→Apply→Save Routine existente. Esquema v2 admite la sección sin bump:
+faltante usa default conservador, inválido conserva datos y deshabilita el paso.
+`_step_runtime` resuelve cada ocurrencia y evita heredar Arena global accidentalmente.
+
+Preparación y owners B1 compartidos; SINGLE_BATTLE despacha únicamente
+`SINGLE_START`, sin configuración Auto Repeat. Loading/actividad positivos mintan
+`ArenaSingleExecution`; no retries después de Start incierto. Reader específico
+exige WIN+estadísticas+Reward+prompt acreditado, freshness y receipt de esa entrada.
+`ArenaSingleResult` VICTORY acredita consumo8 y deltaKarats8 mediante balances
+nativos antes/después del cierre, con provenance separada. No `won_tickets`;
+derrota no adquirida detiene observer sin input. AUTO_REPEAT conserva su reader,
+Upon DefeatOFF, cierre y `used_tickets/won_tickets` de B1.
+
+Gold buff1 sólo si stockOFF0..7, consumo previsto8, precio3000 positivo y balance
+fresco suficiente: input único, reserva exacta y debitGold esperado, Karats/badges
+intactos antes de Start. Buff2 agotado y reposición Gold de batches largos siguen
+deteniendo preparación. Double Points nunca compra Karats. Déficit rojo sólo cuenta
+con recibo local de la compra; stock ilegible nunca se convierte en cero.
+
+Single cierra a selección; batch a Challenge. Retorno externo exige BASE limpia y
+Backs positivos hasta `screen.arena_select_mode` y Lobby fresco acreditado por
+resolver+CV. New Ranking→OK sólo con evidencia positiva. SUCCESS externo no puede
+emitirse desde Challenge/selección. Session existente continúa desde Lobby conocido;
+FAILED/CANCELLED/incertidumbre detienen el avance. No políticas diarias ni cambios
+de Rotation/Shared Meteorites. Handoff explícito `observe_started_single` conserva
+único Start/balances y requiere revalidar actividad/terminal en nuevo source; nunca
+prepara ni inicia. [B2](docs/ARENA_B2_20261008.md) detalla evidencia y límites.
+
 ## Meteorites — primitivas Fase A (2026-10-08)
 
 `MeteoritesDetector` incorpora el landmark estructural del Bag principal,

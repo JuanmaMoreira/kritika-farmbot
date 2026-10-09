@@ -1,0 +1,2111 @@
+{
+  "schema_version": 1,
+  "baseline": "dd999288870e1afa02f061b4a9f3b830d89b0b03",
+  "status": "natural_batch_completed_result_semantics_closed_USER_GT",
+  "character": "telumpel",
+  "character_authority": "USER_GT_chat",
+  "badges_consumed": 104,
+  "entries": [
+    {
+      "captured_at_utc": "2026-10-08T19:46:15.031500+00:00",
+      "height": 1224,
+      "label": "initial",
+      "path": "artifacts/arena-hil/20261008/initial/20261008T194615_031500Z_01.png",
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "6c48cac9adc77e926e6e5127b2c948661440bdcf4796abd5740821b50aee76cd",
+      "curated_path": "screencaps/arena_hil/20261008/initial.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "lobby",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T19:46:36.855722+00:00",
+      "height": 1224,
+      "label": "lobby-battle-before",
+      "path": "artifacts/arena-hil/20261008/lobby-battle-before/20261008T194636_855722Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.825,
+          0.59
+        ],
+        "pixel_target": [
+          2237,
+          722
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "9a4db23fb58b104ef11360d22a1155838828dd1e2f161228db5fd5344c8bae38",
+      "curated_path": "screencaps/arena_hil/20261008/lobby-battle-before.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "lobby",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T19:46:39.063290+00:00",
+      "height": 1224,
+      "label": "lobby-battle-after",
+      "path": "artifacts/arena-hil/20261008/lobby-battle-after/20261008T194639_063290Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.825,
+          0.59
+        ],
+        "pixel_target": [
+          2237,
+          722
+        ]
+      },
+      "source_sequence": 34,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "f8b6ad546e37d2b8f0f1ec560287c6e2e8fed6b14f992a778de18ee3a902fbc5",
+      "curated_path": "screencaps/arena_hil/20261008/lobby-battle-after.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "battle_select_mode",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T19:46:54.400854+00:00",
+      "height": 1224,
+      "label": "mode-arena-before",
+      "path": "artifacts/arena-hil/20261008/mode-arena-before/20261008T194654_400854Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.278,
+          0.389
+        ],
+        "pixel_target": [
+          753,
+          476
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "cb51da7f9525785a1ec3b328c928a5cb34140c733c1f565fc3c8b76593561270",
+      "curated_path": "screencaps/arena_hil/20261008/mode-arena-before.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "battle_select_mode",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T19:46:56.589975+00:00",
+      "height": 1224,
+      "label": "mode-arena-after",
+      "path": "artifacts/arena-hil/20261008/mode-arena-after/20261008T194656_589975Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.278,
+          0.389
+        ],
+        "pixel_target": [
+          753,
+          476
+        ]
+      },
+      "source_sequence": 33,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "66b1414b34a18b81c71446272d87d4d0ce237dc2a80f9ef74b580684d2a6f183",
+      "curated_path": "screencaps/arena_hil/20261008/mode-arena-after.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_select",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:25:07.998704+00:00",
+      "height": 1224,
+      "label": "resume",
+      "path": "artifacts/arena-hil/20261008/resume/20261008T202507_998704Z_01.png",
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "0b6e882470a099fdcf465cc7e7280721ecf15eb2e9c061c3784f411b3a85e6a5",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202507_998704Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_select",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:25:23.250518+00:00",
+      "height": 1224,
+      "label": "easy-challenge-before",
+      "path": "artifacts/arena-hil/20261008/easy-challenge-before/20261008T202523_250518Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.277,
+          0.805
+        ],
+        "pixel_target": [
+          751,
+          985
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "287902419b58fdda48ab8b309f25e4d367d5a1d5b117dbf7123a24ee0db14081",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202523_250518Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_select",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:25:25.458046+00:00",
+      "height": 1224,
+      "label": "easy-challenge-after",
+      "path": "artifacts/arena-hil/20261008/easy-challenge-after/20261008T202525_458046Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.277,
+          0.805
+        ],
+        "pixel_target": [
+          751,
+          985
+        ]
+      },
+      "source_sequence": 32,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:25:41.658008+00:00",
+      "height": 1224,
+      "label": "buff1-select-before",
+      "path": "artifacts/arena-hil/20261008/buff1-select-before/20261008T202541_658008Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.555,
+          0.35
+        ],
+        "pixel_target": [
+          1505,
+          428
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "bcd841e8d81c2a122540f0005f830fc4c888df1d9c3aa25a7f07b4fdabf84ddc",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202541_658008Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy_buffs_off",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:26:04.101057+00:00",
+      "height": 1224,
+      "label": "buff2-select-before",
+      "path": "artifacts/arena-hil/20261008/buff2-select-before/20261008T202604_101057Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.664,
+          0.35
+        ],
+        "pixel_target": [
+          1800,
+          428
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "d46de59ca6bfc5cb3f0a8ec0c08b364e0597210ea10d57ec598b5afda7b8b61c",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202604_101057Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy_buff1_on",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:26:06.281310+00:00",
+      "height": 1224,
+      "label": "buff2-select-after",
+      "path": "artifacts/arena-hil/20261008/buff2-select-after/20261008T202606_281310Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.664,
+          0.35
+        ],
+        "pixel_target": [
+          1800,
+          428
+        ]
+      },
+      "source_sequence": 33,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "af4db134938394e1d2eb5ba5dc7d4ba0c96651eca45323e7cb8aef07eb79ba39",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202606_281310Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy_buffs12_on",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:26:22.261546+00:00",
+      "height": 1224,
+      "label": "auto-config-before",
+      "path": "artifacts/arena-hil/20261008/auto-config-before/20261008T202622_261546Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.769,
+          0.848
+        ],
+        "pixel_target": [
+          2085,
+          1037
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "7244b656845dfd56e58bf635f4708504dc7b042588951845d500ee186cee5013",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202622_261546Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:26:24.437999+00:00",
+      "height": 1224,
+      "label": "auto-config-after",
+      "path": "artifacts/arena-hil/20261008/auto-config-after/20261008T202624_437999Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.769,
+          0.848
+        ],
+        "pixel_target": [
+          2085,
+          1037
+        ]
+      },
+      "source_sequence": 34,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "b5c06a30ba22d77998a9a0c641ecfb41e86b6035434d8c4b1a53c03b2f31e6ca",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202624_437999Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:26:42.383618+00:00",
+      "height": 1224,
+      "label": "auto-config-close-before",
+      "path": "artifacts/arena-hil/20261008/auto-config-close-before/20261008T202642_383618Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.69,
+          0.09
+        ],
+        "pixel_target": [
+          1871,
+          110
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "0bc2c43572c7ddd1b2c6e52a7c8e327a96c572d1385aaa9ca71fbb8c12068dbc",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202642_383618Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:26:44.543222+00:00",
+      "height": 1224,
+      "label": "auto-config-close-after",
+      "path": "artifacts/arena-hil/20261008/auto-config-close-after/20261008T202644_543222Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.69,
+          0.09
+        ],
+        "pixel_target": [
+          1871,
+          110
+        ]
+      },
+      "source_sequence": 33,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "ccf65f68aa80ee9855ed365ff4843102c56f813a35e1afdcc3b7e061e9bb9b5f",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202644_543222Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:28:12.410125+00:00",
+      "height": 1224,
+      "label": "authorized-auto-start-before",
+      "path": "artifacts/arena-hil/20261008/authorized-auto-start-before/20261008T202812_410125Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.769,
+          0.848
+        ],
+        "pixel_target": [
+          2085,
+          1037
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "19bdc63f75ed883a3945a989a67388b3090a6a7e20a0208742970674973f4bbe",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202812_410125Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_challenge_easy",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:28:13.204261+00:00",
+      "height": 1224,
+      "label": "authorized-auto-start-after",
+      "path": "artifacts/arena-hil/20261008/authorized-auto-start-after/20261008T202813_204261Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.769,
+          0.848
+        ],
+        "pixel_target": [
+          2085,
+          1037
+        ]
+      },
+      "source_sequence": 13,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "3480554bea07ba7ef04110fcd66bce90c7c5e513ae8a12aa79f6505451c3e50e",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202813_204261Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:29:17.516859+00:00",
+      "height": 1224,
+      "label": "batch-modal-start-before",
+      "path": "artifacts/arena-hil/20261008/batch-modal-start-before/20261008T202917_516859Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.875
+        ],
+        "pixel_target": [
+          1356,
+          1071
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "380bdec1d12d52b1efd515d915bc4386521fec6c4b3cf3da9cccbffc48ce1841",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202917_516859Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:29:17.989820+00:00",
+      "height": 1224,
+      "label": "batch-modal-start-after",
+      "path": "artifacts/arena-hil/20261008/batch-modal-start-after/20261008T202917_989820Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.875
+        ],
+        "pixel_target": [
+          1356,
+          1071
+        ]
+      },
+      "source_sequence": 8,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "5ef4e4f215a5da3f7421f1f8d691b1e404273014f424747095ddb24c1946ffb6",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202917_989820Z_01.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "bag_full_above_auto_config",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:29:18.363101+00:00",
+      "height": 1224,
+      "label": "batch-modal-start-after",
+      "path": "artifacts/arena-hil/20261008/batch-modal-start-after/20261008T202918_363101Z_02.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.875
+        ],
+        "pixel_target": [
+          1356,
+          1071
+        ]
+      },
+      "source_sequence": 14,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "ee11a28ca51d7efd552a83d92cb9aa6c441e200ccd0aef59408be8d5ccd229e9",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T202918_363101Z_02.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "bag_full_above_auto_config",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:32:08.456610+00:00",
+      "height": 1224,
+      "label": "post-relief",
+      "path": "artifacts/arena-hil/20261008/post-relief/20261008T203208_456610Z_01.png",
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "222f82911432089d3418371af3ae0c3846f5d780edcf4dc20181f8e24ad4290c",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T203208_456610Z_01.png",
+      "physical_state": "arena_challenge_easy_buffs12_on",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:32:26.165205+00:00",
+      "height": 1224,
+      "label": "post-relief-config-before",
+      "path": "artifacts/arena-hil/20261008/post-relief-config-before/20261008T203226_165205Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.769,
+          0.848
+        ],
+        "pixel_target": [
+          2085,
+          1037
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "d3e9f6292f4800305c5e0ffbb338489f149096e84dbea1fe010063af9b50d3a0",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T203226_165205Z_01.png",
+      "physical_state": "arena_challenge_easy",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:32:26.657862+00:00",
+      "height": 1224,
+      "label": "post-relief-config-after",
+      "path": "artifacts/arena-hil/20261008/post-relief-config-after/20261008T203226_657862Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.769,
+          0.848
+        ],
+        "pixel_target": [
+          2085,
+          1037
+        ]
+      },
+      "source_sequence": 8,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "5a3e779726ac3893fbee90497cfd41e41737da10a53944f94d1dc6998adcb55f",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T203226_657862Z_01.png",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:32:43.978502+00:00",
+      "height": 1224,
+      "label": "natural-batch-start-before",
+      "path": "artifacts/arena-hil/20261008/natural-batch-start-before/20261008T203243_978502Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.875
+        ],
+        "pixel_target": [
+          1356,
+          1071
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "03d0575bfa05246899a359135bdbaff954063ed90dd48cbad0705d3c93693bb2",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T203243_978502Z_01.png",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:32:44.431763+00:00",
+      "height": 1224,
+      "label": "natural-batch-start-after",
+      "path": "artifacts/arena-hil/20261008/natural-batch-start-after/20261008T203244_431763Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.875
+        ],
+        "pixel_target": [
+          1356,
+          1071
+        ]
+      },
+      "source_sequence": 8,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "db6ff3b931f992ce6d61c8233f49d10d946a3e0a7a54c755b9b4e33b26755801",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T203244_431763Z_01.png",
+      "physical_state": "loading_after_batch_start",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:32:44.808033+00:00",
+      "height": 1224,
+      "label": "natural-batch-start-after",
+      "path": "artifacts/arena-hil/20261008/natural-batch-start-after/20261008T203244_808033Z_02.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.875
+        ],
+        "pixel_target": [
+          1356,
+          1071
+        ]
+      },
+      "source_sequence": 13,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "749a1ad045281c38d7f7dba71276e976c2c81c1b4eb6ca6db47d48dea39a8091",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T203244_808033Z_02.png",
+      "physical_state": "loading_after_batch_start",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:42:54.173966+00:00",
+      "height": 1224,
+      "label": "final-result-close-before",
+      "path": "artifacts/arena-hil/20261008/final-result-close-before/20261008T204254_173966Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.866
+        ],
+        "pixel_target": [
+          1356,
+          1059
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "bb1b353bfe76d289b748d5c4b26968bf081d3f0e71865a56f3f599a57bcc77e7",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204254_173966Z_01.png",
+      "physical_state": "arena_auto_final_clean",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": true,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "positive"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:42:54.817132+00:00",
+      "height": 1224,
+      "label": "final-result-close-after",
+      "path": "artifacts/arena-hil/20261008/final-result-close-after/20261008T204254_817132Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.866
+        ],
+        "pixel_target": [
+          1356,
+          1059
+        ]
+      },
+      "source_sequence": 10,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "10a5afd635486d800ddd3f0684a930eb3d2dff5ab63f498f28c493ce3c5b8f13",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204254_817132Z_01.png",
+      "physical_state": "insufficient_badges_purchase_prompt",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:43:28.807146+00:00",
+      "height": 1224,
+      "label": "insufficient-badges-no-before",
+      "path": "artifacts/arena-hil/20261008/insufficient-badges-no-before/20261008T204328_807146Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.57,
+          0.623
+        ],
+        "pixel_target": [
+          1545,
+          762
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "a97e27410702b8b53242b92d5e472d98c299b0cd2c65439179934506055acb63",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204328_807146Z_01.png",
+      "physical_state": "insufficient_badges_purchase_prompt",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:43:29.483464+00:00",
+      "height": 1224,
+      "label": "insufficient-badges-no-after",
+      "path": "artifacts/arena-hil/20261008/insufficient-badges-no-after/20261008T204329_483464Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.57,
+          0.623
+        ],
+        "pixel_target": [
+          1545,
+          762
+        ]
+      },
+      "source_sequence": 11,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "d7acf284191361228181792912a69eaad18308018728c5d923ded5d0b64b50db",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204329_483464Z_01.png",
+      "physical_state": "arena_challenge_easy",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:44:13.792401+00:00",
+      "height": 1224,
+      "label": "challenge-back-before",
+      "path": "artifacts/arena-hil/20261008/challenge-back-before/20261008T204413_792401Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.801,
+          0.061
+        ],
+        "pixel_target": [
+          2172,
+          74
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "800cbee18e64956a739bf7e48a7a00a06ba1c145d6d805ae658a36a3e9bebd61",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204413_792401Z_01.png",
+      "physical_state": "arena_challenge_easy",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:44:14.526650+00:00",
+      "height": 1224,
+      "label": "challenge-back-after",
+      "path": "artifacts/arena-hil/20261008/challenge-back-after/20261008T204414_526650Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.801,
+          0.061
+        ],
+        "pixel_target": [
+          2172,
+          74
+        ]
+      },
+      "source_sequence": 11,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "68c46e4ae1482cf2cd378734579c32a168624dac434dcffbb4fc160c67947996",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204414_526650Z_01.png",
+      "physical_state": "arena_select_loading",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:44:46.758432+00:00",
+      "height": 1224,
+      "label": "select-after-batch",
+      "path": "artifacts/arena-hil/20261008/select-after-batch/20261008T204446_758432Z_01.png",
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "612424c519462094f44c66909031409a8bb418c7b798f1268e513232a288f886",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204446_758432Z_01.png",
+      "physical_state": "arena_new_ranking",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:45:16.848574+00:00",
+      "height": 1224,
+      "label": "ranking-close-before",
+      "path": "artifacts/arena-hil/20261008/ranking-close-before/20261008T204516_848574Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.674
+        ],
+        "pixel_target": [
+          1356,
+          824
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "b9cb1249bb6ef4f1230d7f9fcc0f4f5d1a7c7fdda526d134058750f643a3bf66",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204516_848574Z_01.png",
+      "physical_state": "arena_new_ranking",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:45:17.503239+00:00",
+      "height": 1224,
+      "label": "ranking-close-after",
+      "path": "artifacts/arena-hil/20261008/ranking-close-after/20261008T204517_503239Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.674
+        ],
+        "pixel_target": [
+          1356,
+          824
+        ]
+      },
+      "source_sequence": 11,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "5834fee59a7942554b2ac1407e1c6c7c7846c389fa08cf2d1e3a5d8cb2cdb1b2",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204517_503239Z_01.png",
+      "physical_state": "arena_select",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:45:50.359423+00:00",
+      "height": 1224,
+      "label": "normal-challenge-before",
+      "path": "artifacts/arena-hil/20261008/normal-challenge-before/20261008T204550_359423Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.805
+        ],
+        "pixel_target": [
+          1356,
+          985
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "d6cd971ffb377696141cb5d2427209b6857240c6e8e9add70692b9cc9659c968",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204550_359423Z_01.png",
+      "physical_state": "arena_select",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:45:51.059903+00:00",
+      "height": 1224,
+      "label": "normal-challenge-after",
+      "path": "artifacts/arena-hil/20261008/normal-challenge-after/20261008T204551_059903Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.5,
+          0.805
+        ],
+        "pixel_target": [
+          1356,
+          985
+        ]
+      },
+      "source_sequence": 11,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "51d5e2af286fcc7d313538ee2b81717e8d63dda746bd3b71dd16bb14891cb7b8",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204551_059903Z_01.png",
+      "physical_state": "arena_challenge_normal_loading",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:46:22.630142+00:00",
+      "height": 1224,
+      "label": "normal-back-before",
+      "path": "artifacts/arena-hil/20261008/normal-back-before/20261008T204622_630142Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.801,
+          0.061
+        ],
+        "pixel_target": [
+          2172,
+          74
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "62e81a6b261df532784394de319a1af027a442fb6b46922250979eaf32a31f18",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204622_630142Z_01.png",
+      "physical_state": "arena_challenge_normal",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:46:24.828858+00:00",
+      "height": 1224,
+      "label": "normal-back-after",
+      "path": "artifacts/arena-hil/20261008/normal-back-after/20261008T204624_828858Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.801,
+          0.061
+        ],
+        "pixel_target": [
+          2172,
+          74
+        ]
+      },
+      "source_sequence": 34,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "790fb72f34c6960e5aadf5d128673895f5c6d93ce54cccf940a5dcfe74d26023",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204624_828858Z_01.png",
+      "physical_state": "arena_select",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:46:58.575384+00:00",
+      "height": 1224,
+      "label": "hard-challenge-before",
+      "path": "artifacts/arena-hil/20261008/hard-challenge-before/20261008T204658_575384Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.716,
+          0.805
+        ],
+        "pixel_target": [
+          1941,
+          985
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "f1b855201a93c57e5dedfe9120ef30c2f2e60468102b9cd81f88b081b2d372e1",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204658_575384Z_01.png",
+      "physical_state": "arena_select",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:47:00.756081+00:00",
+      "height": 1224,
+      "label": "hard-challenge-after",
+      "path": "artifacts/arena-hil/20261008/hard-challenge-after/20261008T204700_756081Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.716,
+          0.805
+        ],
+        "pixel_target": [
+          1941,
+          985
+        ]
+      },
+      "source_sequence": 33,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "3681e1952d9d9fce034642f9643aacac08c7f8a2a0fc89f5db3a12c515b2b204",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204700_756081Z_01.png",
+      "physical_state": "arena_challenge_hard",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:47:52.501049+00:00",
+      "height": 1224,
+      "label": "buff1-clear-before",
+      "path": "artifacts/arena-hil/20261008/buff1-clear-before/20261008T204752_501049Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.555,
+          0.35
+        ],
+        "pixel_target": [
+          1505,
+          428
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "999956f2622b004b73fb4d070dad63b3f2c868daa2bc4ccc2427bd0eb5a6ac2b",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204752_501049Z_01.png",
+      "physical_state": "arena_challenge_hard_buffs12_on",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:47:53.193016+00:00",
+      "height": 1224,
+      "label": "buff1-clear-after",
+      "path": "artifacts/arena-hil/20261008/buff1-clear-after/20261008T204753_193016Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.555,
+          0.35
+        ],
+        "pixel_target": [
+          1505,
+          428
+        ]
+      },
+      "source_sequence": 11,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "8fea7df788f867d32ae783c6fd4bb4015c3723be7d37ee0adc478ad095486993",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204753_193016Z_01.png",
+      "physical_state": "arena_challenge_hard_buff1_off_buff2_on",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:48:35.669125+00:00",
+      "height": 1224,
+      "label": "buff2-clear-before",
+      "path": "artifacts/arena-hil/20261008/buff2-clear-before/20261008T204835_669125Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.664,
+          0.35
+        ],
+        "pixel_target": [
+          1800,
+          428
+        ]
+      },
+      "source_sequence": 1,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "b27b47b36a246b5e6dab447ffbce1283e338d7071b27ca675a02bc55737d858f",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204835_669125Z_01.png",
+      "physical_state": "arena_challenge_hard_buff1_off_buff2_on",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:48:36.360403+00:00",
+      "height": 1224,
+      "label": "buff2-clear-after",
+      "path": "artifacts/arena-hil/20261008/buff2-clear-after/20261008T204836_360403Z_01.png",
+      "probe": {
+        "kind": "tap",
+        "normalized_target": [
+          0.664,
+          0.35
+        ],
+        "pixel_target": [
+          1800,
+          428
+        ]
+      },
+      "source_sequence": 11,
+      "width": 2712,
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "84e83762523a1cf014a2d2b2f19506cdc343f7faa42288ef5bc90211f6af2314",
+      "curated_path": "screencaps/arena_hil/20261008/20261008T204836_360403Z_01.png",
+      "physical_state": "arena_challenge_hard_all_buffs_off",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:29:24.662406+00:00",
+      "source_sequence": 1,
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 2.4219999999913853,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 32.00000000651926,
+      "frame_age_s": 0.014999999984866008,
+      "new_sequence": true,
+      "thumbnail_difference": null,
+      "path": "artifacts/arena-hil/20261008/batch-observation/frame_1_1791491364689786700.png",
+      "png_io_ms": 78.00000000861473,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "65e6c19f3f6f714149a9c19512507206dfc2f8293130af4ae9ba050d479d2455",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1_1791491364689786700.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "bag_full_above_auto_config",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:29:27.665587+00:00",
+      "source_sequence": 31,
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 5.421999999991385,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.046999999991385266,
+      "new_sequence": true,
+      "thumbnail_difference": 0.001015671412460506,
+      "path": "artifacts/arena-hil/20261008/batch-observation/frame_31_1791491367665587800.png",
+      "png_io_ms": 110.00000001513399,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "source": "live_scrcpy",
+      "sequence_scope": "command_lifetime",
+      "sha256": "abb692f04ca6ee06fc9d70937a7b14665e683ed9a72c8a690c08991578f27d1f",
+      "curated_path": "screencaps/arena_hil/20261008/frame_31_1791491367665587800.png",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "physical_state": "bag_full_above_auto_config",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:32:50.802095+00:00",
+      "source_sequence": 1,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 2.3910000000032596,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.01600000000325963,
+      "new_sequence": true,
+      "thumbnail_difference": null,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_1_1791491570808118000.png",
+      "sha256": "75730d91042b28b2377cb729921cffe4662d0770878adaad47d8616fc882ed8d",
+      "png_io_ms": 94.00000001187436,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1_1791491570808118000.png",
+      "physical_state": "loading_after_batch_start",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:33:10.846931+00:00",
+      "source_sequence": 202,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 22.437999999994645,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.0779999999795109,
+      "new_sequence": true,
+      "thumbnail_difference": 0.1068933829665184,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_202_1791491590849235900.png",
+      "sha256": "1186dcfdb93b47c51f4371dda1240a4ee7e6029a08d1da285807bf63ae0b1a5b",
+      "png_io_ms": 140.00000001396984,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_202_1791491590849235900.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:33:23.877238+00:00",
+      "source_sequence": 340,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 35.469000000011874,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.01600000000325963,
+      "new_sequence": true,
+      "thumbnail_difference": 0.0032494058832526207,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_340_1791491603877238600.png",
+      "sha256": "fce7c190680e644f8066955688c2590e1cf4522724c93238ae88d86250f30a04",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_340_1791491603877238600.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:33:43.956766+00:00",
+      "source_sequence": 544,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 55.54700000002049,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.09400000001187436,
+      "new_sequence": true,
+      "thumbnail_difference": 0.17267528176307678,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_544_1791491623957563500.png",
+      "sha256": "729bf1e0012722b4dc9072f4c698729f2eeeb8fc69861e756691c4e31795bb88",
+      "png_io_ms": 140.9999999741558,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_544_1791491623957563500.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:33:58.973172+00:00",
+      "source_sequence": 701,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 70.56299999999464,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.10999999998603016,
+      "new_sequence": true,
+      "thumbnail_difference": 0.003661616239696741,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_701_1791491638976460600.png",
+      "sha256": "61d0f02511793375b67260c3b353642eb07cacbcc1f14c2055575edc1b69dded",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_701_1791491638976460600.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:34:18.999180+00:00",
+      "source_sequence": 906,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 90.59400000001187,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.031000000017229468,
+      "new_sequence": true,
+      "thumbnail_difference": 0.16271910071372986,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_906_1791491659002650600.png",
+      "sha256": "086ae47fadc44a3e9085c8798d84d9de856b64c60accb8dad67feab0d3feb85a",
+      "png_io_ms": 141.00000000325963,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_906_1791491659002650600.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:34:39.031412+00:00",
+      "source_sequence": 1113,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 110.625,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.0779999999795109,
+      "new_sequence": true,
+      "thumbnail_difference": 0.016928477212786674,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_1113_1791491679034459800.png",
+      "sha256": "38e3e74647bf5e2c65969da19ce00dfc9e19576263e281111ce1bc20102176af",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1113_1791491679034459800.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:34:42.041817+00:00",
+      "source_sequence": 1143,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 113.625,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 16.00000000325963,
+      "frame_age_s": 0.062000000005355105,
+      "new_sequence": true,
+      "thumbnail_difference": 0.004102606792002916,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_1143_1791491682044324900.png",
+      "sha256": "5c409fad952dafbcb7b3434237f795bb91f1fa84636c726d422369a4e8353025",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1143_1791491682044324900.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:35:02.064251+00:00",
+      "source_sequence": 1348,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 133.65700000000652,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.07899999999790452,
+      "new_sequence": true,
+      "thumbnail_difference": 0.1897810846567154,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_1348_1791491702067508300.png",
+      "sha256": "da1f10e961b510028f8816fca2cfff24e3667875cdc8b24426167dae3db2a947",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1348_1791491702067508300.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:35:21.083574+00:00",
+      "source_sequence": 1546,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 152.6720000000205,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.015000000013969839,
+      "new_sequence": true,
+      "thumbnail_difference": 0.003661616239696741,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_1546_1791491721084578300.png",
+      "sha256": "17b6a64c54426aa913c96585567f1758897fc16701c66b63d830b40d64ecccb8",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1546_1791491721084578300.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:35:41.078872+00:00",
+      "source_sequence": 1748,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 172.6720000000205,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.125,
+      "new_sequence": true,
+      "thumbnail_difference": 0.1433795690536499,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_1748_1791491741082533800.png",
+      "sha256": "23c6a5d7c95fc7a6e69095d617b744e043deddefa96a0effc7300da7506fd370",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1748_1791491741082533800.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:35:58.095854+00:00",
+      "source_sequence": 1926,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 189.68799999999464,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.030999999988125637,
+      "new_sequence": true,
+      "thumbnail_difference": 0.0032865419052541256,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_1926_1791491758095854000.png",
+      "sha256": "52276a580d72b1a7ee1e42b03cb2157791700c1883f0406cf103d5cd90053bf1",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_1926_1791491758095854000.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:36:18.122820+00:00",
+      "source_sequence": 2130,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 209.70300000000861,
+      "get_frame_ms": 16.00000000325963,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.030999999988125637,
+      "new_sequence": true,
+      "thumbnail_difference": 0.12694129347801208,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_2130_1791491778124659300.png",
+      "sha256": "92c6696f2095546d3451af2cd890e83da736fb7c8374dfe9f7a7e43c0a68036b",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_2130_1791491778124659300.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:36:35.152198+00:00",
+      "source_sequence": 2308,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 226.73500000001513,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.0629999999946449,
+      "new_sequence": true,
+      "thumbnail_difference": 0.003423016984015703,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_2308_1791491795152198400.png",
+      "sha256": "cd9d64ed94096b163536de6be33115a4030332504c239d42b27fd3711a3a8d1d",
+      "png_io_ms": 139.999999984866,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_2308_1791491795152198400.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:36:55.185634+00:00",
+      "source_sequence": 2516,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 246.78200000000652,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.03200000000651926,
+      "new_sequence": true,
+      "thumbnail_difference": 0.08328691124916077,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_2516_1791491815188637900.png",
+      "sha256": "801829a9675af0115d67e1cfd7d34c95d470c1a83cf45002fe8420fd859bfbb6",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_2516_1791491815188637900.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:37:10.207987+00:00",
+      "source_sequence": 2673,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 261.7970000000205,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.0470000000204891,
+      "new_sequence": true,
+      "thumbnail_difference": 0.0031992720905691385,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_2673_1791491830207987900.png",
+      "sha256": "3f504138f84ea228f875e8e3e088363ce8d5aa0b8503036aa24138adfa9517ad",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_2673_1791491830207987900.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:37:30.257919+00:00",
+      "source_sequence": 2878,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 281.8440000000119,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.06733399999211542,
+      "new_sequence": true,
+      "thumbnail_difference": 0.1593165099620819,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_2878_1791491850260784100.png",
+      "sha256": "32ba67a2c698c99899ffaafe22385c1121d206dd34472cc762dbc4ae0d759f7a",
+      "png_io_ms": 155.99999998812564,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_2878_1791491850260784100.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context",
+      "phase_a_review": "Offline inspection: Auto Repeat band visibly corrupt; physical activity retained, no positive band authority"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:37:50.315135+00:00",
+      "source_sequence": 3085,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 301.9070000000065,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.046999999991385266,
+      "new_sequence": true,
+      "thumbnail_difference": 0.10451760143041611,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_3085_1791491870315135100.png",
+      "sha256": "2ef9c03411595d5a5b2f46cc9b4a69bf62d16e712d3a23b580ebb3fc586f1c58",
+      "png_io_ms": 108.99999999674037,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_3085_1791491870315135100.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:37:53.328376+00:00",
+      "source_sequence": 3115,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 304.9220000000205,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.062000000005355105,
+      "new_sequence": true,
+      "thumbnail_difference": 0.0028947563841938972,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_3115_1791491873331147200.png",
+      "sha256": "84d19cc1491f3700d8f1b979d18d715591bd9f49b339bbccdc34cd771e3b0e4b",
+      "png_io_ms": 140.9999999741558,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_3115_1791491873331147200.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:38:13.340452+00:00",
+      "source_sequence": 3318,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 324.9220000000205,
+      "get_frame_ms": 15.999999974155799,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.15600000001722947,
+      "new_sequence": true,
+      "thumbnail_difference": 0.11332906037569046,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_3318_1791491893343879900.png",
+      "sha256": "a4b77e267ac6d7dbe2dbc44da9dc57327723f2291871bfffb72c33bfcc90b59f",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_3318_1791491893343879900.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:38:32.379660+00:00",
+      "source_sequence": 3515,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 343.9690000000119,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.10899999999674037,
+      "new_sequence": true,
+      "thumbnail_difference": 0.0029513889458030462,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_3515_1791491912384508100.png",
+      "sha256": "92f76e316359956fe47abc73f474bd13e099521ea8e0adae31763b9eea000338",
+      "png_io_ms": 108.99999999674037,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_3515_1791491912384508100.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:38:52.426410+00:00",
+      "source_sequence": 3719,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 364.01600000000326,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.12884499999927357,
+      "new_sequence": true,
+      "thumbnail_difference": 0.10256145894527435,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_3719_1791491932427909700.png",
+      "sha256": "58765eb5a8b9dfacde7b09d33218bdc6a648ff8394202aec557577832a4699f9",
+      "png_io_ms": 141.00000000325963,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_3719_1791491932427909700.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:39:10.474129+00:00",
+      "source_sequence": 3907,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 382.06299999999464,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.0159999999741558,
+      "new_sequence": true,
+      "thumbnail_difference": 0.001849376130849123,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_3907_1791491950476326000.png",
+      "sha256": "46749d895895737e2c0df98a6eece9e261dc2adaeb8adc8602b41eb1efe0669b",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_3907_1791491950476326000.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:39:30.558716+00:00",
+      "source_sequence": 4111,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 402.14100000000326,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 16.00000000325963,
+      "frame_age_s": 0.06300999998347834,
+      "new_sequence": true,
+      "thumbnail_difference": 0.10265151411294937,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_4111_1791491970560221700.png",
+      "sha256": "c3c8f5d66be67d27bb0f67522412e3aea72ddc1707306321b618ccb6eff033d2",
+      "png_io_ms": 125.0,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_4111_1791491970560221700.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:39:44.581640+00:00",
+      "source_sequence": 4258,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 416.1720000000205,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.015000000013969839,
+      "new_sequence": true,
+      "thumbnail_difference": 0.0018215239979326725,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_4258_1791491984581640800.png",
+      "sha256": "cd45bcfc86cfc5584ecda671fd7e0b897d621ee3a9c8cdfb4009857870b3dccb",
+      "png_io_ms": 109.99999998603016,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_4258_1791491984581640800.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:40:04.615643+00:00",
+      "source_sequence": 4461,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 436.2030000000086,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.1285840000200551,
+      "new_sequence": true,
+      "thumbnail_difference": 0.10159777849912643,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_4461_1791492004619770400.png",
+      "sha256": "374db812637cc2c5092247f52728ef97f0fbdc58f457ecc547c544542bb01b0d",
+      "png_io_ms": 141.00000000325963,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_4461_1791492004619770400.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:40:19.660578+00:00",
+      "source_sequence": 4618,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 451.25,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.0779999999795109,
+      "new_sequence": true,
+      "thumbnail_difference": 0.001739824772812426,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_4618_1791492019662615100.png",
+      "sha256": "640d390d7a0750db16dbcce554f216153f723686a2397a2e33da8f65cc35a91d",
+      "png_io_ms": 110.00000001513399,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_4618_1791492019662615100.png",
+      "physical_state": "arena_challenge_easy_between_entries",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:40:39.699374+00:00",
+      "source_sequence": 4821,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 471.2820000000065,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.10116000002017245,
+      "new_sequence": true,
+      "thumbnail_difference": 0.14147542417049408,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_4821_1791492039701380600.png",
+      "sha256": "33a7f5fb7897ffd112b5c5c6b7d5295818a958823c4b420140891a30166726a0",
+      "png_io_ms": 140.9999999741558,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_4821_1791492039701380600.png",
+      "physical_state": "arena_battle_auto_active",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "negative_context"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:40:58.750833+00:00",
+      "source_sequence": 5019,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 490.3440000000119,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.09400000001187436,
+      "new_sequence": true,
+      "thumbnail_difference": 1.2997623343835585e-05,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_5019_1791492058750833600.png",
+      "sha256": "8581895ba7252e1dd8839a314abaa50d7c508d40268d9c7304fd44e0f5882b20",
+      "png_io_ms": 78.00000000861473,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_5019_1791492058750833600.png",
+      "physical_state": "arena_auto_final_partial",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "ambiguous_partial_positive"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:41:18.779799+00:00",
+      "source_sequence": 5220,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 510.375,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.030999999988125637,
+      "new_sequence": true,
+      "thumbnail_difference": 1.2997623343835585e-05,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_5220_1791492078779799800.png",
+      "sha256": "aefe0534715ecabab474f4cae2bc89e3d7482a6e01769df85a0b115951eb947d",
+      "png_io_ms": 62.999999994644895,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_5220_1791492078779799800.png",
+      "physical_state": "arena_auto_final_partial",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": false,
+      "visual_integrity": "partial_h264_artifacts_no_numeric_GT",
+      "final_result_example": "ambiguous_partial_positive"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:41:38.817991+00:00",
+      "source_sequence": 5420,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 530.4070000000065,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.03200000000651926,
+      "new_sequence": true,
+      "thumbnail_difference": 4.177807568339631e-05,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_5420_1791492098819990400.png",
+      "sha256": "2caa06c80d1b6be3ecd555f15da02fd8514fabfe9c15c16360a2d21e9558f1f3",
+      "png_io_ms": 78.00000000861473,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_5420_1791492098819990400.png",
+      "physical_state": "arena_auto_final_clean",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": true,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "positive"
+    },
+    {
+      "captured_at_utc": "2026-10-08T20:41:58.845598+00:00",
+      "source_sequence": 5620,
+      "source": "live_scrcpy",
+      "width": 2712,
+      "height": 1224,
+      "elapsed_s": 550.4379999999946,
+      "get_frame_ms": 0.0,
+      "analysis_ms": 0.0,
+      "frame_age_s": 0.0779999999795109,
+      "new_sequence": true,
+      "thumbnail_difference": 4.177807568339631e-05,
+      "path": "artifacts/arena-hil/20261008/natural-batch-observation/frame_5620_1791492118845598800.png",
+      "sha256": "db5049e19ed6d5102e3fc74038667c14c15a831d2e6164216701c5d59d81ee5d",
+      "png_io_ms": 62.000000005355105,
+      "retention": "periodic_or_static_onset_not_semantic",
+      "sequence_scope": "command_lifetime",
+      "curated_path": "screencaps/arena_hil/20261008/frame_5620_1791492118845598800.png",
+      "physical_state": "arena_auto_final_clean",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": true,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "positive"
+    },
+    {
+      "path": "artifacts/arena-hil/20261008/native/final-result-1791492122497200700.png",
+      "source": "native_adb",
+      "captured_at_utc": "2026-10-08T20:42:01.102812+00:00",
+      "sequence_scope": "native_single",
+      "source_sequence": null,
+      "width": 2712,
+      "height": 1220,
+      "capture_s": 1.3046694999793544,
+      "sha256": "1f032d1444cd7b48e581741c634e4ce2404b63d747dd14d417ad538d3394bf3b",
+      "label": "final-result",
+      "curated_path": "screencaps/arena_hil/20261008/final-result-1791492122497200700.png",
+      "physical_state": "arena_auto_final_clean",
+      "annotation_authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "numeric_read_authorized": true,
+      "visual_integrity": "clean_for_target",
+      "final_result_example": "positive"
+    }
+  ],
+  "authorization": "USER_STEER: one EASY x8 batch <=106 Badges; buffs 1/2 ON, buff3 OFF, no Karats; internal modal start authorized",
+  "discarded": "buff1-select-after external notification PNG removed at user request; excluded",
+  "result": {
+    "difficulty": "EASY",
+    "multiplier": 8,
+    "upon_defeat": false,
+    "buffs": [
+      true,
+      true,
+      false
+    ],
+    "badges_before": 106,
+    "badges_after": 2,
+    "used_tickets": 104,
+    "battles_attempted": 13,
+    "attempted_authority": "LIVE_EVIDENCE: fixed x8, decrement steps8, final104",
+    "acquired_karats": 104,
+    "native_authority": "artifacts/arena-hil/20261008/native/final-result-1791492122497200700.png",
+    "won_tickets": 104,
+    "lost_tickets": 0,
+    "winrate": 1.0,
+    "result_authority": "USER_GT 2026-10-08: one Karat per winning Brawler Badge; Double Points affects Victory Points only",
+    "victories_gap": "CLOSED; no separate Wins field required"
+  },
+  "final_state": {
+    "screen": "arena_challenge_hard",
+    "badges": 2,
+    "buffs_selected": [
+      false,
+      false,
+      false
+    ],
+    "buff_units": [
+      819,
+      895,
+      999
+    ],
+    "multiplier": 8,
+    "battle_active": false,
+    "observed_at_utc": "2026-10-08T20:48:36.360403+00:00",
+    "device": "ADB subsequently disconnected"
+  },
+  "measurements": {
+    "telemetry": "artifacts/arena-hil/20261008/natural-batch-observation/measurements.jsonl",
+    "summary": "artifacts/arena-hil/20261008/natural-batch-observation/offline_summary.json",
+    "ocr_probe": "artifacts/arena-hil/20261008/native/ocr_probe.json",
+    "raw_final_first_utc": "2026-10-08T20:40:58.750833+00:00",
+    "estimated_final_transition_utc": "2026-10-08T20:40:55.751203+00:00",
+    "estimated_final_authority": "HEURISTIC thumbnail change/static onset, exact frame not retained"
+  }
+}

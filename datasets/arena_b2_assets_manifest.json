@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "id": "flow_challenge_back_native",
+      "source_id": "challenge_native_off",
+      "roi": [
+        0.772,
+        0.022,
+        0.834,
+        0.12
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/flow_challenge_back_native.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "fb31b6d0990673f42d3a1594d061137cf8f03be40e790f07a1be7b8b61e36009"
+    },
+    {
+      "id": "flow_select_title_native",
+      "source_id": "select_mode_native",
+      "roi": [
+        0.434,
+        0.118,
+        0.557,
+        0.169
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/flow_select_title_native.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "5e09883fdf3603ea06390b5619f0344a61aad0b43856ae8a004a3bb8929dd2b0"
+    },
+    {
+      "id": "flow_arena_card_native",
+      "source_id": "select_mode_native",
+      "roi": [
+        0.247,
+        0.242,
+        0.317,
+        0.29
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/flow_arena_card_native.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "bd931da026c60c48baabe65126a30233bf4eaf9f3bfb6990136f51d011491f32"
+    },
+    {
+      "id": "flow_back_native",
+      "source_id": "select_mode_native",
+      "roi": [
+        0.772,
+        0.022,
+        0.834,
+        0.12
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/flow_back_native.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "903a1c08e8f1f1c0964f0ee41e8906e56a0beae1be910905369034479f6fb4bc"
+    },
+    {
+      "id": "challenge_controls_native",
+      "source_id": "challenge_native_off",
+      "roi": [
+        0.704,
+        0.815,
+        0.828,
+        0.992
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/challenge_controls_native.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "c6d6bbf9d88084b56dec4acc23445cb9a5d37e0d4cbdd41f9959c80dedff801e"
+    },
+    {
+      "id": "x8_on_native",
+      "source_id": "challenge_native_off",
+      "roi": [
+        0.771,
+        0.692,
+        0.784,
+        0.724
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/x8_on_native.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "7d47c62951c7de0d3c0af0846f93d23fb281ce0a0919d53b8f737761c04d4fdd"
+    },
+    {
+      "id": "flow_quick_menu_arena",
+      "source_id": "quick_menu_challenge",
+      "roi": [
+        0.173,
+        0.164,
+        0.239,
+        0.276
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/flow_quick_menu_arena.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "e02b4e6772de33129fecfb7fb26e812fc8a97cb69f6da194da3684bc3b55b0da"
+    },
+    {
+      "id": "single_win_title",
+      "source_id": "single_victory",
+      "roi": [
+        0.424,
+        0.04,
+        0.58,
+        0.178
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/single_win_title.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "0e797985590fdf49887c7a0cf835016ace169aa2caf4ceeb65f090b65b8d3337"
+    },
+    {
+      "id": "single_stats_labels",
+      "source_id": "single_victory",
+      "roi": [
+        0.438,
+        0.305,
+        0.56,
+        0.5
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/single_stats_labels.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "aaed28c2a9d764a4b2fb6cf500e9b4fc0439b56db03850d89acee0528bde65d0"
+    },
+    {
+      "id": "single_reward_label",
+      "source_id": "single_victory",
+      "roi": [
+        0.451,
+        0.544,
+        0.552,
+        0.606
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/single_reward_label.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "dec35b4afd0ec6be4f26e1bdb7cd18ba413bb58386686aef8a8fe447589ae946"
+    },
+    {
+      "id": "single_tap_screen",
+      "source_id": "single_victory",
+      "roi": [
+        0.408,
+        0.851,
+        0.594,
+        0.915
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/single_tap_screen.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "89d754b3e11175593a43f98172ecbef7705c764a350758ff09024e3276026112"
+    },
+    {
+      "id": "single_battle_pause",
+      "source_id": "single_battle",
+      "roi": [
+        0.808,
+        0.162,
+        0.824,
+        0.207
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/single_battle_pause.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "5853b3d00636e11a08349d459429a016a1cb869a735d361ec01aa08cddfd9e68"
+    },
+    {
+      "id": "gold_buff1_price",
+      "source_id": "gold_deficit",
+      "roi": [
+        0.52,
+        0.447,
+        0.599,
+        0.496
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/gold_buff1_price.png",
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "765529430efeac9f693f3f1ba79edba029e53b3847aa325184e1e6782cdee393"
+    },
+    {
+      "id": "buff1_depleted_plus",
+      "source_id": "single_challenge_empty",
+      "roi": [
+        0.573,
+        0.237,
+        0.603,
+        0.289
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/buff1_depleted_plus.png",
+      "reference_shape": [
+        612,
+        1356
+      ],
+      "sha256": "1c79fc92767a671f03c00f1acc79ad23fadd70e73d886c207b8cae7b69058fdd"
+    },
+    {
+      "id": "single_tap_screen_stream",
+      "source_id": "single_victory_stream",
+      "roi": [
+        0.408,
+        0.851,
+        0.594,
+        0.915
+      ],
+      "threshold": 0.94,
+      "path": "assets/arena/single_tap_screen_stream.png",
+      "reference_shape": [
+        612,
+        1356
+      ],
+      "sha256": "7432fdde46b9939165a822fe83bb3a06e61ef0459f393fdac0870db0f79a9d03"
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "transform": "half-size focal canvas; no synthetic physical states",
+  "entries": [
+    {
+      "id": "lobby",
+      "source": "screencaps/arena_hil/20261008/lobby-battle-before.png",
+      "source_sha256": "9a4db23fb58b104ef11360d22a1155838828dd1e2f161228db5fd5344c8bae38",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "path": "tests/fixtures/arena_b1/lobby.png",
+      "sha256": "24c6dd13ebc913d1f7452bf785faf04ea9653517ea06160899c18a4db102065d"
+    },
+    {
+      "id": "select_mode",
+      "source": "screencaps/arena_hil/20261008/lobby-battle-after.png",
+      "source_sha256": "f8b6ad546e37d2b8f0f1ec560287c6e2e8fed6b14f992a778de18ee3a902fbc5",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "path": "tests/fixtures/arena_b1/select_mode.png",
+      "sha256": "52ad89989b44787099f030ce6c2f854b0c684be835b05e5e1077470794620fc0"
+    },
+    {
+      "id": "off",
+      "source": "screencaps/arena_hil/20261008/20261008T202525_458046Z_01.png",
+      "source_sha256": "6f13493c632f3a73cd9edae450cb05531d218bc46f75ffd6d2eb1e0d66b2d8aa",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "path": "tests/fixtures/arena_b1/off.png",
+      "sha256": "a4d43876354e00284fd5ed1de633a7ea543b4a39bfecbb081f15689a72057df5"
+    },
+    {
+      "id": "buff1",
+      "source": "screencaps/arena_hil/20261008/20261008T202604_101057Z_01.png",
+      "source_sha256": "d46de59ca6bfc5cb3f0a8ec0c08b364e0597210ea10d57ec598b5afda7b8b61c",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "path": "tests/fixtures/arena_b1/buff1.png",
+      "sha256": "b13c38c8332c040290ac8e6279cad8b41e538142b988c1684d89a997f8eab121"
+    },
+    {
+      "id": "buff12",
+      "source": "screencaps/arena_hil/20261008/20261008T202606_281310Z_01.png",
+      "source_sha256": "af4db134938394e1d2eb5ba5dc7d4ba0c96651eca45323e7cb8aef07eb79ba39",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "path": "tests/fixtures/arena_b1/buff12.png",
+      "sha256": "b082c5ed05df71f13c2603fd96b6d3b98eac3a7d5d71e7302599ad309339fb05"
+    },
+    {
+      "id": "after",
+      "source": "screencaps/arena_hil/20261008/20261008T204836_360403Z_01.png",
+      "source_sha256": "84e83762523a1cf014a2d2b2f19506cdc343f7faa42288ef5bc90211f6af2314",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "path": "tests/fixtures/arena_b1/after.png",
+      "sha256": "8e3878075ce7717dc541fcd53ad02a7156ebe59f88b7dd289cb90186ff884f94"
+    },
+    {
+      "id": "loading",
+      "source": "screencaps/arena_hil/20261008/20261008T203244_431763Z_01.png",
+      "source_sha256": "db6ff3b931f992ce6d61c8233f49d10d946a3e0a7a54c755b9b4e33b26755801",
+      "authority": "LIVE_EVIDENCE_manual_inspection; USER_GT for difficulty and Arena views",
+      "path": "tests/fixtures/arena_b1/loading.png",
+      "sha256": "c8591f104f9c727422d6a14ae622902e98ae5ecb1cf9523c02f949deb0904011"
+    },
+    {
+      "id": "lobby_variant",
+      "path": "tests/fixtures/arena_b1/lobby_variant.png",
+      "sha256": "5fee92291045c7d097bdd8610b202be2da5fd6df9b05b359a404a617325222f8",
+      "source": "screencaps/arena_hil/20261008/b1_lobby_native.png",
+      "source_sha256": "acb4608c6079e2c8de07c355c79055751b1154a5417e6b1ae740819daee67e19",
+      "source_kind": "native_adb",
+      "captured_at_utc": "2026-10-09T01:08:16.304976+00:00",
+      "authority": "LIVE_EVIDENCE manual inspection; USER_GT Telumpel",
+      "physical_state": "lobby",
+      "available_badges": 50
+    },
+    {
+      "id": "ranking_entry",
+      "source": "screencaps/arena_hil/20261008/b1_ranking_entry_native.png",
+      "source_sha256": "cf56f8f0d96fa1e7b01005ab24a667d52e518fe218695cf2927f1925906cdab4",
+      "source_kind": "native_adb",
+      "source_sequence": 162,
+      "source_timestamp_monotonic": 218941.093,
+      "recorded_at_utc": "2026-10-09T01:14:20.997367+00:00",
+      "sequence_scope": "smoke_01_source_lifetime",
+      "authority": "LIVE_EVIDENCE manual inspection; New Ranking acquired GT",
+      "physical_state": "arena_new_ranking",
+      "available_badges": 50,
+      "path": "tests/fixtures/arena_b1/ranking_entry.png",
+      "sha256": "73b319e2ec7a6dbda425eed9a113eda2ff19c3c19c6fd492582b08101a903a60"
+    },
+    {
+      "id": "config_variant",
+      "source": "screencaps/arena_hil/20261008/b1_config_variant.png",
+      "source_sha256": "2ba24ddf896122a95586838eef1b8ed133e2255370fb52e44f406a682863be1a",
+      "source_kind": "native_adb",
+      "source_sequence": 166,
+      "source_timestamp_monotonic": 219126.578,
+      "recorded_at_utc": "2026-10-09T01:17:26.428086+00:00",
+      "sequence_scope": "smoke_02_source_lifetime",
+      "authority": "LIVE_EVIDENCE manual inspection; verified preparation native OCR",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "available_badges": 50,
+      "path": "tests/fixtures/arena_b1/config_variant.png",
+      "sha256": "eac2e19e188c74ec54d11dddfd64f26c674c368c94502d5d52e8019666e8d4bd"
+    },
+    {
+      "id": "prepared_live",
+      "source": "screencaps/arena_hil/20261008/b1_prepared_live.png",
+      "source_sha256": "e689cbd49381daf8e891d2ec4815dde82a9bb767134a4d69b8d4c0a768534aef",
+      "source_kind": "native_adb",
+      "source_sequence": 149,
+      "source_timestamp_monotonic": 219124.89,
+      "recorded_at_utc": "2026-10-09T01:17:25.008901+00:00",
+      "sequence_scope": "smoke_02_source_lifetime",
+      "authority": "LIVE_EVIDENCE manual inspection; verified preparation native OCR",
+      "physical_state": "arena_challenge_easy_buffs123_on",
+      "available_badges": 50,
+      "path": "tests/fixtures/arena_b1/prepared_live.png",
+      "sha256": "91e8261acbe85b98e08b188e62a7f30430e975e51ea16306f2535c25cb798d85"
+    },
+    {
+      "id": "config_native_full",
+      "source": "screencaps/arena_hil/20261008/b1_config_full_native.png",
+      "source_sha256": "cd6bfb14ad39b5bfe0281c5447b0b247788664f3bd256e623ef89e15aa84914a",
+      "source_kind": "native_adb",
+      "fixture_scale": 1,
+      "source_sequence": 255,
+      "source_timestamp_monotonic": 219635.921,
+      "recorded_at_utc": "2026-10-09T01:25:55.793609+00:00",
+      "authority": "LIVE_EVIDENCE manual inspection: empty checkbox; full native pixel grid",
+      "physical_state": "arena_auto_config_upon_defeat_off",
+      "path": "tests/fixtures/arena_b1/config_native_full.png",
+      "sha256": "9c844bdee86d80c30648a06257589930a3de4fcd44c41d33380de002a03d4480"
+    },
+    {
+      "id": "insufficient_live",
+      "source": "screencaps/arena_hil/20261008/b1_insufficient_live.png",
+      "source_sha256": "cd8730d0cd046ea4e0cfa105a4083c829290ae49c35b1d4c9237de2ae0fe5ca7",
+      "source_kind": "native_adb",
+      "fixture_scale": 1,
+      "source_sequence": 79,
+      "source_timestamp_monotonic": 220359.625,
+      "recorded_at_utc": "2026-10-09T01:37:59.505467+00:00",
+      "sequence_scope": "smoke_05_source_lifetime",
+      "authority": "LIVE_EVIDENCE manual inspection; single recorded EASY x8 batch",
+      "physical_state": "arena_insufficient_badge",
+      "available_badges": 2,
+      "path": "tests/fixtures/arena_b1/insufficient_live.png",
+      "sha256": "97c398f64a92ad1112e602bc6b98503009b644cc24cc7e77890ba2d8e3dac9f0"
+    },
+    {
+      "id": "terminal_48",
+      "source": "screencaps/arena_hil/20261008/b1_terminal_48.png",
+      "source_sha256": "5741918d00ff4809b6c3e7ddc47f347b50a453e9fa95b59321a651561fdf70f5",
+      "source_kind": "native_adb",
+      "fixture_scale": 1,
+      "source_sequence": 14,
+      "source_timestamp_monotonic": 220353.125,
+      "recorded_at_utc": "2026-10-09T01:37:52.936894+00:00",
+      "sequence_scope": "smoke_05_source_lifetime",
+      "authority": "LIVE_EVIDENCE manual inspection; single recorded EASY x8 batch",
+      "physical_state": "arena_terminal",
+      "available_badges": 2,
+      "path": "tests/fixtures/arena_b1/terminal_48.png",
+      "sha256": "3a7a40e27e2a0c02545991fc7195294e7eececc05979b541f1292cbc32757ce8"
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from bot.stages_actions import StageAction, CloseAdAffordance
+from bot.arena_actions import ArenaAction
 
 from dataclasses import dataclass
 from enum import Enum
@@ -787,6 +788,7 @@ class DismissWorldBossBagFull:
 
 
 SemanticAction = (
+    ArenaAction |
     OpenMeteorites | SelectQuickMenuMeteorites | SelectMeteoritesSet
     | SelectMeteoritesBagCell | SelectMeteoritesSlot | NextMeteoritesPage
     | PreviousMeteoritesPage | EquipMeteorite | UnequipMeteorite

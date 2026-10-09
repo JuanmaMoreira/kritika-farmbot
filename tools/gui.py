@@ -35,6 +35,8 @@ from bot.character_state import CharacterStateStore, stamp
 from bot.character_data import ResourceSnapshotMode
 from bot.world_boss_state import WorldBossEligibilityMode
 from bot.monster_wave_config import MonsterWaveConfig
+from bot.arena_config import ArenaConfig, ArenaMode
+from bot.arena_semantics import ArenaDifficulty
 from bot.relief_policy import ReliefPolicy, SocketReliefPolicy
 from bot.craft_semantics import CraftFamily
 from bot.flow_registry import DEFAULT_FLOW_REGISTRY
@@ -46,6 +48,8 @@ from bot.session_report import render_session_report
 POLL_INTERVAL_MS = 50
 SESSION_TIMER_INTERVAL_MS = 1000
 MAX_VISIBLE_CONSOLE_LINES = 5000
+ARENA_MODES = {'Single Battle': ArenaMode.SINGLE_BATTLE, 'Auto Repeat': ArenaMode.AUTO_REPEAT}
+ARENA_DIFFICULTIES = {'Easy': ArenaDifficulty.EASY, 'Normal': ArenaDifficulty.NORMAL, 'Hard': ArenaDifficulty.HARD}
 
 
 class KritikaFarmBotGui:
@@ -93,6 +97,8 @@ class KritikaFarmBotGui:
 
         self.routine_var = tk.StringVar()
         self.wb_eligibility_var = tk.StringVar(value=WorldBossEligibilityMode.DAILY_QUEST.value)
+        self.arena_mode_var = tk.StringVar(value='Single Battle')
+        self.arena_difficulty_var = tk.StringVar(value='Easy')
         self.change_meteorites_var = tk.BooleanVar(value=False)
         self.resource_snapshot_var = tk.StringVar(value=ResourceSnapshotMode.BEFORE_CHARACTER_ROTATION.value)
         self.available_flow_var = tk.StringVar()
@@ -565,6 +571,10 @@ class KritikaFarmBotGui:
         self.continue_full_var.set(mw.continue_when_nonblocking_inventory_full)
         if hasattr(self, 'wb_eligibility_var'):
             self.wb_eligibility_var.set(step.config.get('world_boss', {}).get('eligibility', WorldBossEligibilityMode.DAILY_QUEST.value))
+        if hasattr(self, 'arena_mode_var'):
+            arena = values.get('arena', ArenaConfig())
+            self.arena_mode_var.set(next(label for label, mode in ARENA_MODES.items() if mode is arena.mode))
+            self.arena_difficulty_var.set(next(label for label, difficulty in ARENA_DIFFICULTIES.items() if difficulty is arena.difficulty))
         if hasattr(self, 'step_scroll'):
             self._render_step_settings(step)
 
@@ -586,6 +596,16 @@ class KritikaFarmBotGui:
             row += 1
         if not sections:
             note('No configurable settings for this step.' if step else 'Select a step to configure its occurrence.')
+        if 'arena' in sections:
+            for text, variable, choices in (('Mode', self.arena_mode_var, ARENA_MODES),
+                    ('Difficulty', self.arena_difficulty_var, ARENA_DIFFICULTIES)):
+                ttk.Label(content, text=text).grid(row=row, column=0, sticky='w', pady=(4, 6))
+                row += 1
+                select = ttk.Combobox(content, textvariable=variable, values=tuple(choices), state='readonly', width=30)
+                select.grid(row=row, column=0, sticky='ew')
+                row += 1
+                self.step_controls.append(select)
+            note('Only this Arena occurrence. x8 is mandatory. Single Battle runs one entry; Auto Repeat runs one batch. Both return to Lobby before the next step.')
         if 'world_boss' in sections:
             ttk.Label(content, text='Eligibility').grid(row=row, column=0, sticky='w', pady=(4, 6))
             row += 1
@@ -626,6 +646,9 @@ class KritikaFarmBotGui:
         current = step_settings(MonsterWaveConfig(self.purchase_skip_var.get(), self.continue_full_var.get()),
                                 self._equipment_sell_policy())
         current['world_boss'] = {'eligibility': self.wb_eligibility_var.get()} if 'world_boss' in sections else {}
+        if 'arena' in sections:
+            current['arena'] = ArenaConfig(ARENA_MODES[self.arena_mode_var.get()],
+                ARENA_DIFFICULTIES[self.arena_difficulty_var.get()]).to_dict()
         for section in sections:
             settings[section] = current[section]
         try:

@@ -73,6 +73,7 @@ def labels(widget):
     ('monster_wave', ()),
     ('stages_daily', ()),
     ('gold_farming', ()),
+    ('arena', ('arena',)),
 ])
 def test_contextual_controls_and_apply_only_owned_config(app, flow, sections):
     steps(app, flow)
@@ -113,6 +114,24 @@ def test_switch_apply_repeated_occurrences_move_duplicate_and_reopen(app):
     reopened = RoutineEditor(app.selection.store)
     assert reopened.draft.steps[0].config['world_boss']['eligibility'] == 'GENERAL'
     assert reopened.draft.steps[1].config['world_boss']['eligibility'] == 'CURRENT_WB_NOT_PARTICIPATED'
+
+
+def test_arena_occurrence_form_apply_save_reload(app):
+    from bot.routines import RoutineEditor
+    steps(app, 'arena', 'arena')
+    assert app.arena_mode_var.get()=='Single Battle' and app.arena_difficulty_var.get()=='Easy'
+    app.arena_mode_var.set('Auto Repeat'); app.arena_difficulty_var.set('Hard')
+    app._apply_step_settings()
+    select_step(app,1)
+    assert app.arena_mode_var.get()=='Single Battle' and app.arena_difficulty_var.get()=='Easy'
+    app.arena_difficulty_var.set('Normal'); app._apply_step_settings()
+    assert 'arena' not in RoutineEditor(app.selection.store).active_ids
+    app._save_routine()
+    saved=RoutineEditor(app.selection.store)
+    assert [s.config['arena'] for s in saved.draft.steps]==[
+        {'mode':'AUTO_REPEAT','difficulty':'HARD'}, {'mode':'SINGLE_BATTLE','difficulty':'NORMAL'}]
+    select_step(app,0)
+    assert app.arena_mode_var.get()=='Auto Repeat' and app.arena_difficulty_var.get()=='Hard'
 
 
 def test_apply_does_not_target_new_selection_before_form_event(app):

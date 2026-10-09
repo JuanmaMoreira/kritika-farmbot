@@ -18,6 +18,8 @@ from bot.world_boss_flow import WorldBossFlow
 from bot.monster_wave_flow import MonsterWaveFlow
 from bot.monster_wave_config import MonsterWaveConfig
 from bot.relief_policy import coordinator_for
+from bot.arena_flow import ArenaFlow
+from bot.arena_config import ArenaConfig
 
 
 class FlowDependencies(Protocol):
@@ -1015,6 +1017,12 @@ def _build_gold_farming(dependencies):
         continue_on_unavailable=getattr(dependencies,"routine_continue_on_unavailable",True))
 
 
+def _build_arena(dependencies):
+    settings = getattr(getattr(dependencies, 'config', None), 'arena', ArenaConfig())
+    return dependencies.build_arena_flow(settings.difficulty, mode=settings.mode,
+                                         return_context='screen.lobby')
+
+
 DEFAULT_FLOW_REGISTRY = FlowRegistry((
     FlowDefinition('stages_daily', 'Stages Ads', StagesDailyFlow.scope,
                    StagesDailyFlow.contract, _build_stages_daily,
@@ -1072,6 +1080,8 @@ DEFAULT_FLOW_REGISTRY = FlowRegistry((
     ),
     FlowDefinition('gold_farming', 'Gold Farming Cycle', StagesDailyFlow.scope,
                    GoldFarmingFlow.contract, _build_gold_farming),
+    FlowDefinition('arena', 'Arena', ArenaFlow.scope,
+                   ArenaFlow.routine_contract, _build_arena),
 ))
 
 

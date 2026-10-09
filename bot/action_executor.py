@@ -8,6 +8,7 @@ from time import monotonic
 
 from bot.stages_actions import StageAction, CloseAdAffordance, POINTS as STAGES_POINTS
 from bot.meteorites_actions import meteorites_target
+from bot.arena_actions import ArenaAction, ArenaControl, POINTS as ARENA_POINTS
 from bot.adb import AdbClient
 from bot.event_log import EventSink, record_best_effort
 from bot.monster_wave_actions import MONSTER_WAVE_TARGETS, SelectMonsterWaveMax
@@ -813,7 +814,7 @@ class ActionExecutor:
         )
         try:
             self.adb.tap(*pixel)
-            if isinstance(action, SelectMonsterWaveMax):
+            if isinstance(action, SelectMonsterWaveMax) or (isinstance(action, ArenaAction) and action.control is ArenaControl.X8):
                 # No frame read, wait, decision or retry between the two taps.
                 self.adb.tap(*pixel)
         except Exception as error:
@@ -841,6 +842,8 @@ class ActionExecutor:
         return self._target_for(action)
 
     def _target_for(self, action: SemanticAction) -> RelativePoint:
+        if isinstance(action, ArenaAction):
+            return ARENA_POINTS[action.control]
         meteorites_point = meteorites_target(action)
         if meteorites_point is not None:
             return meteorites_point

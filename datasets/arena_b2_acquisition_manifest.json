@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "id": "select_mode_native",
+      "source": "artifacts/arena_b2/20261008/02-arena/001_before.png",
+      "source_sha256": "304606a7aa1463ea778237459a17f643f048f88b838bdc9bbc9d9b2ee7557461",
+      "authority": "LIVE_EVIDENCE: inspected native Select Mode after guarded Lobby Battle; no Survival equivalence",
+      "context": "select_mode"
+    },
+    {
+      "id": "challenge_native_off",
+      "source": "artifacts/arena_b2/20261008/07-easy/003_after.png",
+      "source_sha256": "ee0de782345228021a27b12ec17b3518a97fe6a511bb0ae46bd8475e981b9235",
+      "authority": "LIVE_EVIDENCE: EASY Challenge x8 ON, buffs OFF, stock 6/317/714",
+      "context": "challenge"
+    },
+    {
+      "id": "quick_menu_challenge",
+      "source": "artifacts/arena_b2/20261008/09-quick-menu/004_after.png",
+      "source_sha256": "a945fccc8d5d5e914f11dcdf767f8604aa3d789744d2ba6a006ea17098e326c5",
+      "authority": "LIVE_EVIDENCE: Challenge -> known portrait tap -> shifted Quick Menu",
+      "context": "quick_menu"
+    },
+    {
+      "id": "single_victory",
+      "source": "artifacts/arena_b2/20261008/15-single-start/031_after.png",
+      "source_sha256": "6e9aa6bb651926c0a12f8f361228f6aa4a859949a3160f3cffd2a66bed480403",
+      "authority": "LIVE_EVIDENCE: one EASY x8 Start, positive WIN+stats+Reward+Tap; no batch used/won fields",
+      "context": "single_result"
+    },
+    {
+      "id": "single_battle",
+      "source": "artifacts/arena_b2/20261008/15-single-start/018_after.png",
+      "source_sha256": "ff3e57cc9822156b46b89fc388f68f379fdcbcbc3f1b1888017c24e52c4b4b95",
+      "authority": "LIVE_EVIDENCE: Arena battle after Single Start, no Auto Repeat band, automatic combat",
+      "context": "single_active"
+    },
+    {
+      "id": "gold_deficit",
+      "source": "artifacts/arena_b2/20261008/12-buff1-gold/004_after.png",
+      "source_sha256": "946571a0a8c479682b554d37410d17620d1df7d237bad854208b1469becbe843",
+      "authority": "LIVE_EVIDENCE: selection stock6 -> signed -2; Gold debit6000, Karats/Badges unchanged",
+      "context": "challenge"
+    },
+    {
+      "id": "single_selection_after",
+      "source": "artifacts/arena_b2/20261008/16-single-close/004_after.png",
+      "source_sha256": "f2775b4f17a0c15ad56f4b46cf6adee9db01fd0746434e52774ea46f98373f1b",
+      "authority": "LIVE_EVIDENCE: Tap closes WIN to selection, badges98 Karats101076",
+      "context": "selection"
+    },
+    {
+      "id": "single_challenge_empty",
+      "source": "artifacts/arena_b2/20261008/19-post-single-challenge/challenge_native.png",
+      "source_sha256": "03fca9f30fc17b8541819ac147ac7c7486c56a193a9a0026a3a9deb844af7364",
+      "authority": "LIVE_EVIDENCE: next Challenge buffsOFF, buff1 inventory6+Gold2-8 consumed=0; plus replaces counter",
+      "context": "challenge"
+    },
+    {
+      "id": "return_lobby",
+      "source": "artifacts/arena_b2/20261008/18-back-lobby/003_after.png",
+      "source_sha256": "86b3eef1661c27a736a8ccbd8160e996aebb754e6fe166639e12a55e305b546a",
+      "authority": "LIVE_EVIDENCE: two Back from post-Single selection -> Arena Select Mode -> Lobby",
+      "context": "lobby"
+    },
+    {
+      "id": "single_battle_stream",
+      "source": "artifacts/arena_b2/20261008/26-productive-smoke/stopped.png",
+      "source_sha256": "0a267f1e4f5d64126cf27c6e93ea15bc7663a2f2c0fc534fd171b08d3de335dc",
+      "authority": "LIVE_EVIDENCE: one productive Single Start; positive battle HUD, pause glyph; stream 2712x1224",
+      "context": "single_active"
+    },
+    {
+      "id": "single_victory_stream",
+      "source": "artifacts/arena_b2/20261008/28-productive-finish/stopped.png",
+      "source_sha256": "6086b3472f252cd128849e543fe77347d4dbddfe9a65254e9d8299e5f48fe427",
+      "authority": "LIVE_EVIDENCE: same verified single battle WIN; stream prompt presentation differs from native acquisition",
+      "context": "single_result"
+    },
+    {
+      "id": "single_victory_completed",
+      "source": "artifacts/arena_b2/20261008/30-productive-smoke/single_terminal_native.png",
+      "source_sha256": "4dcaf3da898c1896cc73e5555cf2d7a9f76de2fdc6fc3984a3774a6cca8e7e84",
+      "authority": "LIVE_EVIDENCE: inspected B2 focal acquisition / successful continuous Single x8 smoke; native pixels",
+      "context": "single_result"
+    },
+    {
+      "id": "single_selection_completed",
+      "source": "artifacts/arena_b2/20261008/30-productive-smoke/single_balances_after.png",
+      "source_sha256": "06b159f2ecb577dbdabbbfb27dfec7b5c38a8865baa2f471f361f1c1bb33752a",
+      "authority": "LIVE_EVIDENCE: inspected B2 focal acquisition / successful continuous Single x8 smoke; native pixels",
+      "context": "selection"
+    },
+    {
+      "id": "return_lobby_completed",
+      "source": "artifacts/arena_b2/20261008/30-productive-smoke/physical_final.png",
+      "source_sha256": "887577d3a0c90fb5b4cf09b0629006219730f05d6e0e9eafed9ba6c231bc5bde",
+      "authority": "LIVE_EVIDENCE: inspected B2 focal acquisition / successful continuous Single x8 smoke; native pixels",
+      "context": "lobby"
+    },
+    {
+      "id": "ranking_natural",
+      "source": "artifacts/arena_b2/20261008/22-back-select-mode/001_before.png",
+      "source_sha256": "10058ed2009db406f9058c9b72a2d0ee3e3ea04fd0597d2674916a2a0368a043",
+      "authority": "LIVE_EVIDENCE: inspected B2 focal acquisition / successful continuous Single x8 smoke; native pixels",
+      "context": "ranking"
+    }
+  ],
+  "assets": [
+    {
+      "id": "flow_challenge_back_native",
+      "source_id": "challenge_native_off",
+      "roi": [
+        0.772,
+        0.022,
+        0.834,
+        0.12
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "flow_select_title_native",
+      "source_id": "select_mode_native",
+      "roi": [
+        0.434,
+        0.118,
+        0.557,
+        0.169
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "flow_arena_card_native",
+      "source_id": "select_mode_native",
+      "roi": [
+        0.247,
+        0.242,
+        0.317,
+        0.29
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "flow_back_native",
+      "source_id": "select_mode_native",
+      "roi": [
+        0.772,
+        0.022,
+        0.834,
+        0.12
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "challenge_controls_native",
+      "source_id": "challenge_native_off",
+      "roi": [
+        0.704,
+        0.815,
+        0.828,
+        0.992
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "x8_on_native",
+      "source_id": "challenge_native_off",
+      "roi": [
+        0.771,
+        0.692,
+        0.784,
+        0.724
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "flow_quick_menu_arena",
+      "source_id": "quick_menu_challenge",
+      "roi": [
+        0.173,
+        0.164,
+        0.239,
+        0.276
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "single_win_title",
+      "source_id": "single_victory",
+      "roi": [
+        0.424,
+        0.04,
+        0.58,
+        0.178
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "single_stats_labels",
+      "source_id": "single_victory",
+      "roi": [
+        0.438,
+        0.305,
+        0.56,
+        0.5
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "single_reward_label",
+      "source_id": "single_victory",
+      "roi": [
+        0.451,
+        0.544,
+        0.552,
+        0.606
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "single_tap_screen",
+      "source_id": "single_victory",
+      "roi": [
+        0.408,
+        0.851,
+        0.594,
+        0.915
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "single_battle_pause",
+      "source_id": "single_battle",
+      "roi": [
+        0.808,
+        0.162,
+        0.824,
+        0.207
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "gold_buff1_price",
+      "source_id": "gold_deficit",
+      "roi": [
+        0.52,
+        0.447,
+        0.599,
+        0.496
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "buff1_depleted_plus",
+      "source_id": "single_challenge_empty",
+      "roi": [
+        0.573,
+        0.237,
+        0.603,
+        0.289
+      ],
+      "threshold": 0.94
+    },
+    {
+      "id": "single_tap_screen_stream",
+      "source_id": "single_victory_stream",
+      "roi": [
+        0.408,
+        0.851,
+        0.594,
+        0.915
+      ],
+      "threshold": 0.94
+    }
+  ],
+  "fixture_rois": [
+    [
+      0.355,
+      0.044,
+      0.445,
+      0.087
+    ],
+    [
+      0.502,
+      0.044,
+      0.565,
+      0.087
+    ],
+    [
+      0.517,
+      0.445,
+      0.712,
+      0.5
+    ],
+    [
+      0.382,
+      0.61,
+      0.707,
+      0.727
+    ]
+  ]
+}

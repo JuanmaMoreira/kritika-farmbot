@@ -29,7 +29,7 @@ class FlowSelectionModel:
     def __init__(self, registry: FlowRegistry = DEFAULT_FLOW_REGISTRY) -> None:
         self.registry = registry
         self._order = [item.id for item in registry.definitions]
-        self._enabled = set(self._order) - {"gold_farming"}  # Composite farming is explicitly selected.
+        self._enabled = set(self._order) - {"gold_farming", "arena"}  # Explicit opt-in operations.
 
     @property
     def options(self) -> tuple[GuiFlowOption, ...]:
@@ -243,6 +243,7 @@ def event_visible(event: RuntimeEvent, *, debug: bool) -> bool:
 
 # Occurrence decisions only; relief policy belongs to the whole routine.
 STEP_CONFIG_SECTIONS = {
+    'arena': ('arena',),
     'monster_wave': (),
     'stages_daily': (),
     'gold_farming': (),

@@ -85,6 +85,33 @@ repeat futuro debe mantener un scope del personaje durante varios ciclos.
 Smoke Session Telumpel completo con Send Stamina y sin Rotation:22/22 efectos,
 Set 2 vacío/Set 1 activo. Validación y métricas en [informe B2](docs/METEORITES_B2_20261008.md).
 
+## Arena A+B1 — offline implementado; smoke físico cerrado
+
+Semántica USER_GT Acquired Karats→won_tickets cerrada, sin dependencia de buffs
+ni Victory Points. Percepción/reader de A y ArenaFlow standalone B1 implementados,
+un batch x8 por invocación desde Lobby limpio a BASE Arena acreditado. Configuración
+y guardas sin compras, wait focal cancelable/bounded y retorno; validación en
+[B1](docs/ARENA_B1_20261008.md). Único smoke autorizado EASY x8:50→2Badges,
+48used/48won, retorno BASE limpio, sin compras. Hubo interrupciones del observer
+y handoff; aceptación continua/performance del wait largo aún no demostradas.
+No repetir consumo para arreglar esa medición ni iniciar otro frente automáticamente.
+Actualización B2: Single Battle, Step Settings por ocurrencia, persistencia v2,
+registro/Session y retorno externo Back implementados. QM→Lobby y Start individual
+adquiridos; compra buff1Gold3000 limitada a entrada8 acreditada. Default nuevo
+SINGLE_BATTLE/EASY, sin activar Arena en rutinas existentes. Ver [B2](docs/ARENA_B2_20261008.md).
+Pendientes residuales: derrota individual, cancelación/pausa física,
+Gold buff2/batches largos, representación Upon Defeat ON y
+aceptación de rutas relief/retorno que no aparecieron en adquisición.
+Buff3 sólo con cobertura conocida y sin Karats; selección ON y reserva8 adquiridas
+en B1, refund propio aún no. Farming Cycle/controller/Manual Stages/
+REPEAT_CURRENT no implementados y no se inician automáticamente.
+
+**Deuda explícita de adquisición:** MODAL informativo al alcanzar determinados
+puntos de Arena (existencia y clase por USER_GT). Título podría ser «Points Reward»,
+pero literal, umbral y cierre UNKNOWN. Capturar cuando aparezca naturalmente;
+no provocar evento, inventar detector ni bloquear A/B1. ArenaFlow deberá
+distinguirlo del resultado final, conservar evidencia y no hacer taps ciegos.
+
 ## Próximos frentes, en orden
 
 Character Identity + Persistent Character State: **cerrado como checkpoint conjunto**
