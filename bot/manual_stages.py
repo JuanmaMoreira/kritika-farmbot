@@ -282,7 +282,9 @@ class ManualStagesOperation:
             self._unsafe_to_restart |= active or pending
             if entry_id is not None:
                 self._entry=(before,self.target,entry_id,consumed,terminal if closed else None)
-            return ManualStagesResult(status,(FlowEvent('manual_stages.'+outcome.value),),
+            return ManualStagesResult(status,(FlowEvent('manual_stages.'+outcome.value,
+                detail=error,fields={'physical_operation_may_be_active':active,
+                    'entry_id':entry_id,'stamina_consumed':consumed}),),
                 error=error,final_snapshot=snapshot,outcome=outcome,target=self.target,
                 stamina_before=before.stamina if before else None,
                 stamina_after=after.stamina if after else None,

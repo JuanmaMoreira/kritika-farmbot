@@ -52,7 +52,7 @@ class ArenaFlow:
                  clock=time.monotonic, sleeper=time.sleep, events=None,
                  batch_timeout=1800., check_interval=3., transition_timeout=12.,
                  unknown_grace=30., evidence_sink=None, authorized_badge_ceiling=None,
-                 mode=ArenaMode.AUTO_REPEAT, return_context=SCREEN_ARENA):
+                 mode=ArenaMode.AUTO_REPEAT, return_context=SCREEN_ARENA, victory_points=None):
         if not isinstance(difficulty,ArenaDifficulty):
             raise ValueError('explicit Arena difficulty required')
         if not isinstance(mode, ArenaMode) or mode not in (ArenaMode.SINGLE_BATTLE, ArenaMode.AUTO_REPEAT):
@@ -75,6 +75,7 @@ class ArenaFlow:
             raise ValueError('Badge authorization ceiling must permit at least eight')
         self.authorized_badge_ceiling=authorized_badge_ceiling
         self._unsafe_to_restart=False
+        self.victory_points= victory_points
 
     def _cancel(self):
         if self.cancel_requested():
@@ -111,7 +112,7 @@ class ArenaFlow:
         started=time.perf_counter()
         snapshot=self.source.get_frame()
         self.metrics['captures']+=1
-        if native or snapshot.sequence==self._cursor or not self._fresh(snapshot):
+        if native or snapshot.sequence<=self._cursor or not self._fresh(snapshot):
             refresh=getattr(self.source,'refresh_native',None)
             if refresh is None:
                 if native:
@@ -518,6 +519,7 @@ class ArenaFlow:
             if self.v.ranking(before.image):
                 before=self._effect(C.RANKING_OK,before,self.v.selection)
         self._save('return_selection',before)
+        vp_frame=before
         before=self._back(before,self.v.select_mode)
         self._save('return_select_mode',before)
         before=self._back(before,self.v.lobby)
@@ -528,6 +530,15 @@ class ArenaFlow:
             raise _Stop('external_return_lobby_uncredited')
         self._save('return_lobby',final.frame)
         self.phase='returned'
+        # Retain the normal selection frame, but complete all physical return
+        # guards before optional OCR. Slow/failed informational work cannot
+        # consume Back freshness or require another navigation observation.
+        if self.mode is ArenaMode.AUTO_REPEAT and self.batch_result is not None and self.victory_points is not None:
+            try:
+                self.victory_points.observe_character(vp_frame,self.v,
+                    cancel_requested=self.cancel_requested,events=self.events)
+            except Exception as error:
+                record_best_effort(self.events,'arena.vp_omitted',reason=type(error).__name__)
         return final
 
     def _back(self, before, predicate):

@@ -142,6 +142,11 @@ class RuntimeFactReader:
                     detail=str(error),
                 )
             evidence.append(extracted.evidence)
+            if cancel_requested is not None and cancel_requested():
+                return FactReadResult(FactReadStatus.CANCELLED, evidence=tuple(evidence))
+            if self._clock() >= deadline:
+                return FactReadResult(FactReadStatus.TIMEOUT, evidence=tuple(evidence),
+                                      detail='OCR exceeded fact acquisition deadline')
             self._record(
                 "fact.observed",
                 fact=name,

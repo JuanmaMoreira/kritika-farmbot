@@ -163,7 +163,8 @@ def test_unknown_support_never_starts_or_guesses_activation(monkeypatch):
     op,n=operation()
     n.s.observations=ObservationBatch(1,0.,tuple(o for o in n.s.observations.observations
         if o.name!='stages.support_active'))
-    with pytest.raises(ValueError,match='mao ready unverified'):op.prepare_config(n.s)
+    # The passive wait still fails closed when no support state appears.
+    with pytest.raises(ValueError,match='effect unverified'):op.prepare_config(n.s)
     assert not n.trace
 
 

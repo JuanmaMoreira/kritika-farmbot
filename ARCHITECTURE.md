@@ -39,10 +39,11 @@ de `CHARACTER_IDS` son permanentes; ni posición de Character Select, índice de
 Rotation ni texto OCR crudo son claves. El display es metadata.
 
 `CharacterStateStore` posee `runtime/character_state.sqlite3` ignorado por Git,
-SQLite schema1, FK, WAL y transacciones atómicas. Separa `characters`, estado
+SQLite schema2, FK, WAL y transacciones atómicas. Separa `characters`, estado
 `operational`, snapshots informativos completos y procedencia compacta. Una DB
 nueva comienza con Ads/WB UNKNOWN en el epoch actual; no inventa disponibilidad.
-La inicialización versionada0→1 conserva archivos incompatibles para diagnóstico.
+La migración1→2 añade Arena VP nullable sin alterar facts existentes; la ausencia
+del campo no acredita cero. Archivos incompatibles se conservan para diagnóstico.
 
 Session establece scope por identidad usando el snapshot de su primera entrada
 compatible; también lo hace la ejecución standalone. UNKNOWN no permite escrituras.
@@ -57,6 +58,19 @@ No existe hora local permanente. Startup y lecturas operativas hacen catch-up;
 el runtime posee `ResetScheduler` cancelable y la GUI posee timer Tk. El reset
 diario pone Ads2 en los28; el ciclo WB nuevo pone participación NO. WB cierra
 en los30min previos a su reset. Historia y snapshots anteriores se conservan.
+
+Arena VP es informativo por identidad: total entero, timestamp del frame y semana
+de ranking (fecha del lunes). `ArenaVictoryPointReader` intenta color/gris una vez
+sobre el frame de Arena BASE obtenido durante el retorno normal de Auto Repeat
+con batch acreditado. El OCR ocurre después de verificar Lobby; si ese frame ya
+expiró, se omite. Así no consume freshness de Back ni agrega observaciones de retorno.
+No abre pantallas ni participa en aceptación terminal, routing o controller.
+El backdrop expuesto rechaza prefijos que sobreviven a una oclusión; chat no excluye
+geométricamente la ROI. Fallar conserva el valor válido de la misma semana.
+ResetClock reutiliza la fase UTC de WB para el lunes; sin countdown persistido usa
+la referencia curada07:00Z de GAMEPLAY_GT. Startup, lecturas y timers existentes
+invalidan semanas anteriores, también tras aplicación cerrada. Escrituras tardías
+de otro período se rechazan. GUI muestra miles truncados (`154k`), desconocido `—`.
 
 `WorldBossEligibilityPolicy` configura cuándo ejecutar el único `WorldBossFlow`:
 DAILY_QUEST, CURRENT_WB_NOT_PARTICIPATED o GENERAL. Participación YES del ciclo

@@ -1,0 +1,49 @@
+{
+  "roi": [
+    0.489,
+    0.228,
+    0.633,
+    0.27
+  ],
+  "authority": "LIVE_EVIDENCE curated pixels + synthetic occlusion negative",
+  "sources": "Arena BASE selection, never Acquired Victory Points",
+  "backdrop_mask": "union of label glyphs in zero/128795; variable numeric interior excluded; exposed backdrop perimeter retained",
+  "entries": [
+    {
+      "id": "zero",
+      "path": "artifacts/arena-hil/20261008/mode-arena-after/20261008T194656_589975Z_01.png",
+      "expected": 0,
+      "sha256": "66b1414b34a18b81c71446272d87d4d0ce237dc2a80f9ef74b580684d2a6f183"
+    },
+    {
+      "id": "total128795",
+      "path": "artifacts/arena_b2/20261008/30-productive-smoke/return_selection.png",
+      "expected": 128795,
+      "sha256": "72f2bd3b01aa4871fa1fe1982b9c95548f4e381e8bad4fff91ceba60e95f1c06"
+    },
+    {
+      "id": "ranking_occluded",
+      "path": "artifacts/arena-hil/20261008/select-after-batch/20261008T204446_758432Z_01.png",
+      "expected": null,
+      "sha256": "612424c519462094f44c66909031409a8bb418c7b798f1268e513232a288f886"
+    },
+    {
+      "id": "partial_128795_prefix12",
+      "path": "artifacts/arena_stability_20261010/partial_occlusion.png",
+      "expected": null,
+      "sha256": "810874ef4a5e4485c5d4a22c7883d75c15b63ed778b511d3a465517fbf862b8d"
+    },
+    {
+      "id": "live_eilla_182070",
+      "path": "artifacts/arena_stability_20261010/representative02/arena_0_return_selection.png",
+      "expected": 182070,
+      "sha256": "11868817c3e25853d6a76021eced49323f553eeaedfa6f94ceb33bd2e96598ec"
+    },
+    {
+      "id": "live_eilla_persisted182050",
+      "path": "artifacts/arena_stability_20261010/vp_focal/arena_0_return_selection.png",
+      "expected": 182050,
+      "sha256": "b31066a637b4c2d1b518a8a18be4098aceb081671b22275fd0b8a65ff393aa06"
+    }
+  ]
+}

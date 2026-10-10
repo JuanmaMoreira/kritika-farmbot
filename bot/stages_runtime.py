@@ -217,6 +217,12 @@ class MaoSupport:
     def ensure(self,s):
         n=self.nav
         if surface(s)!='config':raise ValueError('mao requires exposed config')
+        if not any(has(s,name) for name in ('support_active','support_ready','support_needs')):
+            # Support Activated has a transient sparkle after relief/reentry.
+            # Observe its existing state; a miss authorizes no purchase/tap.
+            record_best_effort(n.events,'stages.mao_passive_recovery',source_sequence=s.sequence)
+            s=n.wait(lambda a:exposed(a) and surface(a)=='config' and any(
+                has(a,name) for name in ('support_active','support_ready','support_needs')))
         if has(s,'support_active'):
             record_best_effort(n.events,'stages.mao',state='active');return s
         if has(s,'support_needs'):

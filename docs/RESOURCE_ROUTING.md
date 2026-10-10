@@ -4,7 +4,9 @@
 
 ## Estado persistente por personaje — contrato 2026-10-05/06
 
-Sólo `operational` del `CharacterStateStore` participa en readiness/routing.
+Los facts Ads/WB de `operational` del `CharacterStateStore` participan en readiness/routing.
+Arena VP también se almacena allí, exclusivamente como dato informativo semanal;
+nunca autoriza recursos, cambia winrates o alimenta el controller.
 Ads0 del epoch actual permite no trabajo sin abrir Stages; reset/catch-up invalida
 agotamiento previo. Video count fresco reconcilia cantidades observadas, efecto
 Sapphire rewarded decrementa y No Ads temporal conserva cantidad. UNKNOWN inicial

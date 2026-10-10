@@ -243,7 +243,7 @@ class ScrcpyFrameSource:
                 sequence=snapshot.sequence,
             )
 
-    def refresh_native(self) -> FrameSnapshot:
+    def refresh_native(self, *, timeout: float | None = None) -> FrameSnapshot:
         """Refresh a static SDK surface in the stream's shared sequence space.
 
         scrcpy does not emit frames while a rewarded-ad end card is static.
@@ -253,12 +253,20 @@ class ScrcpyFrameSource:
         """
         import cv2
         started = self._clock()
-        png = self.adb.capture_png()
+        png = self.adb.capture_png() if timeout is None else self.adb.capture_png(timeout=timeout)
         image = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_COLOR)
         if image is None:
             raise CaptureError("Native PNG could not be decoded")
-        self._publish(image, timestamp=started)
-        return self.get_frame()
+        # Return this acquisition, even when the receiver publishes a newer
+        # stream frame during screencap. A stream cannot substitute pixels for
+        # a caller explicitly requiring native numeric authority.
+        with self._frame_lock:
+            self._sequence += 1
+            native = FrameSnapshot(image=image,timestamp=started,sequence=self._sequence)
+            if self._snapshot is None or started >= self._snapshot.timestamp:
+                self._snapshot = FrameSnapshot(image=image.copy(),timestamp=started,sequence=self._sequence)
+        self._frame_event.set()
+        return native
 
     @property
     def local_endpoint(self) -> str:

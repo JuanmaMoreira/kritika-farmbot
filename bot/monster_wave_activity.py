@@ -1,6 +1,7 @@
 """Verified MW preparation and reusable SKIP pass."""
 from dataclasses import dataclass, replace
 from enum import Enum
+import math
 import time
 
 from bot.battle_mode_zone import is_battle_mode_select, is_lobby
@@ -140,6 +141,12 @@ class MonsterWaveActivity:
     scope = FlowScope.PER_CHARACTER
     contract = FlowContract(ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),
                             (ComponentRequirement.exact_state(SCREEN_BATTLE_MODE_SELECT),))
+    # Passive post-CLEAR sapphire recovery bound: ~12 s window, at most six
+    # single read rounds (three observations each), six seconds per round.
+    # No input is ever sent while waiting out a transient HUD occlusion.
+    POST_CLEAR_SAPPHIRES_TIMEOUT = 12.0
+    POST_CLEAR_SAPPHIRES_ROUNDS = 6
+    POST_CLEAR_SAPPHIRES_ROUND_TIMEOUT = 6.0
 
     def __init__(self, observer, actions, events, *, config=MonsterWaveConfig(),
                  cancel_requested=lambda: False, verified_transition=None, facts=None,
@@ -155,26 +162,59 @@ class MonsterWaveActivity:
     def prepare(self, *, pressure_relief=False):
         return self._run_phase('prepare', pressure_relief=pressure_relief)
 
-    def read_sapphires_after_clear(self):
-        """Read the existing MW HUD after the verified CLEAR dismissal."""
+    def read_sapphires_after_clear(self, *, timeout=12.0):
+        """Read the existing MW HUD after the verified CLEAR dismissal.
+
+        Passive, focal and bounded: a transiently unreadable HUD (e.g. a
+        global chat toast crossing the sapphire ROI, as in the 2026-10-09
+        Arena failure) only extends observation of fresh frames, never
+        inputs. The first really CONFIRMED reading is returned; a
+        persistently unreadable HUD, a changed/contradictory context or
+        an expired window still fails safe with no invented balance and
+        no consumptive retry.
+        """
         if self.cancel_requested():
             raise RuntimeWaitCancelled()
+        window = float(timeout)
+        if not math.isfinite(window) or window <= 0:
+            raise ValueError('timeout must be a positive finite number')
+        deadline = self.clock() + window
         before = self.observer.observe()
         if not clean_mw(before):
             raise ValueError('mw_effect_requires_clean_context')
-        read = self.facts.read_sapphires(
-            context=SCREEN_MONSTER_WAVE, after_sequence=before.sequence,
-            timeout=6, cancel_requested=self.cancel_requested)
-        if self.cancel_requested() or read.status is FactReadStatus.CANCELLED:
-            raise RuntimeWaitCancelled()
-        fact = read.fact
-        if (read.status is not FactReadStatus.CONFIRMED or fact is None
-                or fact.name != RESOURCE_SAPPHIRES or fact.context != SCREEN_MONSTER_WAVE
-                or type(fact.value) is not int or fact.value < 0 or not fact.evidence
-                or any(e.sequence <= before.sequence for e in fact.evidence)
-                or not 0 <= self.clock() - fact.timestamp <= 2.):
-            raise ValueError('mw_fresh_sapphire_effect_unavailable')
-        return fact
+        cursor = before.sequence
+        rounds = 0
+        while True:
+            if self.cancel_requested():
+                raise RuntimeWaitCancelled()
+            remaining = deadline - self.clock()
+            if remaining <= 0 or rounds >= self.POST_CLEAR_SAPPHIRES_ROUNDS:
+                raise ValueError('mw_fresh_sapphire_effect_unavailable')
+            rounds += 1
+            read = self.facts.read_sapphires(
+                context=SCREEN_MONSTER_WAVE, after_sequence=cursor,
+                timeout=min(self.POST_CLEAR_SAPPHIRES_ROUND_TIMEOUT, remaining),
+                cancel_requested=self.cancel_requested)
+            if self.cancel_requested() or read.status is FactReadStatus.CANCELLED:
+                raise RuntimeWaitCancelled()
+            if read.status is FactReadStatus.FAILURE:
+                raise RuntimeError(read.detail or 'mw_sapphire_reader_failure')
+            if self.clock() >= deadline:
+                raise ValueError('mw_fresh_sapphire_effect_unavailable')
+            if read.evidence:
+                cursor = max(cursor, max(e.sequence for e in read.evidence))
+            if read.status is FactReadStatus.CONTEXT_MISMATCH:
+                raise ValueError('mw_effect_requires_clean_context')
+            fact = read.fact
+            if read.status is FactReadStatus.CONFIRMED and fact is not None:
+                if (fact.name == RESOURCE_SAPPHIRES and fact.context == SCREEN_MONSTER_WAVE
+                        and type(fact.value) is int and fact.value >= 0 and fact.evidence
+                        and all(e.sequence > before.sequence for e in fact.evidence)
+                        and 0 <= self.clock() - fact.timestamp <= 2.):
+                    return fact
+                raise ValueError('mw_fresh_sapphire_effect_unavailable')
+            # UNREADABLE/UNCERTAIN/TIMEOUT: keep observing fresh
+            # frames passively until the toast clears or the window ends.
 
     def reenter(self):
         return self._run_phase('reenter')

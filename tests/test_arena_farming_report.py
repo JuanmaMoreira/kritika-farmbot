@@ -181,6 +181,15 @@ def test_owner_cycle_duration_is_used_when_available():
     assert summary.budget_known and summary.stamina_budget is None
 
 
+def test_manual_intervention_preserves_owner_error_on_legacy_terminal():
+    raw = FlowResult(FlowStatus.MANUAL_RESOLUTION,
+        (FlowEvent('arena.farming.terminated',fields={'reason':'subordinate_stop'}),),
+        error='stages equipment relief [sell.enter]: RuntimeWaitTimeout')
+    summary = project_arena_farming(raw)
+    assert summary.intervention == raw.error
+    assert 'Intervention: '+raw.error in render_session_report(build_session_report(crimson_session(raw)))
+
+
 @pytest.mark.parametrize('consumed', [None, 0, 60.0, True])
 def test_incomplete_manual_entry_does_not_invent_zero_count_or_rewards(consumed):
     summary = project(FlowEvent('arena.farming.manual_entry', fields={

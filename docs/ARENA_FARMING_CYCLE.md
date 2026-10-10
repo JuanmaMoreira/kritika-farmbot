@@ -117,7 +117,9 @@ permite reiniciar entradas a partir de esa incertidumbre.
 ## Política adaptativa y justificación
 
 Inicio Hard. Cada dato es un batch acreditado `difficulty/used_tickets/won_tickets`;
-Acquired Karats posee autoridad aun con Double Points. Victory Points no se lee.
+Acquired Karats posee autoridad aun con Double Points. Victory Points no participa
+en esta política; su lectura opcional al retornar de Auto Repeat pertenece a
+Character State, desacoplada del resultado del batch y del ciclo.
 Un run duplicado, dificultad ajena o resultado ausente se rechaza sin actualizar.
 
 Estimación: media de winrates de los últimos3batches de cada dificultad cuya edad
@@ -227,6 +229,13 @@ badges usados/ganadores/perdedores y winrate global ponderado, combates x8 si
 son íntegros/divisibles, secuencia y decisión final del controller, ledger/presupuesto,
 Manual/MW, Sapphires, Trading y lifecycle final del personaje. Show Arena batches
 expande una tabla cronológica con scroll, sin volcar logs en la GUI.
+
+Una interrupción muestra `Intervention` con el detalle del owner. El terminal
+registra actividad pendiente; Manual y equipment relief registran error y etapa.
+Las lecturas de recursos distinguen contexto, edad, OCR y desacuerdo de observaciones.
+Una intervención no cambia MANUAL_RESOLUTION ni autoriza restauración automática
+de Shared Meteorites desde un estado incierto. Los nuevos ciclos registran además
+su configuración efectiva al comenzar; logs anteriores no la reconstruyen exactamente.
 
 La proyección consume eventos acreditados del owner, no Victory Points ni saldo
 global de Karats. Un resultado ausente/ambiguo no es cero. Identidad causal de

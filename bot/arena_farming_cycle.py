@@ -71,6 +71,7 @@ class ArenaFarmingCycle:
         self.stamina_consumed=0;self.stamina_prepared=False
         self._credited_entries=set();self._pending_manual=False;self._pending_supply=False
         self._started_at = None
+        self._last_resource_diagnosis = None
 
     @property
     def remaining_stamina_budget(self):
@@ -87,6 +88,8 @@ class ArenaFarmingCycle:
     def run(self):
         events, operations, balances = [], [], None
         zero_batches=0;start_index=0
+        activity = 'resource_refresh'
+        self._last_resource_diagnosis = None
         if self._checkpoint is not None:
             events,operations,balances,zero_batches,start_index=self._checkpoint
             events=list(events);operations=list(operations)
@@ -95,6 +98,11 @@ class ArenaFarmingCycle:
             self.controller = ArenaAdaptiveController(self.config.zero_win_threshold)
             self.stamina_consumed=0;self.stamina_prepared=False
             self._credited_entries=set();self._pending_manual=False;self._pending_supply=False
+            events.append(FlowEvent('arena.farming.started',fields={
+                'min_badges_for_arena':self.config.min_badges_for_arena,
+                'min_sapphires_for_mw':self.config.min_sapphires_for_mw,
+                'zero_win_threshold':self.config.zero_win_threshold,
+                'maximum_stamina_consumption':self.config.maximum_stamina_consumption}))
 
         def finish(reason, status=FlowStatus.COMPLETED, subordinate=None, error=None):
             prior=operations[-1] if self._pending_manual and operations else None
@@ -103,7 +111,12 @@ class ArenaFarmingCycle:
             self._checkpoint=(tuple(events),tuple(operations),balances,zero_batches,
                 len(operations)-int(self._pending_manual)) if status is not FlowStatus.COMPLETED else None
             duration = None if self._started_at is None else max(0., self.clock()-self._started_at)
+            terminated_detail = None
+            if status is FlowStatus.MANUAL_RESOLUTION and error:
+                text = str(error).strip()
+                terminated_detail = text[:200] if text else None
             return ArenaFarmingResult(status, tuple(events) + (FlowEvent('arena.farming.terminated',
+                detail=terminated_detail,
                 fields={'reason': reason.value,'stamina_consumed':self.stamina_consumed,
                     'remaining_stamina_budget':self.remaining_stamina_budget,
                     'maximum_stamina_consumption':self.config.maximum_stamina_consumption,
@@ -111,6 +124,7 @@ class ArenaFarmingCycle:
                     'final_difficulty':getattr(getattr(self,'controller',None),'difficulty',None).value
                         if getattr(self,'controller',None) is not None else None,
                     'manual_entries':len(self._credited_entries),
+                    'intervention_activity':activity,
                     'monster_wave_passes':sum(bool(op.event_count('monster_wave.completed'))
                         for op in operations if op.status is FlowStatus.COMPLETED)}),), error=error,
                 failure=subordinate.failure if subordinate else None,
@@ -121,16 +135,34 @@ class ArenaFarmingCycle:
                 stamina_prepared=self.stamina_prepared,stamina_consumption_pending=self._pending_manual,
                 duration=duration,maximum_stamina_consumption=self.config.maximum_stamina_consumption)
 
-        def read(previous=None):
+        def _reader_diagnosis():
+            diagnosis = getattr(self.reader, 'last_diagnosis', None)
+            if isinstance(diagnosis, dict) and isinstance(diagnosis.get('summary'), str):
+                return diagnosis['summary'][:200]
+            return None
+
+        def read(previous=None, *, post_claim=False):
             if self.cancel_requested():
                 raise RuntimeWaitCancelled('Arena Farming Cycle cancelled')
-            value = self.reader.read()
+            if post_claim:
+                post_claim_read = getattr(self.reader, 'read_post_claim', None)
+                value = post_claim_read() if callable(post_claim_read) else self.reader.read()
+            else:
+                value = self.reader.read()
             if self.cancel_requested():
                 raise RuntimeWaitCancelled('Arena Farming Cycle cancelled')
             if (not isinstance(value, ArenaFarmingResources)
                     or not 0 <= self.clock() - value.observed_at <= 4.
                     or previous and (value.sequence <= previous.sequence or value.observed_at <= previous.observed_at)):
+                if isinstance(value, ArenaFarmingResources):
+                    if not 0 <= self.clock() - value.observed_at <= 4.:
+                        self._last_resource_diagnosis = 'cycle_frame_not_fresh'
+                    else:
+                        self._last_resource_diagnosis = 'cycle_stale_or_pre_claim_reuse'
+                else:
+                    self._last_resource_diagnosis = _reader_diagnosis() or 'resource_refresh_unavailable'
                 return None
+            self._last_resource_diagnosis = None
             events.append(FlowEvent('arena.farming.resources', fields={
                 'badges': value.badges, 'sapphires': value.sapphires, 'sequence': value.sequence}))
             return value
@@ -144,7 +176,8 @@ class ArenaFarmingCycle:
             # or any new economic action. Its owner alone can close that entry.
             if not self._pending_manual and not self._pending_supply:balances = read(balances)
             if balances is None:
-                return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION)
+                return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION,
+                    error=self._last_resource_diagnosis or 'initial resources ambiguous')
             for index in range(start_index,self.max_operations):
                 if self.cancel_requested():
                     return finish(FarmingTermination.CANCELLED, FlowStatus.CANCELLED)
@@ -168,8 +201,14 @@ class ArenaFarmingCycle:
                             refreshed=False
                             def still_manual():
                                 nonlocal balances,refreshed
-                                value=read(balances)
-                                if value is None:raise ValueError('post-claim resources ambiguous')
+                                # Passive post-Claim recovery: one extra fresh frame
+                                # (4 vs 3), same gates, zero gameplay inputs, no
+                                # reuse of pre-Claim balances, cancelable.
+                                value=read(balances, post_claim=True)
+                                if value is None:
+                                    diagnosis = (self._last_resource_diagnosis
+                                                 or 'post-claim resources ambiguous')
+                                    raise ValueError(f'post-claim resources ambiguous: {diagnosis}'[:200])
                                 balances=value;refreshed=True
                                 return self.activity(balances)=='manual_stages'
                             supply=self.manual_stages.prepare_stamina(required,still_manual=still_manual)
@@ -240,7 +279,8 @@ class ArenaFarmingCycle:
                     # An owner's terminal is known, but routing/progress is not.
                     # Preserve this execution; no fresh execution/reset/re-input.
                     self._unsafe_to_restart=True
-                    return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION, result)
+                    return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION, result,
+                        error=self._last_resource_diagnosis or 'post-operation resources ambiguous')
                 before, balances = balances, after
                 if activity == 'manual_stages':
                     from bot.manual_stages import ManualStagesResult, ManualStageOutcome
@@ -250,11 +290,13 @@ class ArenaFarmingCycle:
                     batch = getattr(result, 'batch_result', None)
                     if (getattr(result, 'mode', None) is not ArenaMode.AUTO_REPEAT or batch is None
                             or after.observed_at <= batch.observed_at):
-                        return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION, result)
+                        return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION, result,
+                            error='Arena batch receipt missing or resources not observed after terminal')
                     try:
                         decision = self.controller.observe(batch)
-                    except ValueError:
-                        return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION, result)
+                    except ValueError as error:
+                        return finish(FarmingTermination.AMBIGUOUS, FlowStatus.MANUAL_RESOLUTION, result,
+                            error=f'Arena controller rejected batch receipt: {error}')
                     events.append(FlowEvent('arena.farming.difficulty', fields={
                         'used_tickets': batch.used_tickets, 'won_tickets': batch.won_tickets,
                         'batch_id':batch.provenance.run_id,'operation_index':index+1,

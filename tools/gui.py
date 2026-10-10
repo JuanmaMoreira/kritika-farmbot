@@ -789,6 +789,7 @@ class KritikaFarmBotGui:
                     f"{row['ads_last_attempt_status'] or row['ads_status'] or 'UNKNOWN'} / {local_time(row['ads_last_attempt_at'] if row['ads_last_attempt_at'] is not None else ads_at)}",
                     'UNKNOWN' if row['wb_participated'] is None else 'YES' if row['wb_participated'] else 'NO',
                     f"{row['wb_cycle_id'] or 'UNKNOWN'} / {'open' if clock and clock['wb_open'] else 'closed' if clock else 'UNKNOWN'}",
+                    '—' if row.get('arena_vp') is None else f"{row['arena_vp']//1000}k",
                     *(row[k] if row[k] is not None else '—' for k in ('lapiz','dark_essence','light_essence','nature_essence','k_coins')),
                     local_time(observed))
                 if self.character_table.exists(cid):

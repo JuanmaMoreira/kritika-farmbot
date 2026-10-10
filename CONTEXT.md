@@ -1,5 +1,45 @@
 # Estado actual — Kritika FarmBot
 
+## Arena Farming / Arena VP — estabilización local 2026-10-10
+
+Checkpoint sobre `56b472d0e008d7e9d2b8f6842491c7feced095a0`, rama
+`rebuild/stable-baseline`; trabajo independiente preservado mediante hunks separados.
+Las sesiones nocturnas Ice Warlock `16fdb15e` (6batches/480Stamina) y Eilla
+`a81d6af4` (5batches/480Stamina) fallaron en el mismo fallback Equipment Full→
+Combine NO_RELIEF→Sell: adapter Stages intentaba abrir QM desde Lobby con hitbox
+de otro contexto. Ahora Inventory directo(.655,.75), reader/freshness owner de Sell.
+No es el fallo previo de Monk post-Clear ni Dark Valkyrie post-Claim.
+
+Se conservan fixes Muse pasivos; límites incluyen captura/warmup y rechazan OCR
+tardío. FAILURE técnico MW no se trata como miss. Captura nativa retorna sus
+propios pixels aun si stream avanza, con copia independiente. Primer smoke vendió
+113→107 y descubrió miss transitorio de Support Activated al reentrar; Mao espera
+pasivamente estado conocido hasta6s, sin bajar thresholds ni nuevos inputs.
+MANUAL conserva etapa/error y Session Report muestra Intervention; Shared
+INTERRUPTED requiere restauración manual, sin cleanup automático incierto.
+
+Smoke representativo `d62dc9b8…`: COMPLETED,2Manual/1MW/1Arena HARD104/88,
+120Stamina, siguiente Lobby acreditado; runtime cerrado15:42:40Z. Primera ROI VP
+omitió OCR contaminado por Overall Rank sin afectar el resultado. Borde derecho
+corregido con ese frame: ROI(.489,.228,.633,.270), replay182070 acreditado.
+VP best-effort sobre frame del retorno normal tras Auto Repeat acreditado; el OCR
+ocurre después de acreditar Lobby y omite frames expirados, sin agregar espera
+de retorno por una lectura lenta/fallida. Por identidad
+estable en SQLite schema2, entero/time/semana; GUI154k/0k/—. Lunes usa fase UTC
+WB (referencia curada07:00Z /04:00 -03), catch-up y rechazo de escrituras antiguas;
+sin routing, aritmética de premios, taps extra ni polling nuevo.
+
+Validación dirigida: grupo principal402passed; grupo posterior307passed;
+regresiones finales116passed y VP/GUI33passed (grupos superpuestos).
+Evaluators incrementales Arena Farming9/9 y VP6/6, wrong0. Sin campaña28/28.
+Smoke focal `cc3f9349…`: COMPLETED,MW7Sapphire→Badge12 /HARD8used0won,
+0Stamina, vuelve Lobby Badge4/Sapphire0. Hook guarda Eilla182050 a15:48:18.818Z,
+semana2026-10-05; reapertura SQLite confirma, GUI182k. Runtime cerrado15:48:34.949Z.
+Nueva regresión VP de OCR atravesando reset:21passed, sin escribir semana anterior.
+[Causas, configuración histórica, evidencia y límites](docs/ARENA_STABILIZATION_20261010.md).
+[Revisión, aislamiento y validación del checkpoint](docs/ARENA_STABILIZATION_CHECKPOINT_20261010.md).
+Sesión continua600Stamina pendiente del uso ordinario; no se hizo nueva campaña live.
+
 ## Arena Farming — Session Report analítico y checkpoint 2026-10-09
 
 Proyección por ocurrencia sin IO/OCR/input: resumen visible y tabla de batches

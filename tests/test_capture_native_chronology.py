@@ -57,3 +57,19 @@ def test_slow_native_capture_retains_old_acquisition_time_and_stays_stale():
     snapshot = capture.refresh_native()
     assert snapshot.timestamp == 100.
     assert now[0] - snapshot.timestamp > 2.
+
+def test_newer_receiver_during_native_capture_cannot_substitute_stream_pixels():
+    now=[100.]
+    capture=source(lambda:now[0])
+    native=np.full((8,16,3),200,dtype=np.uint8)
+    stream=np.zeros_like(native)
+    def take(**kwargs):
+        now[0]=101.
+        capture._publish(stream,timestamp=101.)
+        return cv2.imencode('.png',native)[1].tobytes()
+    capture.adb.capture_png.side_effect=take
+    frame=capture.refresh_native(timeout=3.)
+    assert frame.timestamp==100. and np.array_equal(frame.image,native)
+    assert capture.get_frame().timestamp==101.
+    assert frame.sequence>capture.get_frame().sequence
+    capture.adb.capture_png.assert_called_once_with(timeout=3.)

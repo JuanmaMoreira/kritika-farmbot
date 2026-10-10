@@ -40,7 +40,7 @@ POINTS={
     StageControl.STAMINA_INCREMENT:(.672,.805),
     StageControl.DECLINE_AD_TICKET:(.568,.625),
     StageControl.NO_ADS_OK:(.500,.626),
-    StageControl.LOBBY_INVENTORY:(.074,.35),
+    StageControl.LOBBY_INVENTORY:(.655,.75),
 }
 
 @dataclass(frozen=True)

@@ -562,13 +562,15 @@ class ProductiveRuntime:
         from bot.arena_config import ArenaMode
         from bot.arena_flow import ArenaFlow
         from bot.arena_flow_reader import ArenaFlowReader
+        from bot.arena_vp import ArenaVictoryPointReader
         from bot.relief_policy import coordinator_for
         return ArenaFlow(self.observer,self.actions,
             ArenaFlowReader(self.ocr_engine or RapidOcrEngine()),difficulty,
             socket_relief=self.socket_relief,reliefs=coordinator_for(self),
             transition=self.build_verified_transition(),cancel_requested=self.cancel_requested,
             events=self.events,authorized_badge_ceiling=authorized_badge_ceiling,
-            mode=ArenaMode.AUTO_REPEAT if mode is None else mode,return_context=return_context)
+            mode=ArenaMode.AUTO_REPEAT if mode is None else mode,return_context=return_context,
+            victory_points=ArenaVictoryPointReader(self.ocr_engine or RapidOcrEngine()))
 
     def build_meteorites_character_scope(self):
         from types import SimpleNamespace

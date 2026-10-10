@@ -30,12 +30,20 @@ def main():
     parser.add_argument('--min-badges', type=int, default=40)
     parser.add_argument('--min-sapphires', type=int, default=100)
     parser.add_argument('--max-stamina',type=int)
+    parser.add_argument('--relief-routine',help='Reuse only this saved routine relief policy')
     args = parser.parse_args()
     if args.max_operations < 1 or args.arena_ceiling < 8:
         parser.error('positive operation budget and Badge ceiling >=8 required')
     output = args.output.resolve(); output.relative_to(ROOT/'artifacts')
     output.mkdir(parents=True, exist_ok=False)
     evidence = {}; cycles = []; following = []
+    relief_policy=None
+    if args.relief_routine:
+        from bot.routines import RoutineStore
+        from bot.flow_registry import DEFAULT_FLOW_REGISTRY
+        routines,_=RoutineStore(ROOT/'routines.json',DEFAULT_FLOW_REGISTRY).load()
+        selected=next(r for r in routines if r.name==args.relief_routine)
+        relief_policy=selected.relief_policy
     def save(name, frame):
         path = output/f'{name}.png'
         if not cv2.imwrite(str(path), frame.image): raise OSError('capture write failed')
@@ -84,7 +92,7 @@ def main():
             RoutineStep('arena', config={'arena': ArenaConfig(ArenaMode.FARMING_CYCLE,
                 min_badges_for_arena=args.min_badges,min_sapphires_for_mw=args.min_sapphires,
                 maximum_stamina_consumption=args.max_stamina).to_dict()}),
-            RoutineStep('lobby_probe'))))
+            RoutineStep('lobby_probe')),relief_policy=relief_policy))
         cycle_result = next((r for r in result.flow_results if hasattr(r, 'termination')), None)
         operations = []
         if cycle_result:

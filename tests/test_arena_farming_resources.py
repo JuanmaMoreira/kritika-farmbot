@@ -84,12 +84,12 @@ def test_freshness_is_rechecked_after_ocr_and_cancel_is_safe():
 def test_two_distinct_native_frames_must_agree_and_no_stale_reuse():
     reader, _ = reader_world()
     sequence = iter([2, 3, 4]); values = iter([40, 41, 41])
-    reader.observer.source = NS(refresh_native=lambda: NS(sequence=next(sequence), timestamp=101.))
+    reader.observer.source = NS(refresh_native=lambda **kwargs: NS(sequence=next(sequence), timestamp=101.))
     reader.parse = lambda f: ArenaFarmingResources(next(values), 100, f.sequence, f.timestamp, 'a'*64)
     # Equal timestamps are a source discontinuity, not confirmation.
     assert reader.read() is None
     sequence = iter([2, 3, 4]); values = iter([40, 41, 41])
-    def refresh():
+    def refresh(**kwargs):
         seq = next(sequence); return NS(sequence=seq, timestamp=100. + seq)
     reader.observer.source.refresh_native = refresh
     assert reader.read().badges == 41

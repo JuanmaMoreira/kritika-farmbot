@@ -56,6 +56,7 @@ class ArenaFarmingReport:
     stamina_purchased: int | None
     kcoins_spent: int | None
     gaps: tuple[str, ...] = ()
+    intervention: str | None = None
 
     @property
     def used(self):
@@ -179,7 +180,8 @@ def project_arena_farming(raw: FlowResult) -> ArenaFarmingReport | None:
         terminal.get('final_difficulty') or (batches[-1].next_difficulty if batches else None),
         _integer(terminal.get('stamina_consumed')), _integer(terminal.get('maximum_stamina_consumption')),
         'maximum_stamina_consumption' in terminal, manual_count, mw_count, sapphire_generation,
-        sapphire_consumption, purchased, cost, tuple(dict.fromkeys(gaps)))
+        sapphire_consumption, purchased, cost, tuple(dict.fromkeys(gaps)),
+        (terminations[-1].detail if terminations else None) or raw.error)
 
 
 def number(value):
@@ -218,6 +220,8 @@ def render_arena_farming(summary, *, character, character_id, occurrence, meteor
         f'Shared Meteorites: {lifecycle}']
     if summary.gaps:
         lines.append('Partial information: ' + '; '.join(summary.gaps))
+    if summary.intervention:
+        lines.append('Intervention: ' + summary.intervention)
     return '\n'.join(lines)
 
 

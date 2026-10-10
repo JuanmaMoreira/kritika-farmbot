@@ -254,6 +254,7 @@ CHARACTER_SORT_FIELDS = {
     'Character': 'display_name', 'Stage Ads': 'stage_ads_remaining',
     'Ads status / updated': 'ads_updated_at',
     'WB participated': 'wb_participated', 'WB cycle / status': 'wb_cycle_id',
+    'Arena VP': 'arena_vp',
     'Lapiz': 'lapiz',
     'Dark': 'dark_essence', 'Light': 'light_essence', 'Nature': 'nature_essence',
     'K Coins': 'k_coins', 'Resource snapshot': 'resource_observed_at',
@@ -269,7 +270,7 @@ def sorted_character_rows(rows, column='Character', descending=False):
     field = CHARACTER_SORT_FIELDS[column]
     ordered = sorted(rows, key=lambda r: (r['display_name'].casefold(), r['character_id']))
     def key(row):
-        value = row[field]
+        value = row.get(field)
         if field == 'ads_updated_at' and row.get('ads_last_attempt_at') is not None:
             value = row['ads_last_attempt_at']
         return value.casefold() if isinstance(value, str) else value

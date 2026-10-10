@@ -5,6 +5,20 @@ from bot.stages_runtime import StagesNavigation
 from bot.stages_actions import StageControl as C
 from bot.observations import Observation, ObservationBatch, ObservationSource
 from bot.state import ResolutionStatus
+from bot.stages_runtime import MaoSupport
+
+def test_support_miss_after_relief_recovers_passively_without_fill_or_activation():
+    before=snapshot('config')
+    active=snapshot('config',('support_active',))
+    calls=[]
+    class Nav:
+        events=None
+        def wait(self,predicate,**kw):
+            assert predicate(active);calls.append('passive');return active
+        def tap(self,*a):raise AssertionError('no input from a miss')
+        def change(self,*a):raise AssertionError('no purchase from a miss')
+    assert MaoSupport(Nav()).ensure(before) is active
+    assert calls==['passive']
 
 def snapshot(layer=None,flags=()):
     obs=[Observation('stages.'+f,1.,ObservationSource.LOCAL_CV) for f in flags]

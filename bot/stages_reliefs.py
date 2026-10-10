@@ -1,8 +1,8 @@
 """Stages caller adapters; inventory policy and relief execution stay global."""
 from dataclasses import replace
-from bot.catalog import POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL, SCREEN_COMBINE, SCREEN_SOCKET, MENU_QUICK
+from bot.catalog import POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL, SCREEN_COMBINE, SCREEN_SOCKET
 from bot.semantic_actions import (OpenEquipmentCombine, AcceptSocketInventoryFull,
-    ExitCombine, ExitSocket, OpenQuickMenu, SelectQuickMenuInventory, ExitEquipmentInventory)
+    ExitCombine, ExitSocket, ExitEquipmentInventory)
 from bot.equipment_combine_relief import EquipmentCombineReturnPlan
 from bot.equipment_relief import EquipmentReliefRequest, EquipmentReliefSellPlan, FreshCallerContext
 from bot.socket_inventory_relief import SocketReturnPlan
@@ -92,11 +92,10 @@ class StagesReliefs:
             return resume(control,s,expected) if resume is not None else n.change(control,s,expected)
         def enter_inventory(_):
             n.exit_to_lobby()
-            s=n.wait(lobby);n.act(OpenQuickMenu(),s)
-            s=n.wait(lambda s:set(s.state.overlays)=={MENU_QUICK})
+            s=n.wait(lobby)
             from bot.stages_actions import StageAction, StageControl
-            # Lobby's menu is at the left edge; the existing Craft intent is
-            # explicitly for its shifted menu and would open Socket here.
+            # Lobby exposes Inventory directly. The shifted QM cabecera is
+            # not a Lobby control (Ice Warlock/Eilla 2026-10-10).
             n.act(StageAction(StageControl.LOBBY_INVENTORY),s)
             self.equipment.sell_runtime._after_sequence=s.sequence
             self.equipment.sell_runtime._not_before=n.clock()
@@ -113,6 +112,10 @@ class StagesReliefs:
             EquipmentReliefSellPlan(coordinator_for(self.dependencies).policy.equipment_sell,enter_inventory,return_inventory),
             n.cancel_requested)
         result=self.equipment.run(request)
+        record_best_effort(n.events,'stages.equipment_relief_result',
+            outcome=result.outcome.value,stage=result.stage,error=result.error,
+            returned_caller_result=result.returned_caller_result)
         if 'cancelled' in result.outcome.value:raise RuntimeWaitCancelled('equipment relief cancelled')
-        if not result.returned_caller_result:raise ValueError('stages equipment relief: '+str(result.error or result.stage))
+        if not result.returned_caller_result:raise ValueError(
+            f'stages equipment relief [{result.stage}]: {result.error or result.outcome.value}')
         return result.caller_result

@@ -351,6 +351,18 @@ posibles de inventario. Loading/CP/E no sustituyeron los cambios de slot.
 
 ## Arena — USER_GT y adquisición 2026-10-08
 
+- **USER_GT 2026-10-10:** rankings reinician todos los lunes en el reset sincronizado
+  de World Boss, con cálculo/cierre aproximadamente30min antes. Referencia curada
+  actual07:00Z /04:00 -03 y cierre06:30Z /03:30 -03; reutilizar calibración WB,
+  no asumir un horario local permanente. Victory Points pueden disminuir cuando
+  otros jugadores vencen al personaje.
+- **LIVE_EVIDENCE / calibración 2026-10-10:** total `Victory Point(s):` en Arena BASE,
+  ROI normalizada(.489,.228,.633,.270), adquirida en capturas de selección con0,
+  128795 y182070. El borde derecho excluye Overall Rank, que contaminaba la ROI
+  más ancha. No sustituirlo por Acquired Victory Points del resultado.
+  **USER_GT:** aun si intersecta chat, intentar OCR; oclusión/ambigüedad omite el
+  dato sin alterar el batch. Manifest focal: `datasets/arena_vp_manifest.json`.
+
 Un batch EASY x8 completo observado; [informe y gaps](ARENA_HIL_ACQUISITION_20261008.md).
 B1 añadió un único batch EASY x8 autorizado y retorno verificado; hubo pausas del
 observer y recuperación explícita, detalladas en [informe B1](ARENA_B1_20261008.md).

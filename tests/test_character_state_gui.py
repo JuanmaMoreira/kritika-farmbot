@@ -79,3 +79,18 @@ def test_gui_loads_28_and_reflects_reset_without_visits_or_restart(tmp_path):
     assert len(app.character_table.rows)==28
     assert all(v[1]==2 for v in app.character_table.rows.values())
     reopen.close()
+
+
+def test_arena_vp_compact_display_and_unknown_are_distinct(tmp_path):
+    store = CharacterStateStore(tmp_path/'state.db')
+    period = store.clock.arena_period()
+    store.arena_victory_points('monk',154260,observed_at=store.now(),period=period)
+    store.arena_victory_points('eilla',0,observed_at=store.now(),period=period)
+    app = KritikaFarmBotGui.__new__(KritikaFarmBotGui)
+    app.root = SimpleNamespace(winfo_exists=lambda:True,after=lambda *args:None)
+    app.character_store, app.character_table, app.reset_clock_var = store,Table(),Var()
+    app._refresh_character_state()
+    assert app.character_table.rows['monk'][5] == '154k'
+    assert app.character_table.rows['eilla'][5] == '0k'
+    assert app.character_table.rows['ice_warlock'][5] == '—'
+    store.close()

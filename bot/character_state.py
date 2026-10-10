@@ -1,7 +1,8 @@
 """Durable character facts. Informational balances never authorize gameplay."""
 from contextlib import contextmanager
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import math
 from pathlib import Path
 import sqlite3
 import threading
@@ -10,9 +11,12 @@ import time
 from bot.character_identity import CHARACTER_IDS, PERSONAL_NAME_CLASSES
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / 'runtime/character_state.sqlite3'
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DAY = 86400
 WB_PERIOD = 3 * DAY  # projection between countdown observations, not a wall hour
+# GAMEPLAY_GT: WB countdown 2026-10-07 close06:30Z -> synchronized reset07:00Z.
+# Runtime countdown calibration supersedes this curated reference.
+SYNCHRONIZED_RESET_REFERENCE = datetime(2026, 10, 7, 7, tzinfo=timezone.utc).timestamp()
 
 def utc_now():
     return time.time()
@@ -49,7 +53,7 @@ class CharacterStateStore:
         except BaseException:
             self.db.close()
             raise
-        if version not in (0, SCHEMA_VERSION):
+        if version not in (0, 1, SCHEMA_VERSION):
             self.db.close()
             raise ValueError(f'Unsupported character DB schema {version}; file preserved')
         self.db.execute('PRAGMA foreign_keys=ON')
@@ -83,6 +87,11 @@ class CharacterStateStore:
                     observed_at REAL NOT NULL, raw_remaining TEXT NOT NULL, source TEXT NOT NULL,
                     next_daily REAL NOT NULL, next_wb REAL NOT NULL, wb_cycle_id INTEGER NOT NULL,
                     wb_open INTEGER NOT NULL, precision_seconds INTEGER NOT NULL)''')
+                columns = {r[1] for r in self.db.execute('PRAGMA table_info(operational)')}
+                for name, sql_type in (('arena_vp','INTEGER CHECK(arena_vp>=0)'),
+                                       ('arena_vp_observed_at','REAL'), ('arena_vp_period','TEXT')):
+                    if name not in columns:
+                        self.db.execute(f'ALTER TABLE operational ADD COLUMN {name} {sql_type}')
                 for canonical, cid in CHARACTER_IDS.items():
                     self.db.execute('INSERT OR IGNORE INTO characters VALUES (?,?,?,?)', (cid, canonical, PERSONAL_NAME_CLASSES[canonical], 'USER_GT'))
                     # A renamed display must never rename its primary key.
@@ -199,6 +208,26 @@ class CharacterStateStore:
             self.db.execute('UPDATE operational SET wb_daily_quest_state=? WHERE character_id=?',(value,cid))
             self.history(cid,'wb_daily_quest',value,at,'DAILY_QUEST_MARKER')
 
+    def arena_victory_points(self, cid, value, *, observed_at, period):
+        self._valid_id(cid)
+        if type(value) is not int or value < 0 or not math.isfinite(observed_at):
+            return False
+        with self.transaction():
+            now = self.now()
+            self.clock._catch_up(now)
+            if (observed_at > now or period != self.clock.arena_period(now)
+                    or period != self.clock.arena_period(observed_at)):
+                return False
+            old = self.db.execute('SELECT arena_vp_observed_at FROM operational WHERE character_id=?',(cid,)).fetchone()[0]
+            if old is not None and observed_at < old:
+                return False
+            self.db.execute('UPDATE operational SET arena_vp=?,arena_vp_observed_at=?,arena_vp_period=? WHERE character_id=?',
+                            (value,observed_at,period,cid))
+            self.history(cid,'arena_vp',value,observed_at,'ARENA_BASE_OCR',epoch=period)
+        self.emit('character_state.arena_vp_updated',character_id=cid,value=value,
+                  observed_at=stamp(observed_at),period=period)
+        return True
+
     def rows(self):
         self.clock.catch_up()
         with self.lock:
@@ -220,6 +249,21 @@ class ResetClock:
     def _read(self):
         row = self.store.db.execute('SELECT * FROM reset_clock WHERE singleton=1').fetchone()
         return dict(row) if row else None
+
+    def arena_period(self, at=None):
+        """Monday at the WB synchronized daily boundary, in UTC."""
+        at = self.store.now() if at is None else at
+        with self.store.lock:
+            state = self._read()
+        phase = (state['anchor'] if state else SYNCHRONIZED_RESET_REFERENCE) % DAY
+        date = datetime.fromtimestamp(at, timezone.utc)
+        monday = date.replace(hour=0,minute=0,second=0,microsecond=0) - timedelta(days=date.weekday())
+        boundary = monday.timestamp() + phase
+        if at < boundary:
+            boundary -= 7 * DAY
+        # Week identity is the Monday date, independent of minute-level WB
+        # countdown corrections within that week. Phase still owns the edge.
+        return datetime.fromtimestamp(boundary, timezone.utc).date().isoformat()
 
     def state(self):
         self.catch_up()
@@ -271,6 +315,11 @@ class ResetClock:
 
     def _catch_up(self, now):
         s = self.store
+        # Access/startup catch-up also works while the application was closed.
+        # Keep history, but never display or revive a previous ranking week.
+        s.db.execute('''UPDATE operational SET arena_vp=NULL,arena_vp_observed_at=NULL,
+            arena_vp_period=NULL WHERE arena_vp_period IS NOT NULL AND substr(arena_vp_period,1,10)<>?''',
+            (self.arena_period(now),))
         c = self._read()
         if c is None:
             return

@@ -340,3 +340,20 @@ def test_ocr_failure_is_controlled():
 
     assert result.status is FactReadStatus.FAILURE
     assert "inference failed" in result.detail
+
+
+def test_late_ocr_cannot_confirm_after_deadline():
+    fact_reader = reader([1, 2], ["5", "5"])
+    extractor = fact_reader._extractors[RESOURCE_SAPPHIRES]
+    original = extractor.engine.recognize
+    clock = fact_reader._clock
+
+    def slow(image):
+        value = original(image)
+        clock.sleep(.6)
+        return value
+
+    extractor.engine.recognize = slow
+    result = fact_reader.read_sapphires(after_sequence=0, timeout=1.)
+    assert result.status is FactReadStatus.TIMEOUT
+    assert result.fact is None
