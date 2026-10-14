@@ -19,21 +19,29 @@ class ArenaFlowVisuals(ArenaVisuals):
         root = Path(asset_root or Path(__file__).resolve().parents[1])
         manifest = root/'datasets/arena_b1_assets_manifest.json'
         b2 = root/'datasets/arena_b2_assets_manifest.json'
+        previous = root/'datasets/arena_previous_rewards_assets_manifest.json'
         specs=(json.loads(manifest.read_text(encoding='utf8'))['assets']
-               + json.loads(b2.read_text(encoding='utf8'))['assets'])
+               + json.loads(b2.read_text(encoding='utf8'))['assets']
+               + json.loads(previous.read_text(encoding='utf8'))['assets'])
         for spec in specs:
             template = cv2.imread(str(root/spec['path']))
             if template is None:
                 raise FileNotFoundError(spec['path'])
             self._specs[spec['id']] = spec
             self._templates[spec['id']] = template
-        self.asset_paths += tuple(root/spec['path'] for spec in specs)+(manifest,b2)
+        self.asset_paths += tuple(root/spec['path'] for spec in specs)+(manifest,b2,previous)
+
+    def previous_rewards(self, frame):
+        # Fixed Arena wording + past-season wording + mailbox notice + panel OK.
+        # Season numbers, character class, ranks and amounts are deliberately excluded.
+        return all(self.clear(frame, 'previous_'+name)
+                   for name in ('arena_notice', 'past_results', 'mailbox', 'ok'))
 
     def score(self, frame, name):
         shape = self._specs[name].get('reference_shape')
         if shape is not None and tuple(frame.shape[:2]) != tuple(shape):
             # Resize the whole native image before cropping so integer ROI
-            # rounding shares the template's sampling phase. B1 is unchanged.
+            # rounding shares the template's sampling phase.
             frame = cv2.resize(frame, (shape[1], shape[0]), interpolation=cv2.INTER_AREA)
         return super().score(frame, name)
 

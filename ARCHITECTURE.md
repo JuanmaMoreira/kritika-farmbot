@@ -250,6 +250,19 @@ acredita final. WIN transitorio de batch no equivale al resultado individual.
 dependencias del resolver incluyen el nuevo detector. No hay ruta Arena en el hub
 Survival. B1 compone un owner standalone, descrito debajo.
 
+Adquisición 2026-10-12: `landmark.arena_previous_rewards` produce el MODAL
+`popup.arena_previous_rewards` mediante `ARENA_MODAL_PAIRS` del catálogo.
+`ArenaFlowVisuals.previous_rewards()` combina wording fijo de Arena/temporada
+anterior, aviso mailbox y OK, con manifest propio y geometría desde shape; no
+lee elegibilidad, rangos ni importes. Identifica el MODAL sin fabricar Arena BASE
+oculta. Default/scope Arena conservan `ArenaDetector`, sin estado global de
+elegibilidad. USER_GT: este modal no posee Claim; claim de sus rewards pertenece
+a Mailbox. `ArenaFlow._navigate` admite su presencia visual opcional después de
+entrar a Arena y ejecuta un único `PREVIOUS_REWARDS_OK` en el centro adquirido
+(.500,.8215), desde snapshot positivo fresco. Exige selección limpia fresca antes
+de elegir dificultad; cierre sin efecto agota la espera sin repetir OK. Farming
+Cycle usa ese mismo owner, sin cambiar su routing ni añadir policy de claim.
+
 `ArenaResultReader` devuelve resultado tipado o `None` (UNKNOWN). Exige título,
 Badge Used, Acquired Karats, estructura y OK del modal final, con ROIs desde shape.
 Padding numérico se compara en color absoluto para rechazar tails corruptos que
@@ -279,7 +292,8 @@ preparación, lineage y retorno. `ProductiveRuntime.build_arena_flow(difficulty)
 compone observer/source/actions/OCR compartidos y los reliefs existentes; no está
 acoplado a Rotation, Meteorites, budget de Stamina ni generadores de badges. Entrada
 contractual Lobby limpio: Battle→Select Mode con tarjeta Arena→selección→Challenge.
-New Ranking acreditado al entrar se cierra con un único OK antes de la dificultad.
+Previous Rewards y New Ranking acreditados al entrar se cierran con su único OK
+adquirido antes de la dificultad.
 Challenge solo no acredita idle, pues es transitorio dentro del batch. Salida
 standalone legacy conserva `screen.arena` sin overlays. B2 registra la ocurrencia
 de rutina con contrato Lobby→Lobby y ruta Back adquirida; el caller posee la

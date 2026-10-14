@@ -351,6 +351,23 @@ posibles de inventario. Loading/CP/E no sustituyeron los cambios de slot.
 
 ## Arena — USER_GT y adquisición 2026-10-08
 
+- **USER_GT 2026-10-12, Previous Season Rewards:** MODAL por personaje sobre
+  Arena BASE, disponible sólo si ese personaje participó en la temporada anterior
+  y tiene pendiente el reconocimiento.
+  Puede haber varios personajes pendientes; no es global ni obligatorio en cada
+  visita. Su detección necesita evidencia visual, no una inferencia de elegibilidad.
+- **LIVE_EVIDENCE 2026-10-12:** Drakenn26, Lobby→Battle→Select Mode Arena→Arena;
+  primer frame post-tap todavía Loading, luego MODAL `Arena 641: Past Season Results`
+  y `Arena 642 Season Arena has begun.`. Telumpel Rank22 (44.00%):30Karats;
+  Overall Rank819 (35.29%):5Accessory Material y70Karats. Footer:
+  `Ranking rewards will be sent to mailbox.`; único control visible `OK`, sin X.
+  Adquisición inicial sin OK. **USER_GT posterior:** no hay Claim en este modal;
+  las recompensas aparecen en Mailbox y su claim pertenece al flow Mailbox.
+  **LIVE_EVIDENCE posterior:** un único OK cierra a selección limpia Arena BASE
+  (Beginner/Intermediate/Expert), sin New Ranking en el después observado.
+  Mailbox no abierto ni claim ejecutado; reapertura no adquirida, no asumirla.
+  Evidencia/contrato: [adquisición focal](ARENA_PREVIOUS_REWARDS_20261012.md).
+
 - **USER_GT 2026-10-10:** rankings reinician todos los lunes en el reset sincronizado
   de World Boss, con cálculo/cierre aproximadamente30min antes. Referencia curada
   actual07:00Z /04:00 -03 y cierre06:30Z /03:30 -03; reutilizar calibración WB,

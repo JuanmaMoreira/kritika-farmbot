@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "path": "tests/fixtures/arena_previous_rewards/lobby_before_01.png",
+      "sha256": "64981fb187fe6a398386aa867f3ffe4ce0ede7deda6585724ac63ca623c5d364",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/lobby_before_01.png",
+      "source_sha256": "bc4742cdddb2958e6673c606df2662786b74c3c51a2ebba399c42a2b5e325bd5",
+      "expected_previous_rewards": false,
+      "physical_state": "lobby_before",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/select_mode_before_01.png",
+      "sha256": "1abb58add45d68ecbc624856c08e9d31765ce202e6bee3e45ae30cc0a0674466",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/select_mode_before_01.png",
+      "source_sha256": "13c76fbe23f9fdd0c88818f3a0280094c09e347cbd9ef826854f12d7684eb281",
+      "expected_previous_rewards": false,
+      "physical_state": "select_mode_before",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/previous_rewards_01.png",
+      "sha256": "c2a9837ce329942ebf5ef39609066dc1a7908fe442595a7f19ba6d871cafca78",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_01.png",
+      "source_sha256": "9b377604d83d0eaeb2e12d13a5e6870c7ca1eb961d8bdf2aafbe8ecc9c36395d",
+      "expected_previous_rewards": false,
+      "physical_state": "select_mode_loading",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/previous_rewards_02.png",
+      "sha256": "5f759158389fcfd6e07f85cd9de38d8e53447d6144792f8fa1604b04fb43d59e",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_02.png",
+      "source_sha256": "6e49c278af4717c0f7a2eaa6ab615b36bfafce20c9b6e381340ef5f857d1ef3c",
+      "expected_previous_rewards": true,
+      "physical_state": "arena_previous_rewards",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/previous_rewards_03.png",
+      "sha256": "5d956db219e33b515dcff1cfeb1b92d84ff9e79a53fafb61c492be201a38a10e",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_03.png",
+      "source_sha256": "f065c2138cfa8018f7646c7e80f77a5ac9c44d1a8568ec5699ce52cb76a6d04c",
+      "expected_previous_rewards": true,
+      "physical_state": "arena_previous_rewards",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/ok_before_01.png",
+      "sha256": "e2f07068166c9c2010dd45a36cef7af48c54f5c249a7f6d689af990ac54efbb8",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/ok_before_01.png",
+      "source_sha256": "c8d6ecb7aa8a2db35bdeddd5443ddbad748c6ac0063b126683bb3c02d7e97d6f",
+      "expected_previous_rewards": true,
+      "physical_state": "arena_previous_rewards",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/ok_after_01.png",
+      "sha256": "abe6b3ec174fecf9df49c32de3f5226a789e7b0adc8eb845ad56b81e6881efe9",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/ok_after_01.png",
+      "source_sha256": "c86e84d5b23afa48038c377cc411799110fe40ac104c2713f5239e0aa5374e6b",
+      "expected_previous_rewards": false,
+      "physical_state": "arena_selection",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/ok_after_02.png",
+      "sha256": "c1ad345ce3439c8b9fac47d1643f634c5a025474a3414fe3ac155d4b36099aa7",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/ok_after_02.png",
+      "source_sha256": "8749c8fef5e435c0b43ee7e3a2a67d38e0097fb6eca087f6b09540afed4507da",
+      "expected_previous_rewards": false,
+      "physical_state": "arena_selection",
+      "authority": "LIVE_EVIDENCE reviewed against USER_GT"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/world_boss_season_negative.png",
+      "sha256": "462ee60876c6321de97aa2e5afa882ef7fd3345cafd8fabbc32e3d23d3f12fb3",
+      "source": "screencaps/semantic/world_boss/previous_rewards/20260827T230947_372077Z_01.png",
+      "source_sha256": "266c8d7f1f54c14483f4a51ea3ce436a769f81b103366ebb402ebf643b1cdebe",
+      "expected_previous_rewards": false,
+      "authority": "Existing confirmed semantic manifest",
+      "source_manifest": "datasets/world_boss_semantic_manifest.json"
+    },
+    {
+      "path": "tests/fixtures/arena_previous_rewards/monster_wave_season_negative.png",
+      "sha256": "a2af31e4f1f3dc154e5d3b4307ca6cb7d2a34e011d59bc1fa613f0d6862d7039",
+      "source": "screencaps/semantic/monster-wave/monster-wave-weekly-reward/01.png",
+      "source_sha256": "2d2bd4321cef6c021f89551eb6055068f13d9a2ea7483408c9ff15c75da708fb",
+      "expected_previous_rewards": false,
+      "authority": "Existing confirmed semantic manifest",
+      "source_manifest": "datasets/monster_wave_semantic_manifest.json"
+    }
+  ]
+}

@@ -78,6 +78,7 @@ class Visuals:
     def config(self,f): return self.state(f)=='config'
     def terminal(self,f): return self.state(f)=='terminal'
     def ranking(self,f): return self.state(f)=='ranking'
+    def previous_rewards(self,f): return self.state(f)=='previous_rewards'
     def insufficient(self,f): return self.state(f)=='insufficient'
     def loading(self,f): return self.state(f)=='loading'
     def active(self,f): return self.state(f)=='battle'

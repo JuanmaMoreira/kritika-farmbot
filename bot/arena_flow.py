@@ -178,7 +178,11 @@ class ArenaFlow:
         self._cursor=entry.frame.sequence; self._last_timestamp=entry.frame.timestamp; before=entry.frame
         # Arena acquisition target differs from the existing Survival entry.
         before=self._effect(C.BATTLE,before,self.v.select_mode)
-        before=self._effect(C.ARENA,before,lambda f:self.v.selection(f) or self.v.ranking(f))
+        before=self._effect(C.ARENA,before,lambda f:self.v.previous_rewards(f) or self.v.selection(f) or self.v.ranking(f))
+        if self.v.previous_rewards(before.image):
+            # Acquired acknowledgment only; rewards are claimed by Mailbox.
+            # One input, then require the acquired clean selection before difficulty.
+            before=self._effect(C.PREVIOUS_REWARDS_OK,before,self.v.selection)
         if self.v.ranking(before.image):
             before=self._effect(C.RANKING_OK,before,self.v.selection)
         return self._effect(C[self.difficulty.value],before,self._challenge)

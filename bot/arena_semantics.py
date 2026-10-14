@@ -17,7 +17,10 @@ ARENA_RESULT = "landmark.arena_batch_result"
 ARENA_INSUFFICIENT = "landmark.arena_insufficient_badge"
 ARENA_RANKING = "landmark.arena_new_ranking"
 ARENA_ACTIVE = "activity.arena_auto_repeat_active"
+ARENA_PREVIOUS_REWARDS = "landmark.arena_previous_rewards"
+POPUP_ARENA_PREVIOUS_REWARDS = "popup.arena_previous_rewards"
 ARENA_MODAL_PAIRS = (
+    (POPUP_ARENA_PREVIOUS_REWARDS, ARENA_PREVIOUS_REWARDS),
     ("popup.arena_auto_config", ARENA_CONFIG),
     ("popup.arena_batch_result", ARENA_RESULT),
     ("popup.arena_insufficient_badge", ARENA_INSUFFICIENT),
@@ -27,7 +30,8 @@ ARENA_OBSERVATIONS = ("landmark.arena_base", ARENA_SELECT, ARENA_CHALLENGE, AREN
                       ARENA_INSUFFICIENT, ARENA_RANKING, ARENA_ACTIVE,
                       "fact.arena_difficulty", "fact.arena_x8", "fact.arena_buff1",
                       "fact.arena_buff2", "fact.arena_buff3", "fact.arena_upon_defeat",
-                      ARENA_SINGLE_RESULT, ARENA_BATTLE, ARENA_MODE_SELECT)
+                      ARENA_SINGLE_RESULT, ARENA_BATTLE, ARENA_MODE_SELECT,
+                      ARENA_PREVIOUS_REWARDS)
 
 
 class ArenaDifficulty(str, Enum):

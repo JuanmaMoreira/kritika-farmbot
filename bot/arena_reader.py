@@ -13,7 +13,7 @@ from bot.arena_semantics import (
     ARENA_ACTIVE, ARENA_CHALLENGE, ARENA_CONFIG, ARENA_INSUFFICIENT,
     ARENA_RANKING, ARENA_RESULT, ARENA_SELECT, ArenaBatchExecution,
     ArenaBatchResult, ArenaDifficulty, ArenaPreparationFacts, ArenaResultProvenance,
-    ARENA_SINGLE_RESULT, ARENA_BATTLE, ARENA_MODE_SELECT,
+    ARENA_SINGLE_RESULT, ARENA_BATTLE, ARENA_MODE_SELECT, ARENA_PREVIOUS_REWARDS,
 )
 from bot.capture import FrameSnapshot
 from bot.controlled_wait import ControlledWait
@@ -143,7 +143,8 @@ class ArenaDetector:
         self.asset_paths = self._visuals.asset_paths + (Path(asset_root or Path(__file__).resolve().parents[1])/'datasets/arena_visual_assets_manifest.json',)
 
     def detect(self, frame):
-        checks = ((ARENA_SELECT, self._visuals.selection), (ARENA_CHALLENGE, self._visuals.challenge),
+        checks = ((ARENA_PREVIOUS_REWARDS, self._visuals.previous_rewards),
+                  (ARENA_SELECT, self._visuals.selection), (ARENA_CHALLENGE, self._visuals.challenge),
                   (ARENA_CONFIG, self._visuals.config), (ARENA_RESULT, self._visuals.terminal),
                   (ARENA_INSUFFICIENT, lambda f: self._visuals.has(f, 'insufficient')),
                   (ARENA_RANKING, self._visuals.ranking),

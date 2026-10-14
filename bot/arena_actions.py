@@ -23,6 +23,7 @@ class ArenaControl(str, Enum):
     RANKING_OK = 'ranking_ok'
     SINGLE_START = 'single_start'
     SINGLE_RESULT_CLOSE = 'single_result_close'
+    PREVIOUS_REWARDS_OK = 'previous_rewards_ok'
 
 
 @dataclass(frozen=True)
@@ -42,3 +43,4 @@ POINTS = dict(zip(ArenaControl, (
 )))
 POINTS[ArenaControl.SINGLE_START] = (.769, .943)
 POINTS[ArenaControl.SINGLE_RESULT_CLOSE] = (.5, .884)
+POINTS[ArenaControl.PREVIOUS_REWARDS_OK] = (.5, .8215)

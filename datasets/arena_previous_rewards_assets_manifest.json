@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "id": "previous_arena_notice",
+      "path": "assets/arena/previous_rewards/arena_notice.png",
+      "roi": [
+        0.434,
+        0.336,
+        0.66,
+        0.38
+      ],
+      "threshold": 0.92,
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "5085579dc5a995102d51463ac3ba77c8d87c377ca815c6bd28e62f5159c4453a",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_02.png",
+      "source_sha256": "6e49c278af4717c0f7a2eaa6ab615b36bfafce20c9b6e381340ef5f857d1ef3c",
+      "fixture_source": "tests/fixtures/arena_previous_rewards/previous_rewards_02.png",
+      "fixture_sha256": "5f759158389fcfd6e07f85cd9de38d8e53447d6144792f8fa1604b04fb43d59e"
+    },
+    {
+      "id": "previous_past_results",
+      "path": "assets/arena/previous_rewards/past_results.png",
+      "roi": [
+        0.46,
+        0.468,
+        0.64,
+        0.513
+      ],
+      "threshold": 0.92,
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "154f0dc7ebbef7ee02ba68dbbc1556322cdb46144b2cffb89ce63f14461422b8",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_02.png",
+      "source_sha256": "6e49c278af4717c0f7a2eaa6ab615b36bfafce20c9b6e381340ef5f857d1ef3c",
+      "fixture_source": "tests/fixtures/arena_previous_rewards/previous_rewards_02.png",
+      "fixture_sha256": "5f759158389fcfd6e07f85cd9de38d8e53447d6144792f8fa1604b04fb43d59e"
+    },
+    {
+      "id": "previous_mailbox",
+      "path": "assets/arena/previous_rewards/mailbox.png",
+      "roi": [
+        0.349,
+        0.723,
+        0.652,
+        0.763
+      ],
+      "threshold": 0.92,
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "6d3ef39d17353425e4598f9b3bfefbac5226e7168d44adfe000d348df388a217",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_02.png",
+      "source_sha256": "6e49c278af4717c0f7a2eaa6ab615b36bfafce20c9b6e381340ef5f857d1ef3c",
+      "fixture_source": "tests/fixtures/arena_previous_rewards/previous_rewards_02.png",
+      "fixture_sha256": "5f759158389fcfd6e07f85cd9de38d8e53447d6144792f8fa1604b04fb43d59e"
+    },
+    {
+      "id": "previous_ok",
+      "path": "assets/arena/previous_rewards/ok.png",
+      "roi": [
+        0.436,
+        0.777,
+        0.564,
+        0.866
+      ],
+      "threshold": 0.92,
+      "reference_shape": [
+        610,
+        1356
+      ],
+      "sha256": "109466aa84d92ba465ac157210308ed0b0d5ac00185a5ddbd18a553b44f4f1ac",
+      "source": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_02.png",
+      "source_sha256": "6e49c278af4717c0f7a2eaa6ab615b36bfafce20c9b6e381340ef5f857d1ef3c",
+      "fixture_source": "tests/fixtures/arena_previous_rewards/previous_rewards_02.png",
+      "fixture_sha256": "5f759158389fcfd6e07f85cd9de38d8e53447d6144792f8fa1604b04fb43d59e"
+    }
+  ]
+}

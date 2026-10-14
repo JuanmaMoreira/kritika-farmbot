@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "curation": {
+    "character": "Drakenn26",
+    "source": "native_adb",
+    "route": "Lobby -> Battle -> Select Mode Arena -> Arena + MODAL",
+    "raw_retention": "Preserved; initial acquisition no OK; follow-up explicit single OK acknowledgment, no Mailbox claim",
+    "limitations": "One character, one onset; first after frame is Loading, next two are passive modal frames, not independent eligibility samples",
+    "base_annotation": "Physical Arena parent from route/visible title; detector does not fabricate occluded BASE"
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/lobby_before_01.png",
+      "sha256": "bc4742cdddb2958e6673c606df2662786b74c3c51a2ebba399c42a2b5e325bd5",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/lobby_route_live/001_before.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/lobby_route_live/001_before.png",
+        "captured_at_utc": "2026-10-12T23:09:55.826129+00:00",
+        "source": "native_adb",
+        "sequence": 1,
+        "sequence_scope": "artifacts\\arena_previous_rewards_20261012\\lobby_route_live",
+        "observed_at": 177770.828,
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "bc4742cdddb2958e6673c606df2662786b74c3c51a2ebba399c42a2b5e325bd5"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.lobby",
+      "overlays": [],
+      "observations": [],
+      "physical_state": "lobby_before",
+      "review_status": "confirmed",
+      "expected_previous_rewards": false
+    },
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/select_mode_before_01.png",
+      "sha256": "13c76fbe23f9fdd0c88818f3a0280094c09e347cbd9ef826854f12d7684eb281",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/arena_entry/001_before.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/arena_entry/001_before.png",
+        "captured_at_utc": "2026-10-12T23:10:09.808746+00:00",
+        "source": "native_adb",
+        "sequence": 1,
+        "sequence_scope": "artifacts\\arena_previous_rewards_20261012\\arena_entry",
+        "observed_at": 177784.812,
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "13c76fbe23f9fdd0c88818f3a0280094c09e347cbd9ef826854f12d7684eb281"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.arena_select_mode",
+      "overlays": [],
+      "observations": [],
+      "physical_state": "select_mode_before",
+      "review_status": "confirmed",
+      "expected_previous_rewards": false
+    },
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_01.png",
+      "sha256": "9b377604d83d0eaeb2e12d13a5e6870c7ca1eb961d8bdf2aafbe8ecc9c36395d",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/arena_entry/002_after.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/arena_entry/002_after.png",
+        "captured_at_utc": "2026-10-12T23:10:11.486143+00:00",
+        "source": "native_adb",
+        "sequence": 2,
+        "sequence_scope": "artifacts\\arena_previous_rewards_20261012\\arena_entry",
+        "observed_at": 177786.484,
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "9b377604d83d0eaeb2e12d13a5e6870c7ca1eb961d8bdf2aafbe8ecc9c36395d"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.arena_select_mode",
+      "overlays": [],
+      "observations": [],
+      "physical_state": "select_mode_loading",
+      "review_status": "confirmed",
+      "expected_previous_rewards": false
+    },
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_02.png",
+      "sha256": "6e49c278af4717c0f7a2eaa6ab615b36bfafce20c9b6e381340ef5f857d1ef3c",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/arena_entry/003_after.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/arena_entry/003_after.png",
+        "captured_at_utc": "2026-10-12T23:10:13.107075+00:00",
+        "source": "native_adb",
+        "sequence": 3,
+        "sequence_scope": "artifacts\\arena_previous_rewards_20261012\\arena_entry",
+        "observed_at": 177788.109,
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "6e49c278af4717c0f7a2eaa6ab615b36bfafce20c9b6e381340ef5f857d1ef3c"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.arena",
+      "overlays": [
+        "popup.arena_previous_rewards"
+      ],
+      "observations": [
+        "landmark.arena_previous_rewards"
+      ],
+      "physical_state": "arena_previous_rewards",
+      "review_status": "confirmed",
+      "expected_previous_rewards": true
+    },
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/previous_rewards_03.png",
+      "sha256": "f065c2138cfa8018f7646c7e80f77a5ac9c44d1a8568ec5699ce52cb76a6d04c",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/arena_entry/004_after.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/arena_entry/004_after.png",
+        "captured_at_utc": "2026-10-12T23:10:14.330637+00:00",
+        "source": "native_adb",
+        "sequence": 4,
+        "sequence_scope": "artifacts\\arena_previous_rewards_20261012\\arena_entry",
+        "observed_at": 177789.328,
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "f065c2138cfa8018f7646c7e80f77a5ac9c44d1a8568ec5699ce52cb76a6d04c"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.arena",
+      "overlays": [
+        "popup.arena_previous_rewards"
+      ],
+      "observations": [
+        "landmark.arena_previous_rewards"
+      ],
+      "physical_state": "arena_previous_rewards",
+      "review_status": "confirmed",
+      "expected_previous_rewards": true
+    },
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/ok_before_01.png",
+      "sha256": "c8d6ecb7aa8a2db35bdeddd5443ddbad748c6ac0063b126683bb3c02d7e97d6f",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/ok_close/001_before.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/ok_close/001_before.png",
+        "source": "native_adb",
+        "captured_at_utc": "2026-10-12T23:18:46.075480+00:00",
+        "observed_at": 178302.015,
+        "sequence": 1,
+        "sequence_scope": "artifacts/arena_previous_rewards_20261012/ok_close",
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "c8d6ecb7aa8a2db35bdeddd5443ddbad748c6ac0063b126683bb3c02d7e97d6f"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.arena",
+      "overlays": [
+        "popup.arena_previous_rewards"
+      ],
+      "observations": [
+        "landmark.arena_previous_rewards"
+      ],
+      "physical_state": "arena_previous_rewards",
+      "review_status": "confirmed",
+      "expected_previous_rewards": true
+    },
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/ok_after_01.png",
+      "sha256": "c86e84d5b23afa48038c377cc411799110fe40ac104c2713f5239e0aa5374e6b",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/ok_close/002_after.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/ok_close/002_after.png",
+        "source": "native_adb",
+        "captured_at_utc": "2026-10-12T23:18:47.199728+00:00",
+        "observed_at": 178303.515,
+        "sequence": 2,
+        "sequence_scope": "artifacts/arena_previous_rewards_20261012/ok_close",
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "c86e84d5b23afa48038c377cc411799110fe40ac104c2713f5239e0aa5374e6b"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.arena",
+      "overlays": [],
+      "observations": [],
+      "physical_state": "arena_selection",
+      "review_status": "confirmed",
+      "expected_previous_rewards": false
+    },
+    {
+      "path": "screencaps/semantic/arena-previous-rewards/20261012/ok_after_02.png",
+      "sha256": "8749c8fef5e435c0b43ee7e3a2a67d38e0097fb6eca087f6b09540afed4507da",
+      "raw_source": "artifacts/arena_previous_rewards_20261012/ok_close/003_settled.png",
+      "capture_metadata": {
+        "path": "artifacts/arena_previous_rewards_20261012/ok_close/003_settled.png",
+        "source": "native_adb",
+        "captured_at_utc": "2026-10-12T23:18:48.928326+00:00",
+        "observed_at": 178305.25,
+        "sequence": 3,
+        "sequence_scope": "artifacts/arena_previous_rewards_20261012/ok_close",
+        "shape": [
+          1220,
+          2712,
+          3
+        ],
+        "sha256": "8749c8fef5e435c0b43ee7e3a2a67d38e0097fb6eca087f6b09540afed4507da"
+      },
+      "annotation_authority": "LIVE_EVIDENCE reviewed against USER_GT",
+      "base_context": "screen.arena",
+      "overlays": [],
+      "observations": [],
+      "physical_state": "arena_selection",
+      "review_status": "confirmed",
+      "expected_previous_rewards": false
+    }
+  ]
+}
