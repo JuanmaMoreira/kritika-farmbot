@@ -205,6 +205,14 @@ no a otra BASE capaz. StandardRotation pide capability QM, sin entry Lobby prefe
 su postcondition Lobby después del cambio de personaje permanece. Scopes Lobby de paneles
 sólo aplican cuando ése fue el origen. Ningún flow continúa inputs de salida en paralelo.
 
+Mailbox admite un único retry de `SelectCharacterMail` tras timeout, sólo con
+Mailbox resuelto, expuesto, sin procesamiento y recién readquirido después del
+último frame observado y del primer input, con edad≤2s. Character Mail tardío
+continúa sin otro tap. UNKNOWN/AMBIGUOUS, contexto/overlay ajeno, actividad,
+evidencia vieja/pre-input y cancelación bloquean retry; el segundo miss corta.
+Claim All/Delete/Open/Close conservan sus límites. El cierre sigue acreditando
+la BASE de origen antes de que Session continúe el próximo step/personaje.
+
 `routing_no_work` es opt-in del owner: prueba pura/barata/concluyente sin capture, inputs,
 gameplay futuro ni gasto. None/UNKNOWN conserva entry normal. No se anticipan Eligibility
 ni readiness contextual; una Eligibility instalada conserva precedencia. Cada step mantiene

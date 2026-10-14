@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from numbers import Real
+from time import monotonic
 from typing import Callable, Protocol
 
 from bot.action_executor import ActionExecutor
@@ -108,6 +109,7 @@ class MailboxFlow:
         no_effect_stable_for: float = 0.5,
         delete_stable_for: float = 0.5,
         cancel_requested: Callable[[], bool] = lambda: False,
+        clock: Callable[[], float] = monotonic,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -119,6 +121,8 @@ class MailboxFlow:
             raise ValueError("events must provide record()")
         if not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
+        if not callable(clock):
+            raise ValueError("clock must be callable")
         if claim_observer is None:
             claim_observer = observer
         if not callable(getattr(claim_observer, "observe", None)) or not callable(
@@ -140,6 +144,7 @@ class MailboxFlow:
         self.actions = actions
         self.events = events
         self.cancel_requested = cancel_requested
+        self.clock = clock
         self.navigation_timeout = _positive_duration(
             navigation_timeout, "navigation_timeout"
         )
@@ -219,15 +224,7 @@ class MailboxFlow:
                     raise RuntimeError(arrived.error or 'quick_menu_destination_failed')
                 mailbox = arrived.final_snapshot
             if not _is_character_mail(mailbox):
-                mailbox = self._act_and_wait(
-                    SelectCharacterMail(),
-                    mailbox,
-                    expected=_is_character_mail,
-                    abort_if=_has_incompatible_character_mail_entry,
-                    timeout=self.navigation_timeout,
-                    stable_for=self.navigation_stable_for,
-                    observer=self.claim_observer,
-                )
+                mailbox = self._select_character_mail(mailbox)
 
             initial_claims = _has_status(mailbox, STATUS_MAILBOX_CLAIMABLE)
             initial_read = _has_status(mailbox, STATUS_MAILBOX_READ_MAIL_PRESENT)
@@ -361,6 +358,39 @@ class MailboxFlow:
             cancel_requested=self.cancel_requested,
             stable_for=self.navigation_stable_for,
         )
+
+    def _select_character_mail(self, mailbox: RuntimeSnapshot) -> RuntimeSnapshot:
+        started = self.clock()
+        for attempt in range(2):
+            try:
+                return self._act_and_wait(
+                    SelectCharacterMail(), mailbox,
+                    expected=_is_character_mail,
+                    abort_if=_has_incompatible_character_mail_entry,
+                    timeout=self.navigation_timeout,
+                    stable_for=self.navigation_stable_for,
+                    observer=self.claim_observer,
+                )
+            except RuntimeWaitTimeout as error:
+                if attempt:
+                    raise
+                anchor = error.last_snapshot or mailbox
+                barrier = max(mailbox.sequence, anchor.sequence)
+                fresh = self.claim_observer.wait_until(
+                    lambda s: _is_mailbox(s) and not _has_claim_processing_activity(s),
+                    after_sequence=barrier, timeout=self.navigation_timeout,
+                    abort_if=_has_incompatible_character_mail_entry,
+                    cancel_requested=self.cancel_requested,
+                    stable_for=self.navigation_stable_for,
+                )
+                if (fresh.sequence <= barrier or fresh.timestamp <= started or
+                        not 0 <= self.clock() - fresh.timestamp <= 2.0):
+                    raise error
+                if _is_character_mail(fresh):
+                    return fresh
+                self._record("mailbox.character_mail_retry", source_sequence=fresh.sequence)
+                mailbox = fresh
+        raise AssertionError("bounded Character Mail selection exhausted")
 
     def _act_and_wait(
         self,
