@@ -1,17 +1,22 @@
 ---
 name: kritika-dev-workflow
-description: Desarrollar o depurar Kritika FarmBot con causa demostrada, cambio mínimo y validación afectada. No usar para campañas puras HIL.
+description: Investigar o corregir un defecto o cambio concreto de Kritika con validación afectada y alcance autorizado. No usar para auditorías generales ni adquisición pura.
 ---
 
 # Desarrollo causal
 
-Aplicar [AGENTS](../../../AGENTS.md); consultar [GAMEPLAY_GT](../../../docs/GAMEPLAY_GT.md) antes de interpretar un fallo físico o pedir HIL.
+Aplicar [AGENTS](../../../AGENTS.md). Elegir modalidad desde el encargo, no desde la capacidad del agente; indicar la elegida cuando aclare el alcance. Las modalidades no conceden permisos.
 
-1. Leer estado/diff local y sólo el contrato relevante. Separar GT, implementación y heurística; no inferir wiring desde componentes standalone.
-2. Localizar la primera divergencia en logs/capturas/código. Un miss de percepción no reabre un hecho físico cerrado.
-3. Implementar la composición mínima en el owner existente. No resolver vecinos ni ramas hipotéticas; ramas explícitas bastan para un conjunto pequeño de estados.
-4. Elegir validación capaz de falsar el cambio: docs/referencias para docs, directos + afectados para lógica, replay/incremental si cambió percepción. Reutilizar resultados no invalidados.
-5. Si queda una pregunta física realmente abierta, usar un smoke autorizado y breve; detenerlo en la primera divergencia, corregir mínimamente y repetir sólo lo invalidado. No exigir HIL para cada rama o postcondición ya establecida.
-6. Cerrar al resolver el alcance: diff acotado, trabajo ajeno preservado y fuente documental dueña actualizada. No añadir mejoras por oportunidad.
+| Modalidad | Procedimiento y cierre |
+| --- | --- |
+| `diagnose-only` | Investigar con evidencia existente; usar [failure-triage](../failure-triage/SKILL.md) para FAILED/MANUAL/interrupción. Entregar causa/hipótesis, owner y propuesta; sin modificaciones ni hardware. |
+| `fix-and-validate` | Investigar, corregir dentro del alcance y validar lo afectado. No iniciar live porque un test pase o falte evidencia física. |
+| `full-live-ownership` | Añadir navegación y prueba física expresamente autorizadas, en el owner/harness pertinente. No amplía economía, publicación ni restauración manual. |
 
-Si aparecen varias capas nuevas, excepciones o estado implícito para una acción simple, detener el patch y proponer la alternativa local más simple. Cambios transversales requieren causa compartida real y alcance acordado; no preservar complejidad por inversión previa.
+Para cambios autorizados:
+
+1. Revisar estado/diff y localizar causa o contrato del cambio. Leer sólo código/tests y rangos de la fuente dueña que cambian la decisión.
+2. Implementar en el owner existente y elegir validación capaz de falsar el cambio según AGENTS. Un fallo de la validación se investiga antes de ampliar el patch; conservar resultados aún válidos.
+3. Continuar las acciones locales ya autorizadas sin confirmaciones redundantes. Si falta autorización necesaria, delimitar esa acción y seguir el trabajo independiente; no elevar modalidad por iniciativa propia.
+4. En modalidad live, preparar evidencia y condición de aceptación antes de iniciar el recorrido. Primera divergencia → diagnóstico → fix sólo si autorizado → validación invalidada. La adquisición de una pregunta física abierta usa [kritika-hil-acquisition](../kritika-hil-acquisition/SKILL.md); no cargarla para un fix exclusivamente offline.
+5. Cerrar con causa, cambio, validación y límites, actualizando sólo la fuente dueña. Cleanup de herramientas no autoriza restaurar manualmente el juego, repetir un consumo incierto ni publicar.

@@ -1,19 +1,16 @@
 ---
 name: kritika-hil-acquisition
-description: Resolver hechos físicos realmente abiertos de Kritika FarmBot con adquisición mínima autorizada y calibración dirigida; no implementar gameplay.
+description: Adquirir y curar evidencia para una pregunta física abierta o calibración perceptiva de Kritika; hardware sólo autorizado, sin iniciar gameplay ni fixes por selección.
 ---
 
 # Adquisición mínima
 
-Aplicar [AGENTS](../../../AGENTS.md) y consultar primero [GAMEPLAY_GT](../../../docs/GAMEPLAY_GT.md), logs y evidencia existente. No reconfirmar GT por OCR/detector/UNKNOWN ni por formalidad de campaña.
+Aplicar [AGENTS](../../../AGENTS.md). Consultar primero el rango pertinente de [GAMEPLAY_GT](../../../docs/GAMEPLAY_GT.md) y evidencia existente. Preparación, adquisición, promoción semántica e implementación son fases distintas: seleccionar este Skill no inicia hardware ni gameplay.
 
-1. Nombrar la pregunta física aún abierta y por qué no la cierra evidencia existente. Si GT ya la responde, no adquirir. Consultar AGENT_LOCAL para herramientas.
-2. Definir la menor captura/acción útil, autorización y punto seguro de parada. Chat + steer; usuario opera teléfono/GUI. Input económico/destructivo nuevo requiere autorización concreta.
-3. Un USER_GT explícito o un antes→acción→después inequívoco normalmente cierra el hecho. No hay regla de una condición por campaña ni cuota de muestras: una observación puede cerrar varios hechos claros. No atribuir éxito desde la predicción o el tap aislado.
-4. Detener al responder la pregunta o ante primera divergencia. Cleanup de sources/procesos/sockets/forwards incluso al fallar; no ampliar adquisición ni modificar runtime incidentalmente.
-
-Para calibración conservar positivos, negativos relevantes, contextos próximos y regresiones reales. Etiquetas desde GT, no predicciones; procedencia y relación raw→curado preservadas. Raw en artifacts, curados locales en screencaps; no versionar datasets grandes.
-
-ROI de identidad según oclusión/layering de GAMEPLAY_GT; para hitboxes/gestos registrar geometría desde frame.shape, acción y efecto. Evaluar sólo readers/detectores invalidados con cache válida; corpus amplio sólo por invalidación concreta.
-
-Reportar hecho cerrado, evidencia/rutas, promoción si la hubo y límite residual. No reabrir una campaña porque el hecho determinista ya cerrado tenga otra representación técnica.
+1. Nombrar pregunta, evidencia faltante y fase autorizada. Si GT la cierra, no readquirir. Para preparación sin hardware entregar el plan; para curación/evaluación offline trabajar sólo sobre evidencia existente.
+2. Antes de consumir un estado único, preparar salida, fuente, etiquetas humanas, condición de aceptación y parada/cancelación. Para hardware consultar AGENT_LOCAL y [herramientas de adquisición](references/acquisition-tools.md); elegir stream para evolución temporal y nativa para píxeles/ROI/hitbox que requieren esa geometría, sin confundirlas.
+3. Adquirir el antes→acción autorizada→después necesario. Preservar raw y procedencia: source, dimensiones, timestamps con clock, secuencia/scope y SHA-256. Si una fuente no aporta secuencia o clock correlacionable, registrar esa ausencia; no inventarlos.
+4. Curar positivos, negativos relevantes y ambiguos; etiquetas desde GT, no predicciones. Conservar relación raw→curado, hash/origen y transformación. Mantener ambiguos explícitos fuera de etiquetas confirmadas y preservar regresiones vividas.
+5. Si la promoción está autorizada, llevar sólo hechos acreditados a la fuente dueña y evidencia revisada al manifest correspondiente. Para promoción o evaluación cargar [herramientas](references/acquisition-tools.md); no generar assets/detectores ni implementar gameplay incidentalmente.
+6. Ejecutar sólo evaluators afectados por frames, etiquetas o cambios perceptivos autorizados. Reutilizar cache válida por detector/frame; recomputar etiquetas y resolver fuera de esa cache. Reportar evaluados, hits/invalidaciones y límites de raw ausente sin exigir corpus general por rutina.
+7. Cerrar al responder la pregunta o ante primera divergencia, con cleanup del owner incluso al fallar. Entregar hecho/ambigüedad, rutas y procedencia, promoción/evaluación realizadas y límite residual. Un fix posterior requiere encargo de desarrollo; restauración manual corresponde al usuario.
