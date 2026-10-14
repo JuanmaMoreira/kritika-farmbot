@@ -399,7 +399,18 @@ class TradingRowReader:
                                    reason="pair_not_localized")
             return None
         height, width = frame.shape[:2]
-        first = self._parse_box(frame, box, **detail)
+        x1, y1, x2, y2 = box
+        numeric = frame[int(y1 * height):int(y2 * height),
+                        int(x1 * width):int(x2 * width)]
+        # Both reads use the numeral baseline's color from the tight box.
+        # Red icon art admitted by a wider/taller crop must not erase white
+        # numerals (acquired 46/40), even when it exceeds the red pixel floor.
+        red_pair = False
+        if numeric.size:
+            hsv = cv2.cvtColor(numeric[2 * numeric.shape[0] // 3:], cv2.COLOR_BGR2HSV)
+            red = ((hsv[:, :, 0] <= 8) | (hsv[:, :, 0] >= 170)) & (hsv[:, :, 1] >= 120) & (hsv[:, :, 2] >= 150)
+            red_pair = bool(np.count_nonzero(red) > .02 * red.size)
+        first = self._parse_box(frame, box, red_pair=red_pair, **detail)
         if first is None:
             if diagnostics is not None:
                 diagnostics["localized_reason"] = diagnostics["reason"]
@@ -411,7 +422,7 @@ class TradingRowReader:
             min(1.0, x2 + 0.007),
             min(1.0, y2 + 0.006),
         )
-        second = self._parse_box(frame, wide, **detail)
+        second = self._parse_box(frame, wide, red_pair=red_pair, **detail)
         if second != first:
             if diagnostics is not None:
                 diagnostics.update(localized_reason="localized_disagrees",
@@ -421,7 +432,7 @@ class TradingRowReader:
             diagnostics.update(localized_reason=None, parse_result=first)
         return first
 
-    def _parse_box(self, frame, box, *,
+    def _parse_box(self, frame, box, *, red_pair=False,
                    diagnostics: dict | None = None) -> tuple[int, int] | None:
         height, width = frame.shape[:2]
         x1, y1, x2, y2 = box
@@ -436,6 +447,13 @@ class TradingRowReader:
             if diagnostics is not None:
                 read["reason"] = diagnostics["reason"] = "empty_pair_roi"
             return None
+        if red_pair:
+            # Insufficient-input numerals are red. Preserve their antialiased
+            # contrast while excluding the gray icon corner that the wider
+            # control crop misread as L in the acquired 0/40 effect.
+            channels = crop.astype(np.float32)
+            excess = np.maximum(channels[:, :, 2] - np.maximum(channels[:, :, 0], channels[:, :, 1]), 0)
+            crop = (255 - excess * (255 / max(1., float(excess.max())))).astype(np.uint8)
         result = self._recognize(crop, scale=3.0)
         if diagnostics is not None:
             read.update(raw=result.text, confidence=result.confidence)

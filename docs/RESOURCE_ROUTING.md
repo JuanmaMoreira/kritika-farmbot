@@ -225,6 +225,22 @@ Live Craft result (2026-10-03): the old name ROI included the item graphic and r
 
 Live Materials effect (2026-10-03): after MAX Weapon→Hero 840→40, glyph segmentation excluded the disconnected left stroke of the first 4. Native and stream replay proved narrow 10/40 versus widened 40/40. Only the initial left glyph margin grows .004→.008; both independent perturbation reads must still agree. Row identity/C4/one-confirm/post-effect guards remain, and the existing Materials/Keys corpus passes. No blind trade retry follows unreadable effect.
 
+**Materials HAVE/NEED — IMPLEMENTATION_CONTRACT:** `TradingRowReader` decide el
+filtro rojo desde la baseline de numerales (tercio inferior de la caja localizada)
+y comparte esa decisión con el crop ampliado. Si allí hay rojo suficiente, usa
+exceso de canal rojo como contraste antialias; arte rojo añadido por el margen
+no cambia el filtro ni borra numerales blancos. El color no implica cantidad:
+`0/40` debe leerse, nunca se imputa cero por ausencia o fallo OCR. Ambos crops
+deben dar el mismo par completo con confianza≥.50; ROI vacía, texto parcial,
+contaminado o discrepancia permanecen UNREADABLE. Parser, identidad de fila,
+consenso de secuencias y guards de contexto/freshness/cancelación de sus callers
+siguen vigentes; ninguna lectura inconclusa autoriza otro Trade/confirm.
+Las fixtures [cero rojo](../tests/fixtures/materials_zero/manifest.json) y
+[46 blanco](../tests/fixtures/materials_white_effect/manifest.json) conservan crops
+reducidos con hashes propios y de origen. Su escala nativa de replay es simulada;
+el caso blanco usa geometría acreditada por log y no afirma recuperar los pixels
+nativos originales ni validar matching de título nativo desde esos crops.
+
 
 Live Stamina final selection (2026-10-03): a frame captured 31 ms after the final
 `>` dispatch still showed 4/20, then the same panel reached 5/20 without another

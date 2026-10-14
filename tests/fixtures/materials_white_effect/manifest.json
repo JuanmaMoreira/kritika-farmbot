@@ -1,0 +1,96 @@
+{
+  "provenance": "Downscaled failure evidence; target Materials row only. Native original pixels are not retained. Log retains exact localized ROIs and raw OCR.",
+  "entries": [
+    {
+      "file": "frame_13971.png",
+      "shape": [
+        433,
+        960
+      ],
+      "rect": [
+        220,
+        242,
+        787,
+        311
+      ],
+      "source": "artifacts/failure_evidence/failure_6ef2b7c9df894e4bb5f243d4f0396bce/frame_13971.png",
+      "source_sha256": "217e0e20ab776378074a5f02576f2b7be660b3fa228a4bb9a3349cd9091b61a8",
+      "row_top": 0.5709673202614379,
+      "row_y": 0.6418673202614379,
+      "have": 46,
+      "need": 40,
+      "sha256": "a1a3135c923c937d34577e26b1f8be9c31097e7983a2bb6d86834e5e5f467023"
+    },
+    {
+      "file": "frame_13976.png",
+      "shape": [
+        433,
+        960
+      ],
+      "rect": [
+        220,
+        242,
+        787,
+        311
+      ],
+      "source": "artifacts/failure_evidence/failure_6ef2b7c9df894e4bb5f243d4f0396bce/frame_13976.png",
+      "source_sha256": "c7f38a5f977fa8f79674df09b430cfc7242db8f35258ad67ea1255bdb78b25ce",
+      "row_top": 0.5709673202614379,
+      "row_y": 0.6418673202614379,
+      "have": 46,
+      "need": 40,
+      "sha256": "7bf586e66d15c0d889389e5143e39d2399df7cadfc8265d2f41207e836057f3c"
+    },
+    {
+      "file": "frame_13982.png",
+      "shape": [
+        433,
+        960
+      ],
+      "rect": [
+        220,
+        242,
+        787,
+        311
+      ],
+      "source": "artifacts/failure_evidence/failure_6ef2b7c9df894e4bb5f243d4f0396bce/frame_13982.png",
+      "source_sha256": "35301ffdc1d12ccfe70abc8c86d4e5ea5b45cf7839143f581f2a3a046316c46e",
+      "row_top": 0.5709673202614379,
+      "row_y": 0.6418673202614379,
+      "have": 46,
+      "need": 40,
+      "sha256": "f2d066bd43ca81052616270cb2d8e5e07176b25ba2544a1384c852c054ef2885"
+    }
+  ],
+  "recorded_reads": [
+    {
+      "confidence": 0.99992,
+      "method": "localized",
+      "parse_result": [
+        46,
+        40
+      ],
+      "raw": "46/40",
+      "reason": null,
+      "roi": [
+        0.5037109144542773,
+        0.6644509803921569,
+        0.5415221238938054,
+        0.6928758169934641
+      ]
+    },
+    {
+      "confidence": 0.44854,
+      "method": "localized",
+      "parse_result": null,
+      "raw": "Lezd",
+      "reason": "ocr_low_confidence",
+      "roi": [
+        0.4967109144542773,
+        0.6584509803921569,
+        0.5485221238938054,
+        0.6988758169934641
+      ]
+    }
+  ]
+}

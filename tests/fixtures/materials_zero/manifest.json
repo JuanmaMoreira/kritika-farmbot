@@ -1,0 +1,65 @@
+{
+  "provenance": "Downscaled failure evidence; target Materials row only. Native log OCR 0/40 versus L0/40 cannot be reconstructed from retained pixels. Native-size replay is simulated scaling.",
+  "entries": [
+    {
+      "file": "frame_1713.png",
+      "shape": [
+        433,
+        960
+      ],
+      "rect": [
+        220,
+        233,
+        787,
+        303
+      ],
+      "source": "artifacts/failure_evidence/failure_9f9af7b02f65444eaaf8f8687e1bed3d/frame_1713.png",
+      "source_sha256": "bbc271f508c4238cdefffffdc9cb2fe196deab21b096229488b1ad442493a2ed",
+      "row_top": 0.5480915032679738,
+      "row_y": 0.6189915032679738,
+      "have": 0,
+      "need": 40,
+      "sha256": "9cfe773f0982f0fcd27c06bf6a26745a5784c495e01289f3fd8e95e9076a2a11"
+    },
+    {
+      "file": "frame_1718.png",
+      "shape": [
+        433,
+        960
+      ],
+      "rect": [
+        220,
+        233,
+        787,
+        303
+      ],
+      "source": "artifacts/failure_evidence/failure_9f9af7b02f65444eaaf8f8687e1bed3d/frame_1718.png",
+      "source_sha256": "98b3ec81f3d05f83ca7a657a59ed2a92a8c02b4b3bba0cd479279ad5f847adcf",
+      "row_top": 0.5480915032679738,
+      "row_y": 0.6189915032679738,
+      "have": 0,
+      "need": 40,
+      "sha256": "099b68149ddc2f71b52b0262d80fa581f65d074313243bd63b31fe151af0ba4a"
+    },
+    {
+      "file": "frame_1723.png",
+      "shape": [
+        433,
+        960
+      ],
+      "rect": [
+        220,
+        233,
+        787,
+        303
+      ],
+      "source": "artifacts/failure_evidence/failure_9f9af7b02f65444eaaf8f8687e1bed3d/frame_1723.png",
+      "source_sha256": "89d208f55cafcf674f8291c1d9368f7eca3898876949897fbb264f31c847933f",
+      "row_top": 0.5480915032679738,
+      "row_y": 0.6189915032679738,
+      "have": 0,
+      "need": 40,
+      "sha256": "4e55919440b1f25624f10f730d9d64db689c85fbf7a8e513c999e2a83d23a283"
+    }
+  ]
+}
