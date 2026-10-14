@@ -105,6 +105,10 @@ def build():
                            sha256=hashlib.sha256(target.read_bytes()).hexdigest(),
                            source=chosen[sample]['curated_path'], source_sha256=chosen[sample]['sha256'],
                            reusable_indicator=name in ('buff3_on','x8_off')))
+        if name == 'difficulty_normal':
+            # Native and stream heights differ slightly. Match at the original
+            # whole-frame sampling phase before cropping the title/control.
+            assets[-1]['reference_shape'] = list(frame.shape[:2])
         if name.endswith('_padding'):
             assets[-1]['max_color_error'] = 12
     (ROOT/'datasets/arena_visual_assets_manifest.json').write_text(json.dumps(dict(schema_version=1, assets=assets),indent=2)+'\n', encoding='utf8')

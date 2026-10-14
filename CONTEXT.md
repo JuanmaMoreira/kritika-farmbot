@@ -162,6 +162,40 @@ Evaluator incremental Ads22/22, wrong0;16 pares previos invalidados por nuevos
 assets/observer y6 nuevos. Sin teléfono ni smoke live; recuperación física de
 esta variante pendiente de la próxima ejecución GUI. Reabrir GUI antes de correr.
 
+## Arena — NORMAL nativo no acreditado antes de Start, corregido 2026-10-12
+
+Sesión `debb284b`, rutina `arena cycle`, Burst Breaker. Dos batches HARD previos
+COMPLETED (wait≈499.672s y494.5s), sin repetir el corte prematuro anterior.
+La operación10 llegó a Challenge NORMAL con inputs Battle→Arena→NORMAL;
+a21:41:42 -03 terminó `challenge_or_difficulty_uncredited`, fase preparation,
+antes de Start y sin operación física activa acreditada. `_economy` rechazó
+la dificultad de su captura nativa antes de hacer OCR económico, después de
+que el mismo guard hubiera aceptado Challenge desde el stream.
+
+Captura pasiva post-stop21:45:51 -03, sin inputs, conserva Intermediate,
+buffs OFF y x8 ON. Evidencia en `artifacts/arena_normal_20261012/native.jsonl`.
+No se archivó el frame exacto del corte; esta captura reproduce offline su
+misma condición: clean_challenge=true, dificultad UNKNOWN. NORMAL puntúa
+0.887268<0.90 por el desfase de muestreo ROI entre nativo2712×1220 y plantilla
+creada desde stream2712×1224 reducido a1356×612. Normalizar primero la imagen
+completa al tamaño de origen de la plantilla da0.943625 y NORMAL positivo.
+No cambia el GT Intermediate=NORMAL ni el umbral o margen de clasificación.
+
+Fix mínimo: `difficulty_normal` declara `reference_shape` en el manifest,
+consumido por el escalado completo ya existente en ArenaFlowVisuals.
+El generador conserva ese metadata desde frame.shape. Sin nuevas plantillas,
+retries ni inferencia de dificultad desde el input. Fixture focal portátil
+con tamaño nativo intacto y procedencia en `tests/fixtures/arena_normal_native`.
+
+Validación:163tests PASS (nuevo replay7, Phase A, ArenaFlow y B2).
+Regresión incluye el guard de dificultad solicitada, título ausente UNKNOWN,
+detector productivo y economía OCR real106Badges. Evaluator incremental afectado:
+25pares (24invalidados por metadata +1nuevo),0errores en dificultad; evaluator
+Arena existente24frames,0errores de superficie/resultado, reutilizando cache.
+No nuevo Start, restauración de Meteorites ni reinicio de Session. Reabrir GUI
+antes de la próxima rutina para recargar visuals/manifest; no hay batch live
+posterior al fix. Las validaciones de wait y Select Mode previas siguen válidas.
+
 ## MW — falso cierre de CLEAR bajo mensajes de rewards, corregido 2026-10-12
 
 Sesión `adbbe95b`, personaje14 Steam Walker,13 rotaciones completas.

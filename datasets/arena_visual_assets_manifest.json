@@ -104,7 +104,11 @@
       "sha256": "64b3530cd1bace2994243cef753ceb68ed016a0eaf9b976062fc9877af290ec4",
       "source": "screencaps/arena_hil/20261008/20261008T204551_059903Z_01.png",
       "source_sha256": "51d5e2af286fcc7d313538ee2b81717e8d63dda746bd3b71dd16bb14891cb7b8",
-      "reusable_indicator": false
+      "reusable_indicator": false,
+      "reference_shape": [
+        612,
+        1356
+      ]
     },
     {
       "id": "difficulty_hard",
