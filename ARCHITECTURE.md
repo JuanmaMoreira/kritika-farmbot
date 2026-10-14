@@ -29,6 +29,13 @@ Capture → Perception / Runtime Facts → ContextResolver
 
 El usuario selecciona objetivos/orden. La sesión solicita entries compatibles y puede compartir hub/contexto, sin reordenar. Failure/cancelación no dispara navegación ciega en un finally. AdsManager permanece separado de percepción normal.
 
+Failure Evidence conecta el observer y los frames directos/nativos entregados por
+Capture, sin nuevas adquisiciones ni inputs. FAILED y MANUAL con causa técnica
+comparten el writer; Session y standalone propagan la referencia persistida sin
+cambiar status ni continuación. MANUAL sin causa/error y cancelación no crean
+bundles. Ownership, guards, formato y límites vigentes están en
+[FAILURE_EVIDENCE_V1](docs/FAILURE_EVIDENCE_V1.md).
+
 ## Character Identity y estado persistente
 
 `LobbyNameRecognizer` resuelve el conjunto cerrado de28 nombres personales

@@ -30,6 +30,7 @@ def build_frame_source(
     adb_client: AdbClient | None = None,
     video_bit_rate: int = 2_000_000,
     max_fps: int | None = None,
+    frame_consumer=None,
 ) -> ScrcpyFrameSource:
     """Construct capture with explicit config and an optional shared ADB client."""
 
@@ -39,6 +40,7 @@ def build_frame_source(
         scrcpy_server_path=config.scrcpy_server_path,
         video_bit_rate=video_bit_rate,
         max_fps=max_fps,
+        frame_consumer=frame_consumer,
     )
 
 

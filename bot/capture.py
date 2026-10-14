@@ -111,6 +111,7 @@ class ScrcpyFrameSource:
         socket_factory: SocketFactory | None = None,
         decoder_factory: DecoderFactory | None = None,
         clock: Callable[[], float] = time.monotonic,
+        frame_consumer: Callable[[FrameSnapshot, str], None] | None = None,
     ) -> None:
         if adb is None:
             raise ValueError("adb must be provided explicitly")
@@ -133,6 +134,7 @@ class ScrcpyFrameSource:
         self._socket_factory = socket_factory or self._new_socket
         self._decoder_factory = decoder_factory or _PyAvDecoder
         self._clock = clock
+        self._frame_consumer = frame_consumer
 
         self._lifecycle_lock = threading.Lock()
         self._frame_lock = threading.Lock()
@@ -237,11 +239,21 @@ class ScrcpyFrameSource:
             if self._snapshot is None:
                 raise CaptureError("No decoded frame is available")
             snapshot = self._snapshot
-            return FrameSnapshot(
+            frame = FrameSnapshot(
                 image=snapshot.image.copy(),
                 timestamp=snapshot.timestamp,
                 sequence=snapshot.sequence,
             )
+        self._notify_frame(frame, 'stream')
+        return frame
+
+    def _notify_frame(self, frame: FrameSnapshot, kind: str) -> None:
+        try:
+            if self._frame_consumer is not None:
+                self._frame_consumer(frame, kind)
+        except Exception:
+            # Diagnostics cannot change delivery, freshness or source ownership.
+            pass
 
     def refresh_native(self, *, timeout: float | None = None) -> FrameSnapshot:
         """Refresh a static SDK surface in the stream's shared sequence space.
@@ -266,6 +278,7 @@ class ScrcpyFrameSource:
             if self._snapshot is None or started >= self._snapshot.timestamp:
                 self._snapshot = FrameSnapshot(image=image.copy(),timestamp=started,sequence=self._sequence)
         self._frame_event.set()
+        self._notify_frame(native, 'native')
         return native
 
     @property

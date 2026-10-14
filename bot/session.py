@@ -542,10 +542,13 @@ class SessionRunner:
                                 return self._cancel(character_results, advances_completed)
                             continue
                         if result.status is FlowStatus.MANUAL_RESOLUTION:
-                            self._record('flow.manual_resolution', component=flow.name,
-                                         flow=flow.name, character_index=index)
+                            failure = publish_failure(self.events, 'flow.manual_resolution', result.failure,
+                                component=flow.name, flow=flow.name, character_index=index, error=result.error)
+                            result = replace(result, failure=failure)
+                            flow_results[-1] = result
                             character_results.append(SessionCharacterResult(index, context, tuple(flow_results)))
-                            self._record('session.manual_resolution', flow=flow.name, character_index=index)
+                            publish_failure(self.events, 'session.manual_resolution', failure,
+                                            flow=flow.name, character_index=index, cause=result.error)
                             if self._active_meteorites is not None:
                                 self._active_meteorites.interrupt('routine_manual_resolution')
                             return SessionResult(
@@ -553,6 +556,7 @@ class SessionRunner:
                                 characters_processed=sum(item.completed for item in character_results),
                                 advances_completed=advances_completed,
                                 character_results=tuple(character_results),
+                                failure=failure,
                             )
                         if result.status is FlowStatus.CANCELLED:
                             self._record(

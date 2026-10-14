@@ -4,11 +4,13 @@ Consolidada en `16f2d41` sobre `main@95c6bd68b8c3162b2d424a1cf90a4e03d9a00861`. 
 
 ## Ownership y lifecycle
 
-`open_productive_runtime` crea un `FailureEvidence` por ejecución, conecta `RuntimeObserver.snapshot_consumer` con su ring y lo instala como enriquecedor del stream existente. El owner conserva la evidencia hasta después de publicar `runtime.failed` y libera imágenes/desconecta el enriquecedor en `finally`, incluso si falla la construcción del runtime. GUI y CLI usan automáticamente esa misma composición; no cambian controles ni policy.
+`open_productive_runtime` crea un `FailureEvidence` por ejecución, conecta `RuntimeObserver.snapshot_consumer` con su ring, `ScrcpyFrameSource.frame_consumer` con `observe_frame` y lo instala como enriquecedor del stream existente. El owner conserva la evidencia hasta después de publicar `runtime.failed` y libera imágenes/desconecta el enriquecedor en `finally`, incluso si falla la construcción del runtime. GUI y CLI usan automáticamente esa misma composición; no cambian controles ni policy.
 
 `RuntimeObserver` entrega el `RuntimeSnapshot` validado después de resolver, sin capturar de nuevo. El callback no devuelve decisiones y sus errores se aíslan. Capture, Perception y ContextResolver no conocen el storage. No se añaden eventos por frame, OCR, reprocesamiento perceptivo, input ni waits.
 
 El ring conserva las últimas **3 secuencias estrictamente crecientes** observadas durante ese runtime. Repetidas/regresivas no desplazan muestras. No es una ventana de segundos ni promete incluir todos los frames decodificados. Puede cruzar flows/personajes: cada metadata conserva el scope observado y su timestamp de captura, para distinguir evidencia previa de la del fallo. Si captura/percepción/resolver fallan antes de construir el snapshot, se conserva la última ventana válida; no se inventa un snapshot del error.
+
+Además se conserva una copia del último frame entregado por `get_frame` o `refresh_native`, incluidos owners que leen sin pasar por el resolver. El callback corre fuera del lock de captura y sus errores no impiden la entrega. Relecturas/regresiones de secuencia no reemplazan esa copia ni cambian la procedencia nativa. El bundle combina ambas fuentes por secuencia y conserva las últimas **3 muestras distintas**: sólo la misma secuencia puede adjuntar estado/facts semánticos a los píxeles directos; un frame nuevo no hereda la resolución anterior.
 
 ## Contenido y serialización
 
@@ -23,13 +25,13 @@ No se retiene el `RuntimeSnapshot` completo: contiene la imagen original y mante
 
 Los facts demand-driven OCR/temporales no son campos de `RuntimeSnapshot` y no se fabrican ni se vuelven a leer. Sus eventos existentes siguen en JSONL, correlacionados por scopes. No se guardan engines, dispositivos, sockets, datos de `CharacterContext.name` ni trazas de excepción. Los píxeles pueden contener el chat o texto visible del juego; v1 no hace redacción visual.
 
-Cada muestra posee una imagen BGR uint8 independiente con lado máximo **960 px**, relación de aspecto preservada y sin upscale. `INTER_AREA` crea directamente la copia reducida; sólo las imágenes ya pequeñas requieren `.copy()`. El ndarray se marca read-only y no se retiene el original. La reducción pertenece exclusivamente a evidencia: jamás se devuelve a percepción ni se usa para decidir input.
+Cada muestra semántica posee una imagen BGR uint8 independiente con lado máximo **960 px**, relación de aspecto preservada y sin upscale. `INTER_AREA` crea directamente la copia reducida; sólo las imágenes ya pequeñas requieren `.copy()`. El último frame directo/nativo se copia sin reducción hasta **16 MiB** de píxeles; sobre ese límite se reduce con `INTER_AREA`. Su metadata conserva `capture.source` (`stream`/`native`), `capture.original_shape`, timestamp/secuencia de adquisición y dimensiones guardadas en `frame`. Los ndarray se marcan read-only. La reducción pertenece exclusivamente a evidencia: jamás se devuelve a percepción ni se usa para decidir input.
 
 Hay un máximo de **256 KiB de JSON por archivo**. Un error de muestreo/serialización descarta esa muestra y conserva la ventana válida anterior. La falta de muestras produce un bundle válido con lista vacía; el writer también admite muestras sin imagen, aunque el RuntimeSnapshot productivo actual exige imagen y geometría coherentes.
 
 ## Trigger y propagación
 
-`FailureEvidence.enrich` es el único seam de elegibilidad, invocado por `RuntimeEventStream.emit` después de asignar secuencia/timestamp/correlación y **antes de cualquier consumer**. Sólo reconoce causas estructuradas en `flow.failed`, `rotation.failed`, `session.failed` y `runtime.failed`.
+`FailureEvidence.enrich` es el único seam de elegibilidad, invocado por `RuntimeEventStream.emit` después de asignar secuencia/timestamp/correlación y **antes de cualquier consumer**. Sólo reconoce causas estructuradas en `flow.failed`, `rotation.failed`, `session.failed`, `runtime.failed`, `flow.manual_resolution` y `session.manual_resolution`.
 
 | Situación | Evidencia |
 | --- | --- |
@@ -37,6 +39,8 @@ Hay un máximo de **256 KiB de JSON por archivo**. Un error de muestreo/serializ
 | Rotation aborta técnicamente | Un bundle en `rotation.failed`; referencia propagada a sesión |
 | Fallo de pre/postcondición del runner | Bundle en su primer evento terminal disponible |
 | Excepción terminal de configuración/captura | Bundle en `runtime.failed`, aunque no haya snapshots |
+| MANUAL con causa técnica estructurada o error legacy | Un bundle en `flow.manual_resolution`; referencia propagada al resultado del flow, SessionResult y `session.manual_resolution` |
+| MANUAL sin causa/error o indisponibilidad controlada sin causa técnica | Ninguno |
 | Timeout best-effort de Auto Battle o espera recuperada | Ninguno |
 | `transition.completed` con timeout/abort o excepción manejada | Ninguno; sólo el caller terminal puede promoverlo |
 | Cancelación voluntaria | Ninguno |
@@ -46,7 +50,7 @@ Los eventos de cancelación no están en la allow-list. Además se excluyen `typ
 
 `publish_failure` publica una vez y devuelve el mismo `FailureCause` con la referencia persistida. SessionRunner y el runner standalone reemplazan el resultado inmutable conservando su clase, campos de dominio, strings y status. FlowResult y RotationResult anidados comparten la referencia con SessionResult. Una referencia existente evita un segundo bundle en la propagación; una excepción standalone lleva esa misma causa al boundary exterior. Si una escritura falla, una publicación terminal exterior todavía puede intentar escribir: cada intento es síncrono y acotado por la profundidad existente del lifecycle, nunca un retry loop del writer.
 
-Un resultado FAILED sin los campos opcionales error/failure recibe metadata `legacy_error` con el nombre del terminal, conservando `error=None`. Si falla incluso la resolución inicial del root de storage, evidencia queda desactivada y el runtime continúa con su comportamiento original.
+Un resultado FAILED sin los campos opcionales error/failure recibe metadata `legacy_error` con el nombre del terminal, conservando `error=None`. MANUAL sólo sintetiza esa causa si hay `error`/`cause`; sin esos campos ni FailureCause permanece sin evidencia. Cancelaciones estructuradas conservan los mismos guards incluso en los terminales MANUAL. Si falla incluso la resolución inicial del root de storage, evidencia queda desactivada y el runtime continúa con su comportamiento original.
 
 `RuntimeEventStream.record` ahora devuelve aditivamente el `RuntimeEvent` publicado o `None` ante fallo de construcción; sinks legacy que devuelven `None` siguen funcionando. No cambia el schema JSONL v1 ni `FailureCause`. VerifiedTransitionResult y ControlledWaitResult permanecen intactos: sus fallos internos no son terminales de gameplay y no reciben evidencia anticipada. No se reabre su policy ni la de UNKNOWN/AMBIGUOUS, guards, stable_for, retries o deadlines.
 
@@ -70,16 +74,17 @@ artifacts/failure_evidence/
 
 El writer es **síncrono**: codifica 0–3 PNGs con compresión **1**, serializa metadata y valida tamaño antes de crear el directorio. Usa UUID y creación exclusiva de directorio/archivos. Escribe `failure.json` al final; sólo después publica `evidence_ref`. No promete fsync, durabilidad ante corte eléctrico ni atomicidad frente a lectores externos que inspeccionen directorios aún incompletos.
 
-Errores de mkdir, encode PNG, JSON, cuota, pruning o escritura dejan el evento y la causa originales. El fallo original nunca se sustituye por el error del writer. La limpieza de un intento parcial sólo elimina archivos creados por ese intento y hace `rmdir` no recursivo. La señal de fallo de evidencia es `evidence_ref=null`; no hay otro failure reporter. Un JSONL consumer fallido puede dejar un bundle completo sin línea durable, igual que la entrega best-effort existente.
+Errores de mkdir, encode PNG, JSON, cuota, pruning o escritura conservan la causa original y agregan `evidence_error` al mismo evento, con `evidence_ref=null`, sin eventos nuevos ni recursión. El fallo original nunca se sustituye por el error del writer. La limpieza de un intento parcial sólo elimina archivos creados por ese intento y hace `rmdir` no recursivo. Un JSONL consumer fallido puede dejar un bundle completo sin línea durable, igual que la entrega best-effort existente.
 
 Límites por root gestionado:
 
 | Límite | Valor |
 | --- | --- |
-| Ring | 3 muestras |
-| Imagen | 960 px lado máximo, BGR uint8 |
+| Ring semántico / captura directa | 3 muestras / 1 frame; hasta 3 muestras distintas por bundle |
+| Imagen semántica | 960 px lado máximo, BGR uint8 |
+| Último frame directo/nativo | 16 MiB de píxeles, BGR uint8; reducción sólo sobre ese límite |
 | JSON por archivo | 256 KiB |
-| Bundle completo | 10 MiB |
+| Bundle completo | 32 MiB |
 | Bundles retenidos | 20 |
 | Storage gestionado | 128 MiB |
 | Antigüedad | 7 días desde mtime del directorio |
@@ -90,7 +95,9 @@ Sólo se reconocen directorios `failure_<uuid32>` con marcador exacto `.owner` y
 
 Estos bundles son adquisición diagnóstica temporal, ignorada por Git. Antes de promover evidencia a datasets, copiar los frames necesarios a almacenamiento curado y actualizar el manifest; nunca referenciar un bundle sujeto a retención como asset runtime permanente. No se tocaron raws portal/identidad referenciados por manifests.
 
-## Memoria y mediciones locales
+## Memoria y mediciones históricas de v1
+
+Las mediciones siguientes preceden a la captura directa/MANUAL y describen únicamente el ring reducido. El collector vigente agrega hasta 16 MiB de píxeles y 256 KiB de metadata para el último frame directo; no se volvió a medir su latencia. Se conservan las mediciones como procedencia, no como benchmark del callback nuevo.
 
 `tools.benchmark_failure_evidence` usa tres imágenes locales existentes y una segunda carga de ruido determinista con sus mismas dimensiones. Agrega 80 observations sintéticas por snapshot, sin ejecutar percepción ni OCR. Mide ingestión, escritura real del bundle y variantes de encode; elimina todos sus bundles temporales, conservando únicamente estadísticas. Los paths y resultados quedan en `artifacts/failure_evidence_v1/`.
 
@@ -134,4 +141,4 @@ Validación final: **1523/1523 tests hardware-free passed**; **110 dirigidos pas
 
 `bot/failure_evidence.py` implementa ring, serialización, writer, retención y helper de propagación. Los cambios en `event_log.py`, `runtime_observer.py`, `productive_runtime.py` y `session.py` conectan esos seams. `tests/test_failure_evidence.py` cubre los doce casos de aceptación, runners reales, Daily real, fallos de storage y preservación de inputs. `tests/test_productive_runtime.py` verifica cleanup/fallo inicial y aísla todos sus bundles en tmp_path. El benchmark es `tools/benchmark_failure_evidence.py`.
 
-Próximo trabajo, sólo tras revisión: SessionReport consumidor de referencias, seguido del orden de ROADMAP. GUI nueva, Character Identity, Eligibility y Arena no se iniciaron. No se necesita una recalibración perceptiva: ningún detector, ROI, asset, preprocessing productivo ni regla del resolver cambió.
+El cierre y los follow-ups anteriores son históricos; el contrato vigente de captura directa/MANUAL está descrito arriba. Sus regresiones están en `tests/test_manual_resolution_evidence.py`, con frames sintéticos y helpers/fixtures ya versionados; no requieren teléfono ni recalibración perceptiva.

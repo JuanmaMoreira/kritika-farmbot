@@ -58,12 +58,15 @@ def test_build_frame_source_reuses_explicit_adb_client_without_operations():
 
 
 def test_build_frame_source_accepts_explicit_stream_quality_limits():
+    consumer = Mock()
     source = build_frame_source(
-        runtime_config(), video_bit_rate=8_000_000, max_fps=30
+        runtime_config(), video_bit_rate=8_000_000, max_fps=30,
+        frame_consumer=consumer,
     )
 
     assert source.video_bit_rate == 8_000_000
     assert source.max_fps == 30
+    assert source._frame_consumer is consumer
 
 
 def test_build_runtime_fact_reader_hides_roi_ocr_and_parser_from_consumer():

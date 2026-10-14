@@ -207,6 +207,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     monkeypatch.setattr(productive, "build_adb_client", lambda value: adb)
     def build_source(*args, **kwargs):
         assert kwargs["max_fps"] == 10  # Live repeated-flow composition must not backlog capture.
+        assert kwargs['frame_consumer'].__self__ is events.failure_evidence
         return source
     monkeypatch.setattr(productive, "build_frame_source", build_source)
     monkeypatch.setattr(productive, "ActionExecutor", lambda value: actions)

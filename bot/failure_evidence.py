@@ -18,6 +18,7 @@ import numpy as np
 from bot.event_context import event_context
 from bot.event_log import EventSink, RuntimeEvent
 from bot.failure_cause import FailureCause
+from bot.capture import FrameSnapshot
 from bot.runtime_observer import RuntimeSnapshot
 
 
@@ -25,7 +26,8 @@ WINDOW = 3
 MAX_SIDE = 960
 PNG_COMPRESSION = 1
 MAX_METADATA_BYTES = 256 * 1024
-MAX_BUNDLE_BYTES = 10 * 1024 * 1024
+MAX_CAPTURE_BYTES = 16 * 1024 * 1024
+MAX_BUNDLE_BYTES = 32 * 1024 * 1024
 MAX_STORAGE_BYTES = 128 * 1024 * 1024
 MAX_BUNDLES = 20
 MAX_AGE_SECONDS = 7 * 86400
@@ -33,6 +35,7 @@ _DIRECTORY = re.compile(r"failure_[0-9a-f]{32}")
 _FILE = re.compile(r"(?:failure\.json|snapshot_\d+\.json|frame_\d+\.png|\.owner)")
 _OWNER = b"kritika-failure-evidence-v1\n"
 _TERMINALS = {"flow.failed", "rotation.failed", "session.failed", "runtime.failed"}
+_MANUAL_TERMINALS = {"flow.manual_resolution", "session.manual_resolution"}
 _CANCELLATIONS = {"RuntimeWaitCancelled", "KeyboardInterrupt", "SystemExit", "CancelledError"}
 
 
@@ -74,6 +77,7 @@ class FailureEvidence:
         self.root = Path(root)
         self._clock = clock
         self._entries: deque[_Entry] = deque(maxlen=WINDOW)
+        self._capture: _Entry | None = None
         self._lock = threading.Lock()
         self._closed = False
         try:
@@ -114,21 +118,49 @@ class FailureEvidence:
             # A bad diagnostic sample cannot prevent delivery of the runtime snapshot.
             pass
 
+    def observe_frame(self, snapshot: FrameSnapshot, kind: str) -> None:
+        """Retain the last delivered owner frame, without another acquisition."""
+        try:
+            with self._lock:
+                if self._closed or (self._capture is not None and snapshot.sequence <= self._capture.sequence):
+                    return
+                image = snapshot.image
+                if image.dtype != np.uint8 or image.ndim != 3 or image.shape[2] != 3 or not image.size:
+                    return
+                original_shape = list(image.shape)
+                if image.nbytes > MAX_CAPTURE_BYTES:
+                    ratio = (MAX_CAPTURE_BYTES / image.nbytes) ** .5
+                    image = cv2.resize(image, (max(1, int(image.shape[1]*ratio)),
+                                              max(1, int(image.shape[0]*ratio))), interpolation=cv2.INTER_AREA)
+                else:
+                    image = image.copy()
+                image.flags.writeable = False
+                payload = dict(schema_version=1, sequence=snapshot.sequence, timestamp=snapshot.timestamp,
+                    timestamp_clock="capture_monotonic", context=event_context(),
+                    capture=dict(source=kind, original_shape=original_shape),
+                    frame=dict(file=f"frame_{snapshot.sequence}.png", width=image.shape[1], height=image.shape[0],
+                               color_space="BGR", png_compression=PNG_COMPRESSION))
+                self._capture = _Entry(snapshot.sequence, json_bytes(payload), image)
+        except Exception:
+            pass
+
     @property
     def retained_bytes(self) -> int:
         with self._lock:
             return sum(len(e.metadata) + (e.image.nbytes if e.image is not None else 0)
-                       for e in self._entries)
+                       for e in self._entries) + (len(self._capture.metadata) + self._capture.image.nbytes
+                                                  if self._capture is not None else 0)
 
     def close(self) -> None:
         with self._lock:
             self._entries.clear()
+            self._capture = None
             self._closed = True
 
     def enrich(self, item: RuntimeEvent) -> RuntimeEvent:
         """The only evidence eligibility seam, before any stream consumer runs."""
         cause = item.fields.get("failure")
-        if (item.event not in _TERMINALS or not isinstance(cause, dict)
+        if (item.event not in _TERMINALS | _MANUAL_TERMINALS or not isinstance(cause, dict)
                 or cause.get("evidence_ref")
                 or cause.get("type") in {"cancelled", "cancellation"}
                 or cause.get("exception_type") in _CANCELLATIONS):
@@ -138,9 +170,10 @@ class FailureEvidence:
                 if self._closed:
                     return item
                 return self._write(item, cause)
-        except Exception:
+        except Exception as error:
             # No diagnostic event here: writing a failure must never recurse.
-            return item
+            return replace(item, fields={**item.fields,
+                "evidence_error": f"{type(error).__name__}: {error}"})
 
     def _write(self, item: RuntimeEvent, cause: dict) -> RuntimeEvent:
         directory = self.root / f"failure_{uuid4().hex}"
@@ -148,7 +181,15 @@ class FailureEvidence:
         enriched = replace(item, fields={**item.fields, "failure": {**cause, "evidence_ref": reference}})
         files: dict[str, bytes] = {}
         snapshots = []
-        for entry in self._entries:
+        entries = {entry.sequence: entry for entry in self._entries}
+        if self._capture is not None:
+            capture = self._capture
+            metadata = json.loads(entries[capture.sequence].metadata) if capture.sequence in entries else {}
+            # Same-frame semantics may supplement raw evidence; never manufacture
+            # resolver state for a frame that the owner read directly.
+            metadata.update(json.loads(capture.metadata))
+            entries[capture.sequence] = _Entry(capture.sequence, json_bytes(metadata), capture.image)
+        for entry in sorted(entries.values(), key=lambda entry: entry.sequence)[-WINDOW:]:
             name = f"snapshot_{entry.sequence}.json"
             files[name] = entry.metadata
             frame_name = None
@@ -238,7 +279,8 @@ class FailureEvidence:
 
 def publish_failure(sink: EventSink, event: str, failure: FailureCause | None, **fields) -> FailureCause | None:
     """Publish once and return the same cause with the successfully persisted ref."""
-    if failure is None and event in _TERMINALS:
+    if failure is None and (event in _TERMINALS or
+                           event in _MANUAL_TERMINALS and (fields.get("error") or fields.get("cause"))):
         failure = FailureCause.from_error(fields.get("error") or fields.get("cause") or event.replace(".", "_"))
     try:
         item = sink.record(event, failure=failure.payload() if failure else None, **fields)

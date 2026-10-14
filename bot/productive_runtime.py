@@ -945,6 +945,7 @@ def open_productive_runtime(
             # Repeated MW bindings warm several OCR pools. At 30 FPS their
             # CPU contention queued capture past Stages' freshness guard live.
             max_fps=10,
+            frame_consumer=evidence.observe_frame,
         )
         actions = ActionExecutor(adb)
         with source:
