@@ -197,8 +197,29 @@ class StagesNavigation:
             closes={'results':C.RESULTS_OK,'auto':C.CLOSE_AUTO,'start':C.CLOSE_START,'config':C.CLOSE_CONFIG,
                     'daily_exhausted':C.NO_ADS_OK,'no_ads':C.NO_ADS_OK}
             if layer in closes:
-                self.tap(closes[layer],s);s=self.wait(lambda a:exposed(a) and surface(a)!=layer,
-                    observer=observer)
+                changed=lambda a:exposed(a) and surface(a)!=layer
+                self.tap(closes[layer],s)
+                try:
+                    s=self.wait(changed,observer=observer)
+                except RuntimeWaitTimeout as error:
+                    config=lambda a:(a.state.status is ResolutionStatus.RESOLVED
+                        and a.state.base_context=='screen.stages' and exposed(a) and surface(a)=='config')
+                    last=error.last_snapshot
+                    if (layer!='config' or last is None or not config(last)
+                            or last.sequence<=self.cursor or last.timestamp<=self.dispatched_at
+                            or not 0.<=self.clock()-last.timestamp<2.):
+                        raise
+                    # Only this acquired X is nonconsuming. Read past the last
+                    # failed wait; a late close continues without another input.
+                    self.cursor=max(self.cursor,last.sequence)
+                    s=self.wait(lambda a:config(a) or (changed(a)
+                        and a.state.status is ResolutionStatus.RESOLVED
+                        and a.state.base_context=='screen.stages'),observer=observer)
+                    if config(s):
+                        record_best_effort(self.events,'stages.config_close.retry',
+                            reason='fresh_config_no_effect',source_sequence=s.sequence,input_retries=1)
+                        self.tap(C.CLOSE_CONFIG,s)
+                        s=self.wait(changed,observer=observer)
             elif layer in {'normal','elite'}:
                 self.tap(C.BACK,s);return self.wait(lobby,timeout=8.)
             else:raise ValueError('stages exit upper layer unverified')

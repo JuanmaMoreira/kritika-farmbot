@@ -1,5 +1,30 @@
 # Estado actual — Kritika FarmBot
 
+## Stages — X de configuración sin efecto tras Results, corregido 2026-10-12
+
+Sesión `ea2c845a`, segundo personaje Eclair, una rotación completa. AdsManager
+acreditó RETURNED1400; Results OK desde4175 alcanzó config4188. La X adquirida
+(.804,.166) se despachó1409–1411 pero el wait6s terminó en4251, config todavía
+resuelta con confianza1.0; flow.failed1417. LIVE_EVIDENCE4249/4250/4251 muestra
+Stage08 Crimson Dimension Rift2, X expuesta y popup persistente. No fue un fin
+de ad perdido ni un miss del detector: la salida sólo hacía un intento de X.
+Se demuestra falta de efecto observado, no por qué el juego ignoró el tap.
+
+Fix mínimo en StagesNavigation.exit_to_lobby: sólo CLOSE_CONFIG admite un
+retry tras timeout con config RESOLVED en screen.stages, expuesta, sequence
+posterior al origen, timestamp posterior al dispatch y age0..2s. Readquiere
+una captura posterior al último frame del wait antes de otro input; si el
+cierre aparece tarde, continúa sin segundo X. UNKNOWN/AMBIGUOUS/otro contexto/
+overlay/stale/futuro/pre-input/cancelación y segundo miss cortan. Conserva
+observer scoped para config y observer completo para Lobby. Results OK,
+Video, Start, compras y Back no ganan retries; no se repite el ad ni su consumo.
+Evento stages.config_close.retry conserva source_sequence del permiso.
+Validación:257 tests dirigidos PASS (16 nuevos; results return/wiring,
+navegación/native wait/performance, Daily/manual, Socket/Inventory relief,
+Claims, Gold Farming y abastecimiento manual). Regresión reproduce timeout
+antes del patch. Sin cambio perceptivo ni evaluator; sin teléfono. Pendiente
+observar ejecución ordinaria.
+
 ## Monster Wave — regularización Git fase 8, validada offline 2026-10-14
 
 Tres unidades autónomas desde `0efe69e`: readiness (`074fb50`), cierre CLEAR
