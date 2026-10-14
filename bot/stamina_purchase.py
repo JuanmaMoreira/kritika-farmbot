@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from bot.event_log import record_best_effort
 from bot.stages_runtime import lobby
 from bot.runtime_observer import RuntimeWaitTimeout
+from bot.state import ResolutionStatus
 
 # Existing C4 Available Trades ROI, read by the existing pair reader.
 QUANTITY_ROI=(.592,.78,.66,.84)
@@ -28,6 +29,25 @@ class StaminaPurchase:
     def _act(self,action,s):self.nav.act(action,s)
     def ready(self,s):return all(self.detector.present(s.frame.image,k) for k in ('currency','stamina_row'))
     def panel(self,s):return all(self.detector.present(s.frame.image,k) for k in ('stamina_panel','kcoin'))
+    def _close_to_lobby(self,s):
+        n=self.nav
+        self._act(CloseTrading(),s)
+        try:return n.wait(lobby)
+        except RuntimeWaitTimeout as error:
+            last=error.last_snapshot
+            # A lost X is navigation only. Retry once from the same exposed
+            # Currency panel, never from unknown/covered/pre-input evidence.
+            if (last is None or last.state.status is not ResolutionStatus.RESOLVED
+                    or last.state.base_context!='screen.trading' or last.state.overlays
+                    or last.sequence<=n.cursor or last.timestamp<=n.dispatched_at
+                    or not 0.<=n.clock()-last.timestamp<2.
+                    or not self.ready(last)
+                    or self.detector.present(last.frame.image,'stamina_panel')):
+                raise
+            record_best_effort(n.events,'stages.stamina_purchase.close_retry',
+                reason='fresh_trading_no_effect',source_sequence=last.sequence,input_retries=1)
+            self._act(CloseTrading(),last)
+            return n.wait(lobby)
     def quantity(self,s,*,allow_empty=False):
         try:selected,cap=self.balances.pair(s,QUANTITY_ROI)
         except ValueError:
@@ -64,7 +84,7 @@ class StaminaPurchase:
                 raise ValueError('previous stamina payment unresolved')
             self._act(CancelTradingTrade(),s)
             s=n.wait(lambda s:self.ready(s) and not self.panel(s))
-            self._act(CloseTrading(),s);n.wait(lobby)
+            self._close_to_lobby(s)
             after=self.balances.read()
             if after.stamina < previous.stamina+50*trades:
                 raise ValueError('previous stamina transaction unresolved')
@@ -85,7 +105,7 @@ class StaminaPurchase:
         if manual and cap==0:
             self._act(CancelTradingTrade(),s)
             s=n.wait(lambda s:self.ready(s) and not self.panel(s))
-            self._act(CloseTrading(),s);n.wait(lobby)
+            self._close_to_lobby(s)
             return StaminaSupplyResult(self.balances.read(),required,outcome='trade_limit')
         if manual and cap>20:raise ValueError('stamina trade cap outside acquired bounds')
         if selected!=1:raise ValueError('stamina trade initial quantity mismatch')
@@ -99,7 +119,7 @@ class StaminaPurchase:
                 # Known panel; acquired Cancel closes only Item Trade.
                 self._act(CancelTradingTrade(),s)
                 s=n.wait(lambda s:self.ready(s) and not self.panel(s))
-                self._act(CloseTrading(),s);n.wait(lobby)
+                self._close_to_lobby(s)
                 return StaminaSupplyResult(self.balances.read(),required,outcome=boundary)
             trades_needed=allowed
         elif cap<trades_needed:
@@ -138,7 +158,7 @@ class StaminaPurchase:
         self._act(ConfirmTradingTrade(),s)
         # One consuming confirmation. Inconclusive effect never repeats it.
         s=n.wait(lambda s:self.ready(s) and not self.detector.present(s.frame.image,'stamina_panel'))
-        self._act(CloseTrading(),s);n.wait(lobby)
+        self._close_to_lobby(s)
         after=self.balances.read()
         minimum=before.stamina+50*trades_needed if manual else required
         if after.stamina<minimum:raise ValueError('stamina batch effect unverified: fresh stamina below demand')

@@ -1,5 +1,24 @@
 # Estado actual — Kritika FarmBot
 
+## Basic Gold Farming — cierre Trading sin efecto corregido 2026-10-10
+
+Sesión GUI `fa51df16`, segundo personaje Lina: primera divergencia en el retorno
+de la compra Stamina, no en Rotation. `stamina_before=294`, una confirmación de
+un trade; las capturas finales muestran 344/440 y Currency aún abierto tras X.
+`CloseTrading` source8814 fue despachado una vez; espera Lobby agotó6s en8877.
+LIVE_EVIDENCE:8868/8873/8877 conservan Trading resuelto y sin overlays; replay
+del detector actual confirma Currency(.9722), Stamina row(.9505–.9506) y ausencia
+de Item Trade. No se demuestra por qué el juego ignoró ese primer cierre.
+
+Fix local en `StaminaPurchase`: un único retry X desde Trading/Currency expuesto,
+fresco y posterior al input, con estado resuelto, sin overlays ni Item Trade.
+UNKNOWN/AMBIGUOUS, evidencia vieja/pre-input, cancelación y segundo timeout
+siguen cortando. La confirmación consumptiva nunca se repite.
+Validación:130 tests distintos PASS (Stamina close/batch, Manual supply,
+Stages Daily y Gold Farming); el test de persistencia se reejecutó con temporal
+en artifacts tras fallo ambiental de permisos. Replay de las tres capturas y
+diff-check PASS. Sin cambio perceptivo ni nueva campaña live28/28.
+
 ## Stages — entrada Inventory sin efecto antes de Sell, corregido 2026-10-11
 
 Sesión `e81b3bb2`, noveno personaje Blood Demon, ocho rotaciones completas.
