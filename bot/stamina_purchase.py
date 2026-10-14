@@ -59,6 +59,48 @@ class StaminaPurchase:
         if allow_empty and (selected,cap)==(0,0):return 0,0
         if not 1<=selected<=cap:raise ValueError('stamina trade quantity invalid')
         return selected,cap
+    def _select_quantity(self,s,trades,cap):
+        if not 1<=trades<=min(cap,20):raise ValueError('stamina selector tap bound')
+        n=self.nav;retried=False
+        def observed(item):
+            if (item.state.status is not ResolutionStatus.RESOLVED
+                    or item.state.base_context!='screen.trading' or item.state.overlays
+                    or not self.panel(item)):
+                return None
+            try:quantity=self.quantity(item)
+            except ValueError:return None
+            record_best_effort(n.events,'stages.stamina_purchase.quantity_sample',
+                selected=quantity[0],cap=quantity[1],requested=trades,
+                source_sequence=item.sequence)
+            return quantity
+        for previous in range(1,trades):
+            if observed(s)!=(previous,cap):
+                raise ValueError('stamina trade selected quantity mismatch')
+            n.stamina_increments(1,s)
+            expected=(previous+1,cap)
+            try:s=n.wait(lambda item:observed(item)==expected)
+            except RuntimeWaitTimeout as error:
+                last=error.last_snapshot
+                if (retried or last is None or last.sequence<=n.cursor
+                        or last.timestamp<=n.dispatched_at
+                        or not 0.<=n.clock()-last.timestamp<2.
+                        or observed(last)!=(previous,cap)):
+                    raise ValueError('stamina trade selected quantity mismatch') from error
+                # Read beyond the timeout before retrying this nonconsuming >.
+                # A late increment needs no input; unknown/changed facts deny it.
+                n.cursor=max(n.cursor,last.sequence)
+                s=n.wait(lambda item:observed(item) in ((previous,cap),expected))
+                if observed(s)==expected:continue
+                retried=True
+                record_best_effort(n.events,'stages.stamina_purchase.increment_retry',
+                    selected=previous,requested=trades,source_sequence=s.sequence,input_retries=1)
+                n.stamina_increments(1,s)
+                try:s=n.wait(lambda item:observed(item)==expected)
+                except TimeoutError as second:
+                    raise ValueError('stamina trade selected quantity mismatch') from second
+            except TimeoutError as error:
+                raise ValueError('stamina trade selected quantity mismatch') from error
+        return s
     def ensure(self,before):
         # USER_GT: every trade yields exactly 50; fresh HAVE comes from the
         # caller's Lobby balance consensus. K Coins are available, no coin OCR.
@@ -127,21 +169,7 @@ class StaminaPurchase:
             raise ValueError(f'stamina trade cap {cap} below requested {trades_needed}')
         right_taps=trades_needed-1
         if right_taps:
-            n.stamina_increments(right_taps,s)
-            # Like productive C4 post-MAX: a fresh frame may precede the UI
-            # quantity update. Wait for the requested final selection, never
-            # retransmit setup taps or confirm from an intermediate.
-            def final_quantity(item):
-                if not self.panel(item):return False
-                try: observed=self.quantity(item)
-                except ValueError:return False
-                record_best_effort(n.events,'stages.stamina_purchase.quantity_sample',
-                    selected=observed[0],cap=observed[1],requested=trades_needed,
-                    source_sequence=item.sequence)
-                return observed==(trades_needed,cap)
-            try:s=n.wait(final_quantity)
-            except (RuntimeWaitTimeout,TimeoutError) as error:
-                raise ValueError('stamina trade selected quantity mismatch') from error
+            s=self._select_quantity(s,trades_needed,cap)
         elif self.quantity(s)!=(trades_needed,cap):
             raise ValueError('stamina trade selected quantity mismatch')
         record_best_effort(n.events,'stages.stamina_purchase.selected',

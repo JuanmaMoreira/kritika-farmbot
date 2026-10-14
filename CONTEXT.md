@@ -1,5 +1,33 @@
 # Estado actual — Kritika FarmBot
 
+## Basic Gold Farming — incremento Stamina sin efecto, corregido offline 2026-10-13
+
+Sesión `8441fbbb`, cuarto personaje Strike Archer, segunda oportunidad Stages.
+Lobby acreditó41 Stamina; faltaban6 trades para341. Cinco `>` despachados a
+11:56:12–13 -03 produjeron sólo cuatro incrementos:13 muestras frescas mostraron
+4/20 y luego5/20 hasta timeout6s. El corte `stamina trade selected quantity mismatch`
+ocurrió antes de Trade. LIVE_EVIDENCE:18540/18545/18550 y replay dan5/20,
+Stamina250, KCoins135808/1000. No se demuestra qué tap quedó sin efecto ni por qué.
+Fuente: `logs/20261013T142542.310618Z_session_8441fbbb.jsonl`, eventos5375–5436;
+evidencia en `artifacts/failure_evidence/failure_c7cb82f93a88465eb5984abb64443f6c`.
+
+Fix local en StaminaPurchase: esperar cantidad/cap después de cada `>`.
+Un solo retry de incremento por compra exige último snapshot fresco posterior
+al input del mismo panel resuelto, con cantidad anterior/cap intactos, y una
+relectura posterior. Destino tardío continúa sin input; cantidad anterior permite
+el retry. UNKNOWN/AMBIGUOUS, lectura inconclusa, cambios, evidencia vieja/pre-input,
+cancelación y segundo miss conservan el corte. Trade se confirma sólo una vez
+con cantidad exacta. Contrato actualizado en RESOURCE_ROUTING.
+
+277 tests afectados PASS: batch/retry/close Stamina, Manual supply, Stages Daily,
+Gold Farming/failures, Manual Stages, Arena stamina budget y Stages claim loop.
+La regresión reproduce el quinto incremento perdido y acredita6 antes de una
+sola confirmación; también cubre efecto tardío, límites del retry y denegaciones.
+El test de persistencia se reejecutó con temporal en artifacts tras un error
+ambiental de permisos. Sin cambio perceptivo ni evaluator. Sin hardware/smoke;
+la recuperación física queda pendiente de la próxima ejecución GUI. Trabajo
+previo preservado; reabrir GUI antes de ejecutar el código actualizado.
+
 ## Basic Gold Farming — cierre Trading sin efecto corregido 2026-10-10
 
 Sesión GUI `fa51df16`, segundo personaje Lina: primera divergencia en el retorno

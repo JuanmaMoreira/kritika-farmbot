@@ -251,8 +251,19 @@ nativos originales ni validar matching de título nativo desde esos crops.
 Live Stamina final selection (2026-10-03): a frame captured 31 ms after the final
 `>` dispatch still showed 4/20, then the same panel reached 5/20 without another
 input. As in productive C4 post-MAX, the final verification waits bounded for the
-requested quantity. There is no perception between setup taps, no setup retry,
-and no confirmation from an intermediate/mismatched/inconclusive selection.
+requested quantity. El setup en ráfaga sin lecturas intermedias de ese checkpoint
+queda supersedido por el contrato siguiente.
+
+**IMPLEMENTATION_CONTRACT 2026-10-13:** StaminaPurchase espera cantidad/cap frescos
+después de cada `>` antes del siguiente incremento; la selección conserva el
+límite total adquirido de 20 trades, incluso con inputs individuales. Un timeout sólo permite un
+retry de `>` por compra si el último snapshot posterior al input es fresco,
+Trading resuelto sin overlays ajenos y conserva identidad, cantidad anterior y
+cap. Una relectura posterior a ese snapshot debe acreditar cantidad anterior o
+destino: destino tardío continúa sin tap; anterior autoriza el único retry.
+UNKNOWN/AMBIGUOUS, OCR inconcluso, cap/cantidad distintos, evidencia vieja/pre-input,
+cancelación o segundo miss detienen sin confirmación. Sólo la cantidad final
+exacta autoriza el Trade único; nunca se repite una confirmación consumptiva.
 
 Resolved MW blockers retain their original `manual_resolution` event. Only a
 confirmed CLEAR after the productive relief adds `monster_wave.relief_resolved`

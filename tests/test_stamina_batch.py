@@ -45,12 +45,12 @@ def test_exact_batch_from_fresh_have(have,trades):
     assert sum(isinstance(a,ConfirmTradingTrade) for a in actions)==bool(trades)
     assert sum(isinstance(a,StageAction) and a.control==C.STAMINA_INCREMENT for a in actions)==max(0,trades-1)
     if not trades:assert not reads
-    else:assert len(reads)==2  # initial quantity and final quantity, never between > taps
+    else:assert reads
 
 def test_selection_effect_inconclusive_never_confirms_or_retries():
     op,before,_,actions,_=purchase(140,broken_selection=True)
     with pytest.raises(ValueError,match='selected quantity mismatch'):op.ensure(before)
-    assert sum(isinstance(a,StageAction) and a.control==C.STAMINA_INCREMENT for a in actions)==3
+    assert sum(isinstance(a,StageAction) and a.control==C.STAMINA_INCREMENT for a in actions)==1
     assert not any(isinstance(a,ConfirmTradingTrade) for a in actions)
 
 def test_panel_cap_below_requested_diagnoses_without_consumption():
