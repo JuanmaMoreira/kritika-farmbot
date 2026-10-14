@@ -180,6 +180,19 @@ Verificar el efecto con señal fiable suficiente. Identidad de contexto se separ
 
 H&H se recupera sólo cuando bloquea una observación o un input; su mera presencia no provoca trabajo. `VerifiedTransition` entrega las ROIs de la señal necesaria fallida (también ante abort) o consulta el target real del executor. `PortalObstructionRecovery` sólo prueba si esa geometría intersecta el envelope de GAMEPLAY_GT y el contexto es compatible; nunca por timeout/UNKNOWN aislado. Un único dismiss requiere CONFIRMED fresco y una espera pasiva bounded/cancelable debe confirmar ABSENT; persistencia, evidencia inconclusa o frame stale propagan fallo técnico. El caller revalida su condición original con el snapshot fresco, conservando intención/caller. Inputs directos afectados pueden usar `VerifiedTransition.recover_input` y conservar su espera y cancelación; los no afectados no adquieren probes ni capturas adicionales.
 
+Summon Pet Daily conecta esa recuperación compartida antes de sus inputs de
+navegación mediante `recover_input`; el registry conserva el observer de scope
+Pets para los waits y el owner global para el cleanup. Antes y después del
+cleanup exige el mismo contexto limpio; la entrada desde Manage conserva además
+Daily activo. UNKNOWN/AMBIGUOUS, contexto ajeno o Daily perdido tras cleanup
+impiden continuar; cancelación se comprueba antes del input. El dismiss tiene
+presupuesto uno y settle pasivo de hasta 5 s, con ABSENT fresco obligatorio.
+Sin probe confirmado no hay dismiss: la navegación sólo conserva su guard
+original. No se recupera ni repite el par consumptivo card→1(Open); timeout de
+resultado termina el flow. No cambian el no-op sin Daily, Epic/Premium, un solo
+relief y retry por Pet Full, ni las postcondiciones Manage/Summon. Este contrato
+pertenece a Summon Pet Daily; Open Pets sigue fuera de alcance.
+
 H&H no es observación permanente: primero se decide el conflicto causal sin probe; una condición satisfecha no habilita probe por ROI. En entrada MW, los MODAL conocidos se normalizan antes de evaluar la BASE oculta o intentar H&H. El handoff local de entrada efectiva permite sólo el ACK establecido bajo UNKNOWN y, una vez sin MODAL, recovery causal del landmark MW ausente; véase [contrato MW](docs/MONSTER_WAVE_SKIP.md). CONFIRMED siempre conduce a dismiss; después se reevalúa la entrada desde el principio con evidencia fresca, sin repetir la entrada ni cambiar caller.
 
 ## Handoff entre flows

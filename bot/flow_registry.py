@@ -843,13 +843,19 @@ def _build_daily_quests(dependencies: FlowDependencies) -> PerCharacterFlow:
 
 
 def _build_summon_pet_daily(dependencies: FlowDependencies) -> PerCharacterFlow:
+    from bot.verified_transition import VerifiedTransition
+
+    observer = _summon_pet_observer_for(dependencies, dependencies.observer)
+    main = _verified_transition_for(dependencies)
     return SummonPetDailyFlow(
         dependencies.observer,
         dependencies.actions,
         dependencies.events,
         dependencies.pet_summon_space_relief,
-        summon_observer=_summon_pet_observer_for(
-            dependencies, dependencies.observer
+        summon_observer=observer,
+        verified_transition=VerifiedTransition(
+            observer, dependencies.actions, dependencies.events,
+            getattr(main, "obstruction_recovery", None),
         ),
         cancel_requested=dependencies.cancel_requested,
     )

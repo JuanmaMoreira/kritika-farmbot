@@ -45,6 +45,8 @@ def _snapshot(sequence, base, status=ResolutionStatus.RESOLVED):
             sequence=sequence,
             timestamp=timestamp,
             base_context=base if status is ResolutionStatus.RESOLVED else None,
+            base_candidates=("screen.pets_manage", "screen.guild")
+                if status is ResolutionStatus.AMBIGUOUS else (),
         ),
         facts=RuntimeFacts(),
         geometry=FrameGeometry.from_frame(image),
@@ -346,6 +348,19 @@ def test_cancellation_during_settle_propagates_without_more_input():
     assert len(_dismiss_calls(actions)) == 1
 
 
+def test_direct_pet_navigation_uses_shared_transition_for_covered_target():
+    from types import SimpleNamespace
+    from bot.summon_pet_daily_flow import SummonPetDailyFlow
+    observer = ScriptedObserver([_snapshot(3, "screen.pet_summon")], [_snapshot(2, "screen.pets_manage")])
+    actions = Actions()
+    transition = _transition(observer, actions,
+        ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT]))
+    flow = SummonPetDailyFlow(observer, actions, SimpleNamespace(record=lambda *a, **k: None),
+        SimpleNamespace(run=lambda: None), verified_transition=transition)
+    result = flow._act_and_wait(SelectPetSummon(), lambda s: s.state.base_context == "screen.pet_summon",
+        _snapshot(1, "screen.pets_manage"), flow._is_clean_manage, 6.0, 0.0)
+    assert result.sequence == 3
+    assert [type(a) for a in actions.calls] == [DismissPortalNotification, SelectPetSummon]
 
 
 def test_declared_missing_mode_recovers_an_aborted_wait_without_repeating_action():
@@ -398,8 +413,155 @@ def test_executor_dismiss_uses_existing_target_and_never_opens_quick_menu():
     assert taps[0] != relative_point_to_pixel(DEFAULT_ROTATION_ACTION_TARGETS.open_quick_menu, 200, 100)
 
 
+def test_unaffected_direct_pet_navigation_preserves_wait_and_has_no_probe():
+    from types import SimpleNamespace
+    from bot.semantic_actions import SelectPetCombine
+    from bot.summon_pet_daily_flow import SummonPetDailyFlow
+    observer = ScriptedObserver([_snapshot(2, "screen.pet_combine")])
+    actions, probe = Actions(), ScriptedProbe([])
+    flow = SummonPetDailyFlow(observer, actions, SimpleNamespace(record=lambda *a, **k: None),
+        SimpleNamespace(run=lambda: None), verified_transition=_transition(observer, actions, probe))
+    flow._act_and_wait(SelectPetCombine(), lambda s: s.state.base_context == "screen.pet_combine",
+        _snapshot(1, "screen.pets_manage"), flow._is_clean_manage, 6.0, 0.0)
+    assert actions.calls == [SelectPetCombine()]
+    assert probe.calls == 0
 
 
+def test_productive_pet_builder_keeps_shared_recovery(monkeypatch):
+    from types import SimpleNamespace
+    from bot import flow_registry
+    observer, actions = ScriptedObserver([]), Actions()
+    transition = _transition(observer, actions, ScriptedProbe([]))
+    events = SimpleNamespace(record=lambda *a, **k: None)
+    dependencies = SimpleNamespace(
+        observer=observer, actions=actions, events=events,
+        build_verified_transition=lambda: transition,
+        pet_summon_space_relief=SimpleNamespace(run=lambda: None),
+        cancel_requested=lambda: False,
+    )
+    scoped = ScriptedObserver([])
+    monkeypatch.setattr(flow_registry, "_summon_pet_observer_for", lambda *args: scoped)
+    flow = flow_registry._build_summon_pet_daily(dependencies)
+    assert flow.transition.obstruction_recovery is transition.obstruction_recovery
+    assert flow.transition.obstruction_recovery.observer is observer
+    assert flow.transition.observer is flow.summon_observer is scoped
+
+
+@pytest.mark.parametrize("status,base", [
+    (ResolutionStatus.UNKNOWN, None),
+    (ResolutionStatus.AMBIGUOUS, None),
+    (ResolutionStatus.RESOLVED, "screen.guild"),
+])
+@pytest.mark.parametrize("after_dismiss", [False, True])
+def test_pet_navigation_rejects_uncertain_or_foreign_context(status, base, after_dismiss):
+    from types import SimpleNamespace
+    from bot.summon_pet_daily_flow import SummonPetDailyFlow
+    invalid = _snapshot(2, base, status)
+    observer = ScriptedObserver([], [invalid] if after_dismiss else [])
+    actions, probe = Actions(), ScriptedProbe([
+        PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT,
+    ] if after_dismiss else [])
+    flow = SummonPetDailyFlow(observer, actions, SimpleNamespace(record=lambda *a, **k: None),
+        SimpleNamespace(run=lambda: None), verified_transition=_transition(observer, actions, probe))
+    with pytest.raises(RuntimeError, match="summon_pet_navigation_guard_missing"):
+        flow._act_and_wait(SelectPetSummon(), lambda s: False,
+            _snapshot(1, "screen.pets_manage") if after_dismiss else invalid,
+            flow._is_clean_manage, 6.0, 0.0)
+    assert actions.calls == ([DismissPortalNotification()] if after_dismiss else [])
+    assert probe.calls == (2 if after_dismiss else 0)
+
+
+@pytest.mark.parametrize("settle_outcome", [PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.INCONCLUSIVE])
+def test_pet_navigation_stops_after_bounded_failed_cleanup(settle_outcome):
+    from types import SimpleNamespace
+    from bot.summon_pet_daily_flow import SummonPetDailyFlow
+    observer = ScriptedObserver([], [_snapshot(i, "screen.pets_manage") for i in range(2, 5)])
+    actions, clock = Actions(), FakeClock()
+    probe = ScriptedProbe([PortalProbeOutcome.CONFIRMED] + [settle_outcome] * 3)
+    flow = SummonPetDailyFlow(observer, actions, SimpleNamespace(record=lambda *a, **k: None),
+        SimpleNamespace(run=lambda: None), verified_transition=_transition(observer, actions, probe,
+            policy=ObstructionRecoveryPolicy(settle_timeout=1.0), clock=clock))
+    with pytest.raises(RuntimeWaitTimeout):
+        flow._act_and_wait(SelectPetSummon(), lambda s: False,
+            _snapshot(1, "screen.pets_manage"), flow._is_clean_manage, 6.0, 0.0)
+    assert actions.calls == [DismissPortalNotification()]
+    assert clock.now == 1.0
+
+
+def test_pet_navigation_cancellation_after_recovery_prevents_input():
+    from types import SimpleNamespace
+    from bot.summon_pet_daily_flow import SummonPetDailyFlow
+    cancelled = False
+
+    def recover(*args):
+        nonlocal cancelled
+        cancelled = True
+        return _snapshot(2, "screen.pets_manage")
+
+    actions = Actions()
+    flow = SummonPetDailyFlow(ScriptedObserver([]), actions,
+        SimpleNamespace(record=lambda *a, **k: None), SimpleNamespace(run=lambda: None),
+        verified_transition=SimpleNamespace(recover_input=recover), cancel_requested=lambda: cancelled)
+    with pytest.raises(RuntimeWaitCancelled):
+        flow._act_and_wait(SelectPetSummon(), lambda s: False,
+            _snapshot(1, "screen.pets_manage"), flow._is_clean_manage, 6.0, 0.0)
+    assert actions.calls == []
+
+
+@pytest.mark.parametrize("outcome", ["success", "lost_daily", "outcome_timeout"])
+def test_pet_daily_recovery_preserves_eligibility_and_single_consumption(outcome, monkeypatch):
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from bot.flow_contracts import FlowStatus
+    from bot.semantic_actions import OpenEpicPetSummon, OpenSingleEpicPet, ClosePetSummonResult
+    from bot.summon_pet_daily_flow import SummonPetDailyFlow
+    monkeypatch.setattr("bot.summon_pet_daily_flow.time.sleep", lambda seconds: None)
+    before = _snapshot(1, "screen.pets_manage")
+    before = replace(before, state=replace(before.state, overlays=("status.pet_summon_daily_active",)))
+    clean = _snapshot(2, "screen.pets_manage")
+    clean = replace(clean, state=replace(clean.state,
+        overlays=() if outcome == "lost_daily" else before.state.overlays))
+    ready = _snapshot(3, "screen.pet_summon")
+    ready = replace(ready, state=replace(ready.state, overlays=("status.pet_epic_available",)))
+    final = _snapshot(5, "screen.pet_summon")
+    final = replace(final, state=replace(final.state, overlays=ready.state.overlays))
+    waits = [ready, _snapshot(4, "screen.pet_summon_result"), final]
+    if outcome == "outcome_timeout":
+        waits = [ready, _timeout(ready.sequence, ready)]
+    observer = ScriptedObserver(waits, [clean])
+    actions, probe = Actions(), ScriptedProbe([PortalProbeOutcome.CONFIRMED, PortalProbeOutcome.ABSENT])
+    flow = SummonPetDailyFlow(observer, actions, SimpleNamespace(record=lambda *a, **k: None),
+        SimpleNamespace(run=lambda: pytest.fail("unexpected relief")),
+        verified_transition=_transition(observer, actions, probe))
+    result = flow.run_with_initial(before)
+    if outcome == "lost_daily":
+        assert result.status is FlowStatus.FAILED
+        assert "guard_missing_after_recovery" in result.error
+        assert actions.calls == [DismissPortalNotification()]
+    elif outcome == "success":
+        assert result.status is FlowStatus.COMPLETED
+        assert result.daily_completed and result.summons_completed == 1
+        assert actions.calls == [DismissPortalNotification(), SelectPetSummon(),
+            OpenEpicPetSummon(), OpenSingleEpicPet(), ClosePetSummonResult()]
+    else:
+        assert result.status is FlowStatus.FAILED
+        assert "state_wait_failed" in result.error
+        assert actions.calls == [DismissPortalNotification(), SelectPetSummon(),
+            OpenEpicPetSummon(), OpenSingleEpicPet()]
+
+
+@pytest.mark.parametrize("probe_outcome", [PortalProbeOutcome.ABSENT, PortalProbeOutcome.INCONCLUSIVE])
+def test_pet_navigation_timeout_never_repeats_input(probe_outcome):
+    from types import SimpleNamespace
+    from bot.summon_pet_daily_flow import SummonPetDailyFlow
+    before = _snapshot(1, "screen.pets_manage")
+    observer = ScriptedObserver([_timeout(1, before)])
+    actions, probe = Actions(), ScriptedProbe([probe_outcome])
+    flow = SummonPetDailyFlow(observer, actions, SimpleNamespace(record=lambda *a, **k: None),
+        SimpleNamespace(run=lambda: None), verified_transition=_transition(observer, actions, probe))
+    with pytest.raises(RuntimeWaitTimeout):
+        flow._act_and_wait(SelectPetSummon(), lambda s: False, before, flow._is_clean_manage, 6.0, 0.0)
+    assert actions.calls == [SelectPetSummon()]
 
 
 @pytest.mark.parametrize("action_name,base,detail", [

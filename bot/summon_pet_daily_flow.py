@@ -37,6 +37,7 @@ from bot.runtime_observer import (
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
+from bot.verified_transition import VerifiedTransition
 from bot.semantic_actions import (
     AcceptPetInventoryFull,
     ClosePetSummonResult,
@@ -122,6 +123,7 @@ class SummonPetDailyFlow:
         pet_summon_space_relief: _Relief,
         *,
         summon_observer=None,
+        verified_transition=None,
         navigation_timeout: float = 6.0,
         outcome_timeout: float = 12.0,
         navigation_stable_for: float = 0.25,
@@ -150,6 +152,7 @@ class SummonPetDailyFlow:
             raise ValueError("cancel_requested must be callable")
         self.observer: _Observer = observer
         self.summon_observer: _Observer = summon_observer
+        self.transition = verified_transition or VerifiedTransition(summon_observer, actions, events)
         self.actions = actions
         self.events = events
         self.pet_summon_space_relief = pet_summon_space_relief
@@ -205,7 +208,8 @@ class SummonPetDailyFlow:
                 SelectPetSummon(),
                 self._is_summon_ready,
                 pets,
-                retryable_from=self._is_clean_manage,
+                retryable_from=lambda s: self._is_clean_manage(s)
+                    and STATUS_PET_SUMMON_DAILY_ACTIVE in s.state.overlays,
                 timeout=self.navigation_timeout,
                 stable_for=self.navigation_stable_for,
             )
@@ -438,6 +442,15 @@ class SummonPetDailyFlow:
 
         if not retryable_from(before):
             raise RuntimeError("summon_pet_navigation_guard_missing")
+        recovered = self.transition.recover_input(
+            "summon_pet.navigation", action, before, retryable_from,
+        )
+        if recovered is not None:
+            before = recovered
+            if not retryable_from(before):
+                raise RuntimeError("summon_pet_navigation_guard_missing_after_recovery")
+        if self._cancelled():
+            raise RuntimeWaitCancelled("summon pet daily flow cancelled")
         self.actions.execute(action, before.geometry)
         return self.summon_observer.wait_until(
             expected,
