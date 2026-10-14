@@ -136,6 +136,31 @@ Cuatro fuentes históricas de fixtures ya ausentes: se conservan las fixtures
 durables y hashes, sin readquisición. No gameplay/HIL/smoke; recuperación física
 de las cápsulas queda limitada al replay existente. Trabajo ajeno preservado.
 
+## Arena — nuevo corte de retorno a Select Mode, investigación 2026-10-13
+
+Sesión `f5d2a828`, `arena cycle`, primer personaje Burst Breaker, operación3.
+El primer batch y una pasada MW completaron; el segundo batch acreditó terminal
+y cerró resultado/Insufficient. Back Challenge→selección y segundo Back a22:17:48
+-03; corte `transition_unconfirmed` a22:18:02 en `external_return`, sin operación
+física activa. Fuente: `logs/20261014T005821.362947Z_session_f5d2a828.jsonl`,
+eventos352–365. **USER_GT:** quedó Select Mode. No demuestra Back sin efecto.
+La captura posterior al corte no se archivó: evidencia Arena quedó sólo en el
+resultado en memoria; en aquella ejecución Session no publicó un failure bundle.
+
+**LIVE_EVIDENCE posterior, no captura del corte:** usuario restauró Select Mode
+manualmente y autorizó un único screencap ADB sin inputs. A22:31:08 -03,
+2712×1220: guard Select Mode y Back positivos; templates nativos título/tarjeta
+dan1.000/1.000 con umbral.94. Templates antiguos dan.923/.925, insuficientes.
+Raw/hash y scores en `artifacts/arena_select_mode_20261013/native.jsonl` y
+`diagnosis.json`. La GUI Python empezó a21:57:39 -03, posterior al fix de retorno
+del13/10 a01:30; proceso anterior al fix descartado. Baseline de retorno/recheck
+y B2:55tests PASS; warning ambiental de escritura de pytest cache.
+
+**UNKNOWN:** pixels y motivo concreto del recheck fallido de esta ejecución;
+la pantalla restaurada pasa el código vigente y no reproduce el miss. No se
+cambiaron detector, umbrales ni navegación. Corrección causal de este corte
+pendiente de evidencia del fallo; no convertir este replay positivo en fix live.
+
 ## Ads — Reward granted superior izquierdo no reconocido, corregido offline 2026-10-13
 
 Sesión `1a401121`, décimo personaje Ice Warlock, primera oportunidad Stages de
@@ -161,6 +186,38 @@ Next ad, observación vieja y cierre inmediato a5s seguido de Results.
 Evaluator incremental Ads22/22, wrong0;16 pares previos invalidados por nuevos
 assets/observer y6 nuevos. Sin teléfono ni smoke live; recuperación física de
 esta variante pendiente de la próxima ejecución GUI. Reabrir GUI antes de correr.
+
+## Arena — Select Mode sin acreditar durante salida, mitigado offline 2026-10-13
+
+Sesión `0feb44fb`, `arena cycle`, tercer personaje Cat Acrobat, operación9.
+Nueve operaciones Arena previas COMPLETED entre tres personajes. A01:24:14 -03
+terminó `transition_unconfirmed` en external_return, sin operación física activa.
+El último NORMAL tuvo terminal positivo, lectura/cierre del resultado e
+Insufficient→No; Back desde Challenge acreditó selección. El segundo Back se
+despachó a01:24:02 desde72976; agotó12s esperando Select Mode sin llegar al tercer
+Back/Lobby. Sólo un Start en el batch. Log fuente
+`logs/20261013T022450.898300Z_session_0feb44fb.jsonl`, eventos4964–4977.
+
+**UNKNOWN:** no se archivó la pantalla posterior; usuario no preservó el teléfono
+y pidió usar sólo logs. No se atribuye a un tap sin efecto ni a un defecto CV
+concreto. Diferencia de software demostrada: la entrada tenía recheck nativo
+de Select Mode tras timeout del stream; la salida usaba sólo el stream.
+
+Mitigación mínima: mismo recheck nativo positivo único al agotar exclusivamente
+la transición selección→Select Mode durante salida. Owner comparte su operación
+focal con la entrada; conserva detector, umbrales, source/sequence/barrier/edad y
+cancelación. Captura en `return_select_mode_native_recheck`, evento de éxito
+`arena.select_mode.native_recheck` con phase. Positivo autoriza el Back final
+desde ese snapshot; negativo/no refresh conserva el corte. No se repite el Back
+de selección ni Start, ni se deduce el destino desde el input despachado.
+
+183tests afectados PASS: regreso/recheck nuevos13, entrada/recheck12, ArenaFlow79,
+B2/Farming Cycle79. Cubren replay nativo Select Mode adquirido, ausencia del guard,
+capturas stale/pre-input/old-sequence/futuras, cancelación y source sin refresh.
+Resultado ya leído se conserva aunque falle el retorno. Sin cambio perceptivo,
+sin evaluator. Sin hardware, reanudación ni adquisición; trabajo previo preservado.
+El defecto físico específico de este corte y la recuperación live de esta rama
+siguen sin demostración. Reabrir GUI antes de la próxima ejecución.
 
 ## Arena — parent de Socket blocker perdido en captura nativa, corregido 2026-10-12
 
@@ -233,6 +290,44 @@ Arena existente24frames,0errores de superficie/resultado, reutilizando cache.
 No nuevo Start, restauración de Meteorites ni reinicio de Session. Reabrir GUI
 antes de la próxima rutina para recargar visuals/manifest; no hay batch live
 posterior al fix. Las validaciones de wait y Select Mode previas siguen válidas.
+
+## Arena — Select Mode no acreditado, mitigación y smoke focal 2026-10-12
+
+Sesión `8c4c6b01`, rutina `arena cycle`, Telumpel. Primer Arena HARD completado
+con120Badges usados/112ganados; Manual Stages y MW completados después. La
+cuarta operación volvió a Arena con106Badges/0Sapphires. Lobby acreditado;
+Battle desde9166 se despachó en719–721 a23:38:08Z. `arena.finished`722 cortó
+12s después con `transition_unconfirmed`, fase navigation y sin combate activo.
+**USER_GT posterior:** había abierto Select Mode antes de restaurar meteoritos
+y regresar al Lobby. Es un miss perceptivo de la transición, no un Battle sin
+efecto. MANUAL_RESOLUTION no publicó bundle; los píxeles del miss no están
+archivados y su defecto concreto sigue UNKNOWN. Los replays existentes de esa
+pantalla sí pasan el guard actual, incluido el nativo adquirido2026-10-12.
+
+`ArenaFlow._navigate` ahora, sólo al agotar esa espera, fuerza una captura nativa
+única en el mismo source/sequence space y aplica el mismo `select_mode` positivo.
+Si pasa, continúa desde ese frame; si no, conserva el corte. No repite Battle,
+no reduce umbrales ni usa USER_GT como autorización de un input futuro. Edad,
+barrera post-input, secuencia y cancelación conservan los guards de `_capture`.
+La evidencia del resultado conserva `select_mode_native_recheck`; éxito emite
+`arena.select_mode.native_recheck`. No cambio perceptivo ni evaluator.
+
+Validación offline:170tests PASS entre recheck12, ArenaFlow, B2 y Farming Cycle,
+incluido replay nativo existente, negativos/frames viejos y cancelación. Diez
+setups fallaron inicialmente por el directorio temporal del sandbox; los diez
+pasaron al usar un basetemp nuevo dentro del repo.
+
+Smoke autorizado21:00 -03 mediante `tools.arena_select_mode_probe`, ejecución
+real de `_navigate` detenida antes del input Arena. Evidencia en
+`artifacts/arena_select_mode_20261012/live02/{result.json,frames.jsonl}`:
+Battle7→Select Mode stream36, guard positivo; nativo55 también positivo (scores
+native título1.0/tarjeta≈1.0). Sólo Battle y Back; retorno Lobby nativo89,
+runtime.completed/closed, sin Start ni cambio de meteoritos. El intento live01
+falló al iniciar ADB en sandbox, antes de capturar/enviar input; live02 autorizado
+fuera del sandbox completó. Capturas revisadas: Drakenn26,106Badges en Select
+Mode y Lobby. El fallo intermitente no reapareció; `native_recheck=false`.
+La nueva rama tiene validación offline y nativo live legible, pero no se afirma
+haber observado su recuperación tras un timeout real. No campaña adicional.
 
 ## MW — falso cierre de CLEAR bajo mensajes de rewards, corregido 2026-10-12
 

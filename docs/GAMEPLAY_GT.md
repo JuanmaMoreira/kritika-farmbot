@@ -351,6 +351,8 @@ posibles de inventario. Loading/CP/E no sustituyeron los cambios de slot.
 
 ## Arena — USER_GT y adquisición 2026-10-08
 
+- **USER_GT 2026-10-12, Select Mode:** el escudo de la tarjeta League Match es
+  dinámico según ranking actual; no usarlo como landmark fijo de navegación.
 - **USER_GT 2026-10-12, Previous Season Rewards:** MODAL por personaje sobre
   Arena BASE, disponible sólo si ese personaje participó en la temporada anterior
   y tiene pendiente el reconocimiento.

@@ -492,7 +492,10 @@ con tickets insuficientes/desconocidos; nunca compra Karats.
 
 Single cierra a selección; batch a Challenge. Retorno externo exige BASE limpia y
 Backs positivos hasta `screen.arena_select_mode` y Lobby fresco acreditado por
-resolver+CV. New Ranking→OK sólo con evidencia positiva. SUCCESS externo no puede
+resolver+CV. Si selección→Select Mode agota la espera del stream, usa una única
+captura nativa fresca con el mismo guard positivo, compartido con la entrada;
+no repite Back y conserva el corte si el recheck falla. New Ranking→OK sólo con
+evidencia positiva. SUCCESS externo no puede
 emitirse desde Challenge/selección. Session existente continúa desde Lobby conocido;
 FAILED/CANCELLED/incertidumbre detienen el avance. No políticas diarias ni cambios
 de Rotation/Shared Meteorites. Handoff explícito `observe_started_single` conserva

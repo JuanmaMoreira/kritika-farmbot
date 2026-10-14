@@ -167,6 +167,19 @@ class ArenaFlow:
     def _challenge(self, image):
         return self.v.clean_challenge(image) and self.v.preparation(image).difficulty is self.difficulty
 
+    def _select_mode_native_recheck(self, evidence_name):
+        """One fresh positive recheck after a stream timeout; no navigation input."""
+        if getattr(self.source,'refresh_native',None) is None:
+            return None
+        native=self._capture(native=True)
+        if native is not None:
+            self._save(evidence_name,native)
+        if native is None or not self._cv(lambda:self.v.select_mode(native.image)):
+            return None
+        record_best_effort(self.events,'arena.select_mode.native_recheck',
+                           source_sequence=native.sequence,phase=self.phase)
+        return native
+
     def _navigate(self):
         self.phase='navigation'
         # Challenge alone cannot prove idle: it appears between Auto Repeat battles.
@@ -177,7 +190,18 @@ class ArenaFlow:
             raise _Stop('lobby_entry_uncredited')
         self._cursor=entry.frame.sequence; self._last_timestamp=entry.frame.timestamp; before=entry.frame
         # Arena acquisition target differs from the existing Survival entry.
-        before=self._effect(C.BATTLE,before,self.v.select_mode)
+        self._tap(C.BATTLE,before)
+        try:
+            before=self._wait(self.v.select_mode)
+        except _Stop as stopped:
+            if str(stopped)!='transition_unconfirmed':
+                raise
+            # A fresh stream can still miss the acquired Select Mode landmarks.
+            # Recheck the same positive guard once natively; never repeat Battle.
+            native=self._select_mode_native_recheck('select_mode_native_recheck')
+            if native is None:
+                raise
+            before=native
         before=self._effect(C.ARENA,before,lambda f:self.v.previous_rewards(f) or self.v.selection(f) or self.v.ranking(f))
         if self.v.previous_rewards(before.image):
             # Acquired acknowledgment only; rewards are claimed by Mailbox.
@@ -524,7 +548,15 @@ class ArenaFlow:
                 before=self._effect(C.RANKING_OK,before,self.v.selection)
         self._save('return_selection',before)
         vp_frame=before
-        before=self._back(before,self.v.select_mode)
+        try:
+            before=self._back(before,self.v.select_mode)
+        except _Stop as stopped:
+            if str(stopped)!='transition_unconfirmed':
+                raise
+            native=self._select_mode_native_recheck('return_select_mode_native_recheck')
+            if native is None:
+                raise
+            before=native
         self._save('return_select_mode',before)
         before=self._back(before,self.v.lobby)
         final=self.observer.observe()
