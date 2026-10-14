@@ -85,13 +85,21 @@ Replay30 crops y consumidor live `read_sapphires_after_clear` confirman3 sin
 consumo adicional. Ver [auditoría combinada](COMBINED_28_ACCEPTANCE_AUDIT.md).
 
 El popup Sell con nombre largo y pago K Coins puede envolver el **nombre**
-antes del `]`. El reader lee una segunda línea física sólo tras prefijo fuerte
-`Selling [` sin cierre; requiere confianza suficiente en ambas y nombre completo
-estructuralmente cerrado. La relación con detail se acredita por el origen causal
+antes del `]`, o el **pago completo** (`for 15 K Coins.`) después del nombre
+ya cerrado. El reader lee la segunda línea física tras prefijo fuerte `Selling [`
+sin cierre, o tras identidad completa sin pago. En el segundo caso, sólo un
+importe numérico precedido por `for` y seguido por K/K Coins, con confianza≥.80
+en ambas líneas, selecciona
+las regiones Bulk K Coin existentes; moneda distinta o texto inconcluso no habilita
+esa ruta. El importe citado conserva su función de layout del popup Sell: no
+autoriza una compra, gasto alternativo ni inferencia del efecto económico.
+La relación con detail se acredita por el origen causal
 descrito en el contrato de handoff; no por igualdad de transcripciones OCR.
 Identidad completa selecciona las regiones Bulk K Coin;
 scope Bulk exacto independiente, consenso fresco y confirm único siguen vigentes.
-Regresión Blade Dancer 2026-10-05 y replay nativo en COMBINED_28_ACCEPTANCE_AUDIT.
+Regresión Blade Dancer 2026-10-05 y replay nativo en COMBINED_28_ACCEPTANCE_AUDIT;
+el pago completo envuelto se reproduce en
+[fixture Shortsword](../tests/fixtures/equipment_payment_wrap/manifest.json).
 
 ## Sell acceleration — implementada
 

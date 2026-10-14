@@ -218,8 +218,29 @@ class EquipmentSellRuntime:
                 return current
             action = NextEquipmentInventoryPage() if current.page < page else PreviousEquipmentInventoryPage()
             target = current.page + (1 if current.page < page else -1)
+            origin = current
             self._tap(action)
+            input_sequence, input_barrier = self._after_sequence, self._not_before
             current = self._inventory_after(0, predicate=lambda v: v.page == target)
+            if current is None and not self.cancel_requested():
+                # A no-effect page tap is navigation, not a sale/purchase.
+                # Reacquire the unchanged origin after the input before one
+                # retry; UNKNOWN, stale or changed inventory grants no input.
+                retry = self._inventory_after(0)
+                if (retry is not None and retry.confirmed and
+                        (retry.item_count,retry.capacity,retry.total_pages) ==
+                        (origin.item_count,origin.capacity,origin.total_pages) and
+                        retry.sample_sequences and min(retry.sample_sequences) > input_sequence and
+                        retry.observed_at >= input_barrier and
+                        0 <= self.clock()-retry.observed_at <= 2.):
+                    if retry.page == target:
+                        current = retry
+                    elif retry.page == origin.page and not self.cancel_requested():
+                        record_best_effort(self.events, 'equipment.sell.page_retry',
+                                          page=origin.page, target=target,
+                                          source_sequence=retry.sequence)
+                        self._tap(action)
+                        current = self._inventory_after(0, predicate=lambda v: v.page == target)
             if current is None:
                 raise RuntimeError("inventory_page_transition_unverified")
         raise RuntimeError("inventory_page_bound")

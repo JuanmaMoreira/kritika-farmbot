@@ -31,7 +31,7 @@ PAGE_ROI: RelativeRegion = (0.724, 0.885, 0.786, 0.937)
 DETAIL_TITLE_ROI: RelativeRegion = (0.514, 0.255, 0.731, 0.310)
 DETAIL_GRADE_TYPE_ROI: RelativeRegion = (0.560, 0.315, 0.750, 0.365)
 CONFIRM_IDENTITY_ROI: RelativeRegion = (0.350, 0.385, 0.650, 0.425)
-# A long item name can carry its closing bracket onto the second identity line.
+# A long item name or its K Coin payment can continue on the second line.
 CONFIRM_IDENTITY_CONTINUATION_ROI: RelativeRegion = (0.350, 0.418, 0.650, 0.448)
 CONFIRM_GROUP_LINE_ROIS: tuple[RelativeRegion, ...] = (
     (0.350, 0.438, 0.650, 0.469),
@@ -265,6 +265,18 @@ class EquipmentSellReader:
                 f"{identity.text} {continuation.text}",
                 min(identity.confidence, continuation.confidence),
             )
+        elif (identity.confidence >= .80 and
+              re.fullmatch(r"Selling\s*\[[^]]+\]\s*[.,]?", _clean_text(identity.text), re.IGNORECASE)):
+            # The whole payment (including "for") can wrap after a complete name.
+            # Only a positively read payment selects the shifted Bulk regions.
+            continuation = self._read(frame, CONFIRM_IDENTITY_CONTINUATION_ROI, scale=2.5)
+            if (continuation.confidence >= .80 and
+                    re.fullmatch(r"for\s+\d[\d,]*\s+K(?:\s+Coins)?\s*[.,]?",
+                                 _clean_text(continuation.text), re.IGNORECASE)):
+                identity = OcrResult(
+                    f"{identity.text.rstrip('.,')} {continuation.text}",
+                    min(identity.confidence, continuation.confidence),
+                )
         regions = (CONFIRM_COIN_GROUP_LINE_ROIS
                    if re.search(r"\]\s+for\b", identity.text)
                    else CONFIRM_GROUP_LINE_ROIS)

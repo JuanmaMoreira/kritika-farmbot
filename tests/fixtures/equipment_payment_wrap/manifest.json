@@ -1,0 +1,16 @@
+{
+  "provenance": "Session f4663332, character 10 Crimson Assassin, event 13538+: complete identity followed by wrapped for 15 K Coins.; captured read-only after user reopened Sell, no sale confirmation.",
+  "raw_source": "artifacts/sell_shortsword_failure/confirmation.png",
+  "geometry": [
+    2712,
+    1224
+  ],
+  "box": [
+    949,
+    465,
+    1763,
+    682
+  ],
+  "file": "shortsword.png",
+  "sha256": "32dc17ae68237473d36cc5662f24d21da215d7d22621a42945f891d9282b296e"
+}
