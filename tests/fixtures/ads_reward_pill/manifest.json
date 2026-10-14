@@ -1,0 +1,35 @@
+{
+  "provenance": "LIVE_EVIDENCE; exact retained top chrome from 960x433 failure evidence, not native calibration; no creative retained. Native-scale replay is synthetic.",
+  "entries": [
+    {
+      "file": "frame_2795.png",
+      "shape": [
+        433,
+        960
+      ],
+      "source": "artifacts/failure_evidence/failure_2b804bce335641c2bbc3c4665488b602/frame_2795.png",
+      "source_sha256": "24d5facb264aed3081de7a67f9cfd51c86eaa9bf9e1921ae735ad5d66baec906",
+      "fixture_sha256": "ac10c92ffe3d695230d6e0dc3a65fd76c74e97dd6cdc5e558d228e45347cdaf3"
+    },
+    {
+      "file": "frame_2803.png",
+      "shape": [
+        433,
+        960
+      ],
+      "source": "artifacts/failure_evidence/failure_2b804bce335641c2bbc3c4665488b602/frame_2803.png",
+      "source_sha256": "7d394afba383c63f4ede50769f53b3c4d0bd5c430a78fcbfbed0894683eac2c8",
+      "fixture_sha256": "ac10c92ffe3d695230d6e0dc3a65fd76c74e97dd6cdc5e558d228e45347cdaf3"
+    },
+    {
+      "file": "frame_2805.png",
+      "shape": [
+        433,
+        960
+      ],
+      "source": "artifacts/failure_evidence/failure_2b804bce335641c2bbc3c4665488b602/frame_2805.png",
+      "source_sha256": "a0d6feedbf8d39411fb73341d93f605868ecbb8db1cc3fd9c9bc4bd3907342bb",
+      "fixture_sha256": "ac10c92ffe3d695230d6e0dc3a65fd76c74e97dd6cdc5e558d228e45347cdaf3"
+    }
+  ]
+}

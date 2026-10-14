@@ -538,5 +538,65 @@
       0.213,
       0.302
     ]
+  },
+  "ad_reward_close_pill": {
+    "source": "LIVE_EVIDENCE 2026-10-11; failure_2b804bce335641c2bbc3c4665488b602/frame_2805.png; fixed SDK Reward granted + X pill",
+    "crop": [
+      0.772,
+      0.032,
+      0.947,
+      0.11
+    ],
+    "search": [
+      0.765,
+      0.02,
+      0.95,
+      0.12
+    ]
+  },
+  "ad_reward_pill_x": {
+    "source": "LIVE_EVIDENCE 2026-10-11; failure_2b804bce335641c2bbc3c4665488b602/frame_2805.png; fixed SDK Reward granted + X pill",
+    "crop": [
+      0.916,
+      0.038,
+      0.939,
+      0.101
+    ],
+    "search": [
+      0.912,
+      0.025,
+      0.945,
+      0.113
+    ]
+  },
+  "ad_reward_close_left_pill": {
+    "source": "LIVE_EVIDENCE 2026-10-13; failure_65ea02e4691643209e214621be7a3050/frame_57930.png; fixed SDK top-left Reward granted + X pill",
+    "crop": [
+      0.045,
+      0.016,
+      0.202,
+      0.104
+    ],
+    "search": [
+      0.038,
+      0.005,
+      0.215,
+      0.12
+    ]
+  },
+  "ad_reward_left_pill_x": {
+    "source": "LIVE_EVIDENCE 2026-10-13; failure_65ea02e4691643209e214621be7a3050/frame_57930.png; fixed SDK top-left Reward granted + X pill",
+    "crop": [
+      0.052,
+      0.037,
+      0.077,
+      0.083
+    ],
+    "search": [
+      0.043,
+      0.018,
+      0.087,
+      0.105
+    ]
   }
 }

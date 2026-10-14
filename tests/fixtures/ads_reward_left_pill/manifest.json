@@ -1,0 +1,47 @@
+{
+  "provenance": "LIVE_EVIDENCE; fixed SDK top chrome only; no creative retained",
+  "entries": [
+    {
+      "file": "frame_57922.png",
+      "shape": [
+        433,
+        960
+      ],
+      "source": "artifacts/failure_evidence/failure_65ea02e4691643209e214621be7a3050/frame_57922.png",
+      "source_sha256": "d23480b9cf40423f70e9eb48676eb6847fd7ce6358b4b85cbcf85deae3737849",
+      "native_shape": [
+        1224,
+        2712
+      ],
+      "fixture_sha256": "a9b8abb247523791f1a5da2972f6fcdb0182514169b2d2353a8c7c65838ecd53"
+    },
+    {
+      "file": "frame_57928.png",
+      "shape": [
+        433,
+        960
+      ],
+      "source": "artifacts/failure_evidence/failure_65ea02e4691643209e214621be7a3050/frame_57928.png",
+      "source_sha256": "19654b43eec05b619dc866ebe7836856a9bf1602cab06d198b8c22d45cb34e32",
+      "native_shape": [
+        1224,
+        2712
+      ],
+      "fixture_sha256": "d4b98b9de58213c1d34f394e239c398264a7a6b2533b25ed3b0edefcb8166848"
+    },
+    {
+      "file": "frame_57930.png",
+      "shape": [
+        433,
+        960
+      ],
+      "source": "artifacts/failure_evidence/failure_65ea02e4691643209e214621be7a3050/frame_57930.png",
+      "source_sha256": "d23480b9cf40423f70e9eb48676eb6847fd7ce6358b4b85cbcf85deae3737849",
+      "native_shape": [
+        1224,
+        2712
+      ],
+      "fixture_sha256": "a9b8abb247523791f1a5da2972f6fcdb0182514169b2d2353a8c7c65838ecd53"
+    }
+  ]
+}

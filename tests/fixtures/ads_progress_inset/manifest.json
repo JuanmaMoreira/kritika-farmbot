@@ -1,0 +1,43 @@
+{
+  "provenance": "LIVE_EVIDENCE, 2026-10-06: saved failure frames are downsampled to 960x433 by evidence owner, not native calibration. Exact top SDK strip retained without further scaling; no ad creative retained.",
+  "log": "20261006T195702.303792Z_session_f1309e11.jsonl",
+  "session_id": "87df0e0c25ee406ebcd5f9a965c07d6c",
+  "entries": [
+    {
+      "file": "sdk_bar_2608.png",
+      "shape": [
+        433,
+        960
+      ],
+      "sequence": 2608,
+      "timestamp": 27364.859,
+      "source": "artifacts/failure_evidence/failure_942728858f894d1aabfbc43fbc6f0874/frame_2608.png",
+      "source_sha256": "97c724a0e091590130afde93278a252ddd1a62523d8bff3f6ce6725f9ae37575",
+      "fixture_sha256": "f192bc95429191a0b5c2749b48923fe645eb35dfb457d208e262afddfcde1269"
+    },
+    {
+      "file": "sdk_bar_2614.png",
+      "shape": [
+        433,
+        960
+      ],
+      "sequence": 2614,
+      "timestamp": 27365.484,
+      "source": "artifacts/failure_evidence/failure_942728858f894d1aabfbc43fbc6f0874/frame_2614.png",
+      "source_sha256": "3e9c599a7585f965dc10350ae251e8658ba3993050febd4aebbe36d9ea8e7a74",
+      "fixture_sha256": "93789086e5007dac602a03899877af4f96b93e120c5b1ddc8eca3eb09355c973"
+    },
+    {
+      "file": "sdk_bar_2616.png",
+      "shape": [
+        433,
+        960
+      ],
+      "sequence": 2616,
+      "timestamp": 27365.687,
+      "source": "artifacts/failure_evidence/failure_942728858f894d1aabfbc43fbc6f0874/frame_2616.png",
+      "source_sha256": "fd66268f5e63d88fcfd69a1a23015b22d57fcf6457d1f57d348aa244d1268e7b",
+      "fixture_sha256": "0bccc1803f9de6dc3fbce6e49eef0ff993ce1b8ae28fab747336a2c564e2196a"
+    }
+  ]
+}

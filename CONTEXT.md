@@ -1,5 +1,63 @@
 # Estado actual — Kritika FarmBot
 
+## Ads — regularización Git fase 7, validada offline 2026-10-14
+
+Snapshot aislado desde `8f998c805295076f9f2f3c78a79c566fd0935dca`: progreso SDK
+con inset y ambas cápsulas `Reward granted`, con sus assets/fixtures/manifests.
+Revisión reprodujo cancelación durante observación que aún despachaba input;
+el manager ahora revalida cancelación al volver del observer normal/recovery.
+367 tests dirigidos y de consumidores PASS; evaluator terminal22/22 y progreso10/10,
+wrong0. Cierre SDK, Results y efecto fresco de Sapphires siguen siendo hechos
+distintos; sin cambios de elegibilidad, retries económicos ni límites de Ads.
+Cuatro fuentes históricas de fixtures ya ausentes: se conservan las fixtures
+durables y hashes, sin readquisición. No gameplay/HIL/smoke; recuperación física
+de las cápsulas queda limitada al replay existente. Trabajo ajeno preservado.
+
+## Ads — Reward granted superior izquierdo no reconocido, corregido offline 2026-10-13
+
+Sesión `1a401121`, décimo personaje Ice Warlock, primera oportunidad Stages de
+Basic Gold Farming. Diecisiete ads anteriores retornaron. La barra SDK avanzó
+.060→.965 entre5.2s y59.3s; después se agotó60s sin progreso/cierre reconocido.
+`AD_RECOVERY_FAILED` a15:02:54 -03, elapsed121.656s, close_steps0. Fuente:
+`logs/20261013T162714.129609Z_session_1a401121.jsonl`, eventos15978–16004.
+LIVE_EVIDENCE: `failure_65ea02e4691643209e214621be7a3050`,57922/57928/57930:
+cápsula clara superior izquierda con `Reward granted` y X negra. El observer
+buscaba sólo chrome adquirido a la derecha; scores antiguos cápsula/X .143/.126.
+
+Fix local AndroidAdsObserver: cápsula izquierda completa y X separada, ambas≥.94,
+autorizan Back con clave `reward_granted_left_pill`. Replay de las tres capturas
+da ambos scores>.999. Se conservan Google AdActivity resumed/focus concordantes,
+freshness≤2s, veto Next ad, presupuesto de cierre y prueba funcional del caller.
+Fixtures guardan sólo chrome superior, procedencia/hash y geometría nativa;
+no se reconoce contenido creativo ni se cambia el lifecycle temporal.
+
+158 tests afectados PASS: ambas cápsulas, circular SDK, terminal corto, progreso,
+captura nativa, Gold Cycle failures y Stages Daily. Nuevo replay cubre las tres
+capturas y escala nativa, ausencia de X/reward, posición ajena, actividad/foco,
+Next ad, observación vieja y cierre inmediato a5s seguido de Results.
+Evaluator incremental Ads22/22, wrong0;16 pares previos invalidados por nuevos
+assets/observer y6 nuevos. Sin teléfono ni smoke live; recuperación física de
+esta variante pendiente de la próxima ejecución GUI. Reabrir GUI antes de correr.
+
+## Ads — cápsula Reward granted no reconocida, corregido 2026-10-11
+
+Sesión GUI `d3ba3a20`, Eilla, Stages Daily dentro de Basic Gold Farming:
+`Next ad` a7.281s, luego espera de cierre; a60.218s fallback sin progreso
+acreditado y `AD_RECOVERY_FAILED` a60.421s, sin inputs de cierre. LIVE_EVIDENCE
+`failure_2b804bce335641c2bbc3c4665488b602`, frames2795/2803/2805: cápsula gris
+SDK con `Reward granted` y X blanca. Templates anteriores no reconocían esa
+variante (.7942 máximo); ROI OCR cortaba la R (`eward granted`, .95126),
+y la X no tenía el círculo exigido por las primitivas anteriores.
+
+Fix local en AndroidAdsObserver: dos templates del chrome fijo adquirido,
+cápsula completa y X separada, ambos≥.94, autorizan Back bajo Google AdActivity
+resumed/focus concordantes. Se conservan Next ad como veto, freshness≤2s,
+bounds y prueba funcional de Results/reward por el caller. No se usa contenido
+creativo ni se amplía autoridad a X genéricas. Fixtures sólo chrome superior.
+Validación:142 tests dirigidos PASS; evaluator incremental Ads16/16, wrong0,
+incluyendo tres capturas, escala nativa simulada y negativos sin X/reward.
+Warning ambiental de escritura pytest cache; sin teléfono ni nuevo smoke live.
+
 ## Arena Farming / Arena VP — estabilización local 2026-10-10
 
 Checkpoint sobre `56b472d0e008d7e9d2b8f6842491c7feced095a0`, rama

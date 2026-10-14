@@ -673,6 +673,17 @@ el GT de Trading no se generaliza a otra UI. No hay segundo consumidor actual re
 
 ## AdsManager transversal
 
+La cápsula gris SDK `Reward granted` con X blanca adquirida el 2026-10-11
+autoriza Back mediante dos templates locales: cápsula completa y X separada,
+ambos≥.94. La variante clara superior izquierda con X negra adquirida el
+2026-10-13 usa su propio par de templates con el mismo umbral y publica
+`reward_granted_left_pill`; se conserva su posición fija, sin buscar en el
+contenido creativo. Estas variantes no tienen X circular. Exigen Google AdActivity
+resumed/focus concordantes, freshness≤2s y ausencia de `Next ad`; conserva
+presupuesto de cierre y prueba de Results/reward por el caller.
+El manager revalida cancelación después de observar, antes de despachar inputs,
+tanto durante la espera normal como en recovery terminal.
+
 End card Google Play adquirido el 2026-10-09: `AndroidAdsObserver` reconoce
 la X circular y el pie Google Play mediante dos templates locales, ambos ≥.94,
 bajo resumed/focus Google AdActivity concordantes y freshness ≤2s. Es una

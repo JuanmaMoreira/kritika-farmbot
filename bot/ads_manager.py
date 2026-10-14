@@ -51,6 +51,14 @@ def read_sdk_progress(frame):
     hsv=cv2.cvtColor(strip,cv2.COLOR_BGR2HSV)
     mask=(hsv[:,:,0]>=18)&(hsv[:,:,0]<=35)&(hsv[:,:,1]>=60)&(hsv[:,:,2]>=160)
     columns=mask.mean(axis=0)>.65
+    filled=np.flatnonzero(columns)
+    if not len(filled):return None
+    # Acquired multipart chrome can inset the viewport to x=.052 instead
+    # of .038. Find its contiguous fill within the bounded SDK left edge;
+    # arbitrary yellow content farther right remains unknown.
+    start=int(filled[0])
+    if start>round(.055*w)-round(.038*w):return None
+    columns=columns[start:]
     if not columns[:max(2,round(w*.003))].all():return None
     gaps=np.flatnonzero(~columns)
     end=int(gaps[0]) if len(gaps) else len(columns)
@@ -159,6 +167,8 @@ class AdsManager:
             if self.cancel_requested():
                 return finish(AdsOutcome.CANCELLED, last)
             last = self.observe()
+            if self.cancel_requested():
+                return finish(AdsOutcome.CANCELLED, last)
             if last.exhausted:
                 phase('daily_exhausted', last)
                 return finish(AdsOutcome.EXHAUSTED, last)
@@ -243,6 +253,8 @@ class AdsManager:
             if self.cancel_requested():
                 return finish(AdsOutcome.CANCELLED, last)
             last = self.observe()
+            if self.cancel_requested():
+                return finish(AdsOutcome.CANCELLED, last)
             if last.game_present or last.returned:
                 return observe_return(last)
             if steps >= self.max_close_steps:
@@ -328,6 +340,8 @@ class AndroidAdsObserver:
         store_card_close = False
         intermediate = None
         reward_text = False
+        reward_pill = False
+        reward_left_pill = False
         if sdk_activity and activity == 'com.google.android.gms.ads.AdActivity':
             primitive_reader = getattr(self.detector, 'sdk_close_scores', None)
             black_x, white_x, sound = (primitive_reader(snapshot.frame.image)
@@ -345,8 +359,17 @@ class AndroidAdsObserver:
                         if text == 'nextad': intermediate = 'next_ad'
                 except Exception:
                     pass
+            # Acquired SDK pill contains the complete Reward granted label
+            # and its X. This variant has no circular X, and the older OCR
+            # field cuts off the R; match its fixed chrome as a whole.
+            reward_pill = (self.detector.present(snapshot.frame.image, 'ad_reward_close_pill')
+                           and self.detector.present(snapshot.frame.image, 'ad_reward_pill_x'))
+            # Same explicit SDK reward authority in the acquired top-left
+            # light pill. Its non-circular X is bound to the complete label.
+            reward_left_pill = (self.detector.present(snapshot.frame.image, 'ad_reward_close_left_pill')
+                                and self.detector.present(snapshot.frame.image, 'ad_reward_left_pill_x'))
             sdk_chrome = intermediate is None and (
-                sdk_chrome or (reward_text and max(black_x,white_x) >= .94))
+                sdk_chrome or reward_pill or reward_left_pill or (reward_text and max(black_x,white_x) >= .94))
             # X alone requires both acquired fixed SDK primitives. Unknown
             # content X and part transitions never publish this authority.
             round_close = (not sdk_chrome and intermediate is None
@@ -382,7 +405,9 @@ class AndroidAdsObserver:
             # Fixed native SDK control, normalized to frame geometry. Main/
             # external ownership and unacquired X layouts publish no hitbox.
             close_point=(.922,.059) if round_close else None,
-            close_key=(('reward_granted_text' if reward_text else
+            close_key=(('reward_granted_left_pill' if reward_left_pill else
+                        'reward_granted_pill' if reward_pill else
+                        'reward_granted_text' if reward_text else
                         'reward_granted_light' if light else 'reward_granted_dark')
                        if sdk_chrome else ('sdk_store_card_close' if store_card_close else 'sdk_round_close') if round_close else None),
             activity=activity, exhausted=game_present and self.exhausted(snapshot),
