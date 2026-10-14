@@ -96,9 +96,29 @@ class StagesReliefs:
             from bot.stages_actions import StageAction, StageControl
             # Lobby exposes Inventory directly. The shifted QM cabecera is
             # not a Lobby control (Ice Warlock/Eilla 2026-10-10).
-            n.act(StageAction(StageControl.LOBBY_INVENTORY),s)
-            self.equipment.sell_runtime._after_sequence=s.sequence
-            self.equipment.sell_runtime._not_before=n.clock()
+            owner=self.equipment.sell_runtime
+            def ready(frame):
+                return owner.reader.inventory_sample(frame.frame.image,
+                    sequence=frame.sequence,observed_at=frame.timestamp) is not None
+            for attempt in range(2):
+                n.act(StageAction(StageControl.LOBBY_INVENTORY),s)
+                owner._after_sequence=s.sequence
+                owner._not_before=n.clock()
+                try:
+                    n.wait(ready)
+                    return
+                except RuntimeWaitTimeout as error:
+                    if attempt:raise
+                    last=error.last_snapshot
+                    if (last is None or not lobby(last) or last.sequence<=s.sequence
+                            or last.timestamp<=owner._not_before
+                            or not 0.<=n.clock()-last.timestamp<2.):
+                        raise
+                    n.cursor=max(n.cursor,last.sequence)
+                    s=n.wait(lambda frame:lobby(frame) or ready(frame))
+                    if not lobby(s):return
+                    record_best_effort(n.events,'stages.inventory_entry.retry',
+                        reason='fresh_lobby_no_effect',source_sequence=s.sequence,input_retries=1)
         def return_inventory(result):
             # Reader verified the exposed inventory after all global reliefs.
             self.equipment.sell_runtime._tap(ExitEquipmentInventory())

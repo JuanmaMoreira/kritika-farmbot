@@ -8,13 +8,16 @@ from bot.equipment_relief import EquipmentReliefResult, EquipmentReliefOutcome
 
 def test_sell_fallback_uses_lobby_direct_inventory_without_qm_or_new_start():
     calls=[]
-    s=NS(sequence=12,state=NS(status=ResolutionStatus.RESOLVED,base_context='screen.lobby',overlays=()))
+    s=NS(sequence=12,timestamp=99.5,state=NS(status=ResolutionStatus.RESOLVED,base_context='screen.lobby',overlays=()))
+    inventory=NS(sequence=13,timestamp=100.,frame=NS(image='inventory'))
+    waits=iter((s,inventory))
     def wait(predicate,**kwargs):
-        assert predicate(s)
-        calls.append('fresh_lobby');return s
+        fresh=next(waits)
+        assert predicate(fresh)
+        calls.append('fresh_lobby' if fresh is s else 'inventory_verified');return fresh
     nav=NS(events=None,exit_to_lobby=lambda:calls.append('lobby'),wait=wait,
         act=lambda action,s:calls.append(action),clock=lambda:100.,cancel_requested=lambda:False)
-    runtime=NS(_after_sequence=0,_not_before=0.)
+    runtime=NS(_after_sequence=0,_not_before=0.,reader=NS(inventory_sample=lambda *a,**k:NS()))
     def run(request):
         # Real composer selects this callback after Combine yields no relief.
         request.sell_plan.enter_inventory(None)
@@ -24,6 +27,6 @@ def test_sell_fallback_uses_lobby_direct_inventory_without_qm_or_new_start():
     result=StagesReliefs(nav,deps,equipment)(StageControl.START,
         NS(state=NS(overlays=(FULL,))),{'start'})
     assert result is s
-    assert calls==['lobby','fresh_lobby',StageAction(StageControl.LOBBY_INVENTORY)]
+    assert calls==['lobby','fresh_lobby',StageAction(StageControl.LOBBY_INVENTORY),'inventory_verified']
     assert runtime._after_sequence==12 and runtime._not_before==100.
     assert POINTS[StageControl.LOBBY_INVENTORY]==(.655,.75)

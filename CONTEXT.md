@@ -1,5 +1,30 @@
 # Estado actual — Kritika FarmBot
 
+## Stages — entrada Inventory sin efecto antes de Sell, corregido 2026-10-11
+
+Sesión `e81b3bb2`, noveno personaje Blood Demon, ocho rotaciones completas.
+Equipment Full en Stages Daily: Combine terminó NO_RELIEF_AVAILABLE y retornó
+Stages en37758. Sell fallback salió a Lobby, acreditado en37779/37784, y
+despachó Lobby Inventory(.655,.75) desde37784. El callback iniciaba Sell sin
+verificar entrada. Sus48 lecturas nativas37790..37840 dieron Item Count ROI
+`Stac` sin count ni página; inventory_unreadable_or_stale y flow.failed13654.
+No hubo ventas, expansiones ni paneles abiertos. Capturas retenidas37773,
+37779/37784 son anteriores al tap: muestran Lobby y control Inventory expuesto;
+H&H no lo obstruye. Los diagnósticos posteriores demuestran ausencia de entrada
+acreditada, pero no por qué el juego ignoró el input.
+
+Fix local en StagesReliefs.enter_inventory: esperar muestra positiva de Item
+Count+página con el reader existente y freshness de StagesNavigation antes de
+arrancar el owner Sell. Un único retry requiere timeout con Lobby RESOLVED
+sin overlays, posterior al input, age0..2s, y nueva captura posterior al último
+frame del wait. Entrada tardía continúa sin otro input. UNKNOWN/AMBIGUOUS,
+contexto ajeno/overlay/stale/futuro/pre-input, cancelación y segundo miss cortan.
+El owner conserva consenso fresco de dos muestras antes de acciones económicas;
+no se repiten Combine, Start, ventas ni expansiones. Evento de retry conserva
+source_sequence. Validación:360 tests dirigidos PASS (13 nuevos; ruta Inventory,
+Sell, relief, navegación Stages, Daily, manual y Gold Farming). Sin cambio
+perceptivo ni evaluator; sin teléfono. Pendiente observar ejecución ordinaria.
+
 ## Stages — X de configuración sin efecto tras Results, corregido 2026-10-12
 
 Sesión `ea2c845a`, segundo personaje Eclair, una rotación completa. AdsManager
