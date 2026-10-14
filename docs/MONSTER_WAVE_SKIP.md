@@ -34,6 +34,7 @@ En entrada/reentrada MW: MODAL conocido → normalizar primero (`popup.monster_w
 - En cada resource board: sin presión → YES para permitir ejecutar el SKIP; con presión → NO para cancelar, ejecutar los reliefs necesarios, restaurar MW y reintentar la intención productiva.
 - Después de YES, esperar de forma bounded pero paciente mediante polling aproximadamente cada 1 s; no asumir una latencia fija de 5 s.
 - Sapphires consumidos se contabilizan sólo después de una señal de éxito confirmada, actualmente `CLEAR` u otra señal futura establecida. `CLEAR` se reconoce, confirma y continúa/retorna según el loop; si falla el retorno, no ocultar el fallo técnico con el evento de gameplay.
+- El cierre de CLEAR exige estado SKIP coherente y controles MW expuestos, no sólo ausencia del título: los mensajes de rewards pueden ocultarlo con el MODAL aún abierto. Sólo su OK admite un retry tras timeout+grace, con CLEAR resuelto como único MODAL en una captura nueva posterior al último wait y al primer input, edad 0..2s y cancelación vigente. Máximo dos OK; entrada tardía de MW expuesto continúa sin otro tap. No se repiten SKIP, preparación ni reliefs.
 - `insufficient sapphires` queda como terminal/fallback defensivo; usa No, nunca compra premium. No hace falta provocar deliberadamente una pasada extra si el saldo inicial permitió calcular las pasadas.
 - `yield_resource_board=False` conserva respuesta Yes/No configurada. Con `True`, RESOURCE_BOARD_PENDING entrega popup abierto y `board_sequence` fresca sin Yes/No/Back posteriores; el caller debe consumirlo conforme a la regla YES-sin-presión / NO-con-presión anterior.
 
@@ -63,7 +64,6 @@ post-CLEAR conservan sus observers y contratos. No cambia ROI, parser,
 confianza mínima, consenso de dos muestras, barrera de secuencia, timeout6s
 ni edad final0..2s. Ilegible/incierto/stale falla; cero acreditado permite
 no-work. Arena `run_resource_pass()` mantiene su readiness sin pressure102.
-
 
 ## Gaps reales
 

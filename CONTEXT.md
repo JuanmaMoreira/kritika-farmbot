@@ -39,6 +39,34 @@ Evaluator incremental Ads22/22, wrong0;16 pares previos invalidados por nuevos
 assets/observer y6 nuevos. Sin teléfono ni smoke live; recuperación física de
 esta variante pendiente de la próxima ejecución GUI. Reabrir GUI antes de correr.
 
+## MW — falso cierre de CLEAR bajo mensajes de rewards, corregido 2026-10-12
+
+Sesión `adbbe95b`, personaje14 Steam Walker,13 rotaciones completas.
+Relief Equipment liberó124/124→117/124 con una Bulk confirmada; el evento
+manual_resolution previo se cerró con relief_resolved18748. Tras el mismo pass,
+ACK CLEAR desde58312 declaró success_first_attempt en58324. LIVE_EVIDENCE
+58324/58330 muestra CLEAR físicamente abierto, tap OK conocido y mensajes
+de rewards sobre su título; snapshot lo pierde (.2183), resuelve MW+MAX sin
+overlays. clean_mw sólo exigía ausencia de overlays y aceptó ese falso cierre.
+En58335 CLEAR vuelve a resolverse (.8995); lectura Sapphires context_mismatch,
+mw_effect_requires_clean_context y flow.failed18749. No se atribuye a H&H ni
+se demuestra por qué el primer OK no cerró:58324 también muestra spinner.
+
+Fix local en MonsterWaveActivity: postcondition ACK CLEAR exige skip_state
+coherente + MW_CONTROLS_CLEAR, usando señales existentes. Sólo este OK admite
+dos intentos por VerifiedTransition: retry después de timeout6s+grace2s con
+CLEAR único resuelto, nueva sequence posterior al último wait y al origen,
+timestamp posterior al input, age0..2s y sin cancelación. MW expuesto tardío
+continúa sin segundo OK; UNKNOWN/AMBIGUOUS/miss/contexto ajeno/overlay/stale/
+futuro/pre-input/cancelación/segundo miss cortan. Compra, MAX, Start SKIP,
+Points Reward y reliefs conservan sus bounds; no se fabrican saldos/consumos.
+Validación:461 tests dirigidos PASS (17 nuevos con transición real y escenarios
+semánticos de los snapshots; Activity, Point Reward, lectura post-CLEAR,
+entry/expiry, integración/productivo/standalone/binding/routing, Gold Farming,
+Stages Daily/manual y registry). La regresión reproducía falso COMPLETED antes
+del patch. Sin cambio perceptivo ni evaluator; sin teléfono. Pendiente ejecución
+ordinaria para confirmar el efecto físico.
+
 ## Ads — cápsula Reward granted no reconocida, corregido 2026-10-11
 
 Sesión GUI `d3ba3a20`, Eilla, Stages Daily dentro de Basic Gold Farming:

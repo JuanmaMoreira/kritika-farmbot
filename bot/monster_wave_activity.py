@@ -276,9 +276,20 @@ class MonsterWaveActivity:
 
         def step(name, intent, before, guard, expected, *, abort_if=None):
             check_cancel()
+            attempts, retryable = 1, None
+            if isinstance(intent, AcknowledgeMonsterWaveClear):
+                # Reward notices can hide CLEAR without dismissing its MODAL.
+                # Only a new positive CLEAR after the waits permits one more OK.
+                dispatched_at = self.clock()
+                attempts = 2
+                retryable = lambda s: (
+                    not self.cancel_requested() and popup(POPUP_MW_CLEAR)(s)
+                    and s.sequence > before.sequence and s.timestamp > dispatched_at
+                    and 0 <= self.clock() - s.timestamp <= 2.)
             r = self.verified_transition.execute(
                 f'monster_wave.{name}', intent, before, precondition=guard,
-                expected=expected, policy=VerifiedTransitionPolicy(max_attempts=1),
+                expected=expected, policy=VerifiedTransitionPolicy(max_attempts=attempts),
+                retryable_from=retryable,
                 stable_for=.25, abort_if=abort_if)
             transitions.append(r)
             check_cancel()
@@ -522,8 +533,10 @@ class MonsterWaveActivity:
                 if not popup(POPUP_MW_CLEAR)(current):
                     raise ValueError('unexpected_skip_boundary')
             business('completed')
+            # A missing CLEAR title is insufficient: its parent controls must be exposed.
             current = step('acknowledge_clear', AcknowledgeMonsterWaveClear(), current,
-                           popup(POPUP_MW_CLEAR), clean_mw)
+                           popup(POPUP_MW_CLEAR),
+                           lambda s: skip_state(s) is not None and has(s, MW_CONTROLS_CLEAR))
             return finish()
         except RuntimeWaitCancelled:
             return finish(FlowStatus.CANCELLED)
