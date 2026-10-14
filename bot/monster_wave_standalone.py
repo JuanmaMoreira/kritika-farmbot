@@ -161,10 +161,11 @@ class MonsterWaveStandaloneNavigationRuntime:
     """Only the two existing, verified MW actions needed by this caller."""
 
     def __init__(self, transition, snapshots: MonsterWaveSnapshotRuntime,
-                 *, cancel_requested=lambda: False) -> None:
+                 *, cancel_requested=lambda: False, clock=time.monotonic) -> None:
         self.transition = transition
         self.snapshots = snapshots
         self.cancel_requested = cancel_requested
+        self.clock = clock
 
     def close_board(self, board: FreshMonsterWaveBoard):
         if self.cancel_requested():
@@ -208,11 +209,14 @@ class MonsterWaveStandaloneNavigationRuntime:
         if self.cancel_requested():
             return FlowStatus.CANCELLED, None
         refreshed = self.snapshots.acquire(after_sequence=anchor.context.sequence)
+        if self.cancel_requested():
+            return FlowStatus.CANCELLED, None
         if refreshed.status is not FlowStatus.COMPLETED:
             return refreshed.status, None
         if refreshed.fresh is None:
             return FlowStatus.FAILED, None
         before = refreshed.fresh.context
+        max_attempts = 1
         result = self.transition.execute(
             "monster_wave.standalone.exit_to_battle_mode", ExitMonsterWave(),
             before,
@@ -220,6 +224,8 @@ class MonsterWaveStandaloneNavigationRuntime:
             expected=lambda item: is_battle_mode_select(item) or is_lobby(item),
             policy=VerifiedTransitionPolicy(max_attempts=1), stable_for=.25,
         )
+        if self.cancel_requested():
+            return FlowStatus.CANCELLED, result
         if (result.succeeded and result.attempt_count == 1
                 and result.final_snapshot.sequence > before.sequence
                 and is_lobby(result.final_snapshot)):
@@ -230,13 +236,23 @@ class MonsterWaveStandaloneNavigationRuntime:
             lobby = result.final_snapshot
             if self.cancel_requested():
                 return FlowStatus.CANCELLED, result
+            dispatched_at = self.clock()
+            retry_from_lobby = lambda s: (
+                not self.cancel_requested() and is_lobby(s)
+                and s.sequence > lobby.sequence and s.timestamp > dispatched_at
+                and 0 <= self.clock() - s.timestamp <= 2.0
+            )
             result = self.transition.execute(
                 "monster_wave.standalone.open_hub_from_lobby", OpenBattleModeSelect(),
                 lobby, precondition=is_lobby, expected=is_battle_mode_select,
-                policy=VerifiedTransitionPolicy(max_attempts=1), stable_for=.25,
+                retryable_from=retry_from_lobby,
+                policy=VerifiedTransitionPolicy(max_attempts=2), stable_for=.25,
             )
+            if self.cancel_requested():
+                return FlowStatus.CANCELLED, result
             before = lobby
-        if (not result.succeeded or result.attempt_count != 1
+            max_attempts = 2
+        if (not result.succeeded or not 1 <= result.attempt_count <= max_attempts
                 or result.final_snapshot.sequence <= before.sequence
                 or not is_battle_mode_select(result.final_snapshot)):
             return FlowStatus.FAILED, result

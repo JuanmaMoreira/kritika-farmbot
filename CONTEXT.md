@@ -1,5 +1,31 @@
 # Estado actual — Kritika FarmBot
 
+## Monster Wave — regularización Git fase 8, validada offline 2026-10-14
+
+Tres unidades autónomas desde `0efe69e`: readiness (`074fb50`), cierre CLEAR
+(`263ba3a`) y reapertura bounded del hub (este snapshot). Readiness conserva
+ROI/parser/confianza/consenso/freshness y usa scope83/101 sin mutar el fact reader
+compartido; Arena conserva su operación de una pasada sin pressure102. CLEAR
+exige controles expuestos; consumo sólo tras CLEAR y efecto fresco posterior.
+Sólo OK CLEAR y Lobby→hub admiten segundo intento con evidencia positiva fresca;
+no se repiten SKIP, Start, Back, compras, confirmaciones ni reliefs por incertidumbre.
+Cancelación del retorno se revalida tras adquirir anchor y verificar Back.
+
+Validación sobre exportaciones exactas del índice: readiness605 PASS iniciales
+y22 PASS tras corregir el inventario del test de scope board (606 casos únicos);
+CLEAR548 PASS; hub577 PASS, incluidos14 de retry/cancelación. El fallo del test
+de scope board también se reprodujo en la baseline publicada: omitía las
+observaciones de ArenaDetector, que sí está incluido; sólo se corrigió el test.
+Evaluator full/scope19/19, wrong0;1919 pares full y1577 reutilizados scoped.
+Cuatro manifests,207 referencias/124 frames únicos y hashes verificados; fixture
+semántica/latencia explícita, sin convertirla en nueva calibración física.
+
+Contratos en MONSTER_WAVE_SKIP; detalle de árboles, tests, preservación y estado
+Git en `artifacts/git_regularization_mw/report.md`. Arena, Stages/Stamina/Gold,
+campañas y residuos independientes preservados. No gameplay, adquisición ni
+smoke; los nuevos caminos de recuperación siguen sin prueba física posterior.
+Los bloques fechados anteriores conservan sus validaciones históricas.
+
 ## Ads — regularización Git fase 7, validada offline 2026-10-14
 
 Snapshot aislado desde `8f998c805295076f9f2f3c78a79c566fd0935dca`: progreso SDK
@@ -66,6 +92,30 @@ entry/expiry, integración/productivo/standalone/binding/routing, Gold Farming,
 Stages Daily/manual y registry). La regresión reproducía falso COMPLETED antes
 del patch. Sin cambio perceptivo ni evaluator; sin teléfono. Pendiente ejecución
 ordinaria para confirmar el efecto físico.
+
+## MW — reapertura de hub sin efecto tras Socket relief, corregido 2026-10-11
+
+Sesión `32cd6472`, séptimo personaje Elemental Fairy, seis rotaciones completas.
+Socket Enhance acreditó efecto y retornó MW en30741; exit_to_battle_mode hizo
+un Back y acreditó Lobby en30785. open_hub_from_lobby despachó una vez el
+target adquirido(.8097,.4297); espera6s+grace2s no alcanzó hub, final30879;
+mw_relief_exit_failed detuvo Gold Farming10069. LIVE_EVIDENCE30867/30873/30879
+muestra Lobby; resolver confirma Lobby limpio y landmark Trading Center1.0.
+El mismo target abrió Select Battle Mode en esta sesión (incluido27464→27482
+en este personaje). Se demuestra falta de efecto observado, no por qué el
+juego ignoró el tap. El relief Socket terminó; no era un miss de Enhance.
+
+Fix mínimo en MonsterWaveStandaloneNavigationRuntime: sólo la reapertura
+Lobby→hub posterior al relief admite máximo dos intentos vía VerifiedTransition.
+Retry requiere Lobby RESOLVED sin overlays, sequence posterior al input y al
+último frame del wait (guard compartido), timestamp posterior al primer intento,
+age0..2s y cancelación vigente. Hub aparecido tarde continúa sin nuevo input;
+segundo miss/UNKNOWN/AMBIGUOUS/contexto ajeno/overlay/stale/pre-input corta.
+Se acepta success_after_retry sólo en esa transición. Back sigue max_attempts1;
+no se repiten preparación, Enhance, tickets, SKIP ni operaciones de recursos.
+Validación:230 tests dirigidos PASS (12 nuevos con VerifiedTransition real,
+standalone navigation, transición compartida, MW productivo/activity/session,
+Gold Farming y Socket relief). Sin cambio perceptivo, evaluator ni teléfono.
 
 ## Ads — cápsula Reward granted no reconocida, corregido 2026-10-11
 

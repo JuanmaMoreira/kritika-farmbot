@@ -70,3 +70,13 @@ no-work. Arena `run_resource_pass()` mantiene su readiness sin pressure102.
 Craft, Keys/Gold, Materials y los callers Equipment/Socket están conectados; validación y límites concretos en CONTEXT/RESOURCE_ROUTING. Fill All con Gold insuficiente permanece UNKNOWN de baja prioridad; no adquirir ni bloquear MW por ello. Existe un MODAL adicional `Point Reward` (**USER_GT**, clase física establecida) que puede aparecer por encima de CLEAR al cruzar ciertos conquest points; el loop de resultado SKIP lo reconoce por su título, lo confirma con su OK y continúa con CLEAR mediante su lógica existente (`AcknowledgeMonsterWavePointsReward` → snapshot fresco → `AcknowledgeMonsterWaveClear`). Landmark del título literal nativo adquirido el 2026-10-02, excluye el glow de CLEAR y el reward variable. Evaluator incremental: positivo 0.99998, máximo negativo 0.28619 en 102 pares; replay full distingue Point antes de OK y CLEAR después. ACK live verificado antes de CLEAR. No inventar dismiss/ordering técnico más allá de este GT. No se exige repetir GT ni suite completa antes de cada smoke.
 
 El flow bare/productivo finaliza gameplay en MW limpio y devuelve evidencia final, sin normalizar a Lobby ni hub. Session solicita a Navigation la entrada siguiente: Back→hub para otro Battle Mode, Quick Menu→Pets/Quests/Mailbox/Character Select directo desde una BASE con capability acreditada. Quests/Mailbox cierran al origen, confirmado fresco; Rotation no impone Lobby. Battle Mode Select también permite QM, pero para llegar a Lobby gana su Back directo. Back normalmente llega al hub; la rama Inventory puede llegar a Lobby (evidencia previa). Sólo si el siguiente entry requiere hub se reabre desde ese Lobby fresco. La API Activity de compatibilidad conserva su retorno hub por defecto; PreparedActivity productivo declara las superficies finales reutilizables. Handoff nuevo validado offline; el smoke anterior acredita la relación Back, no la composición nueva.
+
+La salida standalone posterior a relief conserva Back single-attempt. Si ese
+Back acredita Lobby limpio, sólo `open_hub_from_lobby` admite un retry después
+de timeout6s+grace2s: Lobby RESOLVED sin overlays, nueva secuencia posterior al
+último wait y al origen, timestamp posterior al input, edad0..2s y cancelación
+vigente. Hub tardío verifica estabilidad y continúa sin otro tap; segundo miss,
+UNKNOWN/AMBIGUOUS, contexto ajeno, overlay o evidencia stale corta. La cancelación
+se revalida tras adquirir el anchor y tras Back, antes de continuar. No se
+repiten Back, SKIP, compra, confirmación de recursos ni relief; no se cambia
+el routing ni la navegación genérica.
