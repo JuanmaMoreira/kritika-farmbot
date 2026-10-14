@@ -355,9 +355,11 @@ detiene el owner. Equipment Full sigue UNKNOWN. No nuevos reliefs.
 Wait productivo `ControlledWait`: sondeo focal3s configurable, bound1800s ajustable
 (safety heuristic, no duración contractual), cero OCR durante wait, secuencias/edad
 reales y cancelación. Challenge/WIN transitorio/Loading no terminan el wait de batch. Configuración
-propia transitoria tras Loading se observa sin input bajo el bound UNKNOWN persistente.
-Modales conocidos
-distintos o superficie desconocida persistente conservan evidencia y detienen el
+propia tras Start acreditado es superficie conocida de AUTO_REPEAT, aun sin banda
+de actividad; se observa sin input bajo el bound global del batch. Ausencia de
+banda no prueba término. Una detección aislada de New Ranking/Insufficient no
+detiene el wait; modales no terminales o superficie desconocida persistentes
+bajo `unknown_grace` conservan evidencia y detienen el
 observer, sin cerrar. Terminal positivo→nativo fresco→reader de A; máximo dos lecturas
 frescas, sin otro Start. Resultado con used superior a badges acreditados al inicio
 se reporta ambiguo. OK único, Insufficient→No y New Ranking→OK sólo por autoridad

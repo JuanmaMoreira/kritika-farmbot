@@ -391,6 +391,7 @@ class ArenaFlow:
             last_observed=snapshot.timestamp
             # Sparse checks for boundaries; no global resolver or OCR in this wait.
             known=self._cv(lambda:self.v.active(snapshot.image) or self.v.clean_challenge(snapshot.image) or self.v.loading(snapshot.image)
+                           or (self.mode is ArenaMode.AUTO_REPEAT and self.v.config(snapshot.image))
                            or (self.mode is ArenaMode.SINGLE_BATTLE and self.v.single_active(snapshot.image)))
             if known:
                 unknown_image=None; unknown_since=None
@@ -401,12 +402,11 @@ class ArenaFlow:
                 if unknown_image is None or np.mean(np.abs(unknown_image-thumbnail))>2.:
                     unknown_image=thumbnail; unknown_since=self.clock()
                 elif self.clock()-unknown_since>=self.unknown_grace:
-                    boundary='unrecognized_persistent_surface'
-                # Known foreign modals are immediate boundaries, never acknowledged here.
-                # Our configuration may fade back in after credited Loading.
-                # Observe it passively under the persistent-unknown bound.
-                if self._cv(lambda:self.v.ranking(snapshot.image) or self.v.insufficient(snapshot.image)):
-                    boundary='nonterminal_modal_during_batch'
+                    modal=self._cv(lambda:self.v.ranking(snapshot.image) or self.v.insufficient(snapshot.image))
+                    boundary='nonterminal_modal_during_batch' if modal else 'unrecognized_persistent_surface'
+                # A nonterminal modal detection is not proof that Auto Repeat
+                # stopped. Observe it under the same persistence bound as other
+                # unknown surfaces; never acknowledge it or send another Start.
                 self._save('unrecognized_wait_surface',snapshot)
             return False
 

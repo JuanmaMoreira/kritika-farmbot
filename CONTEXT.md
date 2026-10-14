@@ -291,6 +291,34 @@ No nuevo Start, restauración de Meteorites ni reinicio de Session. Reabrir GUI
 antes de la próxima rutina para recargar visuals/manifest; no hay batch live
 posterior al fix. Las validaciones de wait y Select Mode previas siguen válidas.
 
+## Arena — corte prematuro durante Auto Repeat, corregido 2026-10-12
+
+Sesión `f1c7e36e`, rutina `arena cycle`, Burst Breaker. Único Start HARD x8
+acreditado,106Badges preparados. A21:06:59 -03, `arena.finished`194 cortó con
+`nonterminal_modal_during_batch` tras194.984s de wait; terminal_detections0 y
+physical_operation_may_be_active=true. **USER_GT:** Auto Repeat seguía funcionando.
+La causa de software es el corte inmediato por una sola detección
+ranking/insufficient en `_terminal_wait`, sin persistencia. El log no archivó
+ese frame ni distingue cuál de los dos predicados disparó; falso positivo frente
+a modal transitorio específico sigue UNKNOWN, no se inventa una clasificación.
+
+Captura pasiva21:08:51 y ventana pasiva posterior confirman WIN intermedio y
+batalla→WIN del mismo batch, sin taps. Evidencia en
+`artifacts/arena_wait_modal_20261012/{native.jsonl,passive01/frames.json}`;
+sources cerrados. No otro Start, ACK, cleanup Meteorites ni reanudación de Session.
+**USER_GT adicional:** el indicador Auto Repeat no aparece durante la
+configuración del próximo combate; su ausencia no acredita final.
+
+Fix mínimo: New Ranking/Insufficient pasa por el bound de superficie persistente
+existente (30s productivo), sin inputs; actividad conocida resetea ese bound.
+Configuración propia positiva tras Start es conocida en AUTO_REPEAT y usa sólo
+el bound global del batch, aunque no haya banda de actividad. Terminal completo,
+cancelación, freshness, lineage y prohibición de repetir Start se conservan.
+Sin cambio perceptivo ni evaluator.168tests afectados PASS (ArenaFlow79,
+regresiones nuevas10, B2 y Farming Cycle79); resultados previos aún válidos
+reutilizados. Tests cubren modal transitorio/persistente, configuración sin
+indicador, bound global, cancelación y Single. No se reinició la rutina activa.
+
 ## Arena — Select Mode no acreditado, mitigación y smoke focal 2026-10-12
 
 Sesión `8c4c6b01`, rutina `arena cycle`, Telumpel. Primer Arena HARD completado

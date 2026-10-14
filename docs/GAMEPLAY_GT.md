@@ -455,6 +455,10 @@ observer y recuperación explícita, detalladas en [informe B1](ARENA_B1_2026100
 - **LIVE_EVIDENCE:** ejecución efectiva EASY x8, Upon Defeat OFF y buff3 OFF:
   Loading→batalla (HUD versus, timer, pausa, banda Auto Repeat)→WIN transitorio
   sin input→Challenge con próximo oponente→batalla. Challenge no prueba término.
+  **USER_GT 2026-10-12:** el indicador Auto Repeat se ve durante el combate y
+  brevemente después, pero no durante la configuración del siguiente combate.
+  Esa configuración pertenece al ciclo en curso; ausencia del indicador no
+  acredita final ni autoriza otro Start.
   NORMAL/HARD Challenge también adquiridas sin combatir; x8 y buffs1/2 persisten.
   Start/Auto Repeat conservan apariencia activa con saldo2: no es readiness.
 - **LIVE_EVIDENCE:** batch consumió **104 Badges (13 entradas x8), 106→2**;
