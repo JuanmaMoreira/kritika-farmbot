@@ -9,6 +9,7 @@ import pytest
 
 from bot.action_executor import ActionExecutor
 from bot.capture import FrameSnapshot
+from bot.arena_semantics import ARENA_OBSERVATIONS
 from bot.catalog import BASE_CONTEXT_RULES, OVERLAY_RULES, build_default_resolver
 from bot.flow_contracts import FlowResult, FlowStatus
 from bot.flow_registry import _build_productive_monster_wave
@@ -42,6 +43,8 @@ def test_board_scope_keeps_all_resolver_dependencies_and_mw_facts():
         "landmark.combine_context", "landmark.pet_combine_result",
         "landmark.pet_mass_evolve_confirmation",
     }
+    assert any(type(d).__name__ == 'ArenaDetector' for d in scoped.detectors)
+    specialized.update(ARENA_OBSERVATIONS)
     required = {name for rule in (*BASE_CONTEXT_RULES, *OVERLAY_RULES)
                 for name in rule.requires}
     assert required <= names | specialized

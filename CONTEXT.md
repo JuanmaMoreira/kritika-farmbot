@@ -468,6 +468,27 @@ sin retry. Item Count posterior del replay semántico es simulado; no prueba ven
 física nueva. Sin cambio perceptivo ni evaluator, sin hardware ni nuevo smoke;
 reader/payment-wrap y todos los cambios locales previos preservados.
 
+## FAILED precheck MW Sapphires — corregido localmente 2026-10-06
+
+Log `20261006T201225.383450Z_session_7ac67227`, session
+`fce179171e774651b6b0e433a6acbe2b`, Demon Blade / personaje2 / Gold step3 /
+MW investment attempt1. Ad y retorno Stages completados, Sapphires2→338.
+FAILED17:18:44 ART antes de navegar: dos lecturas338 con confianza.99962
+confirmaron consenso, pero snapshot3796 tenía edad≈2.17s al gate2s.
+Primera divergencia: precheck usaba percepción global99 detectores; análisis
+final1.894s más captura/OCR agotaban la edad, sin fallo de OCR ni nuevo consumo.
+
+Fix local de wiring: barrera y consenso del precheck usan scope81 con todas las
+dependencias del resolver/bloqueadores, incluido Stages; omite hechos de slots,
+candidatos/animaciones ajenos. RuntimeFactReader acepta observer por lectura,
+sin mutar su observer compartido. Navegación/gameplay conservan observer original;
+ROI, parser, consenso2, secuencias, cancelación y guard2s no cambian.
+Replay semántico/latencia con reader real: old FAILED / fixed readiness338.
+Validación:347 tests afectados verdes; equivalencia full/scope19/19 en corpus
+existente,1539 pares reutilizados por evaluator incremental. Informe local en
+`artifacts/mw_readiness_validation/report.json`. Sin nuevo smoke live, commit ni
+push; cambios anteriores preservados.
+
 ## FAILED Stages post-ad — corregido localmente 2026-10-06
 
 Log `20261006T192430.058419Z_session_b2f41405`, session

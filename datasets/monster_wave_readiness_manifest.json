@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "curation": {
+    "source": "existing MW readiness equivalence corpus, 2026-10-06",
+    "role": "baseline resolver outputs for full/scope equivalence, not new physical GT",
+    "retention": "Existing local raw corpus must remain available; no acquisition in phase 8"
+  },
+  "entries": [
+    {
+      "path": "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-3.png",
+      "sha256": "87bff6b991941812ea396c233b63d27e5c88b10002b0a8a15f6c7b7d46ea9c41",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.lobby",
+        "overlays": []
+      }
+    },
+    {
+      "path": "screencaps/semantic/ocr_runtime_facts/sapphires/20260828T003040_525328Z/sequence-20.png",
+      "sha256": "6d286d9573a37a79f0e28b2c1f18d471ba2591c968010f4864521ed298033b24",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.lobby",
+        "overlays": []
+      }
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00002478.png",
+      "sha256": "63bfd27fcf15ed8c0e0b95c303f2f6abdd87713a00afd5dec99655a4bf9c98db",
+      "expected": {
+        "status": "unknown",
+        "base_context": null,
+        "overlays": [
+          "menu.quick"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00004557.png",
+      "sha256": "9c04c95139e143f2f19d99806119a2f6a813518f70a71597de1bf60f1f92725f",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.lobby",
+        "overlays": []
+      }
+    },
+    {
+      "path": "screencaps/semantic/workbench/20260825T193046_517947Z-76b5e238/frame-00008764.png",
+      "sha256": "75f20c08bc4a4d0f1eae31fa700e78663ccd04e5e5f327d140283ad595d03410",
+      "expected": {
+        "status": "unknown",
+        "base_context": null,
+        "overlays": []
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/animation/ethereal-tappable.png",
+      "sha256": "49e5925f0a1f5af6b17e147db102ce42add11286b7bed344d4a466b6ddd6402a",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.combine",
+        "overlays": [
+          "mode.combine_transmute"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/animation/fuse-tappable.png",
+      "sha256": "9208dfe6ee0f479d3a33138acbec2d3e6f6824989cce12d03f21d6a08b1a38a2",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.combine",
+        "overlays": [
+          "mode.combine_fuse"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/animation/transmute-tappable.png",
+      "sha256": "268171df8981b5f8449a60eb78182e33d8c71cae840620fa00ebf2b046e3e349",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.combine",
+        "overlays": []
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/awakened-available/20260829T162603_727044Z_01.png",
+      "sha256": "05f5b366c64231f3ab30bbc086e2111ea0b43fdf5a461103e82c7f70744eaeaf",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.combine",
+        "overlays": [
+          "mode.combine_transmute",
+          "panel.combine_awakened_transmute"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/combine/ethereal-confirm/20260829T162729_230034Z_01.png",
+      "sha256": "06af32e3344234363a059234fe13859ecef2fd396c433934d4f67405141fa4b7",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.combine",
+        "overlays": [
+          "mode.combine_transmute",
+          "panel.combine_ethereal_random_part",
+          "popup.ethereal_mass_combine"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161955_135179Z_01.png",
+      "sha256": "6ae713a383d8b1d03f106ecd374ff906582cfe9302a4c7ad1946d54a45941536",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.world_boss",
+        "overlays": [
+          "popup.equipment_inventory_full"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161955_590903Z_02.png",
+      "sha256": "578383396b0d7db19760d5e8ecc815b070d28dcd187172dfef7e9aa4b0d3dc1c",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.world_boss",
+        "overlays": [
+          "popup.equipment_inventory_full"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161956_074212Z_03.png",
+      "sha256": "8dcd2fe30b2843af5d01c37a7b6b882853016694d706ccda6f4ddaf1ab1a1d2b",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.world_boss",
+        "overlays": [
+          "popup.equipment_inventory_full"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161956_545178Z_04.png",
+      "sha256": "22c382063814da69849fa748cb3c7ed5934de80ba81bc0f26722ffeca47cdea1",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.world_boss",
+        "overlays": [
+          "popup.equipment_inventory_full"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161957_023635Z_05.png",
+      "sha256": "eb2f6857a87e29d19a1d57e17920f37c7c3f4bb74501ef5638ffabdee21ad7f4",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.world_boss",
+        "overlays": [
+          "popup.equipment_inventory_full"
+        ]
+      }
+    },
+    {
+      "path": "screencaps/semantic/equipment_inventory_full/popup/20260829T161957_506468Z_06.png",
+      "sha256": "77de63d0908e87e3757956831c79c5d24c2125bd5a8870b0f1a1e5fd553fd69d",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.world_boss",
+        "overlays": [
+          "popup.equipment_inventory_full"
+        ]
+      }
+    },
+    {
+      "path": "artifacts/stages_return_validation/post_clear.png",
+      "sha256": "23a70c88a8782938dafc68862b36da07b028b4abc256f5ddf9e26420c43019f6",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.stages",
+        "overlays": []
+      }
+    },
+    {
+      "path": "artifacts/stages_return_validation/no_ads_native.png",
+      "sha256": "aa3b5d0ae3d74366312c39aecf152c12940ed345b916f6d1212079e040dc5fa3",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.stages",
+        "overlays": [
+          "popup.stages_no_ads"
+        ]
+      }
+    },
+    {
+      "path": "artifacts/stages_return_validation/portal_start.png",
+      "sha256": "7d59de5dbd2fe5e70493f27806fa174fa83482f8127541a73cab8287a2d05daf",
+      "expected": {
+        "status": "resolved",
+        "base_context": "screen.stages",
+        "overlays": [
+          "popup.stages_start"
+        ]
+      }
+    }
+  ]
+}

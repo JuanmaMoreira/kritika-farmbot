@@ -83,7 +83,12 @@ class RuntimeFactReader:
         timeout: float,
         cancel_requested: Callable[[], bool] | None = None,
         context: str | None = None,
+        observer: RuntimeObserver | None = None,
     ) -> FactReadResult[int]:
+        """Acquire through a caller scope without mutating the shared reader."""
+        observer = self.observer if observer is None else observer
+        if not isinstance(observer, RuntimeObserver):
+            raise ValueError('fact observer must be a RuntimeObserver')
         name = validate_semantic_name(name)
         if name not in self._extractors:
             raise KeyError(f"no extractor registered for {name}")
@@ -107,7 +112,7 @@ class RuntimeFactReader:
                     detail="fact acquisition deadline expired",
                 )
             try:
-                snapshot = self.observer.wait_until(
+                snapshot = observer.wait_until(
                     lambda item: (
                         item.state.status is ResolutionStatus.RESOLVED
                         and (

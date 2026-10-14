@@ -54,6 +54,17 @@ y readiness propias; ejecutar MW no acredita elegibilidad WB/ToT.
 
 El detector/fact del badge se conserva por sus consumidores independientes: contratos de contexto del hub/World Boss, scope de World Boss y corpus semántico compartido; no decide ejecución MW.
 
+Readiness Lobby usa `MONSTER_WAVE_ENTRY_READINESS_SCOPE`: conserva las
+dependencias de contexto/bloqueadores del resolver, incluido Stages, y omite
+facts ajenos de slots/candidatos/animaciones. `RuntimeFactReader.read_fact` y
+sus wrappers aceptan `observer=` por lectura, sin mutar el observer compartido.
+Registry conecta ese scope sólo a readiness; navegación, hub y lectura
+post-CLEAR conservan sus observers y contratos. No cambia ROI, parser,
+confianza mínima, consenso de dos muestras, barrera de secuencia, timeout6s
+ni edad final0..2s. Ilegible/incierto/stale falla; cero acreditado permite
+no-work. Arena `run_resource_pass()` mantiene su readiness sin pressure102.
+
+
 ## Gaps reales
 
 Craft, Keys/Gold, Materials y los callers Equipment/Socket están conectados; validación y límites concretos en CONTEXT/RESOURCE_ROUTING. Fill All con Gold insuficiente permanece UNKNOWN de baja prioridad; no adquirir ni bloquear MW por ello. Existe un MODAL adicional `Point Reward` (**USER_GT**, clase física establecida) que puede aparecer por encima de CLEAR al cruzar ciertos conquest points; el loop de resultado SKIP lo reconoce por su título, lo confirma con su OK y continúa con CLEAR mediante su lógica existente (`AcknowledgeMonsterWavePointsReward` → snapshot fresco → `AcknowledgeMonsterWaveClear`). Landmark del título literal nativo adquirido el 2026-10-02, excluye el glow de CLEAR y el reward variable. Evaluator incremental: positivo 0.99998, máximo negativo 0.28619 en 102 pares; replay full distingue Point antes de OK y CLEAR después. ACK live verificado antes de CLEAR. No inventar dismiss/ordering técnico más allá de este GT. No se exige repetir GT ni suite completa antes de cada smoke.

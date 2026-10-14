@@ -352,15 +352,21 @@ def _build_world_boss(dependencies: FlowDependencies) -> PerCharacterFlow:
 
 
 def _build_monster_wave(dependencies: FlowDependencies) -> PerCharacterFlow:
-    from bot.perception import QUICK_MENU_TO_LOBBY_SCOPE
+    from bot.perception import QUICK_MENU_TO_LOBBY_SCOPE, MONSTER_WAVE_ENTRY_READINESS_SCOPE
 
     main_transition = _verified_transition_for(dependencies)
+    readiness_observer = scoped_observer_for(
+        dependencies, dependencies.observer, scope=MONSTER_WAVE_ENTRY_READINESS_SCOPE,
+        active_event="monster_wave.entry_readiness_scope_active",
+        unavailable_event="monster_wave.entry_readiness_scope_unavailable",
+    )
 
     def _bare():
         return MonsterWaveFlow(
             dependencies.observer, dependencies.actions, dependencies.events,
             config=getattr(getattr(dependencies, 'config', None), 'monster_wave', MonsterWaveConfig()),
             facts=dependencies.facts,
+            readiness_observer=readiness_observer,
             cancel_requested=dependencies.cancel_requested,
             verified_transition=main_transition,
             lobby_transition=scoped_transition_for(

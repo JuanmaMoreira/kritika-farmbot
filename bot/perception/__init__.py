@@ -852,6 +852,15 @@ MONSTER_WAVE_BOARD_ACQUISITION_SCOPE = ScopeSpec(
     specialized_types=STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES,
 )
 
+# Lobby Sapphire consensus must finish within the caller's 2 s final age.
+# Preserve strong context/blocker recognition (including Stages), omitting
+# unrelated slot/candidate/animation facts from this observation-only gate.
+MONSTER_WAVE_ENTRY_READINESS_SCOPE = ScopeSpec(
+    name="monster_wave_entry_readiness",
+    spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
+    specialized_types=(*STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES, StagesDetector),
+)
+
 FRIENDS_TO_LOBBY_SCOPE = ScopeSpec(
     name="friends_to_lobby",
     spec_names=STRONG_LOBBY_COMPLETION_SPEC_NAMES,
@@ -1274,6 +1283,7 @@ __all__ = (
     "QUICK_MENU_TO_LOBBY_SCOPE",
     "ROTATION_TO_LOBBY_SCOPE",
     "STRONG_LOBBY_COMPLETION_SPEC_NAMES",
+    "MONSTER_WAVE_ENTRY_READINESS_SCOPE",
     "STRONG_LOBBY_COMPLETION_SPECIALIZED_TYPES",
     "ScopeSpec",
     "LocalCvDetection",

@@ -24,6 +24,7 @@ class MonsterWaveFlow:
 
     def __init__(self, *args, **kwargs):
         lobby_transition = kwargs.pop('lobby_transition', None)
+        self.readiness_observer = kwargs.pop('readiness_observer', None)
         self.activity = MonsterWaveActivity(*args, **kwargs)
         self.zone = BattleModeZone(self.activity.observer, self.activity.verified_transition,
                                    lobby_transition=lobby_transition,
@@ -34,9 +35,10 @@ class MonsterWaveFlow:
         a=self.activity
         try:
             if a.cancel_requested():return MonsterWaveResult(FlowStatus.CANCELLED)
-            initial=a.observer.observe()
+            observer=getattr(self,'readiness_observer',None) or a.observer
+            initial=observer.observe()
             read=a.facts.read_sapphires(context=SCREEN_LOBBY,after_sequence=initial.sequence,
-                timeout=6,cancel_requested=a.cancel_requested)
+                timeout=6,cancel_requested=a.cancel_requested,observer=observer)
             if a.cancel_requested() or read.status is FactReadStatus.CANCELLED:
                 return MonsterWaveResult(FlowStatus.CANCELLED)
             fact=read.fact

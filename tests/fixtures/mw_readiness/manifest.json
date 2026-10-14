@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "fixture": "lobby.json",
+  "sha256": "d6ad72ecca1a92ed2e6717f96d09cd952c1f338d185fa43434804e3851f98739",
+  "source": "artifacts/failure_evidence/failure_1e2fd2c2f20c4d4a9030142af55229dc",
+  "sequence": 3796,
+  "role": "recorded semantic context; synthetic pixels/OCR and controlled latency in tests",
+  "physical_calibration": false
+}
