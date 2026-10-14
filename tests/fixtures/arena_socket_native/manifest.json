@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "transform": "same native shape; focal ROI canvas with search margins; outside zeroed",
+  "preserved_rois": [
+    [
+      0.425,
+      0.833,
+      0.572,
+      0.925
+    ],
+    [
+      0.349,
+      0.375,
+      0.65,
+      0.497
+    ],
+    [
+      0.48,
+      0.455,
+      0.52,
+      0.552
+    ],
+    [
+      0.624,
+      0.041,
+      0.667,
+      0.086
+    ]
+  ],
+  "entries": [
+    {
+      "path": "tests/fixtures/arena_socket_native/blocked.png",
+      "sha256": "611030c71f256bba2c9854e9bcb9e51dc0a6b1090173ce8196f77a46e19a7de1",
+      "source": "artifacts/arena_latest_20261012/post-stop-1791856615303023600.png",
+      "source_sha256": "033ea567127c14bc5e50ea92c34c4601717fd9e9f8871be74c71b5f7e590f8d1",
+      "captured_at_utc": "2026-10-13T01:56:54.318119Z",
+      "frame_shape": [
+        1220,
+        2712,
+        3
+      ],
+      "physical_state": "socket_inventory_full_above_arena_config",
+      "authority": "LIVE_EVIDENCE passive post-stop; existing USER_GT Socket blocker and rejected Start",
+      "expected_badges": 71
+    }
+  ]
+}

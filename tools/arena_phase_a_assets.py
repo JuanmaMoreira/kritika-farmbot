@@ -105,7 +105,7 @@ def build():
                            sha256=hashlib.sha256(target.read_bytes()).hexdigest(),
                            source=chosen[sample]['curated_path'], source_sha256=chosen[sample]['sha256'],
                            reusable_indicator=name in ('buff3_on','x8_off')))
-        if name == 'difficulty_normal':
+        if name in ('difficulty_normal', 'config_start'):
             # Native and stream heights differ slightly. Match at the original
             # whole-frame sampling phase before cropping the title/control.
             assets[-1]['reference_shape'] = list(frame.shape[:2])

@@ -213,7 +213,11 @@
       "sha256": "b78081902f0c946946edce93c7a0d9f0554d58146038787452307da76254c5cb",
       "source": "screencaps/arena_hil/20261008/20261008T202624_437999Z_01.png",
       "source_sha256": "b5c06a30ba22d77998a9a0c641ecfb41e86b6035434d8c4b1a53c03b2f31e6ca",
-      "reusable_indicator": false
+      "reusable_indicator": false,
+      "reference_shape": [
+        612,
+        1356
+      ]
     },
     {
       "id": "upon_defeat_off",

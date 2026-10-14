@@ -162,6 +162,44 @@ Evaluator incremental Ads22/22, wrong0;16 pares previos invalidados por nuevos
 assets/observer y6 nuevos. Sin teléfono ni smoke live; recuperación física de
 esta variante pendiente de la próxima ejecución GUI. Reabrir GUI antes de correr.
 
+## Arena — parent de Socket blocker perdido en captura nativa, corregido 2026-10-12
+
+Sesión `8212399d`, `arena cycle`, Dimension Manipulator. Dos batches HARD
+completados. La operación7 NORMAL se detuvo a22:38:45 -03 con
+`blocked_start_lineage_uncertain`, fase start_uncertain: un Start intentado,
+sin receipt efectivo. Preparación71Badges y buff3stock817; consumo natural
+previsto64. El stream acreditó Socket Inventory Full sobre configuración;
+`_relieve` perdió el parent en su recheck nativo y conservó la incertidumbre.
+
+Captura pasiva01:56:54Z conserva ese blocker y71Badges. Reproduce la condición:
+bag_full0.990416, config_start0.854518<0.90, Loading=false; OCR nativo71 a0.99958.
+No hay frame exacto archivado del corte. El desfase de muestreo crop-first entre
+nativo2712×1220 y plantilla de stream2712×1224 es causal en este replay.
+`config_start` usa ahora reference_shape1356×612 mediante la normalización
+completa existente:0.930989, sin bajar umbral ni retirar el parent positivo.
+Generador y fixture focal nativo trazable en `tests/fixtures/arena_socket_native`.
+
+Validación:177tests afectados PASS; nuevo replay5 conserva el guard de contador
+igual/legible antes de acreditar no-inicio, parent obligatorio y un único Start
+sin helpers. Evaluator Arena24pares invalidados,0errores; probe focal del guard
+de rechazo25frames,2positivos,23negativos,0errores. Sin cambio de gameplay.
+
+Ownership explícito del usuario: harness local
+`artifacts/arena_latest_20261012/resume_blocked.py`, evidencia en `resume01`.
+Valida log previo cerrado y misma operación pendiente, captura fresca positiva
+y contador71 sin consumo antes del relief. Reutiliza policy de la misma rutina
+y owners existentes; no reinicia Farming Cycle ni su presupuesto de Stamina.
+Enhance All produjo efecto, sin Sell; retorno Arena limpio acreditado.
+Un único nuevo Start NORMAL efectivo a23:03:06 -03; un blocker recurrente no
+autoriza otro relief/Start. Batch completado:64Badges usados/64ganados,
+confianzas OCR0.99998/0.99998, wait312.187s, sin OCR en polling. Resultado→OK,
+Insufficient→No y tres Back adquiridos; retorno Lobby limpio fresco acreditado
+a23:08:26 -03 y captura final23:08:28. Estado COMPLETED/returned, sin operación
+física activa; runtime.closed y cleanup del source confirmados. Resumen en
+`resume01/result.json`, capturas y secuencias en `frames.jsonl`.
+Se completó la operación Arena pendiente, no se reinició el cycle completo ni
+su Session/rotación, no se ejecutaron más generadores ni cleanup de Meteorites.
+
 ## Arena — NORMAL nativo no acreditado antes de Start, corregido 2026-10-12
 
 Sesión `debb284b`, rutina `arena cycle`, Burst Breaker. Dos batches HARD previos
