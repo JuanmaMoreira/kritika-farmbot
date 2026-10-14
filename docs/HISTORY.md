@@ -142,3 +142,81 @@ La reconstrucción eligió no cherry-pickear código experimental. Primero endur
 - [`../CHANGELOG.md`](../CHANGELOG.md): milestones de alto nivel.
 - Git `4a14eee`: documentos hot completos previos a su compactación.
 - Branch `archive/inventory-relief-experimental`: manifest, assets y docs de la etapa experimental.
+
+## Aceptaciones y checkpoints por subsistema
+
+Índice de procedencia; los contratos activos se consultan desde CONTEXT. Las
+campañas acreditan su código/alcance, no todos los cambios publicados después.
+
+| Subsistema | Historia / aceptación |
+| --- | --- |
+| Session / Gold / Reliefs / Equipment / Ads | [Stabilization](SESSION_STABILIZATION_AUDIT.md), [Full roster](FULL_ROSTER_CHECKPOINT.md), [Reliefs](RELIEFS_FARMING_CHECKPOINT.md), [Stability+Performance](FULL_ROSTER_STABILITY_PERFORMANCE_CHECKPOINT.md), [Gold 28/28](GOLD_CYCLE_DIAGNOSIS_20261009.md) |
+| Identidad / estado / Sweep | [CHARACTER_STATE_CHECKPOINT](CHARACTER_STATE_CHECKPOINT.md), [implementación/adquisición](CHARACTER_STATE_IMPLEMENTATION.md) |
+| Shared Meteorites | [Checkpoint](SHARED_METEORITES_CHECKPOINT.md), [Fase A](METEORITES_PHASE_A_20261008.md), [B1](METEORITES_B1_20261008.md), [B2](METEORITES_B2_20261008.md) |
+| Arena | [A/adquisición](ARENA_HIL_ACQUISITION_20261008.md), [B1](ARENA_B1_20261008.md), [B2](ARENA_B2_20261008.md), [Farming integral](ARENA_FARMING_CHECKPOINT_20261009.md), [E2E](ARENA_E2E_ACCEPTANCE_20261009.md), [Stamina](ARENA_STAMINA_VALIDATION_20261009.md), [Manual Stages](MANUAL_STAGES_VALIDATION_20261009.md), [Stabilization/VP](ARENA_STABILIZATION_CHECKPOINT_20261010.md), [Previous Rewards](ARENA_PREVIOUS_REWARDS_20261012.md) |
+| Ordered lists / navigation | [TARGETED_SWIPE_AUDIT](TARGETED_SWIPE_AUDIT.md), [Quick Menu](QUICK_MENU_HANDOFF_DECISION.md) |
+| Incidentes MW / Trading | [86adecd4](MW_FAILED_SESSION_86ADECD4.md), [a94ac2e7](TRADING_FAILED_SESSION_A94AC2E7.md) |
+
+## Consolidación documental 2026-10-14
+
+Baseline productivo publicado `7f80a1841ba53eb4ea7350ec2aa720838abb7820`, rama
+`rebuild/stable-baseline`. Las fases de regularización publicaron los cambios
+productivos anteriores. Fase12 cambia sólo documentación, sin tests de código,
+evaluator, adquisición, gameplay, smoke ni limpieza. USER_GT no se cambia.
+
+[Snapshot íntegro previo a compactar](legacy/CONTEXT_PRE_CONSOLIDATION_20261014.md):
+1349 líneas originales, incluidas **197 añadidas en nueve entradas** pendientes.
+Se preservan sesiones/secuencias, diagnósticos, controles, guards, fixtures,
+conteos de validación, límites offline/live y rutas locales de procedencia. Sólo
+se ajustaron destinos Markdown por traslado. No se inspeccionaron logs/artifacts
+activos ni herramientas archivadas. Las rutas locales pueden caducar; no son
+requisitos de ejecución ni se sustituyen con evidencia inventada.
+
+Reconciliación explícita del diff pendiente (buscar sesión/título en el snapshot):
+
+| Entrada / identificación | Contrato vigente y cierre publicado | Límite que se preserva |
+| --- | --- | --- |
+| Failure Evidence directo/MANUAL; `f5d2a828` | [FAILURE_EVIDENCE_V1](FAILURE_EVIDENCE_V1.md), `471bf99` | 386 tests históricos offline; sin recuperación retroactiva del frame del corte; causa física UNKNOWN |
+| Arena Previous Rewards; `e9f6313e` | [ARCHITECTURE Arena](../ARCHITECTURE.md#arena--percepción-resultado-y-operación-b1-2026-10-08), `4135548` | Detector ya existente no tenía cierre cableado; ACK único, Mailbox posee claim; 205 tests offline, sin nuevo smoke |
+| Mailbox Character Mail; `bf1f0b48` | [ARCHITECTURE handoff](../ARCHITECTURE.md#handoff-entre-flows), `df670f4` | Retry de selección sólo con permiso fresco, no Claim/Delete; 16+119 tests; cuatro fallos de harness `_initial_lobby` históricos no se declaran actuales |
+| Materials blanco46/40; `573eaa89` | [RESOURCE_ROUTING](RESOURCE_ROUTING.md), `0bf8d57` | Selección de color compartida desde baseline numérica; 200 tests y evaluator17frames; matching de título nativo no probado con raw ausente |
+| Materials rojo0/40; `5d0151b5` | [RESOURCE_ROUTING](RESOURCE_ROUTING.md), `0bf8d57` | Contraste antialias, doble lectura/confirm único; 192 tests y evaluator14frames anteriores, supersedidos por corrección46/40; escala de replay simulada |
+| Equipment paginación; `8d724bea` | [ARCHITECTURE economía](../ARCHITECTURE.md#navegación-y-economía), `b177fcb` | Ausencia de efecto observada, sin causa física ni píxeles directos del intento; retry no consumptivo, 228 tests offline |
+| WB Previous Rewards; `51eb8b19` | [ARCHITECTURE estado](../ARCHITECTURE.md#character-identity-y-estado-persistente), `ef83162` | Decisión elegible conservada sólo en esa entrada; main no-work prevalece; H&H activo por USER_GT, influencia en miss no demostrada; 137+4 tests tras repetir temporales |
+| Ads multipart inset; `f1309e11` | [ARCHITECTURE Ads](../ARCHITECTURE.md#adsmanager-transversal), `0efe69e` | Fill empieza x=.052 dentro de borde .038–.055; progreso sólo observa; 156 tests/evaluator10 históricos, luego checkpoint fase7; strips downsampled |
+| Equipment quote KCoins envuelta; `f4663332` | [RESOURCE_ROUTING](RESOURCE_ROUTING.md), `b177fcb` | Layout elegido por pago explícito fresco, no igualdad OCR del nombre; 362 tests/evaluator14 y probe read-only sin ventas, no nueva campaña28 |
+
+Cierres posteriores del resto del diario: Ads `0efe69e` (367 tests, terminal22/22,
+progreso10/10); MW readiness `074fb50`, CLEAR `263ba3a`, hub/cancelación `ad00258`;
+Stages config `bbd1401`, Inventory `8955237`; Stamina close `a02dda7`, cantidad
+`2a02f22`; Arena NORMAL `dee218e`, parent Socket `312bebf`, recheck `712dc28`,
+wait Auto Repeat `7f80a18`. Conteos y alcance exacto permanecen en el snapshot;
+publicación no añade aceptación física a los caminos validados sólo offline.
+Summon Pet recovery `8f998c8` también está publicado, independiente de Open Pets.
+
+La operación NORMAL con Socket relief, Start efectivo y retorno Lobby del
+2026-10-12 sí tuvo ejecución focal autorizada; no fue otra Session/cycle integral.
+El retorno Arena `f5d2a828` permanece UNKNOWN por falta de evidencia causal.
+`adjacent_uncertainty` queda como posible mejora futura, sin investigación/fix aquí.
+Amplitud Ads cerrada por USER_GT 2026-10-06; fallos antiguos de tests y proyección
+UNASSESSED de Gold son históricos (`monster_wave.sapphire_effect` ya reconocido).
+
+Failure Evidence v1 ya había sido actualizado a captura directa/nativa y MANUAL
+técnico en el baseline: no quedaba contradicción que exigiera reescribirlo. Sus
+benchmarks del ring reducido son históricos; latencia del callback nuevo no medida.
+Contraste de SessionReport: `_flow_report` conserva failure sólo para FAILED y
+MANUAL se proyecta como incompletitud, aunque FlowResult/SessionResult/JSONL sí
+conserven bundle. Límite de presentación registrado para mantenimiento posterior;
+no se modifica código, status ni policy en esta fase.
+Los dos anchors activos inexistentes de ROADMAP fueron sustituidos por el owner
+RESOURCE_ROUTING/ARCHITECTURE. Los veinte destinos internos aparentes de
+DOC_RESET son literales en fences y se conservan con su origen explícito.
+`tools.arena_select_mode_probe` pertenece al archivo local fase11: nueve scripts
+Summon Pet/Arena/Gold, hashes verificados según USER_GT, sin inspección/mutación
+nueva ni dependencia absoluta. Fixtures curadas/hashes prevalecen sobre rutas raw
+ya ausentes (cuatro fuentes históricas Ads ausentes según cierre fase7).
+
+Consulta actual: AGENTS → CONTEXT → sección pertinente de ROADMAP → contrato
+por subsistema. Este índice/snapshot se consulta sólo por antecedentes.
+Secuencia acordada: consolidación → auditoría/limpieza de almacenamiento → Open
+Pets, todavía no iniciado. No se inicia automáticamente ninguna fase siguiente.

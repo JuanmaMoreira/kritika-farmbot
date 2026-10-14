@@ -46,12 +46,12 @@ no en Step Settings; la presentación no cambia la policy económica.
 
 ## Estado implementado frente a wiring productivo
 
-Estado reconciliado para el checkpoint MW del 2026-10-02 en `rebuild/stable-baseline`; implementación vigente y evidencia final descritas en CONTEXT. Etapa de estabilización cerrada.
+Estado contrastado con el baseline publicado `7f80a184` (2026-10-14) en `rebuild/stable-baseline`. Las cifras live de esta tabla conservan el alcance de sus campañas; los cierres posteriores se consultan desde [HISTORY](HISTORY.md#consolidación-documental-2026-10-14).
 
 | Parte | Estado real y límite |
 | --- | --- |
 | Board / planner / J / runner standalone K | Componentes existentes. K ofrece acquire/plan/prerequisites/full-one-shot; su composición inyectada no prueba callbacks productivos completos |
-| L1 productivo | Builder conecta ProductiveMonsterWaveFlow, A1, planner y J. PreparaciÃ³n Ãºnica y loop de Sapphire pressure `max(0, ceil((Sapphires-101)/100))` implementados: cada pasada adquiere su propio board y plan; dentro de su relief no repite board/planner/J. YES sin presiÃ³n, NO con presiÃ³n, resume del mismo pass y accounting sólo después de CLEAR y consenso fresco Sapphire. Loop de pressure validado offline; smokes históricos previos conservados bajo su policy original. Un fallo de construcciÃ³n todavÃ­a puede caer al flow bare; los smokes comprueban el tipo productivo real |
+| L1 productivo | Builder conecta ProductiveMonsterWaveFlow, A1, planner y J. Preparación única y loop de Sapphire pressure `max(0, ceil((Sapphires-101)/100))` implementados: cada pasada adquiere su propio board y plan; dentro de su relief no repite board/planner/J. YES sin presión, NO con presión, resume del mismo pass y accounting sólo después de CLEAR y consenso fresco Sapphire. Loop de pressure validado offline; smokes históricos previos conservados bajo su policy original. Un fallo de construcción todavía puede caer al flow bare; los smokes comprueban el tipo productivo real |
 | Plan no ejecutable | NO_PREREQUISITES permite SKIP por YES; INSUFFICIENT_OBSERVABILITY y CONTRADICTORY fallan cerrado. K acquire/plan-only conserva el popup para su caller |
 | L2 productivo | Equipment y Socket responden al blocker físico del mismo pass. Equipment hace Combine primero y después fresh Item Count mediante el plan de policy del inventory owner. Si queda Full, Sell Bulk tail-first y expansión secuencial verificada; Socket conserva su relief propio. Caller Equipment probado live: Combine-first, cinco Bulk tail-first 162/128→127/128, retorno al mismo pass y CLEAR |
 | Craft local | Handoff Quick Menu usa source/snapshot verificado; reader agrega diagnóstico y umbral local Weapon cost 0.80. P0 Craft corregido y validado localmente; ya no es la primera divergencia |
@@ -60,7 +60,7 @@ Estado reconciliado para el checkpoint MW del 2026-10-02 en `rebuild/stable-base
 | Gold relief productivo | ACK y drain conectados a los owners existentes. ACK exige alert Gold-full fresco y dos filas Keys completas después del dispatch; probado live. Treasure usa scope con todas las dependencias del resolver + detector Gold/Karats también en la primera apertura. OPEN_ONCE y drain verificados live: 499 Gold agotados, límite Karats y un dismiss final; cinco promociones causales posteriores completadas. Conserva latch premium, finalizer y retry causal único |
 
 | Materials productivo | Weapon→Hero conectado y verificado live: `852→52→12`, C3 fresco concordante y C4 verificado con una confirmación por intent. General incluye ofertas temporales fuera del catálogo histórico. Navegación dirigida productiva usa anchors CV y el orden relativo acreditado del suffix; no asigna índice al prefix temporal ni hace OCR de ofertas ajenas. Driver con feedback y máximo total de 12 gestos, fallback al scan previo con presupuesto restante; contexto/guard/cancelación frescos y target completo concordante antes de READY. C3/C4, MAX, costes, confirm único y efecto no cambian. No implementa otros materiales. Contrato transversal en ARCHITECTURE; GT físico en GAMEPLAY_GT; benchmark en TARGETED_SWIPE_AUDIT |
-| Sell | USER_GT definitivo implementado: nueve tipos Ethereal + Enhance configurables en GUI; E+ protegido; Bulk único por intent; count fresco, transformación lógica compatible tras Bulk e invalidación completa tras expansión. Adapter live Inventory `131/128→128/128→127/128` mediante dos Bulk verificadas (equipment y enhance), reevaluando el nuevo tail. Expansión: fila +4/popup/coste adquiridos nativamente, compra positiva aún no ejercitada live porque Bulk resolvió Full. Boots/Gloves/Pants/Chest/Helmet Ethereal y reinicios tail verificadas live: `172→167→162→157→146→135→129→128→123`, ocho Bulk y cero compras; Legendary/Epic/Rare/Ethereal tienen guards visuales nativos; Poor/Normal pendientes de adquisición si aparecen |
+| Sell | USER_GT definitivo implementado: nueve tipos Ethereal + Enhance configurables en GUI; E+ protegido; Bulk único por intent; count fresco, transformación lógica compatible tras Bulk e invalidación completa tras expansión. Adapter live Inventory `131/128→128/128→127/128` mediante dos Bulk verificadas (equipment y enhance), reevaluando el nuevo tail. Expansión: fila +4/popup/coste adquiridos nativamente, compra positiva aún no ejercitada live porque Bulk resolvió Full. Boots/Gloves/Pants/Chest/Helmet Ethereal y reinicios tail verificadas live: `172→167→162→157→146→135→129→128→123`, ocho Bulk y cero compras; Legendary/Epic/Rare/Ethereal tienen guards visuales nativos; Poor/Normal ya adquiridos y vendidos con guards propios (cierre 2026-10-05/07); no siguen pendientes |
 
 Treasure drain, entrada transitoria (2026-10-05): después de OPEN_ONCE verificado,
 un destello blanco inicial puede carecer de autoridad Gold/Karat. El owner espera
@@ -103,7 +103,7 @@ el pago completo envuelto se reproduce en
 
 ## Sell acceleration — implementada
 
-[Protected-block scan acceleration](../ROADMAP.md#protected-block-scan-acceleration) implementado en el Sell owner global: dos crops alrededor del panel fuerte protegido, NCC BGR con margen 2 px y threshold .90; sólo discovery. Sin perfil/crop/matching concluyente usa scan secuencial. Panel/policy/popup siguen autorizando cada Bulk. Rangos lógicos sobreviven sólo al Bulk compatible; expansión/contexto distinto invalidan. Combine-first, Ethereal+ y prefix accesible no cambian.
+[Protected-block scan acceleration](../ARCHITECTURE.md#navegación-y-economía) implementado en el Sell owner global: dos crops alrededor del panel fuerte protegido, NCC BGR con margen 2 px y threshold .90; sólo discovery. Sin perfil/crop/matching concluyente usa scan secuencial. Panel/policy/popup siguen autorizando cada Bulk. Rangos lógicos sobreviven sólo al Bulk compatible; expansión/contexto distinto invalidan. Combine-first, Ethereal+ y prefix accesible no cambian.
 
 ## Checkpoint aceptado y límites
 
@@ -199,7 +199,7 @@ de rutina compartida, sin duplicar configuración por caller (GUI_CONFIGURATION)
 Persistencia schema v1: sólo el preset original intacto (`basic-gold`, nombre original,
 cuatro steps enabled/default config/default continuation) migra a la capability. Rutinas
 editadas y custom permanecen intactas. La GUI guarda/reabre el mismo ID seleccionado.
-Arena/ToT podrían tener capabilities propias si su dominio lo requiere; no se implementan.
+Arena ya tiene Farming Cycle por ocurrencia en el mismo paso `arena`; su contrato es [ARENA_FARMING_CYCLE](ARENA_FARMING_CYCLE.md). ToT sigue futuro, sin capability implementada.
 
 ### Handoff del panel SELLABLE — USER_GT 2026-10-02
 

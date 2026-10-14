@@ -2,6 +2,13 @@
 
 Consolidado en `7865c55` sobre `main@16f2d418fd5bd081a87a8177a93a1ca9cd7962c3`. Las menciones posteriores a revisión/ausencia de commit describen el cierre histórico de esta fase. Proyección humana transitoria de una sesión terminada. No agrega log, persistencia machine, eventos, dependencias ni policy de gameplay. El consumo GUI actual y la localización explícita de evidencia están documentados en [`GUI_FUNCTIONAL_MINIMUM.md`](GUI_FUNCTIONAL_MINIMUM.md).
 
+Contrato base y extensiones vigentes: las secciones siguientes describen la
+proyección común. Arena Farming añade métricas/tabla por ocurrencia mediante
+`bot/arena_farming_report.py`, conservando IO/OCR/input fuera del builder;
+[ARENA_FARMING_CYCLE](ARENA_FARMING_CYCLE.md#session-report-analítico) posee ese
+contrato específico. `monster_wave.sapphire_effect` ya es evento informativo
+reconocido; UNASSESSED de campañas anteriores es una proyección histórica.
+
 ## Diseño y fuentes
 
 `bot/session_report.py` contiene dataclasses frozen, `build_session_report` y `render_session_report`. No importa Tk, consulta relojes, captura, ejecuta input ni hace IO. Recibe resultados; no mantiene un collector de eventos ni reabre JSONL. El JSONL/event stream sigue siendo la fuente machine persistente canónica; el report no sirve como entrada de decisiones del runtime.
@@ -70,9 +77,9 @@ Resultados aggregate-only conservan procesados/advances originales pero no inven
 
 `failure` conserva el mismo `FailureCause` inmutable, incluido message, exception_type, step, sequence y `evidence_ref`. Esto permite drill-down futuro sin exponer sus detalles en la vista normal. El renderer usa una allow-list: tipo de fallo y referencia; omite mensajes crudos que pueden contener secuencias, trazas o dumps perceptivos. Los run/session IDs se conservan en el objeto y se omiten del texto.
 
-`evidence_ref` sigue siendo la URI opaca original de Failure Evidence. El builder/renderer no consulta, abre ni valida su destino y no promete disponibilidad: el texto dice explícitamente “availability not checked”. Una URI caducada por retención sigue siendo una referencia útil para correlación, no un nuevo failure. La referencia propagada a sesión/personaje/flow se muestra una sola vez; otros fallos distintos conservan sus propias referencias. Sólo se renderiza evidencia asociada a un fallo técnico.
+`evidence_ref` sigue siendo la URI opaca original de Failure Evidence. El builder/renderer no consulta, abre ni valida su destino y no promete disponibilidad: el texto dice explícitamente “availability not checked”. Una URI caducada por retención sigue siendo una referencia útil para correlación, no un nuevo failure. La referencia propagada a sesión/personaje/flow se muestra una sola vez; otros fallos distintos conservan sus propias referencias. Sólo se renderiza evidencia asociada a un fallo proyectado como técnico. MANUAL con causa técnica conserva referencia en FlowResult/SessionResult/JSONL mediante [Failure Evidence](FAILURE_EVIDENCE_V1.md#trigger-y-propagación), pero el builder base sólo asigna `FlowReport.failure` a FAILED y trata MANUAL como incompletitud de negocio. La referencia no se garantiza en ese reporte humano; ese límite de proyección queda como mantenimiento futuro, sin cambiar status ni continuación.
 
-La duración se trunca a segundos y se formatea `HH:MM:SS`, sin timestamps actuales ni locale implícito. El renderer produce siempre el mismo texto para el mismo objeto; no imprime sequence numbers, poll_count, retries, confidence, UNKNOWN rates, operation IDs ni detalles de percepción.
+La duración se trunca a segundos y se formatea `HH:MM:SS`, sin timestamps actuales ni locale implícito. El renderer base produce siempre el mismo texto para el mismo objeto; no imprime sequence numbers, poll_count, retries, confidence, UNKNOWN rates ni operation IDs. Las extensiones Arena/Shared Meteorites agregan intervención, métricas de operaciones y lifecycle descritos en [ARENA_FARMING_CYCLE](ARENA_FARMING_CYCLE.md#session-report-analítico) y [ARCHITECTURE B2](../ARCHITECTURE.md#meteorites--integración-b2-de-routinesession-2026-10-08), sin convertirlos en decisiones del runtime.
 
 El renderer por defecto es compacto: conserva siempre el header/resumen global y oculta los personajes `COMPLETE` sin nada relevante junto con los flows simplemente `COMPLETE` de los personajes mostrados. Muestra business/Daily incomplete, technical failures, cancelled, skips `not eligible` sólo cuando su personaje tiene otros asuntos (un personaje `COMPLETE` con skips rutinarios queda resumido en el conteo) y evidence refs según el contrato vigente; un personaje sin evaluar conserva todo su detalle. Los objetos estructurados siguen completos; si algún personaje quedó oculto, el texto cierra con `N character(s) had no issues.` antes de las limitaciones.
 
@@ -86,7 +93,7 @@ Eligibility mínima añade la proyección `skipped_not_eligible` sólo para un f
 - El timer GUI mide la ejecución exterior, mientras `report.duration` mide SessionRunner; no son métricas intercambiables. Legacy sin medición muestra duración no disponible.
 - SessionRunner añade únicamente metadata de resultado y medición. No cambia contratos de éxito, guards, pre/postcondiciones, cancelación, input, waits, retries o cantidad/orden de advances. Observability y Failure Evidence permanecen intactos.
 
-## Validación y follow-ups
+## Validación histórica de v1 y follow-ups
 
 Tests nuevos cubren las categorías, outcomes actuales, no-op, parcialidad legacy, causas/referencias ausentes o caducadas, identidad fallback, orden/repeticiones, postcondiciones, Rotation, rendering reproducible y ausencia de ruido. Tests del runner comprueban que construir/renderizar dos veces no agrega llamadas ni eventos, y que una incompletitud business no impide Rotation. Controller y CLI verifican compatibilidad de status/exit codes y acceso al objeto sin Tk.
 
@@ -100,4 +107,4 @@ git diff --check
 
 Validación final: **144 tests dirigidos passed** y **1572/1572 tests hardware-free passed en 265,46 s** sobre el código final, incluyendo 49 casos nuevos. `git diff --check`, whitespace de archivos nuevos y enlaces Markdown locales de la documentación modificada válidos. Sin hardware ni cambios perceptivos; no corresponde recalibración. Los cuatro scripts raíz locales ajenos permanecen preservados. Sin commit ni push.
 
-GUI funcional mínima ya consume el report y permite localizar evidencia bajo acción explícita. Character Identity mínima sustituye ahora la etiqueta cuando el contexto tiene clase, sin alterar la proyección de negocio. Eligibility mínima añade la proyección de skip descrita arriba. El drill-down técnico puede usar `FailureCause` y el JSONL. Arena, nuevas causas semánticas y replay de sesiones interrumpidas antes de producir resultado permanecen fuera de alcance.
+GUI funcional mínima ya consume el report y permite localizar evidencia bajo acción explícita. Character Identity mínima sustituye ahora la etiqueta cuando el contexto tiene clase, sin alterar la proyección de negocio. Eligibility mínima añade la proyección de skip descrita arriba. El drill-down técnico puede usar `FailureCause` y el JSONL. Arena Farming ya está incorporado por la extensión indicada arriba. Nuevas causas semánticas y replay de sesiones interrumpidas antes de producir resultado siguen como mejoras futuras, fuera del alcance base de v1.

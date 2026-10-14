@@ -1,0 +1,1373 @@
+# Snapshot histórico de CONTEXT — consolidación 2026-10-14
+
+`LEGACY_STALE` para estado/publicación; conserva USER_GT, evidencia y diagnósticos
+con su procedencia original. No es una entrada operativa ni un contrato vigente.
+Fuente: CONTEXT del working tree sobre `7f80a1841ba53eb4ea7350ec2aa720838abb7820`,
+incluidas sus **197 líneas pendientes** (nueve entradas). Cuerpo íntegro: sólo los
+destinos Markdown se ajustaron al traslado. Las rutas en code spans siguen siendo
+relativas a la raíz del checkout de origen; no se promete disponibilidad local.
+
+Estado reconciliado e índice de preservación: [HISTORY](../HISTORY.md#consolidación-documental-2026-10-14).
+Estado activo: [CONTEXT](../../CONTEXT.md); próximos pasos: [ROADMAP](../../ROADMAP.md).
+Los `sin commit/push`, fallos de tests y pendientes de bloques anteriores describen
+su fecha, no HEAD actual. Los conteos de validación no son gates nuevos.
+Artifacts/logs/bundles son procedencia local; esta fase no inspeccionó su contenido
+ni archivos en escritura. Fixtures curadas y manifests versionados son las fuentes
+durables donde estén acreditadas; no se reconstruyen píxeles ausentes.
+
+`tools.arena_select_mode_probe` es un probe histórico archivado fuera del checkout
+(fase 11), no tooling productivo ni comando disponible. Los nueve scripts históricos
+de Summon Pet/Arena/Gold tienen archivo local con hashes verificados por aquella
+fase (USER_GT); no se modificaron ni se agrega una dependencia de máquina.
+
+---
+
+# Estado actual — Kritika FarmBot
+
+## Basic Gold Farming — incremento Stamina sin efecto, corregido offline 2026-10-13
+
+Sesión `8441fbbb`, cuarto personaje Strike Archer, segunda oportunidad Stages.
+Lobby acreditó41 Stamina; faltaban6 trades para341. Cinco `>` despachados a
+11:56:12–13 -03 produjeron sólo cuatro incrementos:13 muestras frescas mostraron
+4/20 y luego5/20 hasta timeout6s. El corte `stamina trade selected quantity mismatch`
+ocurrió antes de Trade. LIVE_EVIDENCE:18540/18545/18550 y replay dan5/20,
+Stamina250, KCoins135808/1000. No se demuestra qué tap quedó sin efecto ni por qué.
+Fuente: `logs/20261013T142542.310618Z_session_8441fbbb.jsonl`, eventos5375–5436;
+evidencia en `artifacts/failure_evidence/failure_c7cb82f93a88465eb5984abb64443f6c`.
+
+Fix local en StaminaPurchase: esperar cantidad/cap después de cada `>`.
+Un solo retry de incremento por compra exige último snapshot fresco posterior
+al input del mismo panel resuelto, con cantidad anterior/cap intactos, y una
+relectura posterior. Destino tardío continúa sin input; cantidad anterior permite
+el retry. UNKNOWN/AMBIGUOUS, lectura inconclusa, cambios, evidencia vieja/pre-input,
+cancelación y segundo miss conservan el corte. Trade se confirma sólo una vez
+con cantidad exacta. Contrato actualizado en RESOURCE_ROUTING.
+
+277 tests afectados PASS: batch/retry/close Stamina, Manual supply, Stages Daily,
+Gold Farming/failures, Manual Stages, Arena stamina budget y Stages claim loop.
+La regresión reproduce el quinto incremento perdido y acredita6 antes de una
+sola confirmación; también cubre efecto tardío, límites del retry y denegaciones.
+El test de persistencia se reejecutó con temporal en artifacts tras un error
+ambiental de permisos. Sin cambio perceptivo ni evaluator. Sin hardware/smoke;
+la recuperación física queda pendiente de la próxima ejecución GUI. Trabajo
+previo preservado; reabrir GUI antes de ejecutar el código actualizado.
+
+## Basic Gold Farming — cierre Trading sin efecto corregido 2026-10-10
+
+Sesión GUI `fa51df16`, segundo personaje Lina: primera divergencia en el retorno
+de la compra Stamina, no en Rotation. `stamina_before=294`, una confirmación de
+un trade; las capturas finales muestran 344/440 y Currency aún abierto tras X.
+`CloseTrading` source8814 fue despachado una vez; espera Lobby agotó6s en8877.
+LIVE_EVIDENCE:8868/8873/8877 conservan Trading resuelto y sin overlays; replay
+del detector actual confirma Currency(.9722), Stamina row(.9505–.9506) y ausencia
+de Item Trade. No se demuestra por qué el juego ignoró ese primer cierre.
+
+Fix local en `StaminaPurchase`: un único retry X desde Trading/Currency expuesto,
+fresco y posterior al input, con estado resuelto, sin overlays ni Item Trade.
+UNKNOWN/AMBIGUOUS, evidencia vieja/pre-input, cancelación y segundo timeout
+siguen cortando. La confirmación consumptiva nunca se repite.
+Validación:130 tests distintos PASS (Stamina close/batch, Manual supply,
+Stages Daily y Gold Farming); el test de persistencia se reejecutó con temporal
+en artifacts tras fallo ambiental de permisos. Replay de las tres capturas y
+diff-check PASS. Sin cambio perceptivo ni nueva campaña live28/28.
+
+## Stages — entrada Inventory sin efecto antes de Sell, corregido 2026-10-11
+
+Sesión `e81b3bb2`, noveno personaje Blood Demon, ocho rotaciones completas.
+Equipment Full en Stages Daily: Combine terminó NO_RELIEF_AVAILABLE y retornó
+Stages en37758. Sell fallback salió a Lobby, acreditado en37779/37784, y
+despachó Lobby Inventory(.655,.75) desde37784. El callback iniciaba Sell sin
+verificar entrada. Sus48 lecturas nativas37790..37840 dieron Item Count ROI
+`Stac` sin count ni página; inventory_unreadable_or_stale y flow.failed13654.
+No hubo ventas, expansiones ni paneles abiertos. Capturas retenidas37773,
+37779/37784 son anteriores al tap: muestran Lobby y control Inventory expuesto;
+H&H no lo obstruye. Los diagnósticos posteriores demuestran ausencia de entrada
+acreditada, pero no por qué el juego ignoró el input.
+
+Fix local en StagesReliefs.enter_inventory: esperar muestra positiva de Item
+Count+página con el reader existente y freshness de StagesNavigation antes de
+arrancar el owner Sell. Un único retry requiere timeout con Lobby RESOLVED
+sin overlays, posterior al input, age0..2s, y nueva captura posterior al último
+frame del wait. Entrada tardía continúa sin otro input. UNKNOWN/AMBIGUOUS,
+contexto ajeno/overlay/stale/futuro/pre-input, cancelación y segundo miss cortan.
+El owner conserva consenso fresco de dos muestras antes de acciones económicas;
+no se repiten Combine, Start, ventas ni expansiones. Evento de retry conserva
+source_sequence. Validación:360 tests dirigidos PASS (13 nuevos; ruta Inventory,
+Sell, relief, navegación Stages, Daily, manual y Gold Farming). Sin cambio
+perceptivo ni evaluator; sin teléfono. Pendiente observar ejecución ordinaria.
+
+## Stages — X de configuración sin efecto tras Results, corregido 2026-10-12
+
+Sesión `ea2c845a`, segundo personaje Eclair, una rotación completa. AdsManager
+acreditó RETURNED1400; Results OK desde4175 alcanzó config4188. La X adquirida
+(.804,.166) se despachó1409–1411 pero el wait6s terminó en4251, config todavía
+resuelta con confianza1.0; flow.failed1417. LIVE_EVIDENCE4249/4250/4251 muestra
+Stage08 Crimson Dimension Rift2, X expuesta y popup persistente. No fue un fin
+de ad perdido ni un miss del detector: la salida sólo hacía un intento de X.
+Se demuestra falta de efecto observado, no por qué el juego ignoró el tap.
+
+Fix mínimo en StagesNavigation.exit_to_lobby: sólo CLOSE_CONFIG admite un
+retry tras timeout con config RESOLVED en screen.stages, expuesta, sequence
+posterior al origen, timestamp posterior al dispatch y age0..2s. Readquiere
+una captura posterior al último frame del wait antes de otro input; si el
+cierre aparece tarde, continúa sin segundo X. UNKNOWN/AMBIGUOUS/otro contexto/
+overlay/stale/futuro/pre-input/cancelación y segundo miss cortan. Conserva
+observer scoped para config y observer completo para Lobby. Results OK,
+Video, Start, compras y Back no ganan retries; no se repite el ad ni su consumo.
+Evento stages.config_close.retry conserva source_sequence del permiso.
+Validación:257 tests dirigidos PASS (16 nuevos; results return/wiring,
+navegación/native wait/performance, Daily/manual, Socket/Inventory relief,
+Claims, Gold Farming y abastecimiento manual). Regresión reproduce timeout
+antes del patch. Sin cambio perceptivo ni evaluator; sin teléfono. Pendiente
+observar ejecución ordinaria.
+
+## Monster Wave — regularización Git fase 8, validada offline 2026-10-14
+
+Tres unidades autónomas desde `0efe69e`: readiness (`074fb50`), cierre CLEAR
+(`263ba3a`) y reapertura bounded del hub (este snapshot). Readiness conserva
+ROI/parser/confianza/consenso/freshness y usa scope83/101 sin mutar el fact reader
+compartido; Arena conserva su operación de una pasada sin pressure102. CLEAR
+exige controles expuestos; consumo sólo tras CLEAR y efecto fresco posterior.
+Sólo OK CLEAR y Lobby→hub admiten segundo intento con evidencia positiva fresca;
+no se repiten SKIP, Start, Back, compras, confirmaciones ni reliefs por incertidumbre.
+Cancelación del retorno se revalida tras adquirir anchor y verificar Back.
+
+Validación sobre exportaciones exactas del índice: readiness605 PASS iniciales
+y22 PASS tras corregir el inventario del test de scope board (606 casos únicos);
+CLEAR548 PASS; hub577 PASS, incluidos14 de retry/cancelación. El fallo del test
+de scope board también se reprodujo en la baseline publicada: omitía las
+observaciones de ArenaDetector, que sí está incluido; sólo se corrigió el test.
+Evaluator full/scope19/19, wrong0;1919 pares full y1577 reutilizados scoped.
+Cuatro manifests,207 referencias/124 frames únicos y hashes verificados; fixture
+semántica/latencia explícita, sin convertirla en nueva calibración física.
+
+Contratos en MONSTER_WAVE_SKIP; detalle de árboles, tests, preservación y estado
+Git en `artifacts/git_regularization_mw/report.md`. Arena, Stages/Stamina/Gold,
+campañas y residuos independientes preservados. No gameplay, adquisición ni
+smoke; los nuevos caminos de recuperación siguen sin prueba física posterior.
+Los bloques fechados anteriores conservan sus validaciones históricas.
+
+## Ads — regularización Git fase 7, validada offline 2026-10-14
+
+Snapshot aislado desde `8f998c805295076f9f2f3c78a79c566fd0935dca`: progreso SDK
+con inset y ambas cápsulas `Reward granted`, con sus assets/fixtures/manifests.
+Revisión reprodujo cancelación durante observación que aún despachaba input;
+el manager ahora revalida cancelación al volver del observer normal/recovery.
+367 tests dirigidos y de consumidores PASS; evaluator terminal22/22 y progreso10/10,
+wrong0. Cierre SDK, Results y efecto fresco de Sapphires siguen siendo hechos
+distintos; sin cambios de elegibilidad, retries económicos ni límites de Ads.
+Cuatro fuentes históricas de fixtures ya ausentes: se conservan las fixtures
+durables y hashes, sin readquisición. No gameplay/HIL/smoke; recuperación física
+de las cápsulas queda limitada al replay existente. Trabajo ajeno preservado.
+
+## Evidencia — cortes MANUAL y capturas directas, corregido offline 2026-10-13
+
+La investigación de `f5d2a828` demostró dos huecos compartidos: Session emitía
+MANUAL sin pasar por el writer y los frames directos de los owners no llegaban
+al collector del observer. Fix transversal en source/composición, FailureEvidence
+y Session: conservar el último frame entregado, incluido native; publicar bundle
+para MANUAL con causa técnica y propagar la misma referencia a flow/sesión/log.
+No cambia navegación, detectores, status ni continuación. MANUAL sin error,
+indisponibilidad controlada y cancelación mantienen su tratamiento. Error de
+escritura queda explícito como `evidence_error`, sin inputs ni captura adicional.
+Límites y procedencia de frames en ARCHITECTURE; trabajo local previo preservado.
+
+386tests afectados PASS: collector/writer, source/captura nativa, composición,
+Session/report/GUI controller y Arena/B2/Farming. Regresión del segundo Back
+con destino Select Mode y miss CV persiste los pixels exactos del corte; Session
+genera un único bundle enlazado y no avanza. Cubiertos también otros flows,
+standalone, observer viejo, frame nativo2712×1220 sin pérdida, mutación de la copia
+del caller, límite de memoria, cleanup y writer fallido con inputs idénticos.
+Sin cambio perceptivo ni evaluator; sin teléfono/smoke. Reabrir GUI antes de correr.
+Se corrige la pérdida futura de evidencia; la causa física del corte anterior
+permanece UNKNOWN porque sus pixels no se pueden recuperar retroactivamente.
+
+## Arena — nuevo corte de retorno a Select Mode, investigación 2026-10-13
+
+Sesión `f5d2a828`, `arena cycle`, primer personaje Burst Breaker, operación3.
+El primer batch y una pasada MW completaron; el segundo batch acreditó terminal
+y cerró resultado/Insufficient. Back Challenge→selección y segundo Back a22:17:48
+-03; corte `transition_unconfirmed` a22:18:02 en `external_return`, sin operación
+física activa. Fuente: `logs/20261014T005821.362947Z_session_f5d2a828.jsonl`,
+eventos352–365. **USER_GT:** quedó Select Mode. No demuestra Back sin efecto.
+La captura posterior al corte no se archivó: evidencia Arena quedó sólo en el
+resultado en memoria; en aquella ejecución Session no publicó un failure bundle.
+
+**LIVE_EVIDENCE posterior, no captura del corte:** usuario restauró Select Mode
+manualmente y autorizó un único screencap ADB sin inputs. A22:31:08 -03,
+2712×1220: guard Select Mode y Back positivos; templates nativos título/tarjeta
+dan1.000/1.000 con umbral.94. Templates antiguos dan.923/.925, insuficientes.
+Raw/hash y scores en `artifacts/arena_select_mode_20261013/native.jsonl` y
+`diagnosis.json`. La GUI Python empezó a21:57:39 -03, posterior al fix de retorno
+del13/10 a01:30; proceso anterior al fix descartado. Baseline de retorno/recheck
+y B2:55tests PASS; warning ambiental de escritura de pytest cache.
+
+**UNKNOWN:** pixels y motivo concreto del recheck fallido de esta ejecución;
+la pantalla restaurada pasa el código vigente y no reproduce el miss. No se
+cambiaron detector, umbrales ni navegación. Corrección causal de este corte
+pendiente de evidencia del fallo; no convertir este replay positivo en fix live.
+
+## Ads — Reward granted superior izquierdo no reconocido, corregido offline 2026-10-13
+
+Sesión `1a401121`, décimo personaje Ice Warlock, primera oportunidad Stages de
+Basic Gold Farming. Diecisiete ads anteriores retornaron. La barra SDK avanzó
+.060→.965 entre5.2s y59.3s; después se agotó60s sin progreso/cierre reconocido.
+`AD_RECOVERY_FAILED` a15:02:54 -03, elapsed121.656s, close_steps0. Fuente:
+`logs/20261013T162714.129609Z_session_1a401121.jsonl`, eventos15978–16004.
+LIVE_EVIDENCE: `failure_65ea02e4691643209e214621be7a3050`,57922/57928/57930:
+cápsula clara superior izquierda con `Reward granted` y X negra. El observer
+buscaba sólo chrome adquirido a la derecha; scores antiguos cápsula/X .143/.126.
+
+Fix local AndroidAdsObserver: cápsula izquierda completa y X separada, ambas≥.94,
+autorizan Back con clave `reward_granted_left_pill`. Replay de las tres capturas
+da ambos scores>.999. Se conservan Google AdActivity resumed/focus concordantes,
+freshness≤2s, veto Next ad, presupuesto de cierre y prueba funcional del caller.
+Fixtures guardan sólo chrome superior, procedencia/hash y geometría nativa;
+no se reconoce contenido creativo ni se cambia el lifecycle temporal.
+
+158 tests afectados PASS: ambas cápsulas, circular SDK, terminal corto, progreso,
+captura nativa, Gold Cycle failures y Stages Daily. Nuevo replay cubre las tres
+capturas y escala nativa, ausencia de X/reward, posición ajena, actividad/foco,
+Next ad, observación vieja y cierre inmediato a5s seguido de Results.
+Evaluator incremental Ads22/22, wrong0;16 pares previos invalidados por nuevos
+assets/observer y6 nuevos. Sin teléfono ni smoke live; recuperación física de
+esta variante pendiente de la próxima ejecución GUI. Reabrir GUI antes de correr.
+
+## Arena — Select Mode sin acreditar durante salida, mitigado offline 2026-10-13
+
+Sesión `0feb44fb`, `arena cycle`, tercer personaje Cat Acrobat, operación9.
+Nueve operaciones Arena previas COMPLETED entre tres personajes. A01:24:14 -03
+terminó `transition_unconfirmed` en external_return, sin operación física activa.
+El último NORMAL tuvo terminal positivo, lectura/cierre del resultado e
+Insufficient→No; Back desde Challenge acreditó selección. El segundo Back se
+despachó a01:24:02 desde72976; agotó12s esperando Select Mode sin llegar al tercer
+Back/Lobby. Sólo un Start en el batch. Log fuente
+`logs/20261013T022450.898300Z_session_0feb44fb.jsonl`, eventos4964–4977.
+
+**UNKNOWN:** no se archivó la pantalla posterior; usuario no preservó el teléfono
+y pidió usar sólo logs. No se atribuye a un tap sin efecto ni a un defecto CV
+concreto. Diferencia de software demostrada: la entrada tenía recheck nativo
+de Select Mode tras timeout del stream; la salida usaba sólo el stream.
+
+Mitigación mínima: mismo recheck nativo positivo único al agotar exclusivamente
+la transición selección→Select Mode durante salida. Owner comparte su operación
+focal con la entrada; conserva detector, umbrales, source/sequence/barrier/edad y
+cancelación. Captura en `return_select_mode_native_recheck`, evento de éxito
+`arena.select_mode.native_recheck` con phase. Positivo autoriza el Back final
+desde ese snapshot; negativo/no refresh conserva el corte. No se repite el Back
+de selección ni Start, ni se deduce el destino desde el input despachado.
+
+183tests afectados PASS: regreso/recheck nuevos13, entrada/recheck12, ArenaFlow79,
+B2/Farming Cycle79. Cubren replay nativo Select Mode adquirido, ausencia del guard,
+capturas stale/pre-input/old-sequence/futuras, cancelación y source sin refresh.
+Resultado ya leído se conserva aunque falle el retorno. Sin cambio perceptivo,
+sin evaluator. Sin hardware, reanudación ni adquisición; trabajo previo preservado.
+El defecto físico específico de este corte y la recuperación live de esta rama
+siguen sin demostración. Reabrir GUI antes de la próxima ejecución.
+
+## Arena — parent de Socket blocker perdido en captura nativa, corregido 2026-10-12
+
+Sesión `8212399d`, `arena cycle`, Dimension Manipulator. Dos batches HARD
+completados. La operación7 NORMAL se detuvo a22:38:45 -03 con
+`blocked_start_lineage_uncertain`, fase start_uncertain: un Start intentado,
+sin receipt efectivo. Preparación71Badges y buff3stock817; consumo natural
+previsto64. El stream acreditó Socket Inventory Full sobre configuración;
+`_relieve` perdió el parent en su recheck nativo y conservó la incertidumbre.
+
+Captura pasiva01:56:54Z conserva ese blocker y71Badges. Reproduce la condición:
+bag_full0.990416, config_start0.854518<0.90, Loading=false; OCR nativo71 a0.99958.
+No hay frame exacto archivado del corte. El desfase de muestreo crop-first entre
+nativo2712×1220 y plantilla de stream2712×1224 es causal en este replay.
+`config_start` usa ahora reference_shape1356×612 mediante la normalización
+completa existente:0.930989, sin bajar umbral ni retirar el parent positivo.
+Generador y fixture focal nativo trazable en `tests/fixtures/arena_socket_native`.
+
+Validación:177tests afectados PASS; nuevo replay5 conserva el guard de contador
+igual/legible antes de acreditar no-inicio, parent obligatorio y un único Start
+sin helpers. Evaluator Arena24pares invalidados,0errores; probe focal del guard
+de rechazo25frames,2positivos,23negativos,0errores. Sin cambio de gameplay.
+
+Ownership explícito del usuario: harness local
+`artifacts/arena_latest_20261012/resume_blocked.py`, evidencia en `resume01`.
+Valida log previo cerrado y misma operación pendiente, captura fresca positiva
+y contador71 sin consumo antes del relief. Reutiliza policy de la misma rutina
+y owners existentes; no reinicia Farming Cycle ni su presupuesto de Stamina.
+Enhance All produjo efecto, sin Sell; retorno Arena limpio acreditado.
+Un único nuevo Start NORMAL efectivo a23:03:06 -03; un blocker recurrente no
+autoriza otro relief/Start. Batch completado:64Badges usados/64ganados,
+confianzas OCR0.99998/0.99998, wait312.187s, sin OCR en polling. Resultado→OK,
+Insufficient→No y tres Back adquiridos; retorno Lobby limpio fresco acreditado
+a23:08:26 -03 y captura final23:08:28. Estado COMPLETED/returned, sin operación
+física activa; runtime.closed y cleanup del source confirmados. Resumen en
+`resume01/result.json`, capturas y secuencias en `frames.jsonl`.
+Se completó la operación Arena pendiente, no se reinició el cycle completo ni
+su Session/rotación, no se ejecutaron más generadores ni cleanup de Meteorites.
+
+## Arena — Previous Rewards detectado pero sin cierre productivo, corregido 2026-10-12
+
+Sesión `e9f6313e`, rutina `arena cycle`, Dimension Manipulator. A21:55:48 -03,
+`arena.finished`151 terminó `transition_unconfirmed` en navigation; inputs sólo
+Battle→Arena, sin dificultad ni Start. **USER_GT:** Previous Rewards seguía
+abierto. La percepción/catálogo del modal estaban integrados, pero `_navigate`
+sólo esperaba selección o New Ranking. Faltaba conectar detector→OK→selección
+en el owner ArenaFlow usado también por Farming Cycle; no es un miss demostrado
+del detector ni una propiedad física nueva. El log no archivó el frame exacto.
+
+Fix local: presencia opcional `previous_rewards` en la espera posterior a Arena;
+un único `PREVIOUS_REWARDS_OK`(.500,.8215) desde evidencia positiva fresca, luego
+selección limpia fresca antes de la dificultad. Reutiliza el cierre adquirido
+2026-10-12 y los guards/bounds/cancelación existentes. OK reconoce/cierra; rewards
+permanecen a cargo de Mailbox. Sin flags de elegibilidad, retries, inputs por
+UNKNOWN, cambios de detector o cambio de routing del cycle.
+
+Validación offline:205tests PASS.126 entre nueva integración9, percepción del
+modal16, ArenaFlow79, Select Mode12 y wait10;79 B2/Farming Cycle adicionales.
+Incluye ruta con pixels adquiridos antes/después del OK, negativo WB, geometría
+desde frame.shape, OK sin efecto (un input, sin dificultad/Start), positivo
+vencido y cancelación antes/después. Rutas sin modal y New Ranking conservadas.
+Sin cambio perceptivo: evaluator previo sigue válido. No captura ni input live,
+no nuevo combate ni modificación de Meteorites. Reabrir GUI antes de la próxima
+rutina para cargar el owner actualizado; no se afirma smoke live del nuevo cierre.
+
+## Arena — NORMAL nativo no acreditado antes de Start, corregido 2026-10-12
+
+Sesión `debb284b`, rutina `arena cycle`, Burst Breaker. Dos batches HARD previos
+COMPLETED (wait≈499.672s y494.5s), sin repetir el corte prematuro anterior.
+La operación10 llegó a Challenge NORMAL con inputs Battle→Arena→NORMAL;
+a21:41:42 -03 terminó `challenge_or_difficulty_uncredited`, fase preparation,
+antes de Start y sin operación física activa acreditada. `_economy` rechazó
+la dificultad de su captura nativa antes de hacer OCR económico, después de
+que el mismo guard hubiera aceptado Challenge desde el stream.
+
+Captura pasiva post-stop21:45:51 -03, sin inputs, conserva Intermediate,
+buffs OFF y x8 ON. Evidencia en `artifacts/arena_normal_20261012/native.jsonl`.
+No se archivó el frame exacto del corte; esta captura reproduce offline su
+misma condición: clean_challenge=true, dificultad UNKNOWN. NORMAL puntúa
+0.887268<0.90 por el desfase de muestreo ROI entre nativo2712×1220 y plantilla
+creada desde stream2712×1224 reducido a1356×612. Normalizar primero la imagen
+completa al tamaño de origen de la plantilla da0.943625 y NORMAL positivo.
+No cambia el GT Intermediate=NORMAL ni el umbral o margen de clasificación.
+
+Fix mínimo: `difficulty_normal` declara `reference_shape` en el manifest,
+consumido por el escalado completo ya existente en ArenaFlowVisuals.
+El generador conserva ese metadata desde frame.shape. Sin nuevas plantillas,
+retries ni inferencia de dificultad desde el input. Fixture focal portátil
+con tamaño nativo intacto y procedencia en `tests/fixtures/arena_normal_native`.
+
+Validación:163tests PASS (nuevo replay7, Phase A, ArenaFlow y B2).
+Regresión incluye el guard de dificultad solicitada, título ausente UNKNOWN,
+detector productivo y economía OCR real106Badges. Evaluator incremental afectado:
+25pares (24invalidados por metadata +1nuevo),0errores en dificultad; evaluator
+Arena existente24frames,0errores de superficie/resultado, reutilizando cache.
+No nuevo Start, restauración de Meteorites ni reinicio de Session. Reabrir GUI
+antes de la próxima rutina para recargar visuals/manifest; no hay batch live
+posterior al fix. Las validaciones de wait y Select Mode previas siguen válidas.
+
+## Arena — corte prematuro durante Auto Repeat, corregido 2026-10-12
+
+Sesión `f1c7e36e`, rutina `arena cycle`, Burst Breaker. Único Start HARD x8
+acreditado,106Badges preparados. A21:06:59 -03, `arena.finished`194 cortó con
+`nonterminal_modal_during_batch` tras194.984s de wait; terminal_detections0 y
+physical_operation_may_be_active=true. **USER_GT:** Auto Repeat seguía funcionando.
+La causa de software es el corte inmediato por una sola detección
+ranking/insufficient en `_terminal_wait`, sin persistencia. El log no archivó
+ese frame ni distingue cuál de los dos predicados disparó; falso positivo frente
+a modal transitorio específico sigue UNKNOWN, no se inventa una clasificación.
+
+Captura pasiva21:08:51 y ventana pasiva posterior confirman WIN intermedio y
+batalla→WIN del mismo batch, sin taps. Evidencia en
+`artifacts/arena_wait_modal_20261012/{native.jsonl,passive01/frames.json}`;
+sources cerrados. No otro Start, ACK, cleanup Meteorites ni reanudación de Session.
+**USER_GT adicional:** el indicador Auto Repeat no aparece durante la
+configuración del próximo combate; su ausencia no acredita final.
+
+Fix mínimo: New Ranking/Insufficient pasa por el bound de superficie persistente
+existente (30s productivo), sin inputs; actividad conocida resetea ese bound.
+Configuración propia positiva tras Start es conocida en AUTO_REPEAT y usa sólo
+el bound global del batch, aunque no haya banda de actividad. Terminal completo,
+cancelación, freshness, lineage y prohibición de repetir Start se conservan.
+Sin cambio perceptivo ni evaluator.168tests afectados PASS (ArenaFlow79,
+regresiones nuevas10, B2 y Farming Cycle79); resultados previos aún válidos
+reutilizados. Tests cubren modal transitorio/persistente, configuración sin
+indicador, bound global, cancelación y Single. No se reinició la rutina activa.
+
+## Arena — Select Mode no acreditado, mitigación y smoke focal 2026-10-12
+
+Sesión `8c4c6b01`, rutina `arena cycle`, Telumpel. Primer Arena HARD completado
+con120Badges usados/112ganados; Manual Stages y MW completados después. La
+cuarta operación volvió a Arena con106Badges/0Sapphires. Lobby acreditado;
+Battle desde9166 se despachó en719–721 a23:38:08Z. `arena.finished`722 cortó
+12s después con `transition_unconfirmed`, fase navigation y sin combate activo.
+**USER_GT posterior:** había abierto Select Mode antes de restaurar meteoritos
+y regresar al Lobby. Es un miss perceptivo de la transición, no un Battle sin
+efecto. MANUAL_RESOLUTION no publicó bundle; los píxeles del miss no están
+archivados y su defecto concreto sigue UNKNOWN. Los replays existentes de esa
+pantalla sí pasan el guard actual, incluido el nativo adquirido2026-10-12.
+
+`ArenaFlow._navigate` ahora, sólo al agotar esa espera, fuerza una captura nativa
+única en el mismo source/sequence space y aplica el mismo `select_mode` positivo.
+Si pasa, continúa desde ese frame; si no, conserva el corte. No repite Battle,
+no reduce umbrales ni usa USER_GT como autorización de un input futuro. Edad,
+barrera post-input, secuencia y cancelación conservan los guards de `_capture`.
+La evidencia del resultado conserva `select_mode_native_recheck`; éxito emite
+`arena.select_mode.native_recheck`. No cambio perceptivo ni evaluator.
+
+Validación offline:170tests PASS entre recheck12, ArenaFlow, B2 y Farming Cycle,
+incluido replay nativo existente, negativos/frames viejos y cancelación. Diez
+setups fallaron inicialmente por el directorio temporal del sandbox; los diez
+pasaron al usar un basetemp nuevo dentro del repo.
+
+Smoke autorizado21:00 -03 mediante `tools.arena_select_mode_probe`, ejecución
+real de `_navigate` detenida antes del input Arena. Evidencia en
+`artifacts/arena_select_mode_20261012/live02/{result.json,frames.jsonl}`:
+Battle7→Select Mode stream36, guard positivo; nativo55 también positivo (scores
+native título1.0/tarjeta≈1.0). Sólo Battle y Back; retorno Lobby nativo89,
+runtime.completed/closed, sin Start ni cambio de meteoritos. El intento live01
+falló al iniciar ADB en sandbox, antes de capturar/enviar input; live02 autorizado
+fuera del sandbox completó. Capturas revisadas: Drakenn26,106Badges en Select
+Mode y Lobby. El fallo intermitente no reapareció; `native_recheck=false`.
+La nueva rama tiene validación offline y nativo live legible, pero no se afirma
+haber observado su recuperación tras un timeout real. No campaña adicional.
+
+## MW — falso cierre de CLEAR bajo mensajes de rewards, corregido 2026-10-12
+
+Sesión `adbbe95b`, personaje14 Steam Walker,13 rotaciones completas.
+Relief Equipment liberó124/124→117/124 con una Bulk confirmada; el evento
+manual_resolution previo se cerró con relief_resolved18748. Tras el mismo pass,
+ACK CLEAR desde58312 declaró success_first_attempt en58324. LIVE_EVIDENCE
+58324/58330 muestra CLEAR físicamente abierto, tap OK conocido y mensajes
+de rewards sobre su título; snapshot lo pierde (.2183), resuelve MW+MAX sin
+overlays. clean_mw sólo exigía ausencia de overlays y aceptó ese falso cierre.
+En58335 CLEAR vuelve a resolverse (.8995); lectura Sapphires context_mismatch,
+mw_effect_requires_clean_context y flow.failed18749. No se atribuye a H&H ni
+se demuestra por qué el primer OK no cerró:58324 también muestra spinner.
+
+Fix local en MonsterWaveActivity: postcondition ACK CLEAR exige skip_state
+coherente + MW_CONTROLS_CLEAR, usando señales existentes. Sólo este OK admite
+dos intentos por VerifiedTransition: retry después de timeout6s+grace2s con
+CLEAR único resuelto, nueva sequence posterior al último wait y al origen,
+timestamp posterior al input, age0..2s y sin cancelación. MW expuesto tardío
+continúa sin segundo OK; UNKNOWN/AMBIGUOUS/miss/contexto ajeno/overlay/stale/
+futuro/pre-input/cancelación/segundo miss cortan. Compra, MAX, Start SKIP,
+Points Reward y reliefs conservan sus bounds; no se fabrican saldos/consumos.
+Validación:461 tests dirigidos PASS (17 nuevos con transición real y escenarios
+semánticos de los snapshots; Activity, Point Reward, lectura post-CLEAR,
+entry/expiry, integración/productivo/standalone/binding/routing, Gold Farming,
+Stages Daily/manual y registry). La regresión reproducía falso COMPLETED antes
+del patch. Sin cambio perceptivo ni evaluator; sin teléfono. Pendiente ejecución
+ordinaria para confirmar el efecto físico.
+
+## MW — reapertura de hub sin efecto tras Socket relief, corregido 2026-10-11
+
+Sesión `32cd6472`, séptimo personaje Elemental Fairy, seis rotaciones completas.
+Socket Enhance acreditó efecto y retornó MW en30741; exit_to_battle_mode hizo
+un Back y acreditó Lobby en30785. open_hub_from_lobby despachó una vez el
+target adquirido(.8097,.4297); espera6s+grace2s no alcanzó hub, final30879;
+mw_relief_exit_failed detuvo Gold Farming10069. LIVE_EVIDENCE30867/30873/30879
+muestra Lobby; resolver confirma Lobby limpio y landmark Trading Center1.0.
+El mismo target abrió Select Battle Mode en esta sesión (incluido27464→27482
+en este personaje). Se demuestra falta de efecto observado, no por qué el
+juego ignoró el tap. El relief Socket terminó; no era un miss de Enhance.
+
+Fix mínimo en MonsterWaveStandaloneNavigationRuntime: sólo la reapertura
+Lobby→hub posterior al relief admite máximo dos intentos vía VerifiedTransition.
+Retry requiere Lobby RESOLVED sin overlays, sequence posterior al input y al
+último frame del wait (guard compartido), timestamp posterior al primer intento,
+age0..2s y cancelación vigente. Hub aparecido tarde continúa sin nuevo input;
+segundo miss/UNKNOWN/AMBIGUOUS/contexto ajeno/overlay/stale/pre-input corta.
+Se acepta success_after_retry sólo en esa transición. Back sigue max_attempts1;
+no se repiten preparación, Enhance, tickets, SKIP ni operaciones de recursos.
+Validación:230 tests dirigidos PASS (12 nuevos con VerifiedTransition real,
+standalone navigation, transición compartida, MW productivo/activity/session,
+Gold Farming y Socket relief). Sin cambio perceptivo, evaluator ni teléfono.
+
+## Mailbox — selección Character Mail sin efecto, corregido 2026-10-11
+
+Sesión `bf1f0b48`, Kaiserin: Gold Farming terminó normalmente en Lobby;
+MW verificó152→52 y el cierre final fue no-work. Mailbox abrió en2815;
+SelectCharacterMail retornó del executor pero no acreditó la pestaña hasta
+timeout6s en2877; flow.failed887. LIVE_EVIDENCE frames2875/2876/2877 muestran
+Account Mail seleccionado, Character Mail disponible y sin overlay o spinner.
+Snapshots resuelven screen.mailbox sin mode.mailbox_character_mail. El target
+vigente(.382,.2737) está dentro de la pestaña visible. Se demuestra falta de
+efecto observado, no por qué el juego ignoró ese tap; no hubo Claim All/Delete.
+
+Fix local en MailboxFlow: sólo SelectCharacterMail admite un único retry tras
+timeout. Readquiere Mailbox resuelto, expuesto y sin procesamiento, posterior
+al último frame del wait y al instante del primer tap, con freshness≤2s y
+cancelación. Si Character Mail aparece al readquirir, continúa sin otro input.
+UNKNOWN/AMBIGUOUS/otro contexto/overlay, actividad, evidencia vieja/pre-input,
+cancelación y segundo miss cortan; Claim All/Delete/Open/Close no ganan retries.
+Evento mailbox.character_mail_retry conserva source_sequence del permiso.
+Validación:16 directos PASS y119 regresiones existentes PASS (Mailbox flow,
+claim scope, navigation open scopes, Quick Menu handoff y seeds). Cuatro tests
+heredados de precondition_snapshot_handoff fallan por llamar _initial_lobby
+en Mailbox/Daily Quests: HEAD ya expone _initial_base; LEGACY_STALE ajeno al fix.
+Sin cambio perceptivo ni evaluator; sin teléfono ni consumo adicional.
+
+## Trading Materials — filtro rojo aplicado a 46/40 blanco, corregido 2026-10-11
+
+Sesión `573eaa89`, cuarto personaje Kaiserin: tres rotaciones previas completas.
+MW investment dentro de Basic Gold Farming falló en efecto de Trading Materials:
+before846/40, un confirm, after46/40 blanco. ROI estrecha leía46/40(.99992),
+ampliadaLezd(.44854); `localized_disagrees` hasta `after_fact_unreadable`,
+`preparation_failed:step_failed:trading_materials` y flow.failed4683.
+LIVE_EVIDENCE frames13971/13976/13982 y ROIs/raw del log acreditan la causa:
+regresión del fix0/40 anterior. El crop ampliado incluía rojo del icono (>2%),
+activaba el contraste rojo por separado y borraba los numerales blancos.
+No se repitió la confirmación económica tras perder lectura del efecto.
+
+Fix mínimo en TradingRowReader: decidir color en el tercio inferior del crop
+localizado (baseline de numerales) y compartir esa decisión en ambos crops OCR.
+46/40 conserva RGB;0/40 rojo conserva el contraste antialias. Geometría, parser,
+umbral OCR, doble lectura coincidente, consenso fresco y confirm único siguen.
+Fixtures curadas contienen sólo fila y procedencia/hash, no HUD. Las capturas
+retenidas son reducidas: el evaluator de46/40 usa geometría acreditada por log,
+no afirma validar matching de título nativo con pixels originales ausentes.
+Validación:200 tests dirigidos PASS; evaluator incremental17frames,30pares
+correctos,11UNKNOWN del corpus, wrong0. Los nueve replays requeridos pasan:
+seis0/40 con geometría productiva y tres46/40 con geometría registrada. Tests
+adicionales de46/40 usan los ROIs originales con pixels retenidos y escala
+simulada; no son evidencia nativa nueva. Sin teléfono ni consumo adicional.
+
+## Trading Materials — efecto rojo 0/40, corregido 2026-10-11
+
+Sesión `5d0151b5`, Telumpel: Stages completó un ad; MW290→190, luego
+preparación Trading Materials. Último trade tuvo before40/40 y un único confirm;
+after quedó ilegible: ROI localizada leía0/40(.99915), ampliadaL0/40(.87307),
+`localized_disagrees` hasta timeout, `after_fact_unreadable` y flow.failed739.
+LIVE_EVIDENCE frames1713/1718/1723 muestra0/40 rojo y esquina gris del icono
+dentro del margen de control. Sin segundo trade/confirm tras el miss.
+
+Fix inicial en TradingRowReader (selección de color corregida arriba):
+para numerales rojos dentro de cada ROI bounded,
+usar exceso del canal rojo como contraste antialias para eliminar cromo gris.
+No cambia geometría, parser, umbral OCR, exigencia de dos crops coincidentes
+ni consenso fresco/panel/C4/efecto. Lecturas discrepantes siguen UNKNOWN.
+Fixtures retienen sólo la fila Materials; evidencia guardada reducida, no píxeles
+nativos originales. Escala2712×1224 de replay es simulada y se identifica así.
+Validación:192 tests PASS; evaluator incremental14frames,25pares correctos,
+13UNKNOWN del corpus, wrong0; seis replays0/40 requeridos PASS con geometría
+del target reader productivo. Sin teléfono ni nuevo consumo.
+
+## Equipment Sell — tap de página sin efecto, corregido 2026-10-11
+
+Sesión `8d724bea`, sexto personaje, Stages Daily dentro de Basic Gold Farming:
+Combine no liberó capacidad; Sell leyó132/132 y1/22. NextEquipmentInventoryPage
+se despachó desde26085 a20:40:53.95Z;48 lecturas posteriores26087–26136
+conservaron1/22 y132/132, luego `inventory_page_transition_unverified`.
+Ese target(.802,.914) había paginado correctamente en personajes anteriores.
+Se demuestra ausencia de efecto observado, no por qué el juego ignoró el tap.
+Failure evidence del observer sólo conservó Lobby anterior: el owner Sell captura
+directamente de source; no hay pixels retenidos de este intento de paginación.
+
+Fix local en EquipmentSellRuntime: tras miss, readquirir consenso Inventory;
+destino ya alcanzado continúa sin input, origen intacto permite un único retry
+no consumptivo. Exige Item Count/capacity/total_pages iguales, samples posteriores
+al input, freshness≤2s y cancelación vigente. Segundo miss, UNKNOWN, cambios
+y evidencia vieja/pre-input cortan. Bulk/expansión no se repiten.
+Validación:228 tests dirigidos PASS (paginación, runtime Sell, Inventory relief,
+selected panel, block scan, origen de popup y callers Stages/WB). Sin cambio
+perceptivo, evaluator ni teléfono; pendiente ejecución ordinaria del usuario.
+
+## World Boss — Previous Rewards perdido tras OCR UNKNOWN, corregido 2026-10-11
+
+Sesión `51eb8b19`: Eilla completó Basic Gold Farming y Rotation; Ads retornó
+Results a70.188s con efecto Sapphire77→485. El manual MW anterior por Equipment
+Full fue resuelto en la misma pasada y no detuvo Session.
+Berserker, segundo personaje, abrió Previous Rewards y acreditó participación
+actual NO (evento1146, ciclo3). Tras ACK y World Boss main resuelto, policy
+releyó header y obtuvo UNKNOWN; `world_boss.participation_unknown` detuvo
+Session como MANUAL_RESOLUTION (1154–1156), sin Start ni cambio de meteoritos.
+
+Causa demostrada: la decisión previa elegible se descartaba ante el miss posterior.
+Fix local en WorldBossActivity conserva esa decisión sólo durante esta entrada
+y después del cierre verificado. Un main explícito no-work sigue prevaleciendo;
+sin previa evidencia acreditada, UNKNOWN no autoriza Start.
+USER_GT: H&H activo en el run; la ROI damage(.345,.127,.537,.167) intersecta
+su envelope de diseño. Influencia física en este miss no demostrada: el terminal
+manual no adquirió capturas ni OCR raw; no se atribuye al oclusor por inferencia.
+Validación:137 regresiones WB/character data/state PASS y4 directos PASS.
+Primer grupo tuvo27 errores ambientales de temporales; repetido con basetemp
+local pasó. Sin cambio perceptivo, evaluator ni teléfono.
+
+## Ads — cápsula Reward granted no reconocida, corregido 2026-10-11
+
+Sesión GUI `d3ba3a20`, Eilla, Stages Daily dentro de Basic Gold Farming:
+`Next ad` a7.281s, luego espera de cierre; a60.218s fallback sin progreso
+acreditado y `AD_RECOVERY_FAILED` a60.421s, sin inputs de cierre. LIVE_EVIDENCE
+`failure_2b804bce335641c2bbc3c4665488b602`, frames2795/2803/2805: cápsula gris
+SDK con `Reward granted` y X blanca. Templates anteriores no reconocían esa
+variante (.7942 máximo); ROI OCR cortaba la R (`eward granted`, .95126),
+y la X no tenía el círculo exigido por las primitivas anteriores.
+
+Fix local en AndroidAdsObserver: dos templates del chrome fijo adquirido,
+cápsula completa y X separada, ambos≥.94, autorizan Back bajo Google AdActivity
+resumed/focus concordantes. Se conservan Next ad como veto, freshness≤2s,
+bounds y prueba funcional de Results/reward por el caller. No se usa contenido
+creativo ni se amplía autoridad a X genéricas. Fixtures sólo chrome superior.
+Validación:142 tests dirigidos PASS; evaluator incremental Ads16/16, wrong0,
+incluyendo tres capturas, escala nativa simulada y negativos sin X/reward.
+Warning ambiental de escritura pytest cache; sin teléfono ni nuevo smoke live.
+
+## Arena Farming / Arena VP — estabilización local 2026-10-10
+
+Checkpoint sobre `56b472d0e008d7e9d2b8f6842491c7feced095a0`, rama
+`rebuild/stable-baseline`; trabajo independiente preservado mediante hunks separados.
+Las sesiones nocturnas Ice Warlock `16fdb15e` (6batches/480Stamina) y Eilla
+`a81d6af4` (5batches/480Stamina) fallaron en el mismo fallback Equipment Full→
+Combine NO_RELIEF→Sell: adapter Stages intentaba abrir QM desde Lobby con hitbox
+de otro contexto. Ahora Inventory directo(.655,.75), reader/freshness owner de Sell.
+No es el fallo previo de Monk post-Clear ni Dark Valkyrie post-Claim.
+
+Se conservan fixes Muse pasivos; límites incluyen captura/warmup y rechazan OCR
+tardío. FAILURE técnico MW no se trata como miss. Captura nativa retorna sus
+propios pixels aun si stream avanza, con copia independiente. Primer smoke vendió
+113→107 y descubrió miss transitorio de Support Activated al reentrar; Mao espera
+pasivamente estado conocido hasta6s, sin bajar thresholds ni nuevos inputs.
+MANUAL conserva etapa/error y Session Report muestra Intervention; Shared
+INTERRUPTED requiere restauración manual, sin cleanup automático incierto.
+
+Smoke representativo `d62dc9b8…`: COMPLETED,2Manual/1MW/1Arena HARD104/88,
+120Stamina, siguiente Lobby acreditado; runtime cerrado15:42:40Z. Primera ROI VP
+omitió OCR contaminado por Overall Rank sin afectar el resultado. Borde derecho
+corregido con ese frame: ROI(.489,.228,.633,.270), replay182070 acreditado.
+VP best-effort sobre frame del retorno normal tras Auto Repeat acreditado; el OCR
+ocurre después de acreditar Lobby y omite frames expirados, sin agregar espera
+de retorno por una lectura lenta/fallida. Por identidad
+estable en SQLite schema2, entero/time/semana; GUI154k/0k/—. Lunes usa fase UTC
+WB (referencia curada07:00Z /04:00 -03), catch-up y rechazo de escrituras antiguas;
+sin routing, aritmética de premios, taps extra ni polling nuevo.
+
+Validación dirigida: grupo principal402passed; grupo posterior307passed;
+regresiones finales116passed y VP/GUI33passed (grupos superpuestos).
+Evaluators incrementales Arena Farming9/9 y VP6/6, wrong0. Sin campaña28/28.
+Smoke focal `cc3f9349…`: COMPLETED,MW7Sapphire→Badge12 /HARD8used0won,
+0Stamina, vuelve Lobby Badge4/Sapphire0. Hook guarda Eilla182050 a15:48:18.818Z,
+semana2026-10-05; reapertura SQLite confirma, GUI182k. Runtime cerrado15:48:34.949Z.
+Nueva regresión VP de OCR atravesando reset:21passed, sin escribir semana anterior.
+[Causas, configuración histórica, evidencia y límites](../../docs/ARENA_STABILIZATION_20261010.md).
+[Revisión, aislamiento y validación del checkpoint](../../docs/ARENA_STABILIZATION_CHECKPOINT_20261010.md).
+Sesión continua600Stamina pendiente del uso ordinario; no se hizo nueva campaña live.
+
+## Arena Farming — Session Report analítico y checkpoint 2026-10-09
+
+Proyección por ocurrencia sin IO/OCR/input: resumen visible y tabla de batches
+expandible en GUI. Receipts únicos por batch/operación, conflictos y ausentes N/D;
+winrate ponderado408/336/72→82,35%, x8 íntegro51/42/9. Replay Crimson real:
+6Manual/4MW, ledger360/360, Sapphire408/400, TC100/400KCoins, RELEASED11/11.
+Duración histórica sólo routing observado49m53,965s; runtime51m09,776s separado.
+Owners registran vínculo causal/multiplicador/wall y coste confirmado ya conocidos;
+wall de ciclo nueva conservada al reanudar en misma instancia. Sin nuevo gameplay.
+GUI revisada con replay offline; ninguna Session ni acceso al teléfono.
+Gold/Single/Auto y reportes antiguos siguen compatibles. Checkpoint aislado por
+paths/hunks; Ads multipart, Equipment payment wrap, MW readiness scope, Summon Pet,
+helpers Gold y eliminación histórica del plan permanecen fuera.
+[Fuentes, snapshot y validación](../../docs/ARENA_FARMING_CHECKPOINT_20261009.md).
+Snapshot afectado:1055passed; evaluatorsArena9/Manual20/Stamina3, wrong0.
+Suite amplia5085passed/296failed/27skipped; mismos296 fallos reproducidos en
+parent limpio, sin test nuevo fallando. INDEX130paths/hunks; residual preservado.
+
+## Arena Farming — aceptación GUI integral PASS 2026-10-09
+
+GUI real `a360`, Characters1: Arena único/Farming40/100/80, máximo360,
+Change MeteoritesON, Apply/Save/recarga acreditados; rutinas previas preservadas.
+Crimson Assassin/Drakenn09 (`crimson_assassin`), necesita Shared para Rion09.
+Run `ffb31f514a074ad5bcb82db1e17874d4`, Session `d6205777fdc14ecd971a28b4095b20a5`:
+once Equip→READY21.866s; seis Manual Rion09, cuatro MW, cuatro Arena.
+Controller nuevo Hard104/80→Hard104/88→Normal96/72→Normal104/96; próximaHard
+por recent_reward_advantage, no otro batch elegible. Sin Easy0.
+Claim comprobado antes de déficit; compra anticipada única100Stamina/400KCoins,
+282→382, una confirmación. Ledger nuevo0→6×60=360/restante0; saldo final físico
+27Stamina/88Sapphires/2Badges. Corte funcional stamina_budget_reached.
+Cleanup normal once Unequip→Set2vacío→Set1original→RELEASED16.389s;
+CP41,829,408 restaurado. SessionCOMPLETED, processed1/advance1, runtime cerrado
+51m09.776s. Rotation habitual sólo después de cleanup; Lobby limpio del siguiente
+HUD DRAKEN六FS, sin setup/farming sobre él. Probe final independiente sin overlays.
+
+Primer setup interrumpido tras7Equip recuperado íntegro, cero farming. USER_GT:
+panel informativo por tap mantenido/cierre lateral; causa del hold Android no
+demostrada por dispatch ADB. Fix local positivo+cierre/reselect único antes de
+Equip, estado fresco idéntico, sin retry económico;197tests afectados pasan.
+Primer farming parcial: Hard104/88, dosRion09/ledger120, compra250/1000KCoins;
+tercera preparación PenanceON tras Equipment relief no reconocido. Corte seguro
+MANUAL_RESOLUTION, recovery onceUnequip/Set1/Lobby; nueva Session independiente,
+sin reconstruir ledger120. Template local ON threshold0.94 intacto;129tests y
+cinco casos existentes de evaluator correctos. PASS ejercitó dosreliefsPenance.
+Reporte GUI antiguo mostraba assessmentunavailable pese a COMPLETED: fix local
+SessionReport para eventos conocidos y terminación budget/Easy0; replay71 eventos
+reales y116tests afectados pasan, unknown/fallos/relief incierto preservados.
+GUI abierta conserva la proyección previa; no necesita otro farming.
+
+Campaña total480Stamina causal,350comprada/1400KCoins; PASS sólo360/400KCoins.
+[Informe completo y evidencia](../../docs/ARENA_E2E_ACCEPTANCE_20261009.md).
+Sin commit/push/staging; baseline c607b601, rebuild/stable-baseline, todo trabajo
+previo preservado. Cleanup completo y alcance cerrado; no iniciar otro frente.
+
+## Arena Farming — presupuesto/abastecimiento Stamina 2026-10-09
+
+Campo opcional Maximum Stamina Consumption sólo Farming Step Settings;
+Apply/Save/recarga conservadores, vacío sin límite. Ledger por ejecución/carácter,
+receipts de60 por entrada física (fallida también), independiente de Claim,
+compra y regeneración;500→ocho entradas480. Preparación anticipada única con
+presupuesto, sólo en ruta Manual después de Claim y refresh; sin presupuesto,
+refill sólo al faltar60. `StaminaPurchase.supply` reutiliza TC/KCoin200→50,
+demanda parametrizada, cap/coste/cobertura frescos, Trade único, efecto/retorno.
+Ads conserva300 y protocolo previo. Parcial/imposible funcional con saldo real;
+UNKNOWN no repite Trade. Reanudación en misma instancia conserva ledger y
+preparación, reconcilia entrada/pago pendientes antes de más consumo. No resume
+durable de Session al cerrar proceso, ni REPEAT_CURRENT/controller alterado.
+Easy0 puede terminar con Stamina comprada sobrante; Session/Meteorites intactos.
+
+USER_GT posterior: Manual buffs1/2/3ON sólo selección/effect, cero OCR contadores;
+cuarto coverage/insufOFF sin Karats como último Arena. Divergencia live: config
+se resolvía durante animación antes de Hell legible; fix espera señal conocida
+bounded, sin nuevo template/threshold/tap UNKNOWN.
+
+Live: Cat Acrobat `payment_inspect_02`:140471KCoins/200,1/20, cero compras.
+`cycle_supply_01`: Claim57→87; una compra50 por200→137; preparación registrada;
+stopped antes de Start por dificultad transitoria, ceroStamina consumida.
+Tras cierre verificado, `cycle_prepared_retry_02`: ceroTC compras, Chaos06Hell,
+socket relief transversal, AutoON, Clear Time, Home retry guardado→Lobby limpio.
+137→78 por entrada60 más regeneración1;66→110Sapphires (+44); receipt60,
+remaining60/presupuesto120, siguiente routing MW para esa occurrence107/100.
+Bound smoke1operación, Session y Lobby probe COMPLETED. No nuevo batch Arena/MW.
+Estado final medido: Cat Acrobat, Lobby limpio,78Stamina/110Sapphires/106Badges,
+runtime/source cerrados; worktree preservado, sin commit/push.
+Validación afectada584tests +132receipt/cycle y57del ciclo tras últimos guards; evaluator
+de pago3/3. Reporte y límites en [informe](../../docs/ARENA_STAMINA_VALIDATION_20261009.md).
+
+## Manual Stages — tercera rama Arena completada 2026-10-09
+
+Owner productivo conectado a Farming Cycle: identidad fuerte o once efectos
+Shared Meteorites acreditados→Rion09/Penance; resto→Chaos06/Hell. No Stage08 ni
+reequipamiento por entrada. Stamina≥60 y Sapphire<capacidad frescos; x4 sólo en
+BASE, MaoSupport del owner Ads, buffs1/2ON sin OCR de contador, buff3con ticket y
+buff4ticket seguro sin Karats. Dos Start distintos, una entrada, AutoON adquirido
+antes de pausa30s/polling1.5s; Clear Time overlay y Home→Lobby.
+
+Smokes: Burst Breaker Rion09 produjo29→71Sapphires (+42). Blade Dancer sin set
+verificado completó Chaos06Hell, Clear Time31s,28→68Sapphires (+40), Stamina
+89→Claim119→59 (coste60). Socket relief transversal recuperó configuración y
+SupportACTIVE; un único Start en Select Striker. Home temprano sin efecto admite
+un retry sólo con Clear fresco, validado live. Nueva invocación con59Stamina
+terminó `stamina_insufficient`; Session siguió al siguiente paso y COMPLETED.
+
+Regresión AutoOFF de Monk corregida: brillo del bisel estático no cuenta; destellos
+laterales en ventana2s distinguen ON/OFF. Muerte→Abandon→Get stronger→X adquirida.
+Capacidad llena explica primer Rion sin ganancia129→129; ahora es precondición.
+USER_GT vigente Arena buffs1/2: activar y verificar ON, sin contadores/gates; x2
+insuficiente queda OFF y Arena sigue. Controlador adaptativo intacto.
+
+Tests dirigidos/regresiones afectados PASS; evaluator Manual20/20 (18reusados,
+2nuevos), recursos Arena9/9. Cadena Manual→MW→Arena validada por composición/tests;
+smokes previos MW y Arena reutilizados, sin otro batch largo ni campaña28/28.
+Shared Meteorites conserva setup/cleanup al final del personaje; integración
+Session/scope verificada offline. Límites/evidencia en
+[informe Manual](../../docs/MANUAL_STAGES_VALIDATION_20261009.md).
+
+Final: Blade Dancer, Lobby limpio,59Stamina/68Sapphires/106Badges, runtime y sources
+cerrados. Baseline c607b601 intacta, `rebuild/stable-baseline`, sin commit/push;
+Arena no publicado y todo trabajo independiente preservados. Los estados físicos
+de los informes anteriores son los finales de sus respectivos smokes.
+
+## Gold Farming Cycle — 28/28 verificado 2026-10-09
+
+Campaña real de los28 completada con reanudaciones seguras; cinco flows y cierre
+por identidad,54 anuncios retornados, runtime activo3h26m31.9s. Fallos originales:
+terminal Store end card sin sonido no reconocida y OPEN Stage sin efecto desde
+Lobby fresco. Fixes acotados Ads/Stages; durante campaña se corrigieron ROI de
+coste Craft y segunda estrategia Socket. Llamada externa descalificada por USER_GT.
+Sin regresión reciente ni acumulación causal demostradas. Teléfono Lobby limpio,
+runtimes cerrados. Checkpoint Gold aislado sobre92667ee; Arena y trabajo histórico
+permanecen locales, fuera de este checkpoint. [Diagnóstico, evidencia y límites](../../docs/GOLD_CYCLE_DIAGNOSIS_20261009.md).
+
+## Arena Farming Cycle — implementación y validación focal 2026-10-09
+
+Un único paso Arena: Single Battle / Auto Repeat B2 conservados, tercer modo
+Farming Cycle con thresholds por ocurrencia40/100/80, Apply/Save compatible y sin
+dificultad fija visible. Coordinator propio, controller reciente por ejecución,
+siempre ArenaFlow AUTO_REPEAT x8 y MW productivo `run_resource_pass()` de un pase.
+Routing exacto por saldos nativos frescos; Manual Stages es owner independiente
+conectado, con cierre y validación descritos arriba.
+No REPEAT_CURRENT. [Contrato/policy](../../docs/ARENA_FARMING_CYCLE.md).
+
+Smoke real en Dimension Manipulator: Hard112used/112won,119→7Badges,
+Karats103165→103277, Gold6930610473 intacto. Un único Start, wait continuo526.906s,
+175observaciones, intervalo medio3.028s/máximo3.172s, cero OCR y sin handoff.
+Autonomía prolongada acreditada para ese batch, no campaña multi-ciclo.
+Refresh expuso100Sapphires; MW anterior devolvía no_work por presión102.
+Fix de composición local: operación MW de generación única, guards/economía/
+board/planner/reliefs existentes; `run()`/`prepared()` de Gold mantienen presión.
+Smoke MW focal posterior:100→0Sapphires,7→106Badges, CLEAR y consumo frescos;
+Lobby y paso posterior Session COMPLETED, bound de smoke1operación.
+
+Primer smoke se detuvo sin gasto/Start por OCR del stock999: margen negro focal
+en buffs conserva gate>=.95/color-gris; no cambia lectura Badge/result ni precios.
+Recuperación pre-start con tres Back adquiridos. No se repitió el batch largo;
+repetición de MW sólo validó la operación nueva. Evaluator incremental9/9,
+cinco resultados reutilizados y cuatro crops live nuevos calculados.
+
+Final físico Lobby limpio, Dimension Manipulator,106Badges,0Sapphires,
+Gold7127809094,Karats103277; sin operación activa. Runtimes/sources cerrados.
+Persisten derrota Single, modal informativo de umbral,
+Gold agotamiento buffs, cancelación física y retorno tras relief. Validación y
+residual del worktree: [informe](../../docs/ARENA_FARMING_VALIDATION_20261009.md).
+Sin commit/push; cambios independientes Ads/MW/Sell/Summon y demás preservados.
+
+## Arena B2 — operación y rutina validadas 2026-10-08
+
+ArenaFlow SINGLE_BATTLE/AUTO_REPEAT, dificultad por ocurrencia y retorno externo
+Lobby implementados reutilizando B1. Editor draft/Apply/Save persiste modos distintos;
+default nuevo SINGLE_BATTLE/EASY, Arena OFF en defaults existentes. Single posee
+receipt/reader/result propios (VICTORY, consumo8/deltaKarats8, sin won_tickets).
+Start individual automático, WIN OVERLAY sobre BASE Arena Battle, cierre a selección;
+Back adquirido a Select Mode Arena distinto de Survival y luego Lobby. QM→Lobby
+adquirido pero no cambia navegación global. Gold buff1 autorizado/acreditado a3000
+por faltante, sólo entrada8 con controles antes/después; nunca Karats.
+
+Smoke continuo productivo EASY x8:90→82badges,101084→101092Karats,24000Gold para
+buff1; único Start, cero OCR durante wait, resultado/cierre/retorno y siguiente
+paso Session de sólo lectura COMPLETED. Adquisición+smoke fallido recuperado+
+única repetición causal:3 entradas/24badges/24Karats,54000Gold total. Fallos CV
+de pausa/prompt corregidos con fixtures; los stops no repitieron Start. El test
+continuo Single no acredita autonomía prolongada de Auto Repeat B1.
+
+Final físico Lobby limpio,82badges,Gold9045329472,Karats101092; runtime cerrado.
+Deudas: derrota individual, Goldbuff2/batches largos, umbral de puntos, cancelación
+física, Upon DefeatON, refund3 y retorno tras relief. Sin controller/Farming Cycle/
+Manual Stages/REPEAT_CURRENT ni generación MW. B2 aceptado; checkpoint aislado
+Arena A/B1/B2 autorizado, conservando trabajo independiente. Evidencia, gaps y
+validación: [B2](../../docs/ARENA_B2_20261008.md).
+
+Checkpoint de publicación: revisión aislada Arena A/B1/B2,966tests PASS;
+11fallos GUI functional reproducidos en baseline y separados de Arena. Evidencia
+live/evaluators B2 reutilizados, sin teléfono ni otro batch.
+
+## Arena A+B1 — checkpoint anterior 2026-10-08
+
+USER_GT cierra Acquired Karats→won_tickets, independiente de Double Points
+(sólo duplica Victory Points). Batch adquirido EASY x8:104used/104won,100%.
+ArenaVisuals/Detector, catálogo/scopes, result reader tipado y wait focal pasivo
+implementados; validación offline/corpus en [informe](../../docs/ARENA_HIL_ACQUISITION_20261008.md).
+ArenaFlow standalone B1 ejecuta un batch x8 por invocación, dificultad explícita,
+entrada Lobby→Battle→Select Mode→Arena→Challenge y salida BASE Arena limpio al
+caller. Buffs/stock sin compras, inicio interno único, wait focal cancelable,
+reader y cierre positivo; [B1](../../docs/ARENA_B1_20261008.md). Único smoke autorizado:
+50→2Badges,48used/48won,100%, sin compras. Hubo interrupciones del observer,
+handoff pasivo y cleanup verificado; no aceptación continua/performance de wait largo.
+New Ranking de entrada y configuración transitoria incorporados; retorno no acepta
+Challenge detrás de Insufficient y maneja aparición tardía sin repetir OK.
+Sin controller, Farming Cycle,
+Manual Stages ni REPEAT_CURRENT; no wiring de rutina/Rotation ni generadores MW.
+Modal informativo de umbral: existencia/clase MODAL USER_GT; título/umbral/cierre
+pendientes de adquisición natural, sin detector ni taps ciegos. QM, cancelación y
+Start standalone siguen pendientes. Final físico: Challenge EASY limpio BASE Arena,
+2Badges, x8ON, buffsON707/796/887; Gold6436020953, Karats101068.
+Sources/procesos del bot cerrados; teléfono conserva ese estado. No otro batch.
+Sin commit/push; trabajo independiente preservado. No iniciar siguiente frente.
+
+## Shared Meteorites A+B1+B2 — checkpoint 2026-10-08
+
+Preparación transversal por personaje: Change Meteorites en Routine Settings,
+default OFF; Apply al draft/Save persistente. Session acredita stable ID, setup
+antes de pasos y cleanup después de todos, antes de Rotation/completion. Excepciones
+berserker/demon_blade/kaiserin; burst_breaker incluido. UNKNOWN no equipa, FAILED
+no libera a ciegas, Stop Safely sólo READY y contexto seguro. Ejecuciones nuevas
+no reutilizan READY; incertidumbre exige preparación manual antes de reanudar.
+
+Acceptance preservada: A3+3 con selección desde slots; B1 once+once/ancla15;
+B2 Telumpel once→Send Stamina→once→Set 1, ancla14/Flare1, sin retries/Ads/Rotation/
+compras. Set 2 vacío, compartidos desequipados, Set 1 activo y originales preservados,
+sin overlay/Loading. B2 setup26.411s/cleanup27.155s, coordinator9.606ms;
+I/O evidencia23.830s separado. Sin nuevo smoke ni cambios físicos de checkpoint.
+
+[Checkpoint](../../docs/SHARED_METEORITES_CHECKPOINT.md) posee selección/INDEX portable,
+procedencia, exclusiones y publicación; [A](../../docs/METEORITES_PHASE_A_20261008.md),
+[B1](../../docs/METEORITES_B1_20261008.md), [B2](../../docs/METEORITES_B2_20261008.md) poseen detalle.
+31 assets y28fixtures focales hash-verificables; raw/full-curated externos no son
+requisitos de pytest. No-efecto live y QM shifted no adquiridos; Arena/REPEAT_CURRENT/
+ToT/Elite no implementados. No iniciar otro frente automáticamente.
+
+## Campaña acumulativa Stability + Performance cerrada — 2026-10-07
+
+28/28 stable `character_id` COMPLETE hoy: inicial2COMPLETE/1PARTIAL/25UNSEEN;
+26 restantes acreditados acumulativamente, sin reiniciar cobertura. Runs03:9,
+04:2,05:14,06:1 nuevos;02 preflight STOPPED y01 fallo de instrumentación.
+Run06 Blade Dancer completó rutina y Rotation; runtime cerrado. Ledger,
+procedencia, métricas/versiones y reporte en
+`artifacts/full_roster_performance_campaign/` (ignorados).
+
+Fixes locales nuevos: Stages permite un segundo Socket relief normal sólo tras
+efecto y blocker fresco (Yes, no salida No); MW prepara de nuevo SKIP en pass
+si observa NEEDS/READY fresco tras relief; Capture impide que PTS atrasado
+sobrescriba una adquisición más reciente. Blade Dancer tuvo un stall compatible
+con trabón PC (native7.36/11.32s, Config correcto pero viejo); causa OS específica
+no acreditada. La carrera de publicación sí fue reproducida y corregida, sin
+relabeling, gate más amplio ni input stale. Retry target1 SUCCESS.
+
+Performance adoptada con medición: Stages handoff stream≤150ms antes del fallback
+nativo; scope existente4detectors sólo dentro de Stages verificado. Lobby entry
+y completion conservan percepción completa. Misma cadena live n4/variante:
+A→B median9.420→4.957s, native16→1; stream reads64→153, no son capturas
+físicas ni ahorro de compute total. Mismo frame n30:81→4detectors,375.46→46.58ms
+mediana de cómputo; producto final D2smokes, median5.345s/native1 separados.
+Validación: Socket142tests, MW172, Capture47; Stages performance161 afectados,
+13replays equivalentes,12cadenas comparativas +2smokes de código productivo final.
+Equipment cromático natural:72Bulk SUCCESS, todos1confirm;51Ads returned durante
+campaña. Dos snapshots informativos de recursos rechazados por confianza<.95,
+sin acreditar valores. Trading confirm p951593ms/max1688ms (gate2s) queda como
+candidato medido sin patch especulativo. Cierre conjunto autorizado; aceptación y
+separación en [checkpoint causal](../../docs/FULL_ROSTER_STABILITY_PERFORMANCE_CHECKPOINT.md).
+Cierre offline: worktree1155/0failed/0skipped/3deselected; INDEX portable
+1126/0failed/12skipped/20deselected (corpus históricos ausentes separados).
+Arena/Open Pets no iniciados. Trabajo histórico/local independiente preservado.
+
+## Equipment Sell — smoke físico cromático SUCCESS 2026-10-07
+
+Ownership PC/teléfono/ADB autorizado por usuario; Inventory ya abierto en
+Drakenn22, página8/22, count135/128. Un único candidato slot15/índice127:
+Laoku's Destructive Gear físico, Helmet no Enhance. Tier LEGENDARY desde título
+naranja,2141 pixels interiores/22 glyphs, soporte/margen.9981317; selected-name
+OCR0, fact.name vacío. Subtype OCR.99844, Sell/guard visual positivos; policy
+productiva vigente autorizó. Select slot→Sell→ConfirmEquipmentBulkSale, exactamente
+un Sell intent y una confirmación. Item Count confirmado **135→134**, delta1;
+outcome SUCCESS/item_count_decreased. Sigue Full134/128: se detuvo tras el Bulk
+focal autorizado, sin otras ventas ni expansión.
+
+El popup volvió a leer `Laoku's Desructive Gear`, confianza.99925/.99926. Binding
+causal panel1295→OpenSell frame1302→popup1338/1357, sin input intermedio,
+source_item_sequence1295 y group equipment_grade exacto. Count after1412/1416.
+NCC title.998255<.999 activó una relectura semántica bounded sin input, exitosa;
+no divergencia ni patch productivo. Capturas verificadas, source cerrado,
+Inventory final limpio. Sin Back ni confirm/retry adicional.
+
+Live4 muestras: capture timestamp PTS→tier mediana146.4ms/rango95.6–221.4;
+→detail224.9ms/rango189.6–299.4; procesamiento detail86ms/rango63–94.
+Reloj monotonic local con granularidad≈16ms, valores aproximados y sin p95 n4;
+tier processing debajo de esa granularidad, no coste cero. Edad al Sell del
+panel ligado533.6ms/revalidación fresca299.4ms; popup al confirm609ms, gate2s.
+OCR detail1/muestra,4 total; nombre0. No demuestra mejora end-to-end frente al
+old live; benchmark offline anterior sin captura sigue independiente.
+
+Gear y popup live curados como nuevos replays con hashes (corpus20 contextos,
+seis nombres Legendary); no inventar pixels históricos de fd48d8bf. Validación
+smoke-sensitive:9 replays nuevos +63 binding/selected-panel passed; sin repetir
+543 ni modificar código productivo. Evidencia/métricas/resultados en
+`artifacts/equipment_color_validation/live_smoke_20261007/report.md`.
+Sin commit/push/staging/28/28; trabajo local independiente preservado.
+
+## Equipment Sell — tier por tinta del título 2026-10-07
+
+Selected detail productivo ya no transcribe el nombre libre ni usa grade OCR
+como tier authority. Reader focal separa tinta interior del título por color,
+soporte y margen; UNKNOWN no autoriza. Mapping físico curado: Poor blanco,
+Normal verde, Rare azul, Epic violeta/magenta, Legendary naranja; Ethereal y E+
+comparten rojo y requieren distinguir visualmente su marcador de grade. Enhance
+usa marcador visual genérico. Subtype mantiene un OCR focal del suffix finito;
+el API de autorización existente exige ese tipo para todos los tiers. Inventory
+y popup conservan sus OCR estructurales y grupos Bulk exactos. El harness HIL
+opcional con nombre humano aprobado conserva su guard adicional separado.
+
+Facts cromáticos omiten el nombre del consenso/recheck semántico bajo candidate,
+continuidad visual e input lineage existentes. Binding causal panel→Sell→popup
+fresco sin input intermedio sigue vigente; regression Destructive/Desructive
+pasó, incluido fact cromático sin nombre. No cambian ReliefPolicy, E+ protegido,
+confirmación única, Item Count efecto ni cancelación/retries. Corpus inicial18 contextos
+incluye cinco nombres Legendary, otros tiers, Enhance, negativos y variaciones
+de captura/AA/brillo/escala. Failures Earrings/Phantom/Shortsword tienen panel
+replay; Shortsword repetido usa el mismo item, Gear sólo log/regression semántico
+porque no quedaron pixels seleccionados. Sus causas históricas fueron popup,
+no un fallo demostrado del tier seleccionado.
+
+Validación:543 tests focales consolidados passed +4 directos del harness;
+evaluator Equipment Sell14/14. Benchmark120 muestras/frame nativo: tier median/
+p95 29.74/33.42ms→1.24/1.34ms; detail58.39/65.50→32.87/35.54ms. OCR detail2→1
+por muestra; sin coste de captura ni auditoría global. Probes live de lectura
+encontraron Lobby, cero taps/consumos; ese pendiente fue cerrado por el smoke
+físico documentado arriba. Sources cerrados. Sin commit/push/28/28; trabajo local
+independiente preservado. Auditoría causal completa y métricas en
+`artifacts/equipment_color_validation/audit.md`; corpus y assets tienen manifests
+con procedencia/hashes. El estado del fix previo de abajo permanece como historia
+de esa intervención, no como descripción de la autoridad perceptiva nueva.
+
+## FAILED Sell Equipment — origen causal corregido localmente 2026-10-07
+
+Último log `20261007T151933.728847Z_session_fd48d8bf`, personaje2 /
+Dimension Manipulator / MW investment. FAILED12:34:46 ART:
+`bulk_not_started:confirmation_item_mismatch`, count135/capacity128 y cero
+confirmaciones de ese Bulk. Panel9191/9193: Legendary Helmet,
+`Laoku's Destructive Gear`, guard visual y Sell positivos. Open Sell desde9193;
+popup9198/9202: `Laoku's Desructive Gear`, confianza.99925/.99922 y scope
+Equipment-grade correcto. Primera divergencia: igualdad literal entre dos OCR
+del nombre rechazó una transición determinista verificada; consenso repitió el
+mismo error de letra. Las capturas del failure bundle son anteriores al popup;
+la atribución usa los diagnósticos/acciones del log, no un replay de esos pixels.
+
+Solución general en el owner existente: Open Sell recibe el panel verificado;
+runtime acredita `source_item_sequence` sólo con dos muestras frescas posteriores
+al tap y sin input intermedio. Operación/policy usan ese origen para la relación
+panel→popup; nombres arbitrarios/transcripciones distintas no requieren assets,
+aliases ni tolerancia difusa. Scope Bulk exacto, policy/tier/type/Enhance, E+
+protegido, confirmación única y delta posterior permanecen. Cualquier input
+invalida el origen; su pérdida no permite fallback por igualdad de nombre.
+Facts standalone sin origen conservan comparación estricta.
+
+Validación offline:500 tests directos y consumidores afectados passed, incluido
+el par OCR del fallo, nueve tipos y las tres familias Bulk, origen incorrecto,
+input intermedio, stale/pre-tap/unconfirmed, scope incompatible y efecto inconcluso
+sin retry. Item Count posterior del replay semántico es simulado; no prueba venta
+física nueva. Sin cambio perceptivo ni evaluator, sin hardware ni nuevo smoke;
+reader/payment-wrap y todos los cambios locales previos preservados.
+
+## FAILED precheck MW Sapphires — corregido localmente 2026-10-06
+
+Log `20261006T201225.383450Z_session_7ac67227`, session
+`fce179171e774651b6b0e433a6acbe2b`, Demon Blade / personaje2 / Gold step3 /
+MW investment attempt1. Ad y retorno Stages completados, Sapphires2→338.
+FAILED17:18:44 ART antes de navegar: dos lecturas338 con confianza.99962
+confirmaron consenso, pero snapshot3796 tenía edad≈2.17s al gate2s.
+Primera divergencia: precheck usaba percepción global99 detectores; análisis
+final1.894s más captura/OCR agotaban la edad, sin fallo de OCR ni nuevo consumo.
+
+Fix local de wiring: barrera y consenso del precheck usan scope81 con todas las
+dependencias del resolver/bloqueadores, incluido Stages; omite hechos de slots,
+candidatos/animaciones ajenos. RuntimeFactReader acepta observer por lectura,
+sin mutar su observer compartido. Navegación/gameplay conservan observer original;
+ROI, parser, consenso2, secuencias, cancelación y guard2s no cambian.
+Replay semántico/latencia con reader real: old FAILED / fixed readiness338.
+Validación:347 tests afectados verdes; equivalencia full/scope19/19 en corpus
+existente,1539 pares reutilizados por evaluator incremental. Informe local en
+`artifacts/mw_readiness_validation/report.json`. Sin nuevo smoke live, commit ni
+push; cambios anteriores preservados.
+
+## FAILED Ads multipart — corregido localmente 2026-10-06
+
+Log `20261006T195702.303792Z_session_f1309e11`, session
+`87df0e0c25ee406ebcd5f9a965c07d6c`, personaje1 / Gold step3 / Stages attempt1.
+FAILED17:01:24 ART, `AD_RECOVERY_FAILED` a60.828s. Dos visitas Finsky y retornos
+SDK verificados; ninguna autoridad terminal. Capturas2608/2614/2616 muestran
+tercera parte con barra amarilla avanzando. Reader exigía fill desde x=.038;
+viewport inset empieza en x=.052 y devolvía None. El fallback interpretó toda
+la espera como stall y cortó a60.593s pese al progreso físico.
+
+Fix mínimo del reader: localizar inicio del fill contiguo sólo en el borde SDK
+acotado x=.038–.055. Sin cambios de HSV, continuidad, umbral de movimiento,
+ownership Android, cierre reward-ready ni bounds60/180s. Progreso sólo autoriza
+observación; nunca Back/close. Strips SDK curados sin contenido publicitario en
+`tests/fixtures/ads_progress_inset` (fuente downsampled, no calibración nativa).
+Validación:156 tests afectados verdes; evaluator focal10/10 (7 fixtures nativos
+previos +3 strips del fallo). Informe `artifacts/ads_inset_validation/report.json`.
+Sin nuevo ad/smoke live, commit ni push; trabajo previo preservado.
+
+## FAILED Stages post-ad — corregido localmente 2026-10-06
+
+Log `20261006T192430.058419Z_session_b2f41405`, session
+`fac392bee3cb41a09e84c66c772d9be4`, personaje2 / Gold step3 / Stages attempt1.
+FAILED16:29:37 ART tras ad RETURNED y un único Results OK. Capturas3092/3105/3146
+confirman Config: no faltó la transición. El scope de81 detectores gastó hasta
+2.5225s por análisis; la reacquisición nativa también agotó la guard2s
+(análisis2.3554s). Primera divergencia: rechazo por edad de Config matching.
+
+Fix focal: Results→Config→Normal observa cuatro detectores, con toda la familia
+upper de Stages, Quick Menu y blockers Equipment/Socket. Reutiliza Config fresco
+para su cierre; Back→Lobby conserva el observer completo. Guard2s, cancelación,
+timestamps reales, fallback nativo bounded y confirm único permanecen.
+Replay semántico curado reproduce timeout anterior y cierre corregido sin repetir
+OK; tests afectados y equivalencia perceptiva12/12 en corpus existente.
+Evaluator incremental48/48 pares reutilizados, cero invalidaciones de detectores.
+Informe local: `artifacts/stages_return_validation/report.json`.
+Sin nuevo smoke/campaña live, commit ni push; cambios previos preservados.
+
+## Checkpoint causal Reliefs / MW / Trading — 2026-10-06
+
+Scope exclusivo posterior a `d97e899b`: policy/coordinator transversal de rutina,
+schema/migración v2 y GUI Reliefs; freshness A1 MW; OCR Keys post-confirm.
+La auditoría MAX confirma dos selecciones reales entre preparaciones independientes;
+fix mínimo conserva MAX ya seleccionado con evidencia fresca, sin rediseñar MW.
+Validación consolidada, INDEX aislado y exclusiones en
+[cierre del checkpoint](../../docs/RELIEFS_FARMING_CHECKPOINT.md).
+
+## FAILED manual Trading — corregido 2026-10-06
+
+Run `5c599d7e4c5a406394d3c18c46b07fb7`, session
+`a94ac2e7e19c47389bacda3db00ecc61`, log `20261006T153842.516960Z_session_ef92f6d3`.
+Continuación manual19 desde Crimson Assassin; Ice Warlock scope17/19, Gold step3
+occurrence1, MW final_investment attempt2 / keys_promotion / Silver→Gold.
+MAX correcto: Silver215/10, selector1/20→20/20, confirm único, efecto215→15.
+Primera divergencia: OCR post-confirm `15/10J` / .88277, secuencia93095;
+FAILED15:11:17 ART por `after_fact_unreadable`, sin retry económico.
+
+Fix focal del reader Keys: anclar unión de glyphs blancos a la línea numérica;
+excluir componentes decorativos fuera de línea. Parser estricto, threshold.90,
+consenso2, freshness y C4 conservados. Corpus afectado y209 tests dirigidos verdes.
+Live: Keys Bronze6/10/Silver15/10; apertura única Gold Key2 verifica1/20,
+máximo útil1 y omisión de `>>`. Detenido antes de confirm, Item Trade abierto,
+cero trades nuevos y cleanup de fuente. Replays/logs/límites en
+[informe Trading](../../docs/TRADING_FAILED_SESSION_A94AC2E7.md).
+
+**USER_GT Ads:** amplitud live cerrada por la campaña manual de hoy con Ads
+renovadas y dos failures, ninguno en Ads. No queda campaña de amplitud pendiente.
+**Ads live breadth debt: CLOSED**: broad coverage, short ads y multipart natural
+coverage. No se afirma nuevo28/28 COMPLETED. Notas de amplitud pendiente en campañas
+previas son historia superseded, salvo regresión futura concreta. Sell K Coins y
+trabajo histórico independiente quedan preservados fuera de este checkpoint.
+
+## FAILED manual28 Sell — corregido localmente 2026-10-06
+
+Último intento: session `67a7a846e7754289b3c2b14cc9b59b90`, run
+`a6584360a1764c798e1d374a5d22530e`, log `20261006T135141.382747Z_session_f4663332`.
+Falló 12:18:17 ART en Crimson Assassin (personaje10, nueve Rotation completas),
+Gold step3 / MW investment, con `bulk_not_started:confirmation_unreadable_or_stale`.
+Relief había verificado tres Bulk, count163→144/capacity136; la siguiente venta no
+se confirmó. Detail Legendary Weapon y nombre `Laoku's Destructive Shortsword`
+eran legibles. `for 15 K Coins.` saltó completo a segunda línea: el reader eligió
+las ROIs Bulk normales porque la primera no contenía `] for`, recortando el scope.
+Cleanup canceló el popup y preservó el detail seleccionado.
+
+Fix mínimo en EquipmentSellReader: pago explícito fresco con confianza≥.80 en la
+continuación selecciona las ROIs K Coin existentes; scope exacto, policy, consenso
+y confirm único conservados. Captura read-only tras reapertura manual reproduce
+old None / fixed equipment_grade; crop curado en `tests/fixtures/equipment_payment_wrap`.
+Validación:362 tests afectados passed; evaluator Sell14/14; probe live read-only
+con dos muestras concordantes, cero inputs/ventas y cleanup de source. Popup queda
+abierto para el usuario. Sin nueva campaña28, commit ni push; trabajo previo preservado.
+
+## Reliefs y FAILED manual MW — cierre causal 2026-10-06
+
+Baseline `d97e899b`, branch `rebuild/stable-baseline`. Config Reliefs pasa a rutina v2,
+con coordinator compartido, migración v1 conservadora/archivo original y GUI Step Settings /
+Routine Settings / Reliefs / Application. Ethereal checked autoriza vender, ahora explícito.
+Craft conserva tres categorías habilitadas al migrar. Platinum no implementado ni mostrado.
+
+Intento manual28 anterior: session `c385af509b7c4b2ba214f169e8af3b7f`, run
+`ff4b8797565f445695ef2cad0c2987ea`, log `20261006T123851.620375Z_session_86adecd4`.
+Falló 09:49:04 ART en Burst Breaker (primer personaje), Gold step3 occurrence1,
+MW final_investment attempt2. BASE MW + resource board correctamente resuelto; A1 agotó
+edad durante OCR y spacing durante percepción. Último CLEAR/accounting:276→176.
+Fix local A1 memoiza resultados CV por pixels exactos de ROI, conservando guards y
+ventanas. Replay curado demuestra old FAILED / fixed continuation YES + finish.
+Smoke live read-only: gap0.297s, edad0.875s, cinco filas, cero inputs y cleanup.
+Investigación/validación en [informe MW](../../docs/MW_FAILED_SESSION_86ADECD4.md).
+
+Validación dirigida: 1060 passed/16 failed inicialmente; un test GUI de routines
+usaba un control MW retirado y se actualizó (routines:53 passed). Los otros15 son
+fallos heredados presentes en `artifacts/character_state_baseline_failures.txt`:
+11 harness GUI anterior a Session y4 handoffs que llaman `_initial_lobby` retirado.
+Seis casos corrupt adicionales pasan (policy:38 passed). Resultados reutilizados:
+1067 verdes únicos,15 heredados; sin suite global. GUI real y migración/reopen local
+verificados. Estos conteos acumulados quedan como procedencia; la selección final
+única y validación del INDEX están en el cierre del checkpoint. No Open Pets.
+
+
+## Character Identity + Persistent Character State — 2026-10-05/06
+
+Checkpoint conjunto sobre parent `fe774abcef3a636c138028717a0d2a0b514c5e6f`,
+rama `rebuild/stable-baseline`. Resolver closed-set84/84 frames,
+28/28 identidades, cero wrong/UNKNOWN; DRAKEN一BK/二DB/三BB requieren discriminador
+visual focal, sin relajación OCR ni identidad por posición. Demon Blade validado live.
+
+SQLite runtime/schema1,28 IDs permanentes, operational Ads/WB y snapshots informativos
+separados; GUI Character State, WB eligibility por occurrence y captura configurable
+OFF/BEFORE_CHARACTER_ROTATION. Collector productivo reutiliza el mismo QM de Rotation.
+Character State → **Character Data Sweep — All 28** permite refrescar recursos sin
+flows productivos. Session explícita reutiliza identity/collector/Rotation y un QM
+por personaje; no altera el modo de captura de rutinas normales. Aceptación desde
+GUI real: **28 identidades,28 snapshots completos,28 Rotations,0 failures**,5:49
+incluyendo inicialización (345.545s de Session). Mediana por personaje12.101s;
+reader+persistencia0.159s, total5.266s. Auditor verificó scopes/secuencias/timestamps,
+sin duplicados ni contaminación; cierre/reapertura de GUI y SQLite conserva28 filas.
+Natural Video0 de Demon Blade escribió0 durante el frente previo.
+Backfill causal explícito del run27ae46d4 acreditó26 personajes en el epoch actual;
+Burst Breaker permanece UNKNOWN, sin deducir el scope histórico por índice.
+
+Countdown live `1d4h14m` observado2026-10-06T02:15:52Z: cierre WB estimado
+2026-10-07T06:30Z (03:30 -03), reset sincronizado07:00Z (04:00 -03);
+siguiente reset diario2026-10-06T07:00Z. Precisión del display1min, normalizada
+al próximo límite de minuto; lecturas posteriores mantuvieron el anchor.
+Runtime scheduler/Tk timer y startup/read catch-up implementados, transitions
+determinísticos validados con reloj controlado, sin esperar físicamente al reset.
+
+Pareja rank/damage está físicamente en World Boss main; Select Battle Mode expone
+rank/card sin ese damage. Numeric live, blank y previous reward históricos acreditados.
+No nuevo Raid necesario: el estado natural era participado; escritura RAID_COMPLETE
+validada en integración incluso con cleanup posterior fallido. Deuda focal: balance0
+natural en QM; separadores/comas y magnitudes de1 a193061 adquiridos en el sweep;
+el parser0/comas y los tres Unicode tienen pruebas/corpus. Informe y límites en
+[CHARACTER_STATE_IMPLEMENTATION](../../docs/CHARACTER_STATE_IMPLEMENTATION.md).
+
+Estado runtime de aceptación Sweep: Ads0 acreditado en27, Burst BreakerUNKNOWN; WBYES en6,22UNKNOWN;
+snapshots completos en28. Sweep no modifica los facts operativos: comparación antes/después
+idéntica. Última observación countdown2026-10-06T02:41:19.864Z: `1d 3h48m`, mismo
+anchor2026-10-07T07:00Z. Suite afectada Sweep:241 passed; git diff --check limpio.
+Run final `2c282440554f480a9d9a59c366650195`; artifacts locales en
+`artifacts/character-data-sweep/` (audit, recursos, operational y reopen).
+
+GUI cleanup conserva Step Settings por occurrence, Routine Settings para Resource
+snapshot y Application para Appearance. Forms contextuales con scroll; tabla sortable
+con valores tipados y UNKNOWN al final en ambos sentidos; Light/Dark dinámico y
+preferencia global runtime-local. Auditoría Tk normal/reducida y reopen acreditados.
+Contrato en [GUI_CONFIGURATION](../../docs/GUI_CONFIGURATION.md); validación consolidada,
+índice y límites del cierre en [CHARACTER_STATE_CHECKPOINT](../../docs/CHARACTER_STATE_CHECKPOINT.md).
+Durante el cierre conjunto se registró catch-up SYNCHRONIZED_RESET del diario
+2026-10-06T07:00Z (observado12:27:50.521Z): Ads28=2, siguiente diario07:00Z del día7.
+WB6YES/22UNKNOWN y los28 snapshots conservados; no se completaron facts manualmente.
+El informe checkpoint separa este epoch nuevo del estado de aceptación Sweep.
+Open Pets permanece posterior y sin implementar. Trabajo independiente previo preservado.
+
+## Checkpoint full roster — aceptación técnica28/28 2026-10-05
+
+Parent `656460c4b16526ced5ae46b36764240aa5ec71cb`, rama `rebuild/stable-baseline`.
+Nuevo checkpoint único `fix: stabilize full roster farming session`; commit/push
+autorizados para el cierre verde. Campaña GUI manual principal
+`20261005T234827.311080Z_session_27ae46d4`, run
+`e4d8ec7e6aaf403ca5f919685b22cd81`, session
+`6c2c6ad1abff47ffb4648262e26368bb`:28 scopes consecutivos/28 Rotation,
+Session COMPLETED, cero flow/session/runtime.failed,20:48:32→21:49:50 -03,
+61:17.608. Rutina BM→WB→Gold→Mailbox→DailyQuests→Rotation verificada por scope.
+26 nombres de clase registrados y2 UNKNOWN (18/21), conservados sin inferencia.
+25 personajes ads_exhausted;6 Ads con efecto Sapphire; WB28 no elegibles;
+23 inversiones MW en5 personajes. Chaining MW directo3, Lobby legítimo25,
+cero violaciones. Business incomplete27 es resultado real, no failure técnico.
+
+AdsManager ahora reconoce primitivas del chrome SDK independientes del fondo,
+y lee exclusivamente Reward granted/Next ad en el campo fijo SDK bajo ownership
+Android concordante. Terminal fresco autoriza cierre inmediato sin edad mínima;
+Next ad es intermedio sin cierre. Timeout/progreso no acreditan recompensa.
+No se añadieron templates por creative; propuesta aislada descartada. Implementación
+offline e integración28/28 verdes; amplitud live de short-ad/multipart limitada
+por agotamiento diario. En este run hubo6 SDK Back terminales (ads9.922–25 s),
+sin afirmar cobertura exhaustiva ni un ad físico de5 s. Próxima campaña manual
+con reset diario aportará cobertura natural; no bloquea el checkpoint.
+Causas/fixes/validaciones anteriores y rojos en
+[COMBINED_28_ACCEPTANCE_AUDIT](../../docs/COMBINED_28_ACCEPTANCE_AUDIT.md).
+Hashes, límites de configuración, cierre/INDEX y tabla28 en
+[FULL_ROSTER_CHECKPOINT](../../docs/FULL_ROSTER_CHECKPOINT.md). Siguen pendientes
+triple explícito post-latest-fix, No Ads temporal full recovery, Accessories
+MAX/result/effect y whitelist informativa `monster_wave.sapphire_effect`.
+X sola SDK adquirida está implementada/offline; su amplitud live tras este ajuste
+sigue pendiente. Trabajo independiente Summon Pet/scripts fuera del checkpoint.
+
+## Checkpoint local — estabilización combinada 2026-10-05
+
+Sobre `31ecf4642db02d6a90fce871360f38cc45e92650`, rama `rebuild/stable-baseline`.
+Campaña GUI final `20261005T050411.404714Z_session_2808930b.jsonl`: Cat Acrobat,
+Crimson Assassin, Flame Striker consecutivos, tres Rotation, Session COMPLETED,
+cero technical failures,33:19 de Session. Código/assets idénticos durante los tres.
+Offline final una invocación:1906 passed,4 skips históricos Rotation,451,65 s.
+Cierre en un único commit local `fix: stabilize combined farming sessions`, sin push;
+trabajo independiente previo preservado y excluido del índice. Reconstrucción, rojos,
+eventos y límites en [SESSION_STABILIZATION_AUDIT](../../docs/SESSION_STABILIZATION_AUDIT.md).
+
+Fixes causales: contexto fresco Auto OFF/ON y retry VerifiedTransition; Ads stall
+desde último progreso SDK, no60 s globales; Gold publica MW final para QM chaining;
+hub WB no elegible→MW sin Lobby; crop Hero Armor; board OCR memo por pixels exactos;
+Select Striker/H&H bajo obstrucción; Keys0/10 rojo; assets Sell Normal/Poor y popup
+K Coin multiline. WB usa el owner Sell existente una vez tras Full post-Combine,
+restaura WB y conserva su caller; no repite Combine ni delega el Full a MW.
+
+Business final: Cat Video0; Crimson mail restante tras procesamiento acreditado;
+Flame UNASSESSED sólo por proyección Gold (whitelist informativa omite
+`monster_wave.sapphire_effect`). No son technical failures ni se ocultan en historia.
+Quedan esa whitelist, chrome Ads X sola con cierre tardío/reward acreditado, GT
+Accessories MAX/result/effect abierto, triple explícitamente identificado post-fix
+y No Ads temporal full recovery natural. Craft focal Hero Armor114→16 adquirido;
+campaña final no necesitó Craft. H&H se cierra sólo ante obstrucción causal.
+
+## Bloque cerrado — checkpoint local 2026-10-04
+
+Sobre `3f4acf3ea94cb04164c92cea795d98561109806e` (`feat: add productive stages daily
+and ads automation`), rama `rebuild/stable-baseline`. Cierre conjunto de Configurable
+Routines v1, Gold Farming, estabilización causal y navigation handoff. Sin push.
+
+`RoutineSpec → ordered RoutineSteps → FlowRegistry → flows/capabilities` está productivo:
+save/load, rename/duplicate/delete, enable/disable, reorder, repeticiones, config por
+occurrence y snapshot estable al ejecutar desde GUI. Basic Gold Farming selecciona
+`Gold Farming Cycle`; no cuatro steps hardcodeados en runner, DAG ni planner.
+
+La capability coordina hasta dos oportunidades Stages Ads por personaje: readiness
+Sapphire causal, Stages si corresponde e inversión MW posterior/final. Video0/alert diario
+omiten la oportunidad restante sin quitar la inversión final; resultado business incomplete.
+UNAVAILABLE temporal no es daily exhausted. El fact se comparte sólo dentro del personaje;
+same-character reentry conserva, Rotation cambia scope. Failure/cancel detienen.
+
+Policy productiva Sapphire: pressure ≥102, safe <102. Stages e inversión MW usan
+`sapphire_pressure_passes` y el mínimo necesario; después de cada CLEAR exigen saldo
+fresco y recalculan, sin aritmética acreditada ni consumo por debajo del umbral.
+
+## Live aceptado y estabilización
+
+Campaña GUI final `20261003T134838.410066Z_session_d8419f31.jsonl`: Ice Warlock, Eilla,
+Lina consecutivos, una Rotation por personaje, Eilla/Lina con ambas ads completas,
+Ice Warlock business incomplete por Video0, **0 technical failures**. Persistencia y
+reapertura de la rutina verificadas. Runs rojos anteriores se conservan como rojos;
+no repetir la campaña ni atribuir al smoke los cambios offline posteriores.
+
+Fixes causales incluidos: Stamina batch (selector 1/20, N−1 taps, cantidad final y
+confirmación únicas); Claims bounded con señal mínima; Abyssal antes de Claims y cero
+World Map si ya está activo; crops calibrados sin bajar thresholds; agotamiento por
+personaje; MW no-work antes de navegación; Keys Bronze/Silver con fase estable; Sell
+block CV/logical delta y reutilización del panel SELLABLE; count/capacity causal tras
+Combine; Craft Weapons→Armor→Accessories en una visita; Socket animation handoff/scoped
+perception, positive-only taps y flashes/UNKNOWN sin input; layering/recovery causal.
+
+## Navigation final
+
+Flow/Activity hace gameplay y devuelve resultado/superficies verificadas. Session conserva
+orden literal y pide el entry del siguiente step útil; Navigation/Zone ejecuta la ruta
+segura mínima. MW no conoce el siguiente flow ni normaliza arbitrariamente a Lobby.
+
+WB preparado→MW comparte hub; MW→ToT útil usa Back→Battle Mode Select. `routing_no_work`
+sólo admite prueba owner pura/barata/concluyente, sin capture/input/gameplay/gasto;
+UNKNOWN no se salta ni se anticipan Eligibility/readiness contextuales.
+
+Quests/Mailbox entran por Quick Menu desde BASE acreditada, cierran y prueban exactamente
+su origen con snapshot nuevo. Rotation acepta BASE verificada QuickMenu-capable:
+MW→QM→Quests→close→MW→QM→Mailbox→close→MW→QM→Character Select→Rotation→nuevo Lobby.
+Sin Lobby intermedio. Battle Mode Select tiene QM, pero hacia Lobby gana un Back directo;
+hacia Pets/Quests/Mailbox/Rotation gana QM directo. Capability explícita, no universal;
+modal/actividad incompatible/UNKNOWN/AMBIGUOUS no autorizan inputs. Rutas ajenas fail-closed.
+Stages usa Lobby para Stamina y su entrada física, después del prerequisite MW directo
+desde hub cuando corresponde. Gold conserva la BASE MW de la inversión final para el
+siguiente step literal; no exige Lobby terminal.
+
+## Evidencia reutilizable y deuda
+
+Stabilization loop: 1917 casos previos verificados (cobertura combinada, no una invocación).
+Cleanup: 1546 passed / 4 skipped, Craft evaluator 13 frames, Socket scope 17 frames y audit
+Abyssal 111 frames. Navigation handoff y QM fix: 752 passed / 4 skipped en cobertura
+combinada; todos los runs rojos de validación se preservan. Skips: evidencia histórica
+local Rotation ausente. No nueva suite completa ni smoke por ritual en el cierre.
+
+Hero Armor/Helmet tiene adquisición natural MAX2/10, coste49, una confirmación y efecto
+114→16 en DemonBlade; Accessories Hero Earrings sigue sin MAX/result/effect completo.
+Poor/Normal adquiridos y vendidos por el owner; Rare/Epic tienen assets/replays positivos.
+Cadena MW→QM Mailbox→restore MW→QM Quests→restore MW→QM Rotation acreditada en Mystic.
+Deuda real no bloqueante: chat desplegado
+completo no adquirido (banners existentes pasan); ahorro físico final Socket 0.2 s pendiente
+natural. Amplitud Ads cerrada por USER_GT2026-10-06; los límites de campañas
+anteriores conservan sólo procedencia. Otras deudas menores conservadas en ROADMAP.
+Targeted swipe/ordered-list navigation (2026-10-04): primitive transversal implementada;
+único consumidor productivo actual Trading Center / Hero Weapon Crafting Materials.
+Orden relativo del suffix/nueve anchors CV y física adquiridos. Coarse robusto .94→.02
+a 250 ms, luego un único loop dirigido con curva empírica independiente, safe-window
+.43–.87 y objetivo .65; feedback bounded, cancelación, guards frescos y fallback con
+presupuesto restante. Código final repetido diez veces: 10/10 con 2 swipes, 6 capturas,
+cero correcciones/fallbacks; 5.06–6.19 s. Incremental en el mismo source PTS: 5 swipes,
+21–22 capturas y 18.80–19.06 s. Benchmark v1 nativo 4/7 y baseline 5/12 conservados
+como historia, sin mezclar pipelines. [Informe](../../docs/TARGETED_SWIPE_AUDIT.md).
+Futuro previsto: ToT cuando se implemente y se adquiera su GT propio, sin auditoría/adopción
+de otras listas en este frente. Character Select es dynamic-order por USER_GT; Rotation
+intacta. 145 tests afectados verdes, replay local y live no consumptivo; C3 366/40.
+Checkpoint local independiente `feat: add directed trading list navigation`, sin push;
+teléfono en Lobby y cleanup de los sources completado.
+
+Históricos: checkpoint Stages/Ads `3f4acf3e` y MW `73313497`; smokes aceptados
+`stages_progress_smoke`/`f1c24b514e4e40128d5875a7c1ed74f4` y `mw_final_native_d1e5d83e`
+siguen como procedencia de sus versiones. Contratos: [ARCHITECTURE](../../ARCHITECTURE.md),
+[GAMEPLAY_GT](../../docs/GAMEPLAY_GT.md), [RESOURCE_ROUTING](../../docs/RESOURCE_ROUTING.md).
+
+Fuera del checkpoint, preservados: Summon Pet Daily previo y su hunk Registry, tests portal
+previos, eliminación histórica del plan y `check_eval.py`, `fix_tests.py`, `test_live.py`,
+`test_wait.py`. Logs completos/diagnósticos/outputs y corpus grande permanecen locales;
+sólo assets runtime y fixtures causales curados forman parte del commit. AGENTS sin cambios.

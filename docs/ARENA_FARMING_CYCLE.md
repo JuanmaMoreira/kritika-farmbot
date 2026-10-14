@@ -212,14 +212,20 @@ Autonomía prolongada acreditada en un batch continuo Hard112/112, sin reinicio,
 wait526.906s,175observaciones y cero OCR. No equivale a una campaña de múltiples
 ciclos/personajes. Deudas Arena preservadas: derrota Single; modal informativo por
 umbral; Gold con buffs agotados; cancelación
-física; retorno tras relief. No se fuerzan esas ramas. Nunca se compra Double
+física; variantes de retorno tras relief no ejercidas. La operación NORMAL con
+Socket relief y retorno Lobby acreditada el 2026-10-12 cierra esa ruta concreta
+([historia](legacy/CONTEXT_PRE_CONSOLIDATION_20261014.md)), no todas las variantes.
+No se fuerzan esas ramas. Nunca se compra Double
 Points ni Badges con Karats; stock Double Points desconocido mantiene ese buff
 OFF y permite continuar Arena con buffs1/2ON, sin gates de sus contadores.
 
 Herramientas focales: `tools.arena_farming_evaluation` (cache por código/pixels)
 y `tools.arena_farming_smoke` (preflight sin inputs, rutina real más Lobby probe,
 STOP, ceiling Badge, budget, evidencia y cleanup de runtime). Validación/live
-de esta entrega se registra en CONTEXT y el informe final de campaña.
+de esta entrega se conserva en los [checkpoints históricos](HISTORY.md#aceptaciones-y-checkpoints-por-subsistema);
+CONTEXT contiene sólo el estado vigente. `tools.arena_select_mode_probe`, citado
+en el diario anterior, fue archivado fuera del checkout en fase11 y no es requisito
+productivo.
 
 ## Session Report analítico
 

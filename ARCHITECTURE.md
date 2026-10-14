@@ -334,8 +334,9 @@ exclusión de modales conocidos para no aceptar Challenge detrás de insuficienc
 Economía requiere captura nativa fresca en
 el sequence space del source, enteros OCR color/gris del mismo frame y x8/dificultad
 acreditados. Prewarm precede un nuevo snapshot. Buffs1/2 ON se conservan; OFF se
-seleccionan y se verifica reserva8. Requieren stock para toda la previsión ordinaria:
-faltante detiene preparación salvo la compra acotada de buff1 B2 para una entrada8.
+seleccionan y se verifica ON. El requisito B1 anterior de reserva8/cobertura OCR
+para buffs1/2 fue reemplazado por USER_GT 2026-10-09 y la implementación publicada:
+stock desconocido no bloquea estos dos buffs; efecto ON inconcluso corta sin retry.
 Buff3 ON
 sin reserva conocida exige cobertura por saldo libre; insuficiente/UNKNOWN→OFF
 verificado. Activación OFF sólo con cobertura; reserva3 se acredita por delta8
@@ -381,8 +382,9 @@ global del retorno se adopta fresco y se cierra con No, sin repetir OK del resul
 Modal de umbral de puntos: deuda explícita de adquisición, literal/umbral/cierre
 UNKNOWN; no detector inventado. ArenaFlow conserva evidencia/no taps ciegos
 ante ese modal no reconocido. Cancelación física sigue abierta. Farming Cycle,
-controller adaptativo, Manual Stages y REPEAT_CURRENT
-quedan fuera de A/B1. Smoke físico B1 cerrado: único batch EASY x8,48used/48won,
+controller adaptativo y Manual Stages fueron incorporados después de A/B1 y se
+describen en la sección B2 siguiente; REPEAT_CURRENT sigue fuera de alcance.
+Smoke físico B1 cerrado: único batch EASY x8,48used/48won,
 2Badges finales y BASE Arena limpio. Hubo interrupciones del observer y handoff;
 no acredita ejecución continua ni performance de wait largo. [B1](docs/ARENA_B1_20261008.md) y
 [adquisición/A](docs/ARENA_HIL_ACQUISITION_20261008.md) poseen evidencia y límites.
