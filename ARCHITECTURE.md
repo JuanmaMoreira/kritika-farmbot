@@ -85,6 +85,13 @@ actual permite NO_WORK; NO/UNKNOWN conduce a inspección física antes de Start.
 El reader usa reward anterior y pareja damage/rank acreditada en World Boss main;
 no interpreta ausencia OCR como NO. YES es monotónico dentro del ciclo, especialmente
 tras Raid Complete, emitido antes de Continue/cleanup. Daily Quest es un fact distinto.
+La decisión elegible probada por Previous Rewards se conserva durante su cierre
+verificado en la misma entrada: un miss posterior del header no la revoca. Una
+decisión explícita posterior de no trabajar sigue prevaleciendo; sin evidencia
+previa acreditada, UNKNOWN mantiene MANUAL_RESOLUTION.
+Esta conservación sólo aplica a `CURRENT_WB_NOT_PARTICIPATED` y a la decisión
+elegible acreditada en esa entrada; no se cachea entre visitas ni personajes.
+Un ACK fallido/cancelado o un main no acreditado no autoriza Start.
 
 Routine v1 conserva compatibilidad mediante campos opcionales: eligibility por
 occurrence y `resource_snapshot_mode` por rutina. Default BEFORE_CHARACTER_ROTATION;

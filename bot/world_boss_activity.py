@@ -521,9 +521,10 @@ class WorldBossActivity:
             )
 
         previous_rewards = entry_handoff.allows_previous_rewards(entered)
+        previous_rewards_decision = None
         if previous_rewards:
             if getattr(self,'eligibility_policy',None) is not None:
-                self.eligibility_policy.inspect(entered)
+                previous_rewards_decision = self.eligibility_policy.inspect(entered)
             event = FlowEvent(WORLD_BOSS_PREVIOUS_REWARDS)
             flow_events.append(event)
             entered = self._transition(
@@ -566,6 +567,11 @@ class WorldBossActivity:
             decision = policy.inspect(main)
             from bot.world_boss_state import WorldBossEligibilityMode
             if policy.mode is WorldBossEligibilityMode.CURRENT_WB_NOT_PARTICIPATED:
+                # Previous Rewards already proves current-cycle NO. A header
+                # OCR miss after its verified acknowledgement cannot erase
+                # that entry evidence; an explicit main decision still wins.
+                if decision is None and previous_rewards_decision is True:
+                    decision = True
                 if decision is None:
                     return WorldBossFlowResult(FlowStatus.MANUAL_RESOLUTION, events=(
                         FlowEvent('world_boss.participation_unknown'),))
