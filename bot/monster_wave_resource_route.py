@@ -7,7 +7,7 @@ serialized through MW or the verified modal Trading return to Craft.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from numbers import Integral
 import time
@@ -49,7 +49,8 @@ from bot.resource_route_planner import (
     TradingMaterialsStep,
     TradingSessionStep,
 )
-from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
+from bot.runtime_observer import (RuntimeSnapshot, RuntimeWaitCancelled,
+    RuntimeEvidenceRequirements, RuntimeWaitTimeout)
 from bot.semantic_actions import CloseTrading, ExitCombine, ExitTreasure, OpenQuickMenu
 from bot.trading_center import clean_trading
 from bot.treasure_center import clean_treasure
@@ -103,7 +104,8 @@ class MonsterWaveSnapshotRuntime:
         self.clock = clock
         self.timeout = float(timeout)
 
-    def acquire(self, *, after_sequence: int) -> MonsterWaveSnapshotResult:
+    def acquire(self, *, after_sequence: int,
+                evidence: RuntimeEvidenceRequirements | None = None) -> MonsterWaveSnapshotResult:
         if (
             isinstance(after_sequence, bool)
             or not isinstance(after_sequence, Integral)
@@ -113,12 +115,19 @@ class MonsterWaveSnapshotRuntime:
         try:
             if self.cancel_requested():
                 return MonsterWaveSnapshotResult(FlowStatus.CANCELLED)
+            # The wait and the builder must accept the same age. Analysis can
+            # expire a frame; let the existing passive loop seek a fresh one,
+            # within one absolute budget, instead of returning stale readiness.
+            evidence = replace(evidence or RuntimeEvidenceRequirements(),
+                max_age=min(2., evidence.max_age) if evidence and evidence.max_age is not None else 2.)
             context = self.observer.wait_until(
                 lambda item: clean_mw(item) and skip_state(item) is not None,
                 after_sequence=int(after_sequence),
                 timeout=self.timeout,
                 stable_for=0.25,
                 cancel_requested=self.cancel_requested,
+                evidence=evidence,
+                deadline=self.clock() + self.timeout,
             )
             if self.cancel_requested():
                 return MonsterWaveSnapshotResult(FlowStatus.CANCELLED)
@@ -138,6 +147,10 @@ class MonsterWaveSnapshotRuntime:
             )
         except RuntimeWaitCancelled:
             return MonsterWaveSnapshotResult(FlowStatus.CANCELLED)
+        except RuntimeWaitTimeout as error:
+            return MonsterWaveSnapshotResult(FlowStatus.FAILED,
+                error=f"mw_snapshot_acquisition_timeout: {error}",
+                failure=FailureCause.from_error(error, kind="state_wait_timeout"))
         except Exception as error:
             return MonsterWaveSnapshotResult(
                 FlowStatus.FAILED,

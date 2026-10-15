@@ -1,0 +1,7 @@
+{
+  "provenance": "Retained semantic evidence from session 87f33aed, after successful decline_board e6971. No image or native perceptual calibration is replayed by this fixture.",
+  "source": "artifacts/failure_evidence/failure_565d8fd31f9846aca57ff19eaa3e2d26/snapshot_25142.json",
+  "source_sha256": "861198aa9e766ffb60ce75e2c983b80df9d973bbb4c420548cb9f64251e1ab74",
+  "file": "snapshot_25142.json",
+  "timing": "The following wait had two analyses, sum 3.5404421s and maximum 2.2317823s. Simulated analysis costs reproduce age rejection; per-frame processing starts were not logged."
+}

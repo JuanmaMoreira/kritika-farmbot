@@ -30,7 +30,7 @@ from bot.resource_route_planner import (
     NonBoardResourceFacts, ResourcePlanningInput, ResourceRoutePlan,
     ResourceRouteStatus, plan_resource_route,
 )
-from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled
+from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled, RuntimeEvidenceRequirements
 from bot.semantic_actions import AcceptSocketInventoryFull, OpenEquipmentCombine
 from bot.state import ResolutionStatus
 from bot.verified_transition import VerifiedTransitionPolicy, VerifiedTransitionResult
@@ -182,7 +182,16 @@ class MonsterWaveStandaloneNavigationRuntime:
         )
         if not result.succeeded or result.attempt_count != 1 or result.final_snapshot.sequence <= current.sequence:
             return FlowStatus.FAILED, None, result
-        acquired = self.snapshots.acquire(after_sequence=result.final_snapshot.sequence)
+        final = result.final_snapshot
+        dispatched_after = max((receipt.completed_at for receipt in getattr(result, 'dispatch_receipts', ())
+                                if receipt.completed_at is not None), default=final.timestamp)
+        acquired = self.snapshots.acquire(after_sequence=final.sequence,
+            evidence=RuntimeEvidenceRequirements(source_id=current.frame.source_id,
+                captured_after=max(final.timestamp, dispatched_after),
+                required_coverage=final.observations.coverage or frozenset()))
+        if acquired.status is FlowStatus.FAILED:
+            # Keep the acquisition cause across the legacy three-value return.
+            raise ValueError(acquired.error or 'fresh_monster_wave_snapshot_unavailable')
         return acquired.status, acquired.fresh, result
 
     def accept_board(self, board: FreshMonsterWaveBoard):

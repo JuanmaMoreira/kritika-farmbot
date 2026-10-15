@@ -67,6 +67,15 @@ En entrada/reentrada MW: MODAL conocido → normalizar primero (`popup.monster_w
 
 ## Composición real
 
+La adquisición pasiva de `MonsterWaveSnapshotRuntime` exige edad 0..2s dentro
+de `RuntimeObserver.wait_until`, también después de percepción, con estabilidad
+vigente y un deadline absoluto de 6s por defecto. Un análisis que envejece el
+frame permite seguir observando dentro de ese mismo presupuesto; no repite
+inputs ni amplía la edad. Tras No del board conserva fuente, cobertura declarada
+y captura posterior al terminal/despacho retornado. Sin evidencia válida termina
+con `mw_snapshot_acquisition_timeout`; el caller conserva esa causa. Regresión
+offline de `87f33aed` y tiempos simulados, sin nueva aceptación física.
+
 L1 productivo consume el handoff mediante una preparación única y reanuda el mismo request. L2 local atiende Equipment/Socket después del resume; dentro del retry/relief de una misma pasada/request bloqueado no se repite board/planner/J. Cada nueva pasada del farming loop obtiene y evalúa su propio resource board fresco y puede producir una decisión/plan nuevo —rewards de una pasada pueden crear presión para la siguiente—; no reutilizar snapshot/plan entre pasadas. Componentes presentes **no** significan callbacks completos: ver RESOURCE_ROUTING. El loop productivo y la operación de una pasada reusable son contrato requerido; no declarar el loop cerrado por existir L1/L2. Un pending no consumido o MANUAL_RESOLUTION detiene SessionRunner, sin navegación ciega ni rotación. La rama No del blocker Socket post-relief tiene una policy GT diferente (tarea incompleta, siguiente personaje); no confundirla con ese terminal genérico ni declararla implementada por existir L2. Ningún relief actual es un flow de limpieza independiente; un futuro flow cuyo propósito sea limpiar recursos deberá declararse explícitamente como tal.
 
 `MonsterWaveConfig` conserva dos booleanos, ambos false por defecto: `MW_PURCHASE_SKIP_TICKETS` y `MW_CONTINUE_WHEN_NONBLOCKING_INVENTORY_FULL`. El primero queda sin efecto en la preparación productiva (Fill All automático por USER_GT); el segundo acepta continuar con pérdida de rewards sobre límites. No hay política estratégica adicional implícita.

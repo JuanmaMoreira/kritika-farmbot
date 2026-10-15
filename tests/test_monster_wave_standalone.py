@@ -447,14 +447,34 @@ def test_close_adapter_uses_existing_decline_and_fresh_reacquisition():
             return SimpleNamespace(succeeded=True, attempt_count=1, final_snapshot=clean.context)
 
     class Snapshots:
-        def acquire(self, *, after_sequence):
+        def acquire(self, *, after_sequence, evidence):
             assert after_sequence == 12
+            assert evidence.captured_after == clean.context.timestamp
             return SimpleNamespace(status=FlowStatus.COMPLETED, fresh=anchor(13))
 
     status, result, _ = MonsterWaveStandaloneNavigationRuntime(
         Transition(), Snapshots()
     ).close_board(acquired)
     assert status is FlowStatus.COMPLETED and result.context.sequence == 13
+
+
+def test_post_board_acquisition_failure_keeps_specific_cause_without_another_input():
+    calls = []
+    clean = anchor(12)
+    class Transition:
+        observer = Observer(context(10, popup=True), context(11, popup=True))
+        def execute(self, name, action, before, **kwargs):
+            calls.append(action)
+            return SimpleNamespace(succeeded=True, attempt_count=1, final_snapshot=clean.context,
+                dispatch_receipts=(SimpleNamespace(completed_at=12.1),))
+    class Snapshots:
+        def acquire(self, *, after_sequence, evidence):
+            assert after_sequence == 12 and evidence.captured_after == 12.1
+            return SimpleNamespace(status=FlowStatus.FAILED,
+                                   error='mw_snapshot_acquisition_timeout: no fresh evidence')
+    with pytest.raises(ValueError, match='mw_snapshot_acquisition_timeout: no fresh evidence'):
+        MonsterWaveStandaloneNavigationRuntime(Transition(), Snapshots()).close_board(board())
+    assert len(calls) == 1 and isinstance(calls[0], DeclineMonsterWaveInventory)
 
 
 def test_board_timing_retry_discards_pair_then_uses_only_fresh_agreement():
