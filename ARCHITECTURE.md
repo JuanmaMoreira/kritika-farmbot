@@ -793,6 +793,23 @@ y timestamp y edad <2s. Reacredita Lobby antes del segundo OPEN. UNKNOWN,
 AMBIGUOUS, capas, frames viejos y cancelación no habilitan retry; el segundo
 timeout se propaga. No se repiten Start, Video, compras ni confirmaciones.
 
+**IMPLEMENTATION_CONTRACT — fase 4B:** OPEN y la X no consumptiva de Config
+componen `VerifiedTransition(reacquire_from=...)` mediante el mismo adapter local
+de `StagesNavigation`. El owner exige origen positivo al terminar el primer
+wait (Lobby limpio o Config RESOLVED/expuesto), secuencia nueva, timestamp
+posterior al despacho y edad <2s. La readquisición avanza después del último
+frame observado y acepta origen o destino resuelto; efecto tardío continúa sin
+otro input. Source distinto, AMBIGUOUS o contexto/capa resueltos incompatibles
+cortan la operación; el permiso se revalida también después de resolver el target
+en `ActionExecutor`. Hay hasta dos inputs, 6s nominales + hasta 6s de
+readquisición + 6s del segundo intento (OPEN conserva su timeout configurable),
+sin cola tras el segundo miss y respetando el deadline heredado. Esos tiempos
+no incluyen los fallbacks de captura ya adquiridos: `wait` conserva hasta150ms
+de handoff del stream y una captura nativa + hasta2s ante superficie coincidente
+stale. Entrada OPEN y completion Lobby usan el observer completo; Config usa el
+observer de retorno recibido. Los blockers de entrada conservan el handoff al
+relief original. No se migran retries de Inventory/reliefs ni inputs consumptivos.
+
 AdsManager no pertenece a Stages ni selecciona contenido publicitario. `AndroidAdsObserver` reúne pixels frescos y activity/window; el adapter despacha acciones Android/semánticas y el manager mantiene el lifecycle bounded. Stages es un caller: navegación/configuración/Mao permanecen concretos, y su success exige Results y Sapphire after > before. No se crea un framework general de stages.
 
 - Activity/focus deben concordar. Package/activity son contexto, no prueba de reward ni de fase closable. Usar `dumpsys window` completo donde `windows` no aporta foco. Cada input fuerza screencap nativa fresca; no reinterpretar pixels SDK stale sobre main como permiso para otro Back. UI hierarchy actual sin affordances útiles es diagnóstico, no dependencia de cleanup.

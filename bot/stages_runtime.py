@@ -4,7 +4,10 @@ from bot.stages_actions import StageAction,StageControl as C
 from bot.perception.stages import has,surface
 from bot.catalog import SCREEN_LOBBY, POPUP_EQUIPMENT_INVENTORY_FULL, POPUP_SOCKET_INVENTORY_FULL
 from bot.state import ResolutionStatus
-from bot.runtime_observer import RuntimeWaitCancelled,RuntimeWaitTimeout
+from bot.runtime_observer import RuntimeWaitAborted,RuntimeWaitCancelled,RuntimeWaitTimeout,RuntimeEvidenceRejected
+from bot.verified_transition import VerifiedTransition,VerifiedTransitionPolicy
+from bot.operation_control import check_operation
+from bot.action_executor import ActionExecutor
 from bot.event_log import record_best_effort
 from bot.tap_through_animation import TapThroughAnimation,TapThroughPolicy,TapThroughOutcome
 from types import SimpleNamespace
@@ -26,9 +29,11 @@ class StagesNavigation:
         self.cursor=0;self.dispatched_at=0.
         self.relief=None
 
-    def wait(self,predicate,timeout=6.,*,observer=None):
+    def wait(self,predicate,timeout=6.,*,observer=None,abort_if=None):
         observer=observer or self.observer
+        check_operation()
         if self.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
+        options={'abort_if':abort_if} if abort_if is not None else {}
         source=getattr(observer,'source',None)
         if callable(getattr(source,'refresh_native',None)):
             latest=source.get_frame()
@@ -40,6 +45,7 @@ class StagesNavigation:
                 # streams still take the same real-capture fallback.
                 deadline=self.clock()+.15
                 for _ in range(8):
+                    check_operation()
                     if self.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
                     remaining=deadline-self.clock()
                     if remaining<=0.:break
@@ -47,11 +53,12 @@ class StagesNavigation:
                     latest=source.get_frame()
                     if recent(latest):break
             if not recent(latest):
+                check_operation()
                 source.refresh_native()
         fresh_match=lambda s:s.timestamp>self.dispatched_at and 0.<=self.clock()-s.timestamp<2. and predicate(s)
         try:
             s=observer.wait_until(fresh_match,after_sequence=self.cursor,timeout=timeout,
-                cancel_requested=self.cancel_requested)
+                cancel_requested=self.cancel_requested,**options)
         except RuntimeWaitTimeout as error:
             last=error.last_snapshot
             # A post-ad stream can show the requested surface with capture age
@@ -61,36 +68,96 @@ class StagesNavigation:
                     not callable(getattr(source,'refresh_native',None)) or not predicate(last)):
                 raise
             if self.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
+            check_operation()
             record_best_effort(self.events,'stages.wait.native_reacquire',
                 source_sequence=last.sequence,frame_age=self.clock()-last.timestamp,
                 reason='stale_matching_surface',input_retries=0)
             source.refresh_native()
             s=observer.wait_until(fresh_match,after_sequence=last.sequence,timeout=2.,
-                cancel_requested=self.cancel_requested)
+                cancel_requested=self.cancel_requested,**options)
         self.cursor=s.sequence
         return s
 
     def current(self):return self.wait(lambda s:lobby(s) or exposed(s))
 
-    def act(self,action,snapshot):
+    def act(self,action,snapshot,*,before_dispatch=None):
         if self.cancel_requested():raise RuntimeWaitCancelled('stages cancelled')
         if self.clock()-snapshot.timestamp>2.:raise ValueError('stages action stale')
-        self.actions.execute(action,snapshot.geometry,events=self.events,source_sequence=snapshot.sequence)
+        options={'before_dispatch':before_dispatch} if isinstance(self.actions,ActionExecutor) and before_dispatch is not None else {}
+        if before_dispatch is not None:before_dispatch()
+        execution=self.actions.execute(action,snapshot.geometry,events=self.events,source_sequence=snapshot.sequence,**options)
         self.cursor=snapshot.sequence;self.dispatched_at=self.clock()
+        return execution
 
-    def tap(self,control,snapshot):
+    def tap(self,control,snapshot,*,before_dispatch=None):
         if not (lobby(snapshot) or exposed(snapshot)):
             raise ValueError('stages control covered by upper layer')
-        self.act(StageAction(control),snapshot)
+        return self.act(StageAction(control),snapshot,before_dispatch=before_dispatch)
+
+    def _retry_navigation(self,control,snapshot,origin,expected,*,observer=None,timeout=6.):
+        """Only OPEN and Config X own a second, nonconsuming dispatch.
+
+        Keep the acquired capture handoff in wait(); the primitive owns the
+        temporal cycle. A nominal miss must still prove a fresh exposed origin
+        before any reacquisition. No timeout can create that permission.
+        """
+        event,reason={C.OPEN:('stages.entry.retry','fresh_lobby_no_effect'),
+            C.CLOSE_CONFIG:('stages.config_close.retry','fresh_config_no_effect')}[control]
+        current=snapshot
+        destination=lambda s:s.state.status is ResolutionStatus.RESOLVED and expected(s)
+        compatible=lambda s:origin(s) or destination(s)
+        fresh=lambda s:(s.frame.source_id==snapshot.frame.source_id and s.sequence>snapshot.sequence
+            and s.timestamp>self.dispatched_at and 0.<=self.clock()-s.timestamp<2.)
+        incompatible=lambda s:(s.frame.source_id!=snapshot.frame.source_id
+            or s.state.status is ResolutionStatus.AMBIGUOUS
+            or (s.state.status is ResolutionStatus.RESOLVED and not compatible(s)))
+        def observe(predicate,*,after_sequence,timeout,abort_if=None,**kwargs):
+            nonlocal current
+            self.cursor=max(self.cursor,after_sequence)
+            try:
+                current=self.wait(predicate,timeout,observer=observer,abort_if=abort_if)
+            except RuntimeWaitTimeout as error:
+                last=error.last_snapshot
+                if last is None or last.sequence<=self.cursor or not fresh(last) or not origin(last):
+                    raise RuntimeWaitAborted(last or current) from error
+                raise
+            return current
+        def dispatch(action,geometry):
+            def authorized():
+                check_operation()
+                if (not origin(current) or not 0.<=self.clock()-current.timestamp<2.
+                        or (current is not snapshot and not fresh(current))):
+                    raise RuntimeEvidenceRejected('stages navigation authorization invalidated')
+            if current is not snapshot:
+                record_best_effort(self.events,event,reason=reason,
+                    source_sequence=current.sequence,input_retries=1)
+            return self.tap(control,current,before_dispatch=authorized)
+        result=VerifiedTransition(SimpleNamespace(observe=lambda:current,wait_until=observe),
+            SimpleNamespace(execute=dispatch),self.events,clock=self.clock,
+            cancel_requested=self.cancel_requested).execute(
+                event.removesuffix('.retry'),StageAction(control),snapshot,
+                precondition=origin,expected=destination,
+                reacquire_from=compatible,retryable_from=lambda s:compatible(s) and fresh(s),
+                abort_if=incompatible,policy=VerifiedTransitionPolicy(
+                    normal_timeout=timeout,grace_timeout=timeout,max_attempts=2))
+        if result.succeeded:return result.final_snapshot
+        if result.outcome.value=='failed':raise ValueError(result.error)
+        raise RuntimeWaitTimeout(after_sequence=snapshot.sequence,timeout=timeout,
+            last_snapshot=result.final_snapshot)
 
     def change(self,control,snapshot,expected,timeout=6.):
-        self.tap(control,snapshot)
         blockers={POPUP_EQUIPMENT_INVENTORY_FULL,POPUP_SOCKET_INVENTORY_FULL}
         # Only a verified Stages source bounds this modal family. Lobby entry
         # and foreign/unknown sources retain the full observer.
         panel=self.results_observer if snapshot.state.base_context=='screen.stages' else None
         predicate=lambda s:(exposed(s) and surface(s) in expected) or bool(blockers.intersection(s.state.overlays))
-        result=self.wait(predicate,timeout,observer=panel) if panel is not None else self.wait(predicate,timeout)
+        if control is C.OPEN:
+            entry=lambda s:((s.state.base_context=='screen.stages' and exposed(s) and surface(s) in expected)
+                or bool(blockers.intersection(s.state.overlays)))
+            result=self._retry_navigation(control,snapshot,lobby,entry,timeout=timeout)
+        else:
+            self.tap(control,snapshot)
+            result=self.wait(predicate,timeout,observer=panel) if panel is not None else self.wait(predicate,timeout)
         if blockers.intersection(result.state.overlays):
             if self.relief is None:raise ValueError('stages known relief not wired')
             return self.relief(control,result,expected)
@@ -132,20 +199,7 @@ class StagesNavigation:
     def enter_episode(self, episode='abyssal'):
         if episode not in {'abyssal','chaos'}:raise ValueError('unknown stages episode')
         s=self.wait(lobby)
-        try:
-            s=self.change(C.OPEN,s,{'normal','elite'})
-        except RuntimeWaitTimeout as error:
-            # OPEN is navigation only. A fresh, exposed Lobby proves that
-            # this entry had no effect; unknown/covered/old pixels do not.
-            last=error.last_snapshot
-            if (last is None or not lobby(last) or last.sequence<=self.cursor
-                    or last.timestamp<=self.dispatched_at
-                    or not 0.<=self.clock()-last.timestamp<2.):
-                raise
-            s=self.wait(lobby)
-            record_best_effort(self.events,'stages.entry.retry',reason='fresh_lobby_no_effect',
-                source_sequence=s.sequence,input_retries=1)
-            s=self.change(C.OPEN,s,{'normal','elite'})
+        s=self.change(C.OPEN,s,{'normal','elite'})
         record_best_effort(self.events,'stages.mode',mode=surface(s))
         if surface(s)=='elite':s=self.change(C.NORMAL,s,{'normal'})
         # Verify the current episode on a fresh, exposed Normal frame before
@@ -198,28 +252,14 @@ class StagesNavigation:
                     'daily_exhausted':C.NO_ADS_OK,'no_ads':C.NO_ADS_OK}
             if layer in closes:
                 changed=lambda a:exposed(a) and surface(a)!=layer
-                self.tap(closes[layer],s)
-                try:
-                    s=self.wait(changed,observer=observer)
-                except RuntimeWaitTimeout as error:
+                if layer=='config':
                     config=lambda a:(a.state.status is ResolutionStatus.RESOLVED
                         and a.state.base_context=='screen.stages' and exposed(a) and surface(a)=='config')
-                    last=error.last_snapshot
-                    if (layer!='config' or last is None or not config(last)
-                            or last.sequence<=self.cursor or last.timestamp<=self.dispatched_at
-                            or not 0.<=self.clock()-last.timestamp<2.):
-                        raise
-                    # Only this acquired X is nonconsuming. Read past the last
-                    # failed wait; a late close continues without another input.
-                    self.cursor=max(self.cursor,last.sequence)
-                    s=self.wait(lambda a:config(a) or (changed(a)
-                        and a.state.status is ResolutionStatus.RESOLVED
-                        and a.state.base_context=='screen.stages'),observer=observer)
-                    if config(s):
-                        record_best_effort(self.events,'stages.config_close.retry',
-                            reason='fresh_config_no_effect',source_sequence=s.sequence,input_retries=1)
-                        self.tap(C.CLOSE_CONFIG,s)
-                        s=self.wait(changed,observer=observer)
+                    s=self._retry_navigation(C.CLOSE_CONFIG,s,config,
+                        lambda a:changed(a) and a.state.base_context=='screen.stages',observer=observer)
+                else:
+                    self.tap(closes[layer],s)
+                    s=self.wait(changed,observer=observer)
             elif layer in {'normal','elite'}:
                 self.tap(C.BACK,s);return self.wait(lobby,timeout=8.)
             else:raise ValueError('stages exit upper layer unverified')
