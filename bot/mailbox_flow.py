@@ -21,6 +21,7 @@ from bot.component_contracts import ComponentRequirement, QUICK_MENU_ACCESS_REQU
 from bot.event_log import EventSink
 from bot.flow_contracts import FlowContract, FlowEvent, FlowResult, FlowScope, FlowStatus
 from bot.runtime_observer import (
+    RuntimeEvidenceRequirements,
     RuntimeObserver,
     RuntimeSnapshot,
     RuntimeWaitAborted,
@@ -39,7 +40,9 @@ from bot.quick_menu import (
     DEFAULT_QUICK_MENU_POLICY, is_clean_quick_menu_base,
     open_quick_menu_destination, select_quick_menu_panel_action,
 )
-from bot.verified_transition import VerifiedTransition, VerifiedTransitionPolicy
+from bot.verified_transition import (
+    VerifiedTransition, VerifiedTransitionOutcome, VerifiedTransitionPolicy,
+)
 
 
 MAILBOX_NOOP = "mailbox.noop"
@@ -360,37 +363,39 @@ class MailboxFlow:
         )
 
     def _select_character_mail(self, mailbox: RuntimeSnapshot) -> RuntimeSnapshot:
-        started = self.clock()
-        for attempt in range(2):
-            try:
-                return self._act_and_wait(
-                    SelectCharacterMail(), mailbox,
-                    expected=_is_character_mail,
-                    abort_if=_has_incompatible_character_mail_entry,
-                    timeout=self.navigation_timeout,
-                    stable_for=self.navigation_stable_for,
-                    observer=self.claim_observer,
-                )
-            except RuntimeWaitTimeout as error:
-                if attempt:
-                    raise
-                anchor = error.last_snapshot or mailbox
-                barrier = max(mailbox.sequence, anchor.sequence)
-                fresh = self.claim_observer.wait_until(
-                    lambda s: _is_mailbox(s) and not _has_claim_processing_activity(s),
-                    after_sequence=barrier, timeout=self.navigation_timeout,
-                    abort_if=_has_incompatible_character_mail_entry,
-                    cancel_requested=self.cancel_requested,
-                    stable_for=self.navigation_stable_for,
-                )
-                if (fresh.sequence <= barrier or fresh.timestamp <= started or
-                        not 0 <= self.clock() - fresh.timestamp <= 2.0):
-                    raise error
-                if _is_character_mail(fresh):
-                    return fresh
-                self._record("mailbox.character_mail_retry", source_sequence=fresh.sequence)
-                mailbox = fresh
-        raise AssertionError("bounded Character Mail selection exhausted")
+        # Preserve the established retry-only gate; the normal success path
+        # needs no new capture, age gate or stability requirement.
+        retry_evidence = RuntimeEvidenceRequirements(
+            captured_after=self.clock(), max_age=2.0, source_id=mailbox.frame.source_id,
+        )
+        result = VerifiedTransition(
+            self.claim_observer, self.actions, self.events, clock=self.clock,
+        ).execute(
+            "mailbox.select_character_mail", SelectCharacterMail(), mailbox,
+            precondition=_is_mailbox, expected=_is_character_mail,
+            effect_observed=_is_character_mail,
+            retryable_from=lambda s: retry_evidence.accepts(s, self.clock()),
+            reacquire_from=lambda s: _is_mailbox(s) and not _has_claim_processing_activity(s),
+            abort_if=lambda s: (
+                _has_incompatible_character_mail_entry(s)
+                or s.frame.source_id != mailbox.frame.source_id
+            ),
+            policy=VerifiedTransitionPolicy(
+                normal_timeout=self.navigation_timeout,
+                grace_timeout=self.navigation_timeout,
+                max_attempts=2, total_timeout=3 * self.navigation_timeout,
+            ),
+            stable_for=self.navigation_stable_for,
+            cancel_requested=self.cancel_requested,
+        )
+        if result.succeeded:
+            return result.final_snapshot
+        if result.outcome is VerifiedTransitionOutcome.UNEXPECTED_STATE:
+            raise RuntimeWaitAborted(result.final_snapshot)
+        raise RuntimeWaitTimeout(
+            after_sequence=mailbox.sequence, timeout=3 * self.navigation_timeout,
+            last_snapshot=result.final_snapshot,
+        )
 
     def _act_and_wait(
         self,

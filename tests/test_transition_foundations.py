@@ -438,6 +438,53 @@ def test_guard_expiring_during_target_resolution_prevents_dispatch():
     assert result.dispatch_receipts[0].state is DispatchState.NOT_SENT
 
 
+@pytest.mark.parametrize('scenario', ['ready', 'miss', 'expired_guard', 'cancel', 'deadline'])
+def test_reacquisition_with_real_waits_and_executor_keeps_retry_bounds(scenario):
+    clock, adb, cancelled = Clock(), Adb(), [False]
+
+    class Target(ActionExecutor):
+        def target_for(self, action):
+            if len(adb.calls) == 1:
+                if scenario == 'expired_guard':
+                    clock.now += .06
+                if scenario == 'deadline':
+                    clock.now += 1.
+                if scenario == 'cancel':
+                    cancelled[0] = True
+            return super().target_for(action)
+
+    transition = VerifiedTransition(observer(clock), Target(adb), clock=clock)
+    args = dict(
+        expected=lambda s: scenario == 'ready' and len(adb.calls) == 2,
+        reacquire_from=lambda s: True,
+        retryable_from=lambda s: 0 <= clock() - s.timestamp <= .05,
+        policy=VerifiedTransitionPolicy(
+            normal_timeout=.03, grace_timeout=.02, max_attempts=2, total_timeout=.1,
+        ),
+        cancel_requested=lambda: cancelled[0],
+    )
+    if scenario == 'cancel':
+        with pytest.raises(RuntimeWaitCancelled) as caught:
+            transition.execute('reacquire.real', OpenQuickMenu(), snapshot(), **args)
+        receipts = caught.value.dispatch_receipts
+    else:
+        result = transition.execute('reacquire.real', OpenQuickMenu(), snapshot(), **args)
+        assert result.succeeded is (scenario == 'ready')
+        assert result.grace_wait_count == 1
+        receipts = result.dispatch_receipts
+        if scenario == 'miss':
+            assert result.termination_reason == 'attempts_exhausted'
+            assert clock() < 10.08  # No second grace/observe tail.
+        if scenario == 'expired_guard':
+            assert result.termination_reason == 'retry_authorization_invalidated'
+        if scenario == 'deadline':
+            assert result.termination_reason == 'operation budget exhausted'
+    assert len(adb.calls) == (2 if scenario in {'ready', 'miss'} else 1)
+    assert receipts[0].state is DispatchState.ADB_RETURNED
+    if scenario in {'expired_guard', 'cancel', 'deadline'}:
+        assert receipts[-1].state is DispatchState.NOT_SENT
+
+
 def test_dispatch_budget_caps_adb_timeout_without_extending_its_existing_limit():
     clock, timeouts = Clock(), []
 

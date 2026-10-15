@@ -248,6 +248,17 @@ la prueba de efecto. Sin `effect_observed`, el éxito existente acredita ambos.
 No se incorpora detector de loading, recovery global, nuevas autorizaciones ni
 migración de owners económicos o navegación.
 
+**IMPLEMENTATION_CONTRACT — resiliencia, fase 4A:** `reacquire_from` es una
+extensión opt-in de `VerifiedTransition`, sin vocabulario de Mailbox. Tras el
+timeout nominal espera un punto de decisión positivo del owner durante
+`grace_timeout`, con secuencia posterior a todo lo observado. El guard
+`retryable_from` valida esa evidencia antes de aceptar efecto tardío o retry;
+rechazarla termina la operación, sin buscar otro permiso. Ambos guards se
+revalidan antes del segundo despacho, también en el executor. Efecto acreditado
+sin readiness bloquea retry. Sólo hay gracia con intentos restantes: el último
+miss nominal termina, sin `observe()` ni cola adicional. Sin `reacquire_from`,
+los consumidores conservan su política anterior.
+
 Verificar el efecto con señal fiable suficiente. Identidad de contexto se separa de datos económicos; postcondiciones no se convierten en revalidación de cada hecho GT. Landmarks y oclusión siguen GAMEPLAY_GT. Ausencia ambigua de popup no prueba por sí sola éxito o retorno limpio.
 
 H&H se recupera sólo cuando bloquea una observación o un input; su mera presencia no provoca trabajo. `VerifiedTransition` entrega las ROIs de la señal necesaria fallida (también ante abort) o consulta el target real del executor. `PortalObstructionRecovery` sólo prueba si esa geometría intersecta el envelope de GAMEPLAY_GT y el contexto es compatible; nunca por timeout/UNKNOWN aislado. Un único dismiss requiere CONFIRMED fresco y una espera pasiva bounded/cancelable debe confirmar ABSENT; persistencia, evidencia inconclusa o frame stale propagan fallo técnico. El caller revalida su condición original con el snapshot fresco, conservando intención/caller. Inputs directos afectados pueden usar `VerifiedTransition.recover_input` y conservar su espera y cancelación; los no afectados no adquieren probes ni capturas adicionales.
@@ -302,6 +313,13 @@ Mailbox resuelto, expuesto, sin procesamiento y recién readquirido después del
 último frame observado y del primer input, con edad≤2s. Character Mail tardío
 continúa sin otro tap. UNKNOWN/AMBIGUOUS, contexto/overlay ajeno, actividad,
 evidencia vieja/pre-input y cancelación bloquean retry; el segundo miss corta.
+La selección usa `VerifiedTransition(reacquire_from=...)`: el owner declara
+Mailbox idle y `RuntimeEvidenceRequirements` de retry (adquisición posterior al
+inicio del primer input, edad≤2s, mismo source); un cambio de source invalida
+la operación. Se conservan 6s nominales + hasta 6s de readquisición + 6s del
+segundo intento (`navigation_timeout` configurable), con deadline total de 3×
+ese timeout y máximo dos inputs. No se agrega estabilidad/captura al éxito
+normal. La mecánica local de waits/retry queda en la primitiva común.
 Claim All/Delete/Open/Close conservan sus límites. El cierre sigue acreditando
 la BASE de origen antes de que Session continúe el próximo step/personaje.
 

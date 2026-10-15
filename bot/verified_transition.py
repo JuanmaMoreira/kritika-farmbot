@@ -286,7 +286,18 @@ class VerifiedTransition:
         budget: OperationControl | None = None,
         effect_observed: Callable[[RuntimeSnapshot], bool] | None = None,
         progress_observed: Callable[[RuntimeSnapshot], bool] | None = None,
+        reacquire_from: Callable[[RuntimeSnapshot], bool] | None = None,
     ) -> VerifiedTransitionResult:
+        """Optionally reacquire owner evidence inside a single grace window.
+
+        With ``reacquire_from``, grace waits for a new owner-declared decision
+        point, then ``retryable_from`` validates its evidence before accepting
+        a late effect or retry. It runs only with attempts left; the final
+        nominal miss terminates without the legacy observation tail. Rejected
+        evidence terminates; it cannot be replaced by a later authorization.
+        Both guards are rechecked at retry dispatch. Without this opt-in,
+        legacy timing and retry policy are unchanged.
+        """
         if not isinstance(policy, VerifiedTransitionPolicy):
             raise ValueError("policy must be VerifiedTransitionPolicy")
         if not isinstance(before, RuntimeSnapshot):
@@ -295,11 +306,13 @@ class VerifiedTransition:
             raise ValueError("expected must be callable")
         if evidence is not None and not isinstance(evidence, RuntimeEvidenceRequirements):
             raise ValueError("evidence must be RuntimeEvidenceRequirements or None")
-        for predicate in (cancel_requested, effect_observed, progress_observed, precondition, retryable_from, abort_if):
+        for predicate in (cancel_requested, effect_observed, progress_observed, precondition, retryable_from, abort_if, reacquire_from):
             if predicate is not None and not callable(predicate):
                 raise ValueError("optional callbacks must be callable")
         if budget is not None and not isinstance(budget, OperationControl):
             raise ValueError("budget must be OperationControl or None")
+        if reacquire_from is not None and retryable_from is None:
+            raise ValueError("retry reacquisition requires retryable_from")
         parent = budget or current_control()
         clock = parent.clock if parent is not None else self._clock
         control = OperationControl(
@@ -350,6 +363,7 @@ class VerifiedTransition:
                 result = self._execute(
                     name, action, before, expected=checked(expected, postcondition=True), policy=policy,
                     precondition=checked(precondition), retryable_from=checked(retryable_from),
+                    reacquire_from=checked(reacquire_from),
                     abort_if=checked(abort_if), stable_for=stable_for,
                     on_recovery=on_recovery, _progress=progress,
                     precondition_regions=precondition_regions,
@@ -418,6 +432,7 @@ class VerifiedTransition:
         policy: VerifiedTransitionPolicy,
         precondition: Callable[[RuntimeSnapshot], bool] | None = None,
         retryable_from: Callable[[RuntimeSnapshot], bool] | None = None,
+        reacquire_from: Callable[[RuntimeSnapshot], bool] | None = None,
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
         stable_for: float = 0.0,
         on_recovery: Callable[[], None] | None = None,
@@ -561,6 +576,17 @@ class VerifiedTransition:
                 return finish(name, VerifiedTransitionOutcome.TIMEOUT, attempt - 1,
                               grace_wait_count, current, "effect_accredited_not_ready")
             guard = precondition if attempt == 1 else retryable_from
+            def require_dispatch():
+                _state.require(current)
+                # Authorization can expire between reacquisition and dispatch.
+                # Recheck it at the executor boundary, without another capture.
+                if attempt > 1 and reacquire_from is not None:
+                    if ((abort_if is not None and abort_if(current)) or
+                            not reacquire_from(current) or
+                            not retryable_from(current)):
+                        raise RuntimeEvidenceRejected("retry_authorization_invalidated")
+                    check_operation()
+
             _state.require(current)
             recovered = self.recover_input(
                 name, action, current, guard, on_recovery,
@@ -579,7 +605,7 @@ class VerifiedTransition:
                     )
                 current = recovered
             try:
-                _state.require(current)
+                require_dispatch()
                 _progress["attempt"] = attempt
                 with event_scope(attempt_index=attempt), operation_phase("dispatch"):
                     try:
@@ -588,7 +614,10 @@ class VerifiedTransition:
                             execution = self.actions.execute(
                                 action, current.geometry, events=self.events,
                                 source_sequence=current.sequence,
-                                before_dispatch=(lambda: _state.require(current)) if _state.requirements is not None else None,
+                                before_dispatch=require_dispatch if (
+                                    _state.requirements is not None or
+                                    (attempt > 1 and reacquire_from is not None)
+                                ) else None,
                             )
                         else:
                             execution = self.actions.execute(action, current.geometry)
@@ -653,6 +682,64 @@ class VerifiedTransition:
                 attempt=attempt,
                 nominal_timeout=policy.normal_timeout,
             )
+            if reacquire_from is not None:
+                # No observation/retry tail on the final miss. This alternative
+                # uses the owner's explicit decision point during grace.
+                # Reacquisition is not itself authorization for another input.
+                anchor = normal.last_snapshot or current
+                if attempt >= policy.max_attempts:
+                    return finish(
+                        name, VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED,
+                        attempt, grace_wait_count, anchor, "attempts_exhausted",
+                    )
+                barrier = max(current.sequence, anchor.sequence, _state.latest.sequence)
+                grace_wait_count += 1
+                _progress["grace_count"] = grace_wait_count
+                self._record(
+                    "transition.grace_started", transition=name, attempt=attempt,
+                    grace=policy.grace_timeout,
+                )
+                def reacquired(snapshot):
+                    expected(snapshot)  # Preserve any accredited effect.
+                    return reacquire_from(snapshot)
+
+                grace = wait(
+                    reacquired,
+                    after_sequence=barrier,
+                    timeout=policy.grace_timeout,
+                    abort_if=abort_if, stable_for=stability,
+                )
+                if isinstance(grace, RuntimeWaitAborted):
+                    return finish_aborted(grace, attempt, grace_wait_count)
+                if isinstance(grace, RuntimeWaitTimeout):
+                    return finish(
+                        name, VerifiedTransitionOutcome.TIMEOUT, attempt,
+                        grace_wait_count, grace.last_snapshot or anchor,
+                        "retry_reacquisition_timeout",
+                    )
+                if grace.sequence <= barrier:
+                    return finish(
+                        name, VerifiedTransitionOutcome.TIMEOUT, attempt,
+                        grace_wait_count, grace, "retry_state_not_fresh",
+                    )
+                if not reacquire_from(grace) or not retryable_from(grace):
+                    return finish(
+                        name, VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
+                        attempt, grace_wait_count, grace, "reacquisition_guard_rejected",
+                    )
+                if expected(grace):
+                    return finish(
+                        name, VerifiedTransitionOutcome.SUCCESS_AFTER_GRACE,
+                        attempt, grace_wait_count, grace,
+                    )
+                if _state.effect_accredited:
+                    return finish(
+                        name, VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
+                        attempt, grace_wait_count, grace, "retry_guard_rejected",
+                    )
+                self._record("transition.retry", transition=name, attempt=attempt + 1)
+                current = grace
+                continue
             grace_wait_count += 1
             _progress["grace_count"] = grace_wait_count
             self._record(

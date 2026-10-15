@@ -176,6 +176,106 @@ def test_expected_state_inside_normal_window_uses_one_input():
     assert observer.observe_calls == 0
 
 
+def _run_reacquisition(observer, **kwargs):
+    actions = Actions()
+    transition = VerifiedTransition(observer, actions)
+    return transition.execute(
+        'test.reacquisition', OpenQuickMenu(), _snapshot(1, BEFORE),
+        expected=kwargs.pop('expected', lambda s: s.state.base_context == EXPECTED),
+        retryable_from=kwargs.pop('retryable_from', lambda s: True),
+        reacquire_from=kwargs.pop('reacquire_from', lambda s: True),
+        policy=VerifiedTransitionPolicy(normal_timeout=6., grace_timeout=6., max_attempts=2),
+        **kwargs,
+    ), actions
+
+
+@pytest.mark.parametrize('scenario,outcome,attempts,waits', [
+    ('first', VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, 1, 1),
+    ('late', VerifiedTransitionOutcome.SUCCESS_AFTER_GRACE, 1, 2),
+    ('retry', VerifiedTransitionOutcome.SUCCESS_AFTER_RETRY, 2, 3),
+    ('second_miss', VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED, 2, 3),
+    ('no_evidence', VerifiedTransitionOutcome.TIMEOUT, 1, 2),
+])
+def test_opt_in_reacquisition_has_one_grace_window_and_no_observe_tail(scenario, outcome, attempts, waits):
+    retained = _snapshot(2, BEFORE)
+    reacquired = _snapshot(3, BEFORE)
+    ready = _snapshot(4, EXPECTED)
+    scripts = [_timeout(1, retained), reacquired, ready]
+    if scenario == 'first': scripts = [ready]
+    if scenario == 'late': scripts = [_timeout(1, retained), ready]
+    if scenario == 'second_miss': scripts[-1] = _timeout(3, reacquired)
+    if scenario == 'no_evidence': scripts[1] = _timeout(2, reacquired)
+    observer = ScriptedObserver(scripts)
+    result, actions = _run_reacquisition(observer)
+    assert result.outcome is outcome
+    assert result.attempt_count == attempts == len(actions.calls)
+    assert len(observer.wait_calls) == waits
+    assert observer.observe_calls == 0
+    assert all(timeout == 6. for _, timeout, _ in observer.wait_calls)
+
+
+@pytest.mark.parametrize('late_effect', [False, True])
+def test_reacquired_but_rejected_evidence_terminates_without_later_authorization(late_effect):
+    item = _snapshot(3, EXPECTED if late_effect else BEFORE)
+    observer = ScriptedObserver([_timeout(1, _snapshot(2, BEFORE)), item, _snapshot(4, EXPECTED)])
+    result, actions = _run_reacquisition(observer, retryable_from=lambda s: False)
+    assert result.outcome is VerifiedTransitionOutcome.RETRY_GUARD_REJECTED
+    assert len(actions.calls) == 1
+    assert len(observer.waits) == 1  # No replacing rejected evidence with a later frame.
+
+
+def test_reacquisition_guard_is_rechecked_before_retry_dispatch():
+    observer = ScriptedObserver([_timeout(1, _snapshot(2, BEFORE)), _snapshot(3, BEFORE)])
+    checks = []
+    def authorize(snapshot):
+        checks.append(snapshot.sequence)
+        return len(checks) == 1
+    result, actions = _run_reacquisition(observer, retryable_from=authorize)
+    assert result.termination_reason == 'retry_authorization_invalidated'
+    assert result.attempt_count == 1
+    assert len(actions.calls) == 1
+    assert checks == [3, 3]
+
+
+def test_reacquisition_observing_effect_never_retries_missing_readiness():
+    class Observer(ScriptedObserver):
+        def wait_until(self, condition, **kwargs):
+            if not self.wait_calls:
+                condition(_snapshot(2, OTHER))  # Effect, but not ready.
+            return super().wait_until(condition, **kwargs)
+    observer = Observer([_timeout(1, _snapshot(2, OTHER)), _snapshot(3, BEFORE)])
+    result, actions = _run_reacquisition(observer, effect_observed=lambda s: s.sequence == 2)
+    assert not result.succeeded and result.effect_accredited
+    assert len(actions.calls) == 1
+
+
+def test_reacquisition_cancellation_is_latched_before_retry():
+    from bot.runtime_observer import RuntimeWaitCancelled
+    cancelled = [False]
+    actions = Actions()
+    observer = ScriptedObserver([_timeout(1, _snapshot(2, BEFORE)), _snapshot(3, BEFORE)])
+    def reacquire(snapshot):
+        cancelled[0] = True
+        return True
+    with pytest.raises(RuntimeWaitCancelled):
+        VerifiedTransition(observer, actions).execute(
+            'test.cancel_reacquire', OpenQuickMenu(), _snapshot(1, BEFORE),
+            expected=lambda s: False, reacquire_from=reacquire, retryable_from=lambda s: True,
+            cancel_requested=lambda: cancelled[0],
+            policy=VerifiedTransitionPolicy(max_attempts=2),
+        )
+    assert len(actions.calls) == 1
+
+
+def test_reacquisition_requires_an_explicit_retry_guard():
+    with pytest.raises(ValueError, match='requires retryable_from'):
+        VerifiedTransition(ScriptedObserver([]), Actions()).execute(
+            'test.invalid', OpenQuickMenu(), _snapshot(1, BEFORE),
+            expected=lambda s: False, reacquire_from=lambda s: True,
+            policy=VerifiedTransitionPolicy(max_attempts=2),
+        )
+
+
 def test_expected_state_during_grace_does_not_send_second_input():
     still_before = _snapshot(2, BEFORE)
     observer = ScriptedObserver(
