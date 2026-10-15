@@ -778,6 +778,11 @@ ambos≥.94. La variante clara superior izquierda con X negra adquirida el
 contenido creativo. Estas variantes no tienen X circular. Exigen Google AdActivity
 resumed/focus concordantes, freshness≤2s y ausencia de `Next ad`; conserva
 presupuesto de cierre y prueba de Results/reward por el caller.
+La cápsula clara derecha con X negra de `5a048b6c` usa otro par local con el
+mismo umbral y publica `reward_granted_right_light_pill`. Los assets y el replay
+conservan píxeles sin reescalar del frame original de stream (2712×1224), no una
+captura ADB nativa ni un upscale de evidencia reducida. Sólo se evalúa ese par
+si las variantes anteriores no acreditaron terminal; no agrega espera ni tap.
 El manager revalida cancelación después de observar, antes de despachar inputs,
 tanto durante la espera normal como en recovery terminal.
 

@@ -598,5 +598,35 @@
       0.087,
       0.105
     ]
+  },
+  "ad_reward_close_right_light_pill": {
+    "source": "LIVE_EVIDENCE 2026-10-14; failure_6cde8dc32191421fbd3901eb132d7622/frame_25965.png; original-resolution stream, white right SDK Reward granted pill + black X",
+    "crop": [
+      0.773,
+      0.047,
+      0.927,
+      0.129
+    ],
+    "search": [
+      0.767,
+      0.039,
+      0.933,
+      0.137
+    ]
+  },
+  "ad_reward_right_light_pill_x": {
+    "source": "LIVE_EVIDENCE 2026-10-14; failure_6cde8dc32191421fbd3901eb132d7622/frame_25965.png; original-resolution stream, white right SDK Reward granted pill + black X",
+    "crop": [
+      0.9,
+      0.068,
+      0.918,
+      0.107
+    ],
+    "search": [
+      0.896,
+      0.062,
+      0.922,
+      0.113
+    ]
   }
 }

@@ -1,0 +1,21 @@
+{
+  "provenance": "LIVE_EVIDENCE; exact unscaled fixed SDK chrome from original-resolution stream frame. Not an ADB native refresh and not a synthetically resized replay. No creative retained.",
+  "source": "artifacts/failure_evidence/failure_6cde8dc32191421fbd3901eb132d7622/frame_25965.png",
+  "source_sha256": "201cee6c6a955f1b4fe431a80c524caf7f4a82890023733e5477352113a6b9ee",
+  "capture_source": "stream",
+  "shape": [
+    1224,
+    2712,
+    3
+  ],
+  "bounds": [
+    2034,
+    24,
+    2576,
+    184
+  ],
+  "file": "sdk_chrome.png",
+  "fixture_sha256": "350fe6a3bc25696b2664a21d5c8227e5873a0c0d9f9d36571c8232d13d67c9af",
+  "session": "5a048b6c",
+  "event_sequence": 7940
+}

@@ -342,6 +342,7 @@ class AndroidAdsObserver:
         reward_text = False
         reward_pill = False
         reward_left_pill = False
+        reward_right_light_pill = False
         if sdk_activity and activity == 'com.google.android.gms.ads.AdActivity':
             primitive_reader = getattr(self.detector, 'sdk_close_scores', None)
             black_x, white_x, sound = (primitive_reader(snapshot.frame.image)
@@ -382,6 +383,13 @@ class AndroidAdsObserver:
                 store_card_close = (self.detector.present(snapshot.frame.image, 'ad_store_card_close')
                                     and self.detector.present(snapshot.frame.image, 'ad_store_card_footer'))
                 round_close = store_card_close
+            # Native-resolution 5a048b6c: white right pill / black X, shifted
+            # from the gray pill. Existing terminals pay no extra CV probes.
+            if not sdk_chrome and not round_close and intermediate is None:
+                reward_right_light_pill = (
+                    self.detector.present(snapshot.frame.image, 'ad_reward_close_right_light_pill')
+                    and self.detector.present(snapshot.frame.image, 'ad_reward_right_light_pill_x'))
+                sdk_chrome = reward_right_light_pill
         # Main activity plus old SDK pixels cannot authorize another Back.
         # Unacquired embedded layouts never authorize timer-only cleanup.
         active = sdk_activity
@@ -405,7 +413,8 @@ class AndroidAdsObserver:
             # Fixed native SDK control, normalized to frame geometry. Main/
             # external ownership and unacquired X layouts publish no hitbox.
             close_point=(.922,.059) if round_close else None,
-            close_key=(('reward_granted_left_pill' if reward_left_pill else
+            close_key=(('reward_granted_right_light_pill' if reward_right_light_pill else
+                        'reward_granted_left_pill' if reward_left_pill else
                         'reward_granted_pill' if reward_pill else
                         'reward_granted_text' if reward_text else
                         'reward_granted_light' if light else 'reward_granted_dark')
