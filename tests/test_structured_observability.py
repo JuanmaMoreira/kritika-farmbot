@@ -97,11 +97,11 @@ def test_wait_counts_stale_polls_and_preserves_analyze_cost_without_frame_events
     assert result.sequence == 6
     assert [r.event for r in records] == ["perception.analyze_summary", "runtime_wait.completed"]
     summary, wait = [r.fields for r in records]
-    assert summary["analyze_count"] == 3
-    assert summary["analyze_elapsed"] == pytest.approx(0.03)
+    assert summary["analyze_count"] == 1
+    assert summary["analyze_elapsed"] == pytest.approx(0.01)
     assert summary["analyze_max_elapsed"] == pytest.approx(0.01)
     assert wait["poll_count"] == 3 and wait["fresh_count"] == 1
-    assert wait["elapsed"] == pytest.approx(0.23)
+    assert wait["elapsed"] == pytest.approx(0.21)
     assert wait["parent_operation_id"] == parent["operation_id"]
     assert summary["operation_id"] == wait["operation_id"]
     assert wait["flow"] == "mailbox" and wait["character_index"] == 3

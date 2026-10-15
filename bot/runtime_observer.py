@@ -161,11 +161,17 @@ class RuntimeEvidenceRequirements:
         if any(not isinstance(name, str) or not name for name in self.required_coverage):
             raise ValueError("required_coverage must contain non-empty capability names")
 
+    def accepts_frame(self, frame: FrameSnapshot, now: float) -> bool:
+        """Check acquisition metadata without assuming perceptual coverage."""
+        return (
+            (self.source_id is None or frame.source_id == self.source_id)
+            and (self.captured_after is None or frame.timestamp > self.captured_after)
+            and (self.max_age is None or 0 <= now - frame.timestamp <= self.max_age)
+        )
+
     def accepts(self, snapshot: RuntimeSnapshot, now: float) -> bool:
         return (
-            (self.source_id is None or snapshot.frame.source_id == self.source_id)
-            and (self.captured_after is None or snapshot.timestamp > self.captured_after)
-            and (self.max_age is None or 0 <= now - snapshot.timestamp <= self.max_age)
+            self.accepts_frame(snapshot.frame, now)
             and (not self.required_coverage or (
                 snapshot.observations.coverage is not None
                 and self.required_coverage <= snapshot.observations.coverage
@@ -221,6 +227,9 @@ class RuntimeObserver:
     def _observe(self) -> RuntimeSnapshot:
         frame = self.source.get_frame()
         check_operation()
+        return self._analyze_frame(frame)
+
+    def _analyze_frame(self, frame: FrameSnapshot) -> RuntimeSnapshot:
         started = self._metrics_now()
         failed = False
         try:
@@ -343,6 +352,10 @@ class RuntimeObserver:
         ``stable_for`` requires the condition to remain true across distinct
         fresh snapshots for the requested capture-timestamp duration. This is
         runtime readiness, not resolver hysteresis or voting.
+
+        Pre-analysis filtering is local to this wait. Neither direct observations
+        nor other waits/scopes inherit its evaluation cursor. Missing coverage
+        does not advance that cursor: the evaluation may still be outstanding.
         """
 
         if not callable(condition):
@@ -376,9 +389,30 @@ class RuntimeObserver:
                         if strict_deadline and self._clock() >= deadline:
                             raise RuntimeWaitTimeout(after_sequence=after, timeout=duration, last_snapshot=last_fresh)
                         polls += 1
-                        snapshot = self.observe()
+                        # Keep custom observe adapters on their existing seam.
+                        if getattr(self.observe, "__func__", None) is not RuntimeObserver.observe:
+                            snapshot = self.observe()
+                        else:
+                            frame = self.source.get_frame()
+                            check_operation()
+                            if strict_deadline and self._clock() >= deadline:
+                                raise RuntimeWaitTimeout(after_sequence=after, timeout=duration, last_snapshot=last_fresh)
+                            capture_eligible = evidence is None or evidence.accepts_frame(frame, self._clock())
+                            if not capture_eligible:
+                                stable_since = None
+                            # Some perception adapters latch a witnessed source
+                            # rotation before evidence gates reject it (MW Yes).
+                            # Preserve that safety observation, even for old seqs.
+                            source_mismatch = (evidence is not None and evidence.source_id is not None
+                                               and frame.source_id != evidence.source_id)
+                            candidate = (frame.sequence > after and (
+                                last_evaluated_sequence is None or frame.sequence > last_evaluated_sequence
+                            ) and capture_eligible)
+                            snapshot = self._analyze_frame(frame) if candidate or source_mismatch else None
                         check_operation()
-                        if snapshot.sequence > after and (
+                        if strict_deadline and self._clock() >= deadline:
+                            raise RuntimeWaitTimeout(after_sequence=after, timeout=duration, last_snapshot=last_fresh)
+                        if snapshot is not None and snapshot.sequence > after and (
                             last_evaluated_sequence is None
                             or snapshot.sequence > last_evaluated_sequence
                         ) and (evidence is None or evidence.accepts(snapshot, self._clock())):
@@ -403,7 +437,7 @@ class RuntimeObserver:
                                     return snapshot
                             else:
                                 stable_since = None
-                        elif evidence is not None and not evidence.accepts(snapshot, self._clock()):
+                        elif snapshot is not None and evidence is not None and not evidence.accepts(snapshot, self._clock()):
                             stable_since = None
 
                         remaining = deadline - self._clock()

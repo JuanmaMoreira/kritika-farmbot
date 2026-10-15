@@ -214,6 +214,20 @@ recovery. Metadatos requeridos ausentes rechazan evidencia. No hay umbral global
 de edad; timestamps de captura, despacho y edad deben compartir dominio monotónico.
 Adapters de observer/recovery que adopten esta opción deben admitir `evidence`.
 
+**IMPLEMENTATION_CONTRACT — resiliencia, observación:** `wait_until` filtra antes
+de percepción las secuencias inelegibles/repetidas ya evaluadas en esa llamada y
+los metadatos de adquisición rechazados por `captured_after`/`max_age`. El cursor
+no se comparte con `observe()`, otras esperas ni scopes; cobertura todavía no
+acreditada permite reevaluar el mismo frame. Las rotaciones de source requeridas
+siguen pasando por percepción para preservar el latch de seguridad de adapters
+existentes, aunque no puedan satisfacer el wait. Cobertura, freshness y guards
+siguen comprobándose después del análisis. `stable_for` sólo avanza con secuencias
+distintas y conserva el reset por evidencia expirada durante polls repetidos.
+Un deadline explícito también se comprueba al volver de captura/percepción.
+`observe()` y adapters que lo sobrescriben conservan su evaluación explícita;
+el consumer recibe cada snapshot analizado, no snapshots sintéticos por descartes.
+El source conserva captura, copias y lifetime; no hay caché ni scheduler nuevo.
+
 `VerifiedTransitionPolicy.total_timeout`, `observation_timeout`,
 `dispatch_timeout` y `recovery_timeout` son **opt-in**. Un `budget=OperationControl`
 permite compartir deadline absoluto y allowances acumulados entre llamadas;
