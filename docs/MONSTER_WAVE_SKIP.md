@@ -33,6 +33,33 @@ En entrada/reentrada MW: MODAL conocido → normalizar primero (`popup.monster_w
 - MAX consume como máximo 100 Sapphires por pasada. El flow productivo usa `sapphire_pressure_passes` para aliviar hasta <102; no intenta vaciar el saldo por objetivo ni da por probado el decremento. MAX se despacha como dos taps consecutivos de un intent una sola vez al comienzo del personaje; no es un retry ni se repite por pasada. Implementación actual comprueba ACTIVE, MAX, controles adyacentes visibles y tooltip ausente antes de Start. Tooltip persistente termina por espera bounded, sin taps compensatorios. Esta implementación no convierte OCR/títulos decorativos en GT ni exige nuevo framework.
 - En cada resource board: sin presión → YES para permitir ejecutar el SKIP; con presión → NO para cancelar, ejecutar los reliefs necesarios, restaurar MW y reintentar la intención productiva.
 - Después de YES, esperar de forma bounded pero paciente mediante polling aproximadamente cada 1 s; no asumir una latencia fija de 5 s.
+- **Resiliencia 2D, opt-in sólo MW Yes:** Activity y la navegación productiva
+  comparten `execute_monster_wave_yes`. Después del receipt real del único Yes,
+  loading fresco puede acreditar **handoff a observación pasiva** aun si el board
+  sigue visible. Se registra en `progress_snapshot`, nunca como consumo/efecto;
+  sólo CLEAR acreditado alimenta `effect_observed`. La ausencia/oclusión del
+  spinner conserva el handoff legacy por desaparición del board. `finish_pass`
+  recibe un Yes ya despachado y no vuelve a aceptar un board todavía visible.
+  Se mantienen las esperas 6s + grace 2s del handoff, estabilidad previa de cada caller
+  y loop de resultado de 60s, sin reiniciarlos por progreso. No se añade otra espera,
+  captura nativa, confirmación temporal ni retry.
+  El auxiliar requiere source compatible, secuencia posterior, captura posterior
+  al despacho, edad 0..2s, identidad de operación y cobertura ejecutada del contexto.
+  Su ventana termina con el handoff y no excede 8s desde el retorno del despacho ni el deadline
+  heredado. UNKNOWN transitorio compatible no la invalida; contexto contradictorio,
+  AMBIGUOUS o rotación de fuente sí. Terminales, blockers y cancelación preceden
+  al CV auxiliar. El observer delegado conserva **todos** los detectores originales:
+  no se deduce ausencia desde detectores omitidos. No hay registro global de
+  loading, `screen.loading` ni activación fuera de esta operación. Adapters legacy
+  sin capacidades verificables conservan su ejecución anterior sin loading.
+  El rechazo de contexto contradictorio también precede al handoff en la
+  readquisición posterior a gracia; no se cambia la semántica común de fase 1.
+  El runtime usa sólo código y dependencias existentes, sin templates ni datos
+  de artifacts/screencaps locales. Los informes [2B](GLOBAL_LOADING_EXPERIMENT.md),
+  [2C](LOADING_CONTEXT_VIABILITY_2C.md) y [núcleo](LOADING_CORE_STUDY.md) conservan
+  la trazabilidad histórica: dos FP globales de Trading y un FN MW por oclusión
+  siguen siendo límites conocidos. El manifest y evaluator son sólo offline;
+  requieren el corpus local y su gate global sigue fallando deliberadamente.
 - Sapphires consumidos se contabilizan sólo después de una señal de éxito confirmada, actualmente `CLEAR` u otra señal futura establecida. `CLEAR` se reconoce, confirma y continúa/retorna según el loop; si falla el retorno, no ocultar el fallo técnico con el evento de gameplay.
 - El cierre de CLEAR exige estado SKIP coherente y controles MW expuestos, no sólo ausencia del título: los mensajes de rewards pueden ocultarlo con el MODAL aún abierto. Sólo su OK admite un retry tras timeout+grace, con CLEAR resuelto como único MODAL en una captura nueva posterior al último wait y al primer input, edad 0..2s y cancelación vigente. Máximo dos OK; entrada tardía de MW expuesto continúa sin otro tap. No se repiten SKIP, preparación ni reliefs.
 - `insufficient sapphires` queda como terminal/fallback defensivo; usa No, nunca compra premium. No hace falta provocar deliberadamente una pasada extra si el saldo inicial permitió calcular las pasadas.

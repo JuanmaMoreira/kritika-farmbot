@@ -286,16 +286,25 @@ class MonsterWaveActivity:
                     not self.cancel_requested() and popup(POPUP_MW_CLEAR)(s)
                     and s.sequence > before.sequence and s.timestamp > dispatched_at
                     and 0 <= self.clock() - s.timestamp <= 2.)
-            r = self.verified_transition.execute(
-                f'monster_wave.{name}', intent, before, precondition=guard,
-                expected=expected, policy=VerifiedTransitionPolicy(max_attempts=attempts),
-                retryable_from=retryable,
-                stable_for=.25, abort_if=abort_if)
+            if isinstance(intent, AcceptMonsterWaveInventory):
+                from bot.monster_wave_yes import execute_monster_wave_yes
+                r = execute_monster_wave_yes(self.verified_transition,
+                    f'monster_wave.{name}', before, stable_for=.25,
+                    cancel_requested=self.cancel_requested)
+            else:
+                r = self.verified_transition.execute(
+                    f'monster_wave.{name}', intent, before, precondition=guard,
+                    expected=expected, policy=VerifiedTransitionPolicy(max_attempts=attempts),
+                    retryable_from=retryable,
+                    stable_for=.25, abort_if=abort_if)
             transitions.append(r)
             check_cancel()
             if not r.succeeded:
                 raise _Stopped(r)
-            if r.final_snapshot.sequence <= before.sequence or not expected(r.final_snapshot):
+            processing_handoff = (isinstance(intent, AcceptMonsterWaveInventory)
+                and r.progress_snapshot is not None
+                and r.progress_snapshot.sequence == r.final_snapshot.sequence)
+            if r.final_snapshot.sequence <= before.sequence or not (expected(r.final_snapshot) or processing_handoff):
                 raise ValueError(f'{name}: fresh postcondition not verified')
             return r.final_snapshot
 
@@ -482,7 +491,9 @@ class MonsterWaveActivity:
                 current = step('reject_sapphires', RejectMonsterWaveSapphires(), current,
                                popup(POPUP_MW_INSUFFICIENT), clean_mw)
                 return finish()
-            if popup(POPUP_MW_BOARD)(current):
+            # finish_pass receives an already-dispatched Yes from navigation.
+            # A loading handoff may still show that board; only observe it.
+            if phase != 'finish' and popup(POPUP_MW_BOARD)(current):
                 if yield_resource_board:
                     business('resource_board_pending', board_sequence=current.sequence)
                     return finish(FlowStatus.RESOURCE_BOARD_PENDING,

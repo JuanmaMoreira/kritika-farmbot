@@ -194,12 +194,10 @@ class MonsterWaveStandaloneNavigationRuntime:
             abort_if=lambda s: not _board_open(s),
             cancel_requested=self.cancel_requested, stable_for=.25,
         )
-        result = self.transition.execute(
-            "monster_wave.standalone.accept_board", AcceptMonsterWaveInventory(),
-            current, precondition=_board_open,
-            expected=lambda s: not _board_open(s),
-            policy=VerifiedTransitionPolicy(max_attempts=1),
-        )
+        from bot.monster_wave_yes import execute_monster_wave_yes
+        result = execute_monster_wave_yes(self.transition,
+            "monster_wave.standalone.accept_board", current,
+            cancel_requested=self.cancel_requested)
         if (not result.succeeded or result.attempt_count != 1
                 or result.final_snapshot.sequence <= current.sequence):
             return FlowStatus.FAILED, None
