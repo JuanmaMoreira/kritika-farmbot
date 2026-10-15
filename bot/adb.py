@@ -28,7 +28,9 @@ class AdbError(RuntimeError):
         returncode: int | None = None,
         stdout: str | None = None,
         stderr: str | None = None,
+        dispatch_started: bool | None = None,
     ) -> None:
+        self.dispatch_started = dispatch_started
         self.command = command
         self.returncode = returncode
         self.stdout = stdout
@@ -59,6 +61,7 @@ class AdbTimeoutError(AdbError):
         super().__init__(
             command,
             reason=f"ADB command timed out after {timeout:g} seconds",
+            dispatch_started=True,
             stdout=stdout,
             stderr=stderr,
         )
@@ -270,12 +273,15 @@ class AdbClient:
                 stderr=_output_text(error.stderr),
             ) from error
         except OSError as error:
-            raise AdbError(command, reason=f"Could not execute ADB: {error}") from error
+            # ENOENT at process creation proves no command was launched. An
+            # arbitrary I/O error from a runner may occur after process start.
+            raise AdbError(command, reason=f"Could not execute ADB: {error}",
+                           dispatch_started=False if isinstance(error, FileNotFoundError) else None) from error
 
         if result.returncode != 0:
             raise AdbError(
                 command,
-                returncode=result.returncode,
+                returncode=result.returncode, dispatch_started=True,
                 stdout=result.stdout,
                 stderr=result.stderr,
             )

@@ -20,6 +20,10 @@ from bot.perception.black_market import (
     BLACK_MARKET_SLOT_COUNT,
 )
 from bot.state import ResolvedState
+from bot.operation_control import (
+    RuntimeWaitCancelled, OperationControl, OperationBudgetExpired, check_operation,
+    current_control, operation_phase, control_scope,
+)
 
 
 class FrameSource(Protocol):
@@ -126,8 +130,47 @@ class RuntimeWaitAborted(RuntimeError):
         )
 
 
-class RuntimeWaitCancelled(RuntimeError):
-    """A bounded runtime wait observed an explicit cancellation request."""
+class RuntimeEvidenceRejected(RuntimeError):
+    """Evidence lost an explicitly required provenance or freshness contract."""
+
+
+@dataclass(frozen=True)
+class RuntimeEvidenceRequirements:
+    """Opt-in provenance/age/coverage gates, checked before and after use.
+
+    Capture timestamps and ``now`` must share the dispatch monotonic clock.
+    Coverage names are supplied by the perception owner, never inferred from
+    missing observations. Missing required metadata fails closed.
+    """
+
+    source_id: str | None = None
+    captured_after: float | None = None
+    max_age: float | None = None
+    required_coverage: frozenset[str] = frozenset()
+
+    def __post_init__(self):
+        if self.source_id is not None and (not isinstance(self.source_id, str) or not self.source_id):
+            raise ValueError("source_id must be a non-empty string or None")
+        if self.captured_after is not None:
+            _non_negative_duration(self.captured_after, "captured_after")
+        if self.max_age is not None:
+            _positive_duration(self.max_age, "max_age")
+        if isinstance(self.required_coverage, (str, bytes)):
+            raise ValueError("required_coverage must be a collection of capability names")
+        object.__setattr__(self, "required_coverage", frozenset(self.required_coverage))
+        if any(not isinstance(name, str) or not name for name in self.required_coverage):
+            raise ValueError("required_coverage must contain non-empty capability names")
+
+    def accepts(self, snapshot: RuntimeSnapshot, now: float) -> bool:
+        return (
+            (self.source_id is None or snapshot.frame.source_id == self.source_id)
+            and (self.captured_after is None or snapshot.timestamp > self.captured_after)
+            and (self.max_age is None or 0 <= now - snapshot.timestamp <= self.max_age)
+            and (not self.required_coverage or (
+                snapshot.observations.coverage is not None
+                and self.required_coverage <= snapshot.observations.coverage
+            ))
+        )
 
 
 class RuntimeObserver:
@@ -172,17 +215,24 @@ class RuntimeObserver:
     def observe(self) -> RuntimeSnapshot:
         """Observe exactly one latest frame without sending device input."""
 
+        with operation_phase("observation"):
+            return self._observe()
+
+    def _observe(self) -> RuntimeSnapshot:
         frame = self.source.get_frame()
+        check_operation()
         started = self._metrics_now()
         failed = False
         try:
             batch = self.perception.analyze(frame)
+            check_operation()
         except BaseException:
             failed = True
             raise
         finally:
             self._record_analysis(frame.sequence, max(0.0, self._metrics_now() - started), failed)
         state = self.resolver.resolve(batch)
+        check_operation()
         snapshot = RuntimeSnapshot(
             frame=frame,
             observations=batch,
@@ -263,6 +313,30 @@ class RuntimeObserver:
         abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
         cancel_requested: Callable[[], bool] | None = None,
         stable_for: float = 0.0,
+        evidence: RuntimeEvidenceRequirements | None = None,
+        deadline: float | None = None,
+    ) -> RuntimeSnapshot:
+        control = OperationControl(
+            cancel_requested=cancel_requested, clock=self._clock, parent=current_control(),
+        )
+        with control_scope(control):
+            return self._wait_until(
+                condition, after_sequence=after_sequence, timeout=timeout,
+                abort_if=abort_if, cancel_requested=cancel_requested,
+                stable_for=stable_for, evidence=evidence, deadline=deadline,
+            )
+
+    def _wait_until(
+        self,
+        condition: Callable[[RuntimeSnapshot], bool],
+        *,
+        after_sequence: int,
+        timeout: float,
+        abort_if: Callable[[RuntimeSnapshot], bool] | None = None,
+        cancel_requested: Callable[[], bool] | None = None,
+        stable_for: float = 0.0,
+        evidence: RuntimeEvidenceRequirements | None = None,
+        deadline: float | None = None,
     ) -> RuntimeSnapshot:
         """Wait for a condition only on sequences newer than an action baseline.
 
@@ -277,10 +351,15 @@ class RuntimeObserver:
             raise ValueError("abort_if must be callable")
         if cancel_requested is not None and not callable(cancel_requested):
             raise ValueError("cancel_requested must be callable")
+        if evidence is not None and not isinstance(evidence, RuntimeEvidenceRequirements):
+            raise ValueError("evidence must be RuntimeEvidenceRequirements or None")
+        if deadline is not None:
+            _non_negative_duration(deadline, "deadline")
         after = _sequence(after_sequence)
         duration = _positive_duration(timeout, "timeout")
         stability = _non_negative_duration(stable_for, "stable_for")
-        deadline = self._clock() + duration
+        strict_deadline = deadline is not None
+        deadline = min(self._clock() + duration, deadline) if deadline is not None else self._clock() + duration
         last_fresh: RuntimeSnapshot | None = None
         stable_since: float | None = None
         last_evaluated_sequence: int | None = None
@@ -291,40 +370,57 @@ class RuntimeObserver:
         failure = None
         with operation_scope("runtime_wait"):
             try:
-                while True:
-                    if cancel_requested is not None and cancel_requested():
-                        raise RuntimeWaitCancelled("runtime wait cancelled")
-                    polls += 1
-                    snapshot = self.observe()
-                    if snapshot.sequence > after and (
-                        last_evaluated_sequence is None
-                        or snapshot.sequence > last_evaluated_sequence
-                    ):
-                        fresh_count += 1
-                        last_fresh = snapshot
-                        last_evaluated_sequence = snapshot.sequence
-                        if abort_if is not None and abort_if(snapshot):
-                            raise RuntimeWaitAborted(snapshot)
-                        if condition(snapshot):
-                            if stable_since is None:
-                                stable_since = snapshot.timestamp
-                            if snapshot.timestamp - stable_since >= stability:
-                                outcome = "completed"
-                                return snapshot
-                        else:
+                with operation_phase("observation"):
+                    while True:
+                        check_operation()
+                        if strict_deadline and self._clock() >= deadline:
+                            raise RuntimeWaitTimeout(after_sequence=after, timeout=duration, last_snapshot=last_fresh)
+                        polls += 1
+                        snapshot = self.observe()
+                        check_operation()
+                        if snapshot.sequence > after and (
+                            last_evaluated_sequence is None
+                            or snapshot.sequence > last_evaluated_sequence
+                        ) and (evidence is None or evidence.accepts(snapshot, self._clock())):
+                            fresh_count += 1
+                            last_fresh = snapshot
+                            last_evaluated_sequence = snapshot.sequence
+                            aborted = abort_if is not None and abort_if(snapshot)
+                            check_operation()
+                            if aborted and (evidence is None or evidence.accepts(snapshot, self._clock())):
+                                raise RuntimeWaitAborted(snapshot)
+                            eligible = evidence is None or evidence.accepts(snapshot, self._clock())
+                            matched = condition(snapshot) if eligible else False
+                            check_operation()
+                            if evidence is not None and not evidence.accepts(snapshot, self._clock()):
+                                matched = False
+                                last_fresh = None
+                            if matched and (not strict_deadline or self._clock() < deadline):
+                                if stable_since is None:
+                                    stable_since = snapshot.timestamp
+                                if snapshot.timestamp - stable_since >= stability:
+                                    outcome = "completed"
+                                    return snapshot
+                            else:
+                                stable_since = None
+                        elif evidence is not None and not evidence.accepts(snapshot, self._clock()):
                             stable_since = None
 
-                    remaining = deadline - self._clock()
-                    if remaining <= 0:
-                        raise RuntimeWaitTimeout(
-                            after_sequence=after,
-                            timeout=duration,
-                            last_snapshot=last_fresh,
-                        )
-                    self._sleeper(min(self.poll_interval, remaining))
+                        remaining = deadline - self._clock()
+                        if remaining <= 0:
+                            raise RuntimeWaitTimeout(
+                                after_sequence=after,
+                                timeout=duration,
+                                last_snapshot=last_fresh,
+                            )
+                        control = current_control()
+                        if control is not None:
+                            check_operation()
+                            remaining = min(remaining, control.remaining())
+                        self._sleeper(min(self.poll_interval, remaining))
             except BaseException as error:
                 outcome = (
-                    "timeout" if isinstance(error, RuntimeWaitTimeout) else
+                    "timeout" if isinstance(error, (RuntimeWaitTimeout, OperationBudgetExpired)) else
                     "cancelled" if isinstance(error, RuntimeWaitCancelled) else
                     "aborted" if isinstance(error, RuntimeWaitAborted) else "failed"
                 )
@@ -399,6 +495,8 @@ def _sequence(value: object) -> int:
 
 __all__ = (
     "RuntimeFacts",
+    "RuntimeEvidenceRequirements",
+    "RuntimeEvidenceRejected",
     "RuntimeObserver",
     "RuntimeSnapshot",
     "RuntimeWaitAborted",

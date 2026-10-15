@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
+from enum import Enum
+import math
 from numbers import Integral
 from time import monotonic
 
@@ -10,6 +12,8 @@ from bot.stages_actions import StageAction, CloseAdAffordance, POINTS as STAGES_
 from bot.meteorites_actions import meteorites_target
 from bot.arena_actions import ArenaAction, ArenaControl, POINTS as ARENA_POINTS
 from bot.adb import AdbClient
+from bot.event_context import event_context, new_correlation_id
+from bot.operation_control import check_operation, current_control, operation_phase
 from bot.event_log import EventSink, record_best_effort
 from bot.monster_wave_actions import MONSTER_WAVE_TARGETS, SelectMonsterWaveMax
 from bot.geometry import (
@@ -693,6 +697,27 @@ class TreasureActionTargets:
 DEFAULT_TREASURE_ACTION_TARGETS = TreasureActionTargets()
 
 
+class DispatchState(str, Enum):
+    NOT_SENT = "not_sent"
+    ADB_RETURNED = "adb_command_returned"
+    UNCERTAIN = "uncertain"
+
+
+@dataclass(frozen=True)
+class DispatchReceipt:
+    """Transport evidence only; never certifies an in-game effect."""
+
+    state: DispatchState
+    dispatch_id: str = field(default_factory=new_correlation_id)
+    operation_id: str | None = None
+    attempt_index: int | None = None
+    started_at: float | None = None
+    completed_at: float | None = None
+    commands_started: int = 0
+    commands_returned: int = 0
+    commands_planned: int | None = None
+
+
 @dataclass(frozen=True)
 class ActionExecution:
     """Diagnostic receipt for one physical action already sent to ADB."""
@@ -700,6 +725,7 @@ class ActionExecution:
     action: SemanticAction
     normalized_target: RelativePoint
     pixel_target: PixelPoint
+    dispatch: DispatchReceipt | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -712,6 +738,7 @@ class SwipeExecution:
     pixel_start: PixelPoint
     pixel_end: PixelPoint
     duration_ms: int
+    dispatch: DispatchReceipt | None = field(default=None, kw_only=True)
 
 
 class ActionExecutor:
@@ -787,55 +814,84 @@ class ActionExecutor:
     def execute(
         self, action: SemanticAction, geometry: FrameGeometry, *,
         events: EventSink | None = None, source_sequence: int | None = None,
+        before_dispatch=None,
     ) -> ActionExecution | SwipeExecution:
-        """Translate intent to input; MW MAX is an explicit two-tap operation."""
-
-        if not isinstance(geometry, FrameGeometry):
-            raise ValueError("geometry must be FrameGeometry")
-        if isinstance(action, Swipe):
-            return self._execute_swipe(action, geometry)
-        action_kind = type(action).__name__
+        """Translate intent to input; acquired compound actions remain intact."""
+        context = event_context()
+        receipt = DispatchReceipt(
+            DispatchState.NOT_SENT, operation_id=context["operation_id"],
+            attempt_index=context["attempt_index"],
+        )
+        control = current_control()
+        clock = control.clock if control is not None else monotonic
+        detail = dict(action_kind=type(action).__name__, source_sequence=source_sequence,
+                      dispatch_id=receipt.dispatch_id, attempt_index=receipt.attempt_index)
+        stage = "target_resolution"
         try:
-            target = self.target_for(action)
-            pixel = relative_point_to_pixel(target, geometry.width, geometry.height)
-        except Exception as error:
+            check_operation()
+            if not isinstance(geometry, FrameGeometry):
+                raise ValueError("geometry must be FrameGeometry")
+            if isinstance(action, Swipe):
+                swipe = getattr(self.adb, "swipe", None)
+                if not callable(swipe):
+                    raise ValueError("adb must provide swipe(x1, y1, x2, y2, duration_ms)")
+                start = relative_point_to_pixel(action.start, geometry.width, geometry.height)
+                end = relative_point_to_pixel(action.end, geometry.width, geometry.height)
+                commands = [(swipe, (*start, *end, action.duration_ms))]
+                result = SwipeExecution(action, action.start, action.end, start, end, action.duration_ms)
+            else:
+                target = self.target_for(action)
+                pixel = relative_point_to_pixel(target, geometry.width, geometry.height)
+                count = 2 if isinstance(action, SelectMonsterWaveMax) or (
+                    isinstance(action, ArenaAction) and action.control is ArenaControl.X8
+                ) else 1
+                commands = [(self.adb.tap, pixel)] * count
+                result = ActionExecution(action, target, pixel)
+                detail.update(target=target, pixel_target=pixel)
+            receipt = replace(receipt, commands_planned=len(commands))
+            record_best_effort(events, "action.started", **detail, monotonic_timestamp=clock())
+            stage = "dispatch"
+            with operation_phase("dispatch"):
+                for command, args in commands:
+                    check_operation()
+                    if before_dispatch is not None:
+                        before_dispatch()
+                        check_operation()
+                    remaining = control.remaining() if control is not None else math.inf
+                    options = {}
+                    if isinstance(self.adb, AdbClient) and math.isfinite(remaining):
+                        check_operation()
+                        options["timeout"] = min(self.adb.default_timeout, remaining)
+                    receipt = replace(
+                        receipt, state=DispatchState.UNCERTAIN,
+                        started_at=receipt.started_at if receipt.started_at is not None else clock(),
+                        commands_started=receipt.commands_started + 1,
+                    )
+                    try:
+                        command(*args, **options)
+                    except BaseException as error:
+                        # Only the process boundary can establish failure before send.
+                        if getattr(error, "dispatch_started", None) is False and not receipt.commands_returned:
+                            receipt = replace(receipt, state=DispatchState.NOT_SENT)
+                        raise
+                    receipt = replace(receipt, commands_returned=receipt.commands_returned + 1)
+                    check_operation()
+            receipt = replace(receipt, state=DispatchState.ADB_RETURNED, completed_at=clock())
+        except BaseException as error:
+            receipt = replace(receipt, completed_at=clock())
+            error.dispatch_receipt = receipt
             record_best_effort(
-                events, "action.failed", action_kind=action_kind,
-                source_sequence=source_sequence, stage="target_resolution",
-                error_type=type(error).__name__, monotonic_timestamp=monotonic(),
+                events, "action.failed", **detail, stage=stage,
+                error_type=type(error).__name__, monotonic_timestamp=clock(),
+                dispatch=receipt.__dict__,
             )
             raise
-        detail = dict(
-            action_kind=action_kind, target=target, pixel_target=pixel,
-            source_sequence=source_sequence,
-        )
         record_best_effort(
-            events, "action.started", **detail, monotonic_timestamp=monotonic(),
+            events, "action.dispatched", **detail, dispatch_result=receipt.state.value,
+            monotonic_timestamp=clock(), dispatch=receipt.__dict__,
         )
-        try:
-            self.adb.tap(*pixel)
-            if isinstance(action, SelectMonsterWaveMax) or (isinstance(action, ArenaAction) and action.control is ArenaControl.X8):
-                # No frame read, wait, decision or retry between the two taps.
-                self.adb.tap(*pixel)
-        except Exception as error:
-            record_best_effort(
-                events, "action.failed", **detail, stage="dispatch",
-                error_type=type(error).__name__, monotonic_timestamp=monotonic(),
-            )
-            raise
-        record_best_effort(
-            events, "action.dispatched", **detail,
-            dispatch_result="adb_command_returned", monotonic_timestamp=monotonic(),
-        )
-        result = ActionExecution(
-            action=action,
-            normalized_target=target,
-            pixel_target=pixel,
-        )
-        record_best_effort(
-            events, "action.completed", **detail, monotonic_timestamp=monotonic(),
-        )
-        return result
+        record_best_effort(events, "action.completed", **detail, monotonic_timestamp=clock())
+        return replace(result, dispatch=receipt)
 
     def target_for(self, action: SemanticAction) -> RelativePoint:
         """Resolve the existing tap target without emitting input."""
@@ -1130,31 +1186,11 @@ class ActionExecutor:
             return self.treasure_targets.exit_treasure
         raise ValueError("unsupported semantic action")
 
-    def _execute_swipe(
-        self,
-        action: Swipe,
-        geometry: FrameGeometry,
-    ) -> SwipeExecution:
-        swipe = getattr(self.adb, "swipe", None)
-        if not callable(swipe):
-            raise ValueError("adb must provide swipe(x1, y1, x2, y2, duration_ms)")
-        start = action.start
-        end = action.end
-        pixel_start = relative_point_to_pixel(start, geometry.width, geometry.height)
-        pixel_end = relative_point_to_pixel(end, geometry.width, geometry.height)
-        duration = action.duration_ms
-        swipe(*pixel_start, *pixel_end, duration)
-        return SwipeExecution(
-            action=action,
-            normalized_start=start,
-            normalized_end=end,
-            pixel_start=pixel_start,
-            pixel_end=pixel_end,
-            duration_ms=duration,
-        )
 
 
 __all__ = (
+    "DispatchReceipt",
+    "DispatchState",
     "ActionExecution",
     "ActionExecutor",
     "BlackMarketActionTargets",

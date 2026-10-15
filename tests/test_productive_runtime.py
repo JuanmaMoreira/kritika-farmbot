@@ -217,7 +217,11 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     monkeypatch.setattr(productive, "build_runtime_fact_reader", lambda value, events, ocr_engine: facts)
     monkeypatch.setattr(productive, "AutoBattleDetector", lambda value: object())
     monkeypatch.setattr(productive, "AutoBattleEnsurer", lambda detector, action: auto)
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: transition)
+    transition_callbacks = []
+    def build_transition(*args, cancel_requested=None):
+        transition_callbacks.append(cancel_requested)
+        return transition
+    monkeypatch.setattr(productive, "VerifiedTransition", build_transition)
     monkeypatch.setattr(productive, "TapThroughAnimation", lambda *args: tap_through)
     monkeypatch.setattr(
         productive,
@@ -236,6 +240,7 @@ def test_productive_composition_acquires_one_shared_graph_and_cleans_source(monk
     )
 
     with productive.open_productive_runtime(log_path="ignored.log",character_state_path=tmp_path/'state.db') as runtime:
+        assert transition_callbacks == [runtime.cancel_requested]
         assert runtime.config is config
         assert runtime.observer is observer
         assert runtime.actions is actions
@@ -406,7 +411,7 @@ def test_productive_precondition_normalizes_world_boss_to_lobby(monkeypatch):
                 recovery_after_action=False,
             )
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
 
     assert runtime._navigate_to_lobby()
     assert [(name, action) for name, action, _, _ in calls] == [
@@ -449,7 +454,7 @@ def test_productive_precondition_navigates_world_boss_via_quick_menu_to_guild(mo
                 recovery_after_action=False,
             )
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
 
     assert runtime._navigate_to_guild()
     assert [(name, action) for name, action, _, _ in calls] == [
@@ -512,7 +517,7 @@ def test_productive_precondition_navigates_pet_exit_directly_to_guild(
                 recovery_after_action=False,
             )
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
 
     assert runtime._navigate_to_guild()
     assert calls == [
@@ -542,7 +547,7 @@ def test_productive_precondition_opens_pet_manage_from_lobby(monkeypatch):
             assert kwargs["expected"](manage)
             return SimpleNamespace(succeeded=True, final_snapshot=manage)
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
 
     assert runtime._navigate_to_pets_manage()
     assert calls == [("precondition.open_pets", OpenPets())]
@@ -583,7 +588,7 @@ def test_productive_precondition_routes_pet_exit_to_lobby_without_assuming_back_
                 action_source_snapshot=before if len(calls) == 1 else None,
                 recovery_after_action=False)
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
 
     assert runtime._navigate_to_lobby()
     assert calls == [("precondition.open_quick_menu", OpenQuickMenu()),
@@ -614,7 +619,7 @@ def test_productive_precondition_navigates_lobby_directly_to_verified_guild(
             assert not kwargs["abort_if"](guild)
             return SimpleNamespace(succeeded=True, final_snapshot=guild)
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
 
     assert runtime._navigate_lobby_to_guild()
     assert [(name, action) for name, action, _, _ in calls] == [
@@ -647,7 +652,7 @@ def test_guild_navigation_rejects_unverified_destination(monkeypatch):
             assert not kwargs["expected"](lobby)
             return SimpleNamespace(succeeded=False, final_snapshot=lobby)
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
 
     assert not runtime._navigate_lobby_to_guild()
     assert calls == ["precondition.open_guild"]
@@ -684,7 +689,7 @@ def test_productive_menu_discovery_without_action_anchor_never_selects_tile(
             assert isinstance(action, OpenQuickMenu)
             return Result(VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, menu)
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
     assert not getattr(runtime, route)()
     assert calls == [OpenQuickMenu()]
 
@@ -722,6 +727,6 @@ def test_productive_foreign_resolved_menu_aborts_before_lobby_tile(monkeypatch):
                 VerifiedTransitionOutcome.SUCCESS_FIRST_ATTEMPT, foreign, source,
             )
 
-    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args: Transition())
+    monkeypatch.setattr(productive, "VerifiedTransition", lambda *args, **kwargs: Transition())
     assert not runtime._navigate_to_lobby()
     assert calls == [OpenQuickMenu()]

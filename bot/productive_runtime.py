@@ -224,6 +224,7 @@ class ProductiveRuntime:
             self.actions,
             self.events,
             self._shared_obstruction_recovery(),
+            cancel_requested=self.cancel_requested,
         )
 
     def build_rotation(self, character_count: int) -> StandardRotation:
@@ -970,7 +971,8 @@ def open_productive_runtime(
             except ValueError:
                 shared_recovery = None
             transition = VerifiedTransition(
-                observer, actions, events, shared_recovery
+                observer, actions, events, shared_recovery,
+                cancel_requested=token.is_requested,
             )
             tap_through = TapThroughAnimation(observer, actions, events)
             socket_relief = SocketInventoryRelief(

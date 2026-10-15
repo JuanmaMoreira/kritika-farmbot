@@ -9,7 +9,8 @@ import struct
 import subprocess
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from uuid import uuid4
 from numbers import Integral, Real
 from typing import Callable, Iterable, Protocol
 
@@ -38,6 +39,7 @@ class FrameSnapshot:
     image: np.ndarray
     timestamp: float
     sequence: int
+    source_id: str | None = field(default=None, kw_only=True)
 
     @property
     def width(self) -> int:
@@ -145,6 +147,7 @@ class ScrcpyFrameSource:
         self._failure: CaptureError | None = None
         self._snapshot: FrameSnapshot | None = None
         self._sequence = 0
+        self._source_id = uuid4().hex
         self._pending_config_packet: bytes | None = None
         self._video_clock_offset: float | None = None
         self._forward_active = False
@@ -170,6 +173,7 @@ class ScrcpyFrameSource:
             if self._starting or self._running or self._has_resources():
                 raise CaptureError("ScrcpyFrameSource is already started")
             self._starting = True
+            self._source_id = uuid4().hex
             self._failure = None
             self._snapshot = None
             self._pending_config_packet = None
@@ -242,7 +246,7 @@ class ScrcpyFrameSource:
             frame = FrameSnapshot(
                 image=snapshot.image.copy(),
                 timestamp=snapshot.timestamp,
-                sequence=snapshot.sequence,
+                sequence=snapshot.sequence, source_id=snapshot.source_id,
             )
         self._notify_frame(frame, 'stream')
         return frame
@@ -274,9 +278,9 @@ class ScrcpyFrameSource:
         # a caller explicitly requiring native numeric authority.
         with self._frame_lock:
             self._sequence += 1
-            native = FrameSnapshot(image=image,timestamp=started,sequence=self._sequence)
+            native = FrameSnapshot(image=image,timestamp=started,sequence=self._sequence,source_id=self._source_id)
             if self._snapshot is None or started >= self._snapshot.timestamp:
-                self._snapshot = FrameSnapshot(image=image.copy(),timestamp=started,sequence=self._sequence)
+                self._snapshot = FrameSnapshot(image=image.copy(),timestamp=started,sequence=self._sequence,source_id=self._source_id)
         self._frame_event.set()
         self._notify_frame(native, 'native')
         return native
@@ -405,7 +409,7 @@ class ScrcpyFrameSource:
             self._sequence += 1
             self._snapshot = FrameSnapshot(
                 image=image.copy(), timestamp=captured_at,
-                sequence=self._sequence
+                sequence=self._sequence, source_id=self._source_id
             )
         self._frame_event.set()
 

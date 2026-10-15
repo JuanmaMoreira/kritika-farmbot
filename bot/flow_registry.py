@@ -113,7 +113,8 @@ def _verified_transition_for(dependencies: FlowDependencies):
     from bot.verified_transition import VerifiedTransition
 
     return VerifiedTransition(
-        dependencies.observer, dependencies.actions, dependencies.events
+        dependencies.observer, dependencies.actions, dependencies.events,
+        cancel_requested=getattr(dependencies, "cancel_requested", None),
     )
 
 
@@ -202,6 +203,7 @@ def scoped_transition_for(
             dependencies.actions,
             dependencies.events,
             getattr(main_transition, "obstruction_recovery", None),
+            cancel_requested=getattr(dependencies, "cancel_requested", None),
         )
         detector_count = len(scoped_observer.perception.detectors)
     except (AttributeError, TypeError, ValueError) as error:
@@ -519,6 +521,7 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
     trading_transition = VerifiedTransition(
         trading_observer, actions, events,
         getattr(main_transition, "obstruction_recovery", None),
+        cancel_requested=cancel_requested,
     )
     trading_runtime = TradingRuntime(
         trading_observer, trading_transition,
@@ -540,6 +543,7 @@ def _build_productive_monster_wave(dependencies, main_transition, bare_factory):
     treasure_transition = VerifiedTransition(
         treasure_observer, actions, events,
         getattr(main_transition, "obstruction_recovery", None),
+        cancel_requested=cancel_requested,
     )
     treasure_runtime = TreasureRuntime(
         treasure_observer, treasure_transition, cancel_requested=cancel_requested,
@@ -862,6 +866,7 @@ def _build_summon_pet_daily(dependencies: FlowDependencies) -> PerCharacterFlow:
         verified_transition=VerifiedTransition(
             observer, dependencies.actions, dependencies.events,
             getattr(main, "obstruction_recovery", None),
+            cancel_requested=dependencies.cancel_requested,
         ),
         cancel_requested=dependencies.cancel_requested,
     )

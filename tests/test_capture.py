@@ -223,6 +223,27 @@ def test_capture_can_bound_stream_rate_and_raise_bitrate_for_live_tooling():
     assert "max_fps=30" in source._server_arguments()
 
 
+def test_source_identity_is_stable_per_lifetime_and_changes_on_restart():
+    image = np.zeros((4, 8, 3), dtype=np.uint8)
+    sockets = [FakeSocket(metadata() + packet(b"frame")) for _ in range(2)]
+    decoders = [FakeDecoder({b"frame": image}) for _ in range(2)]
+    adb = fake_adb()
+    adb.spawn_shell.side_effect = [FakeProcess(), FakeProcess()]
+    source = make_source(adb, sockets[0], decoders[0],
+                         socket_factory=Mock(side_effect=sockets),
+                         decoder_factory=Mock(side_effect=decoders))
+    identities = []
+    for _ in range(2):
+        try:
+            source.start()
+            first = source.get_frame()
+            assert first.source_id and first.source_id == source.get_frame().source_id
+            identities.append(first.source_id)
+        finally:
+            source.stop()
+    assert identities[0] != identities[1]
+
+
 def test_scrcpy_334_config_packet_is_prepended_to_next_media_packet():
     frame = np.full((4, 8, 3), 7, dtype=np.uint8)
     config_flag = ScrcpyFrameSource.CONFIG_PACKET_FLAG

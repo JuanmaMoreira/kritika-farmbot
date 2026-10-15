@@ -176,6 +176,64 @@ Estado UNKNOWN/AMBIGUOUS aislado nunca autoriza input. Un handoff local puede co
 
 `VerifiedTransitionResult.action_source_snapshot` identifica el último source cuyo executor terminó normalmente; `recovery_after_action` impide fabricar un handoff desde cleanup. Geometría siempre del frame fresco. Retry específico, bounded, cancelable y autorizado para **esa** acción; no por sleeps, timeout o baja velocidad de percepción.
 
+**IMPLEMENTATION_CONTRACT — resiliencia, fase 1:** `VerifiedTransition` acepta
+`cancel_requested` por instancia o ejecución. Lo comparte con waits, percepción,
+`ActionExecutor` y recovery mediante `OperationControl` local a la llamada. La
+cancelación detectada queda latched: no hay nuevos despachos, incluidos los taps
+restantes de una operación compuesta. Se comprueba antes/después de trabajo
+costoso; no interrumpe de forma forzosa trabajo síncrono ni revierte inputs.
+Sin callback se mantiene el contrato legacy. `RuntimeWaitCancelled` sigue
+propagándose y añade receipts/progreso/efecto observado para diagnóstico.
+Los factories de ProductiveRuntime/registry conectan el callback existente,
+incluidas las copias de transición con observer de scope. Adapters antiguos de
+wait conservan su firma y reciben controles antes/después de la llamada; las
+esperas comunes comprueban además el contexto durante captura/percepción/polling.
+
+`ActionExecution.dispatch`, `SwipeExecution.dispatch` y
+`VerifiedTransitionResult.dispatch_receipts` agregan `DispatchReceipt`:
+`not_sent`, `adb_command_returned` o `uncertain`; ID de despacho, `operation_id`,
+`attempt_index`, inicio/fin monotónicos y comandos invocados/retornados/planeados.
+Los eventos de acción comparten esa identidad; las excepciones del executor
+adjuntan `dispatch_receipt`. Una resolución rechazada o un ejecutable ADB ausente
+pueden probar no envío; un error de I/O genérico, timeout o compuesto parcial
+conservan incertidumbre. ADB retornado no acredita efecto en el juego. Executors
+legacy sin receipt conservan su API y se registran como inciertos. Ningún error
+de transporte autoriza retry; los guards y bounds existentes siguen siendo dueños.
+
+`RuntimeEvidenceRequirements` es **opt-in**, tanto en `wait_until(evidence=...)`
+como en la transición: lifetime `source_id`, adquisición `captured_after`,
+`max_age` y `required_coverage`. `FrameSnapshot.source_id` es opcional; scrcpy
+lo conserva en stream/copia/native y lo renueva al iniciar un lifetime.
+`ObservationBatch.coverage=None` significa cobertura desconocida; el owner debe
+declarar capacidades ejecutadas para habilitar guards negativos. No se deduce
+cobertura de observaciones ausentes ni se cambian detectores/scopes en esta fase.
+Al optar por `evidence`, la transición fija el source del `before` si existe y
+exige adquisición posterior al retorno del despacho, además de secuencia nueva.
+Revalida edad/procedencia tras evaluar el guard y antes del input, también en
+recovery. Metadatos requeridos ausentes rechazan evidencia. No hay umbral global
+de edad; timestamps de captura, despacho y edad deben compartir dominio monotónico.
+Adapters de observer/recovery que adopten esta opción deben admitir `evidence`.
+
+`VerifiedTransitionPolicy.total_timeout`, `observation_timeout`,
+`dispatch_timeout` y `recovery_timeout` son **opt-in**. Un `budget=OperationControl`
+permite compartir deadline absoluto y allowances acumulados entre llamadas;
+las cotas locales se intersectan con el presupuesto heredado. Observación incluye
+nominal/gracia/readquisición/guards; recovery incluye su espera y también carga
+observación o dispatch cuando corresponda, sin cobrar dos veces la misma fase
+anidada. El progreso no reinicia el deadline. ADB recibe el menor timeout entre
+su límite y el remanente de dispatch/total; trabajo en vuelo sigue siendo
+cooperativo. Agotamiento termina sin nuevos inputs. Los límites legacy permanecen
+cuando no se configura esta política; el éxito inmediato no adquiere sleeps.
+
+El resultado agrega `effect_accredited`, `ready`, `termination_reason` y
+`progress_snapshot`. Predicados opcionales `effect_observed` y `progress_observed`
+permiten distinguir efecto/progreso de `expected` (readiness). El efecto acreditado
+es persistente aunque no llegue readiness; no permite repetir la acción productiva.
+Con `effect_observed` explícito, `expected` sólo acredita readiness; no sustituye
+la prueba de efecto. Sin `effect_observed`, el éxito existente acredita ambos.
+No se incorpora detector de loading, recovery global, nuevas autorizaciones ni
+migración de owners económicos o navegación.
+
 Verificar el efecto con señal fiable suficiente. Identidad de contexto se separa de datos económicos; postcondiciones no se convierten en revalidación de cada hecho GT. Landmarks y oclusión siguen GAMEPLAY_GT. Ausencia ambigua de popup no prueba por sí sola éxito o retorno limpio.
 
 H&H se recupera sólo cuando bloquea una observación o un input; su mera presencia no provoca trabajo. `VerifiedTransition` entrega las ROIs de la señal necesaria fallida (también ante abort) o consulta el target real del executor. `PortalObstructionRecovery` sólo prueba si esa geometría intersecta el envelope de GAMEPLAY_GT y el contexto es compatible; nunca por timeout/UNKNOWN aislado. Un único dismiss requiere CONFIRMED fresco y una espera pasiva bounded/cancelable debe confirmar ABSENT; persistencia, evidencia inconclusa o frame stale propagan fallo técnico. El caller revalida su condición original con el snapshot fresco, conservando intención/caller. Inputs directos afectados pueden usar `VerifiedTransition.recover_input` y conservar su espera y cancelación; los no afectados no adquieren probes ni capturas adicionales.

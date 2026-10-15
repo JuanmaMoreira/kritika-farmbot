@@ -9,12 +9,14 @@ from enum import Enum
 from numbers import Integral, Real
 from typing import Callable, Protocol
 
-from bot.action_executor import ActionExecutor
+from bot.action_executor import ActionExecutor, DispatchReceipt, DispatchState
 from bot.event_log import EventSink
-from bot.event_context import operation_scope
+from bot.event_context import operation_scope, event_scope, event_context
 from bot.failure_cause import FailureCause
 from bot.geometry import RelativeRegion
 from bot.runtime_observer import (
+    RuntimeEvidenceRequirements,
+    RuntimeEvidenceRejected,
     RuntimeObserver,
     RuntimeSnapshot,
     RuntimeWaitAborted,
@@ -22,6 +24,10 @@ from bot.runtime_observer import (
     RuntimeWaitTimeout,
 )
 from bot.semantic_actions import SemanticAction
+from bot.operation_control import (
+    OperationControl, OperationBudgetExpired, check_operation, current_control,
+    control_scope, operation_phase,
+)
 
 EvidenceRegions = tuple[RelativeRegion, ...] | Callable[[RuntimeSnapshot], tuple[RelativeRegion, ...]]
 
@@ -47,8 +53,15 @@ class VerifiedTransitionPolicy:
     grace_timeout: float = 2.0
     retry_guard_timeout: float = 0.0
     max_attempts: int = 1
+    total_timeout: float | None = None
+    observation_timeout: float | None = None
+    dispatch_timeout: float | None = None
+    recovery_timeout: float | None = None
 
     def __post_init__(self) -> None:
+        for name in ("total_timeout", "observation_timeout", "dispatch_timeout", "recovery_timeout"):
+            if getattr(self, name) is not None:
+                object.__setattr__(self, name, _positive_duration(getattr(self, name), name))
         object.__setattr__(
             self,
             "normal_timeout",
@@ -86,6 +99,11 @@ class VerifiedTransitionResult:
     failure: FailureCause | None = field(default=None, kw_only=True)
     action_source_snapshot: RuntimeSnapshot | None = field(default=None, kw_only=True)
     recovery_after_action: bool = field(default=False, kw_only=True)
+    dispatch_receipts: tuple[DispatchReceipt, ...] = field(default=(), kw_only=True)
+    effect_accredited: bool = field(default=False, kw_only=True)
+    ready: bool | None = field(default=None, kw_only=True)
+    termination_reason: str | None = field(default=None, kw_only=True)
+    progress_snapshot: RuntimeSnapshot | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
@@ -150,9 +168,39 @@ class ObstructionRecovery(Protocol):
         *,
         regions: tuple = (),
         target=None,
+        evidence: RuntimeEvidenceRequirements | None = None,
     ) -> RuntimeSnapshot | None: ...
 
     def input_conflicts(self, action: SemanticAction): ...
+
+
+@dataclass
+class _TransitionEvidence:
+    requirements: RuntimeEvidenceRequirements | None
+    latest: RuntimeSnapshot
+    receipts: list = field(default_factory=list)
+    captured_after: float | None = None
+    effect_accredited: bool = False
+    progress_snapshot: RuntimeSnapshot | None = None
+    action_source_snapshot: RuntimeSnapshot | None = None
+    recovery_after_action: bool = False
+
+    def current_requirements(self):
+        if self.requirements is None or self.captured_after is None:
+            return self.requirements
+        return replace(self.requirements, captured_after=max(
+            self.captured_after, self.requirements.captured_after or 0,
+        ))
+
+    def valid(self, snapshot):
+        requirements = self.current_requirements()
+        return requirements is None or requirements.accepts(snapshot, current_control().clock())
+
+    def require(self, snapshot):
+        check_operation()
+        self.latest = snapshot
+        if not self.valid(snapshot):
+            raise RuntimeEvidenceRejected("runtime_evidence_rejected")
 
 
 class VerifiedTransition:
@@ -166,6 +214,8 @@ class VerifiedTransition:
         obstruction_recovery: ObstructionRecovery | None = None,
         *,
         metrics_clock: Callable[[], float] = time.perf_counter,
+        clock: Callable[[], float] = time.monotonic,
+        cancel_requested: Callable[[], bool] | None = None,
     ) -> None:
         if not callable(getattr(observer, "observe", None)) or not callable(
             getattr(observer, "wait_until", None)
@@ -182,6 +232,8 @@ class VerifiedTransition:
         self.events = events
         self.obstruction_recovery = obstruction_recovery
         self._metrics_clock = metrics_clock
+        self._clock = clock
+        self.cancel_requested = cancel_requested
 
     def _metrics_now(self):
         try:
@@ -194,16 +246,25 @@ class VerifiedTransition:
         check = getattr(self.obstruction_recovery, "input_conflicts", None)
         return check(action) if callable(check) else None
 
-    def recover_input(self, name, action, before, precondition, on_recovery=None):
+    def recover_input(self, name, action, before, precondition, on_recovery=None, *, evidence=None):
+        control = current_control() or OperationControl(
+            cancel_requested=self.cancel_requested, clock=self._clock,
+        )
+        with control_scope(control):
+            return self._recover_input(name, action, before, precondition, on_recovery, evidence=evidence)
+
+    def _recover_input(self, name, action, before, precondition, on_recovery=None, *, evidence=None):
         """Prepare an intersecting input; its owner must revalidate the guard.
 
         Direct operations retain their existing wait/cancellation contracts.
         No target conflict means no observation or probe.
         """
+        check_operation()
         target = self.input_conflicts(action)
+        check_operation()
         if target is None or precondition is None:
             return None
-        return self._try_recover(before, precondition, name, on_recovery, target=target)
+        return self._try_recover(before, precondition, name, on_recovery, target=target, evidence=evidence)
 
     def execute(
         self,
@@ -220,20 +281,97 @@ class VerifiedTransition:
         on_recovery: Callable[[], None] | None = None,
         precondition_regions: EvidenceRegions = (),
         expected_regions: EvidenceRegions = (),
+        cancel_requested: Callable[[], bool] | None = None,
+        evidence: RuntimeEvidenceRequirements | None = None,
+        budget: OperationControl | None = None,
+        effect_observed: Callable[[RuntimeSnapshot], bool] | None = None,
+        progress_observed: Callable[[RuntimeSnapshot], bool] | None = None,
     ) -> VerifiedTransitionResult:
-        with operation_scope(name) as context:
+        if not isinstance(policy, VerifiedTransitionPolicy):
+            raise ValueError("policy must be VerifiedTransitionPolicy")
+        if not isinstance(before, RuntimeSnapshot):
+            raise ValueError("before must be RuntimeSnapshot")
+        if not callable(expected):
+            raise ValueError("expected must be callable")
+        if evidence is not None and not isinstance(evidence, RuntimeEvidenceRequirements):
+            raise ValueError("evidence must be RuntimeEvidenceRequirements or None")
+        for predicate in (cancel_requested, effect_observed, progress_observed, precondition, retryable_from, abort_if):
+            if predicate is not None and not callable(predicate):
+                raise ValueError("optional callbacks must be callable")
+        if budget is not None and not isinstance(budget, OperationControl):
+            raise ValueError("budget must be OperationControl or None")
+        parent = budget or current_control()
+        clock = parent.clock if parent is not None else self._clock
+        control = OperationControl(
+            cancel_requested=cancel_requested if cancel_requested is not None else self.cancel_requested,
+            deadline=clock() + policy.total_timeout if policy.total_timeout is not None else None,
+            observation_timeout=policy.observation_timeout,
+            dispatch_timeout=policy.dispatch_timeout,
+            recovery_timeout=policy.recovery_timeout, clock=clock, parent=parent,
+        )
+        if evidence is not None and evidence.source_id is None and before.frame.source_id is not None:
+            evidence = replace(evidence, source_id=before.frame.source_id)
+        state = _TransitionEvidence(evidence, before)
+
+        def checked(predicate, *, postcondition=False):
+            if predicate is None:
+                return None
+            def evaluate(snapshot):
+                check_operation()
+                state.latest = snapshot
+                if not state.valid(snapshot):
+                    return False
+                with operation_phase("observation"):
+                    if postcondition:
+                        if effect_observed is not None:
+                            effect = effect_observed(snapshot)
+                            check_operation()
+                            if effect and state.valid(snapshot):
+                                state.effect_accredited = True
+                        if progress_observed is not None:
+                            if not state.valid(snapshot):
+                                return False
+                            progress_seen = progress_observed(snapshot)
+                            check_operation()
+                            if progress_seen and state.valid(snapshot):
+                                state.progress_snapshot = snapshot
+                        if not state.valid(snapshot):
+                            return False
+                    matched = predicate(snapshot)
+                    check_operation()
+                    valid = state.valid(snapshot)
+                    return bool(matched and valid)
+            return evaluate
+
+        with operation_scope(name) as context, control_scope(control):
             started = self._metrics_now()
             progress = {"attempt": 0, "grace_count": 0}
             try:
                 result = self._execute(
-                    name, action, before, expected=expected, policy=policy,
-                    precondition=precondition, retryable_from=retryable_from,
-                    abort_if=abort_if, stable_for=stable_for,
+                    name, action, before, expected=checked(expected, postcondition=True), policy=policy,
+                    precondition=checked(precondition), retryable_from=checked(retryable_from),
+                    abort_if=checked(abort_if), stable_for=stable_for,
                     on_recovery=on_recovery, _progress=progress,
                     precondition_regions=precondition_regions,
-                    expected_regions=expected_regions,
+                    expected_regions=expected_regions, _state=state,
+                )
+            except (OperationBudgetExpired, RuntimeEvidenceRejected) as error:
+                receipt = getattr(error, "dispatch_receipt", None)
+                if receipt is not None and receipt not in state.receipts:
+                    state.receipts.append(receipt)
+                result = self._result(
+                    name, VerifiedTransitionOutcome.TIMEOUT,
+                    progress["attempt"], progress["grace_count"], state.latest, str(error),
+                    action_source_snapshot=state.action_source_snapshot,
+                    recovery_after_action=state.recovery_after_action,
                 )
             except BaseException as error:
+                receipt = getattr(error, "dispatch_receipt", None)
+                if receipt is not None and receipt not in state.receipts:
+                    state.receipts.append(receipt)
+                error.dispatch_receipts = tuple(state.receipts)
+                error.effect_accredited = state.effect_accredited
+                error.progress_snapshot = state.progress_snapshot
                 failure = getattr(error, "failure", None) or FailureCause.from_error(
                     error, kind="exception",
                 )
@@ -244,11 +382,18 @@ class VerifiedTransition:
                     **progress,
                     before_sequence=getattr(before, "sequence", None),
                     error=f"{type(error).__name__}: {error}", failure=failure.payload(),
+                    dispatch_receipts=[r.__dict__ for r in state.receipts],
+                    effect_accredited=state.effect_accredited,
                 )
                 raise
             result = replace(
                 result, elapsed=max(0.0, self._metrics_now() - started),
                 operation_id=context["operation_id"],
+                dispatch_receipts=tuple(state.receipts),
+                effect_accredited=state.effect_accredited or (effect_observed is None and result.succeeded),
+                ready=result.succeeded,
+                termination_reason=result.error or result.outcome.value,
+                progress_snapshot=state.progress_snapshot,
             )
             self._record(
                 "transition.completed", transition=name,
@@ -257,6 +402,9 @@ class VerifiedTransition:
                 elapsed=result.elapsed, before_sequence=before.sequence,
                 final_sequence=result.final_snapshot.sequence,
                 failure=result.failure.payload() if result.failure else None,
+                dispatch_receipts=[r.__dict__ for r in state.receipts],
+                effect_accredited=result.effect_accredited, ready=result.ready,
+                termination_reason=result.termination_reason,
             )
             return result
 
@@ -276,6 +424,7 @@ class VerifiedTransition:
         precondition_regions: EvidenceRegions = (),
         expected_regions: EvidenceRegions = (),
         _progress: dict,
+        _state: _TransitionEvidence,
     ) -> VerifiedTransitionResult:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("name must be a non-empty string")
@@ -296,6 +445,28 @@ class VerifiedTransition:
         if on_recovery is not None and not callable(on_recovery):
             raise ValueError("on_recovery must be callable or None")
 
+        check_operation()
+        _state.require(before)
+
+        def wait(*args, **kwargs):
+            return self._wait(*args, evidence=_state.current_requirements(), **kwargs)
+
+        def recover(snapshot, *args, **kwargs):
+            _state.require(snapshot)
+            if self.obstruction_recovery is not None and _state.action_source_snapshot is not None:
+                # A cut during cleanup cannot certify a pristine handoff.
+                _state.recovery_after_action = True
+            result = self._try_recover(snapshot, *args, evidence=_state.current_requirements(), **kwargs)
+            if result is not None:
+                _state.require(result)
+            return result
+
+        def observe():
+            with operation_phase("observation"):
+                snapshot = self.observer.observe()
+                _state.require(snapshot)
+                return snapshot
+
         action_source_snapshot: RuntimeSnapshot | None = None
         recovery_after_action = False
 
@@ -309,7 +480,7 @@ class VerifiedTransition:
             # A single late observation (including cleanup/retry-guard output)
             # does not prove the caller's requested temporal stability.
             if stability > 0:
-                settled = self._wait(
+                settled = wait(
                     expected,
                     after_sequence=snapshot.sequence,
                     timeout=policy.normal_timeout,
@@ -336,7 +507,7 @@ class VerifiedTransition:
             # timeout. Without that declaration preserve the original abort.
             snapshot = wait.snapshot
             if expected_regions:
-                recovered = self._try_recover(
+                recovered = recover(
                     snapshot, expected, name, on_recovery, regions=expected_regions,
                 )
                 if recovered is not None:
@@ -361,7 +532,7 @@ class VerifiedTransition:
             max_attempts=policy.max_attempts,
         )
         if precondition is not None and not precondition(before):
-            recovered = self._try_recover(
+            recovered = recover(
                 before, precondition, name, on_recovery, regions=precondition_regions,
             )
             if recovered is not None and precondition(recovered):
@@ -385,10 +556,19 @@ class VerifiedTransition:
             current = before
         grace_wait_count = 0
         for attempt in range(1, policy.max_attempts + 1):
-            _progress["attempt"] = attempt
+            check_operation()
+            if _state.effect_accredited:
+                return finish(name, VerifiedTransitionOutcome.TIMEOUT, attempt - 1,
+                              grace_wait_count, current, "effect_accredited_not_ready")
             guard = precondition if attempt == 1 else retryable_from
-            recovered = self.recover_input(name, action, current, guard, on_recovery)
+            _state.require(current)
+            recovered = self.recover_input(
+                name, action, current, guard, on_recovery,
+                evidence=_state.current_requirements(),
+            )
+            check_operation()
             if recovered is not None:
+                _state.require(recovered)
                 recovery_after_action = action_source_snapshot is not None
                 if (not guard(recovered) or
                         (abort_if is not None and abort_if(recovered))):
@@ -399,11 +579,39 @@ class VerifiedTransition:
                     )
                 current = recovered
             try:
-                self.actions.execute(action, current.geometry)
+                _state.require(current)
+                _progress["attempt"] = attempt
+                with event_scope(attempt_index=attempt), operation_phase("dispatch"):
+                    try:
+                        _state.action_source_snapshot = None
+                        if isinstance(self.actions, ActionExecutor):
+                            execution = self.actions.execute(
+                                action, current.geometry, events=self.events,
+                                source_sequence=current.sequence,
+                                before_dispatch=(lambda: _state.require(current)) if _state.requirements is not None else None,
+                            )
+                        else:
+                            execution = self.actions.execute(action, current.geometry)
+                    except BaseException as error:
+                        receipt = getattr(error, "dispatch_receipt", None) or DispatchReceipt(
+                            DispatchState.UNCERTAIN, operation_id=event_context()["operation_id"],
+                            attempt_index=attempt,
+                        )
+                        _state.receipts.append(receipt)
+                        raise
+                    receipt = getattr(execution, "dispatch", None) or DispatchReceipt(
+                        DispatchState.UNCERTAIN, operation_id=event_context()["operation_id"],
+                        attempt_index=attempt, completed_at=current_control().clock(),
+                    )
+                    _state.receipts.append(receipt)
+                    _state.action_source_snapshot = current
+                    check_operation()
+                _state.captured_after = current_control().clock()
                 action_source_snapshot = current
-            except (KeyboardInterrupt, SystemExit):
+            except (KeyboardInterrupt, SystemExit, RuntimeWaitCancelled, OperationBudgetExpired, RuntimeEvidenceRejected):
                 raise
             except Exception as error:
+                check_operation()
                 # A partly completed executor call cannot certify this input.
                 action_source_snapshot = None
                 return finish(
@@ -416,7 +624,7 @@ class VerifiedTransition:
                     failure=FailureCause.from_error(error, kind="exception", sequence=current.sequence),
                 )
 
-            normal = self._wait(
+            normal = wait(
                 expected,
                 after_sequence=current.sequence,
                 timeout=policy.normal_timeout,
@@ -454,7 +662,7 @@ class VerifiedTransition:
                 grace=policy.grace_timeout,
             )
             grace_anchor = normal.last_snapshot or current
-            grace = self._wait(
+            grace = wait(
                 expected,
                 after_sequence=grace_anchor.sequence,
                 timeout=policy.grace_timeout,
@@ -478,10 +686,11 @@ class VerifiedTransition:
                 return finish_aborted(grace, attempt, grace_wait_count)
 
             try:
-                observed = self.observer.observe()
-            except (KeyboardInterrupt, SystemExit):
+                observed = observe()
+            except (KeyboardInterrupt, SystemExit, RuntimeWaitCancelled, OperationBudgetExpired, RuntimeEvidenceRejected):
                 raise
             except Exception as error:
+                check_operation()
                 return finish(
                     name,
                     VerifiedTransitionOutcome.FAILED,
@@ -496,7 +705,7 @@ class VerifiedTransition:
                 # observe() reads the latest stream frame; it need not advance
                 # immediately after the wait's final poll. Acquire evidence,
                 # without input, before deciding whether a retry is safe.
-                fresh = self._wait(lambda item: True,
+                fresh = wait(lambda item: True,
                                    after_sequence=latest_wait.sequence,
                                    timeout=policy.grace_timeout,
                                    abort_if=None, stable_for=0.0)
@@ -527,7 +736,7 @@ class VerifiedTransition:
                     observed,
                     "unexpected_state_after_grace",
                 )
-            recovered = self._try_recover(
+            recovered = recover(
                 observed, expected, name, on_recovery, regions=expected_regions,
             )
             if recovered is not None:
@@ -557,7 +766,7 @@ class VerifiedTransition:
                 if retryable_from is not None and attempt < policy.max_attempts:
                     # Cleanup changed the UI. A productive retry needs new
                     # evidence after recovery, not its last pre-failure frame.
-                    fresh = self.observer.observe()
+                    fresh = observe()
                     if fresh.sequence <= observed.sequence:
                         return finish(
                             name, VerifiedTransitionOutcome.TIMEOUT, attempt,
@@ -575,6 +784,11 @@ class VerifiedTransition:
                             VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY,
                             attempt, grace_wait_count, observed,
                         )
+            if _state.effect_accredited:
+                return finish(
+                    name, VerifiedTransitionOutcome.TIMEOUT, attempt,
+                    grace_wait_count, observed, "effect_accredited_not_ready",
+                )
             if retryable_from is None:
                 return finish(
                     name,
@@ -594,7 +808,7 @@ class VerifiedTransition:
                         observed,
                         "retry_guard_rejected",
                     )
-                guarded = self._wait(
+                guarded = wait(
                     lambda snapshot: (
                         expected(snapshot) or retryable_from(snapshot)
                     ),
@@ -656,16 +870,29 @@ class VerifiedTransition:
         timeout: float,
         abort_if: Callable[[RuntimeSnapshot], bool] | None,
         stable_for: float,
+        evidence: RuntimeEvidenceRequirements | None = None,
     ) -> RuntimeSnapshot | RuntimeWaitTimeout | RuntimeWaitAborted:
+        check_operation()
+        control = current_control()
+        options = {}
+        # RuntimeObserver inherits the operation's cancellation context. Keep
+        # old wait adapters callable without adding an unsolicited keyword.
+        if evidence is not None:
+            options["evidence"] = evidence
         try:
-            return self.observer.wait_until(
-                expected,
-                after_sequence=after_sequence,
-                timeout=timeout,
-                abort_if=abort_if,
-                stable_for=stable_for,
-            )
+            with operation_phase("observation"):
+                if control is not None:
+                    timeout = min(timeout, control.remaining())
+                    if timeout <= 0:
+                        raise OperationBudgetExpired("operation budget exhausted")
+                snapshot = self.observer.wait_until(
+                    expected, after_sequence=after_sequence, timeout=timeout,
+                    abort_if=abort_if, stable_for=stable_for, **options,
+                )
+                check_operation()
+                return snapshot
         except (RuntimeWaitTimeout, RuntimeWaitAborted) as error:
+            check_operation()
             return error
 
     def _try_recover(
@@ -677,17 +904,23 @@ class VerifiedTransition:
         *,
         regions: EvidenceRegions = (),
         target=None,
+        evidence: RuntimeEvidenceRequirements | None = None,
     ) -> RuntimeSnapshot | None:
+        check_operation()
         recovery = self.obstruction_recovery
         if recovery is None:
             return None
         if callable(regions):
             regions = regions(snapshot)
         try:
-            if regions or target is not None:
-                recovered = recovery.attempt(snapshot, condition, regions=regions, target=target)
-            else:
-                recovered = recovery.attempt(snapshot, condition)
+            with operation_phase("recovery"):
+                check_operation()
+                options = {"evidence": evidence} if evidence is not None else {}
+                if regions or target is not None:
+                    recovered = recovery.attempt(snapshot, condition, regions=regions, target=target, **options)
+                else:
+                    recovered = recovery.attempt(snapshot, condition, **options)
+                check_operation()
         except RuntimeWaitCancelled:
             raise
         except Exception as error:
@@ -714,6 +947,7 @@ class VerifiedTransition:
             )
         if recovered is not None and on_recovery is not None:
             on_recovery()
+        check_operation()
         return recovered
 
     def _result(

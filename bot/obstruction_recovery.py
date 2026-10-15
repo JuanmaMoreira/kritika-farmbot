@@ -21,9 +21,10 @@ from numbers import Integral, Real
 from typing import Callable
 
 from bot.portal_notification import PortalNotificationProbe, PortalProbeOutcome
-from bot.runtime_observer import RuntimeWaitCancelled, RuntimeWaitTimeout
+from bot.runtime_observer import RuntimeEvidenceRejected, RuntimeWaitCancelled, RuntimeWaitTimeout
 from bot.semantic_actions import DismissPortalNotification
 from bot.state import ResolutionStatus
+from bot.operation_control import check_operation, current_control
 
 
 # Physical GT, not the detector search ROI (docs/GAMEPLAY_GT.md).
@@ -171,6 +172,7 @@ class PortalObstructionRecovery:
         target=None,
         monster_wave_entry_source=None,
         stages_entry_source=None,
+        evidence=None,
     ):
         """Try to clear a confirmed portal; return freshest snapshot or None.
 
@@ -215,6 +217,7 @@ class PortalObstructionRecovery:
         if not _compatible_surface(snapshot) and not entry_context and not stages_entry_context:
             return None
         self._check_cancelled()
+        self._require_evidence(snapshot, evidence)
         try:
             initial = self.probe.probe(snapshot.frame.image)
         except Exception:
@@ -225,9 +228,11 @@ class PortalObstructionRecovery:
         latest = snapshot
         for _ in range(self.policy.max_dismiss_attempts):
             self._check_cancelled()
+            self._require_evidence(latest, evidence)
             try:
+                options = {"before_dispatch": lambda: self._require_evidence(latest, evidence)} if evidence is not None else {}
                 self.actions.execute(
-                    DismissPortalNotification(), latest.geometry
+                    DismissPortalNotification(), latest.geometry, **options
                 )
             except Exception as error:
                 self._record(
@@ -251,7 +256,7 @@ class PortalObstructionRecovery:
                     last_snapshot=fresh,
                 )
             self._check_cancelled()
-            latest, outcome = self._settle(fresh)
+            latest, outcome = self._settle(fresh, evidence)
             self._check_cancelled()
             if outcome is PortalProbeOutcome.ABSENT:
                 self._record("obstruction_recovery.cleared")
@@ -263,7 +268,7 @@ class PortalObstructionRecovery:
             last_snapshot=latest,
         )
 
-    def _settle(self, snapshot):
+    def _settle(self, snapshot, evidence=None):
         """Passively reprobe after a tap, bounded, without any input.
 
         Returns the freshest snapshot and its probe outcome. ABSENT ends the
@@ -272,12 +277,15 @@ class PortalObstructionRecovery:
         """
 
         latest = snapshot
+        self._require_evidence(latest, evidence)
         try:
             outcome: PortalProbeOutcome | None = self.probe.probe(
                 latest.frame.image
             )
         except Exception:
             outcome = PortalProbeOutcome.INCONCLUSIVE
+        self._check_cancelled()
+        self._require_evidence(latest, evidence)
         if outcome is PortalProbeOutcome.ABSENT:
             return latest, outcome
         deadline = self._clock() + self.policy.settle_timeout
@@ -286,6 +294,9 @@ class PortalObstructionRecovery:
             self._check_cancelled()
             if remaining <= 0:
                 return latest, outcome
+            control = current_control()
+            if control is not None:
+                remaining = min(remaining, control.remaining())
             self._sleeper(min(self.policy.settle_poll_interval, remaining))
             self._check_cancelled()
             try:
@@ -298,14 +309,25 @@ class PortalObstructionRecovery:
                 outcome = PortalProbeOutcome.INCONCLUSIVE
                 continue
             latest = fresh
+            self._require_evidence(latest, evidence)
             try:
                 outcome = self.probe.probe(latest.frame.image)
             except Exception:
                 outcome = PortalProbeOutcome.INCONCLUSIVE
+            self._check_cancelled()
+            self._require_evidence(latest, evidence)
             if outcome is PortalProbeOutcome.ABSENT:
                 return latest, outcome
 
+    def _require_evidence(self, snapshot, evidence):
+        if evidence is not None:
+            control = current_control()
+            now = control.clock() if control is not None else self._clock()
+            if not evidence.accepts(snapshot, now):
+                raise RuntimeEvidenceRejected("runtime_evidence_rejected")
+
     def _check_cancelled(self) -> None:
+        check_operation()
         if self.cancel_requested is not None and self.cancel_requested():
             raise RuntimeWaitCancelled("obstruction recovery cancelled")
 

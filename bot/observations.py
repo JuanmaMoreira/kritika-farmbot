@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from numbers import Integral, Real
 
@@ -57,6 +57,8 @@ class ObservationBatch:
     sequence: int
     timestamp: float
     observations: tuple[Observation, ...] = ()
+    # Explicitly declared executed capabilities; None means unknown, not absent.
+    coverage: frozenset[str] | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "sequence", _sequence(self.sequence))
@@ -65,6 +67,13 @@ class ObservationBatch:
         if not all(isinstance(item, Observation) for item in observations):
             raise ValueError("observations must contain only Observation instances")
         object.__setattr__(self, "observations", observations)
+        if self.coverage is not None:
+            if isinstance(self.coverage, (str, bytes)):
+                raise ValueError("coverage must be a collection of capability names")
+            coverage = frozenset(self.coverage)
+            if any(not isinstance(item, str) or not item for item in coverage):
+                raise ValueError("coverage must contain non-empty capability names")
+            object.__setattr__(self, "coverage", coverage)
 
     def find(self, name: str) -> tuple[Observation, ...]:
         """Return every matching observation, preserving detector order."""
