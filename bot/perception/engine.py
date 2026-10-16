@@ -9,6 +9,7 @@ import numpy as np
 
 from bot.capture import FrameSnapshot
 from bot.observations import Observation, ObservationBatch
+from .local_cv import _measurement_scope
 
 
 class PerceptionDetector(Protocol):
@@ -36,11 +37,12 @@ class PerceptionEngine:
             raise ValueError("snapshot must be a FrameSnapshot")
 
         observations: list[Observation] = []
-        for detector in self.detectors:
-            emitted = tuple(detector.detect(snapshot.image))
-            if not all(isinstance(item, Observation) for item in emitted):
-                raise ValueError("detectors must emit only Observation instances")
-            observations.extend(emitted)
+        with _measurement_scope(snapshot.image):
+            for detector in self.detectors:
+                emitted = tuple(detector.detect(snapshot.image))
+                if not all(isinstance(item, Observation) for item in emitted):
+                    raise ValueError("detectors must emit only Observation instances")
+                observations.extend(emitted)
 
         return ObservationBatch(
             sequence=snapshot.sequence,

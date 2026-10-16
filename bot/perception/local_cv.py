@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -9,13 +11,28 @@ from typing import Callable
 import cv2
 import numpy as np
 
-from bot.geometry import RelativeRegion
+from bot.geometry import RelativeRegion, relative_region_to_pixels
 from bot.observations import Observation, ObservationSource
 from bot.screen import template_match_score
 
-from .specs import LocalCvSpec
+from .specs import LinearGapCalibration, LocalCvSpec
 
 TemplateLoader = Callable[[str, int], np.ndarray | None]
+
+# Each analyze owns its dictionary, including nested analyses of the same image.
+_measurements: ContextVar[list | None] = ContextVar("local_cv_measurements", default=None)
+
+
+@contextmanager
+def _measurement_scope(frame):
+    scope = [frame, {}]
+    token = _measurements.set(scope)
+    try:
+        yield
+    finally:
+        scope[0] = None
+        scope[1].clear()
+        _measurements.reset(token)
 
 
 @dataclass(frozen=True)
@@ -89,6 +106,35 @@ class LocalCvDetector:
         """Measure raw evidence and calibrate it without applying resolver policy."""
 
         _validate_frame(frame)
+        scope = _measurements.get()
+        if (scope is None or scope[0] is not frame
+                or type(frame) is not np.ndarray
+                or type(self) is not LocalCvDetector
+                or type(self.spec) is not LocalCvSpec
+                or type(self.spec.calibration) is not LinearGapCalibration):
+            return self._measure_uncached(frame)
+
+        # Use actual loaded pixels, not paths alone (custom loaders can differ).
+        # Bypass malformed private templates so their original errors propagate.
+        if not all(type(t) is np.ndarray and t.ndim == 2 and t.size
+                   and t.dtype == np.uint8 for t in self._templates):
+            return self._measure_uncached(frame)
+        key = self._measurement_key(frame)
+        memo = scope[1]
+        if key not in memo:
+            memo[key] = self._measure_uncached(frame)
+        return memo[key]
+
+    def _measurement_key(self, frame):
+        height, width = frame.shape[:2]
+        x1, y1, x2, y2 = relative_region_to_pixels(self.spec.region, width, height)
+        return (
+            self.spec, self.asset_paths,
+            tuple((t.shape, t.dtype.str, t.tobytes()) for t in self._templates),
+            frame.shape, frame.dtype.str, frame[y1:y2, x1:x2].tobytes(),
+        )
+
+    def _measure_uncached(self, frame: np.ndarray) -> LocalCvDetection:
         raw_scores = tuple(
             template_match_score(frame, template, region=self.spec.region)
             for template in self._templates

@@ -4,7 +4,7 @@ import cv2
 
 from bot.geometry import relative_region_to_pixels
 from bot.observations import ObservationBatch
-from bot.perception.local_cv import LocalCvDetector
+from bot.perception.local_cv import LocalCvDetector, _measurement_scope
 
 
 class MonsterWaveBoardPerception:
@@ -13,6 +13,11 @@ class MonsterWaveBoardPerception:
         self._last = {}
 
     def analyze(self, snapshot):
+        # Keep A1's own pixel memo; suspend a possible enclosing engine scope.
+        with _measurement_scope(None):
+            return self._analyze(snapshot)
+
+    def _analyze(self, snapshot):
         image = snapshot.image
         height, width = image.shape[:2]
         observations = []
