@@ -172,6 +172,7 @@ class PortalObstructionRecovery:
         target=None,
         monster_wave_entry_source=None,
         stages_entry_source=None,
+        world_boss_socket_entry_source=None,
         evidence=None,
     ):
         """Try to clear a confirmed portal; return freshest snapshot or None.
@@ -214,7 +215,18 @@ class PortalObstructionRecovery:
             and not snapshot.state.overlays
             and target is None
         )
-        if not _compatible_surface(snapshot) and not entry_context and not stages_entry_context:
+        wb_socket_entry_context = (
+            world_boss_socket_entry_source is not None
+            and world_boss_socket_entry_source.state.status is ResolutionStatus.RESOLVED
+            and world_boss_socket_entry_source.state.base_context == "screen.world_boss"
+            and set(world_boss_socket_entry_source.state.overlays) == {"popup.socket_inventory_full"}
+            and snapshot.sequence > world_boss_socket_entry_source.sequence
+            and snapshot.state.status is ResolutionStatus.UNKNOWN
+            and not snapshot.state.overlays
+            and target is None
+            and evidence is not None
+        )
+        if not _compatible_surface(snapshot) and not entry_context and not stages_entry_context and not wb_socket_entry_context:
             return None
         self._check_cancelled()
         self._require_evidence(snapshot, evidence)

@@ -274,6 +274,15 @@ Verificar el efecto con señal fiable suficiente. Identidad de contexto se separ
 
 H&H se recupera sólo cuando bloquea una observación o un input; su mera presencia no provoca trabajo. `VerifiedTransition` entrega las ROIs de la señal necesaria fallida (también ante abort) o consulta el target real del executor. `PortalObstructionRecovery` sólo prueba si esa geometría intersecta el envelope de GAMEPLAY_GT y el contexto es compatible; nunca por timeout/UNKNOWN aislado. Un único dismiss requiere CONFIRMED fresco y una espera pasiva bounded/cancelable debe confirmar ABSENT; persistencia, evidencia inconclusa o frame stale propagan fallo técnico. El caller revalida su condición original con el snapshot fresco, conservando intención/caller. Inputs directos afectados pueden usar `VerifiedTransition.recover_input` y conservar su espera y cancelación; los no afectados no adquieren probes ni capturas adicionales.
 
+WB→Socket conserva también el source efectivo del ACK de Socket Full. Si esa
+entrada termina sin acreditar Socket, sólo UNKNOWN sin capas posterior al recibo
+del mismo intento/operación permite el probe causal del landmark Socket tab.
+Exige fuente original, edad 0..2s, cobertura declarada, ausencia de recovery o
+efecto ya acreditado y transporte retornado. Un único dismiss CONFIRMED debe
+probar ABSENT y después Socket limpio estable con evidencia fresca. No repite
+Start ni ACK; sólo entonces sigue el relief existente. Contradicción, pérdida de
+fuente/freshness, cancelación o timeout cortan sin ampliar la autorización.
+
 Summon Pet Daily conecta esa recuperación compartida antes de sus inputs de
 navegación mediante `recover_input`; el registry conserva el observer de scope
 Pets para los waits y el owner global para el cleanup. Antes y después del

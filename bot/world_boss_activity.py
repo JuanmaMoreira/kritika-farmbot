@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import time
+import math
 from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Callable, Protocol
 
-from bot.action_executor import ActionExecutor
+from bot.action_executor import ActionExecutor, DispatchState
 from bot.battle_mode_zone import is_battle_mode_select as _is_battle_mode_select
 from bot.auto_battle import AutoBattleState, EnsureAutoBattleStatus
 from bot.catalog import (
@@ -51,7 +52,10 @@ from bot.runtime_observer import (
     RuntimeWaitAborted,
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
+    RuntimeEvidenceRequirements,
 )
+from bot.operation_control import check_operation
+from bot.perception.specs import SOCKET_TAB_SPEC
 from bot.semantic_actions import (
     AcceptSocketInventoryFull,
     AcknowledgeWorldBossPreviousRewards,
@@ -77,6 +81,7 @@ from bot.verified_transition import (
     VerifiedTransition,
     VerifiedTransitionPolicy,
     VerifiedTransitionResult,
+    VerifiedTransitionOutcome,
 )
 
 
@@ -1131,8 +1136,65 @@ class WorldBossActivity:
             policy=self.transition_policy,
             on_recovery=on_recovery,
         )
+        if name == "world_boss.accept_inventory_full" and not result.succeeded:
+            result = self._recover_socket_entry(result)
         transitions.append(result)
         return result.final_snapshot if result.succeeded else None
+
+    def _recover_socket_entry(self, result):
+        """One causal H&H cleanup after effective WB Full -> Socket entry."""
+        check_operation()
+        if self.cancel_requested():
+            raise RuntimeWaitCancelled()
+        source, current = result.action_source_snapshot, result.final_snapshot
+        recovery = getattr(self.verified_transition, "obstruction_recovery", None)
+        if (recovery is None or source is None or not _is_world_boss_inventory_full(source)
+                or result.recovery_after_action or result.effect_accredited
+                or result.outcome not in {VerifiedTransitionOutcome.TIMEOUT,
+                    VerifiedTransitionOutcome.RETRY_GUARD_REJECTED,
+                    VerifiedTransitionOutcome.ATTEMPTS_EXHAUSTED}
+                or not result.dispatch_receipts or not source.frame.source_id
+                or current.state.status is not ResolutionStatus.UNKNOWN
+                or current.state.overlays or current.sequence <= source.sequence):
+            return result
+        receipt = result.dispatch_receipts[-1]
+        if (receipt.operation_id != result.operation_id
+                or receipt.attempt_index != result.attempt_count
+                or receipt.state is not DispatchState.ADB_RETURNED
+                or isinstance(receipt.completed_at, bool)
+                or not isinstance(receipt.completed_at, (int, float))
+                or not math.isfinite(receipt.completed_at)
+                or receipt.completed_at <= source.timestamp):
+            return result
+        evidence = RuntimeEvidenceRequirements(source_id=source.frame.source_id,
+            captured_after=receipt.completed_at, max_age=2.,
+            required_coverage=source.observations.coverage or frozenset())
+        if not evidence.accepts(current, self.clock()):
+            return result
+        expected = lambda s: _is_clean_base(s, SCREEN_SOCKET)
+        started = self.clock()
+        fresh = recovery.attempt(current, expected, regions=(SOCKET_TAB_SPEC.region,),
+            world_boss_socket_entry_source=source, evidence=evidence)
+        check_operation()
+        if self.cancel_requested():
+            raise RuntimeWaitCancelled()
+        if fresh is None:
+            return result
+        settled = self.observer.wait_until(expected, after_sequence=fresh.sequence,
+            timeout=self.transition_policy.normal_timeout, stable_for=self.stable_for,
+            cancel_requested=self.cancel_requested, evidence=evidence,
+            abort_if=lambda s: _is_known_incompatible(s, expected, lambda _: False, lambda _: False))
+        check_operation()
+        if self.cancel_requested():
+            raise RuntimeWaitCancelled()
+        self._record_best_effort("world_boss.socket_entry_recovered",
+            sequence=settled.sequence, source_sequence=source.sequence,
+            original_outcome=result.outcome.value, input_replayed=False)
+        return replace(result, outcome=VerifiedTransitionOutcome.SUCCESS_AFTER_OBSTRUCTION_RECOVERY,
+            final_snapshot=settled, error=None, failure=None, effect_accredited=True,
+            ready=True, recovery_after_action=True,
+            termination_reason="success_after_obstruction_recovery",
+            elapsed=(result.elapsed or 0.) + self.clock() - started)
 
     def _wait_for_raid_complete(self, timer: int, *, after_sequence: int):
         latest: RuntimeSnapshot | None = None
