@@ -147,5 +147,5 @@ def test_productive_standalone_retains_surface_without_exit_inputs():
     flow=_productive(zone);flow.entry_readiness=Mock(return_value=None)
     flow._run_activity_l1=Mock(return_value=MonsterWaveResult(FlowStatus.COMPLETED))
     assert flow.run().succeeded
-    flow._run_activity_l1.assert_called_once_with(keep_current=True)
+    flow._run_activity_l1.assert_called_once_with(keep_current=True, one_pass=False, hub_entry=None)
     zone.leave.assert_not_called()

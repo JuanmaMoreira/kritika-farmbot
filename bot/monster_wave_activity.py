@@ -21,6 +21,7 @@ from bot.monster_wave_actions import (
 from bot.monster_wave_config import MonsterWaveConfig
 from bot.monster_wave_semantics import *
 from bot.runtime_observer import RuntimeWaitCancelled
+from bot.operation_control import check_operation
 from bot.runtime_facts import FactReadStatus
 from bot.ocr_extractors import RESOURCE_SAPPHIRES
 from bot.sapphire_pressure import sapphire_pressure_passes
@@ -28,7 +29,7 @@ from bot.perception.monster_wave import MONSTER_WAVE_SPECS
 from bot.semantic_actions import OpenBattleModeSelect
 from bot.state import ResolutionStatus
 from bot.verified_transition import (VerifiedTransition, VerifiedTransitionPolicy,
-                                     VerifiedTransitionOutcome)
+                                     VerifiedTransitionOutcome, VerifiedTransitionResult)
 
 
 class SkipState(str, Enum):
@@ -159,8 +160,51 @@ class MonsterWaveActivity:
         self.clock, self.sleeper = clock, sleeper
         self.verified_transition = verified_transition or VerifiedTransition(observer, actions, events)
 
-    def prepare(self, *, pressure_relief=False):
-        return self._run_phase('prepare', pressure_relief=pressure_relief)
+    def prepare(self, *, pressure_relief=False, hub_entry=None):
+        return self._run_phase('prepare', pressure_relief=pressure_relief, hub_entry=hub_entry)
+
+    def _reuse_hub_entry(self, entry):
+        """Immediate, explicit transition handoff; never an input permission.
+
+        Missing acquisition/dispatch metadata keeps the ordinary preparation.
+        The economic consensus and the final hub wait always acquire new frames.
+        """
+        check_operation()
+        if (not isinstance(entry, VerifiedTransitionResult)
+                or entry.name != 'battle_mode.open_battle_mode_select'
+                or not entry.succeeded or not entry.effect_accredited or not entry.ready
+                or entry.recovery_after_action
+                or entry.action_source_snapshot is None or not entry.dispatch_receipts):
+            return None
+        before, final = entry.action_source_snapshot, entry.final_snapshot
+        source_id = final.frame.source_id
+        receipt = entry.dispatch_receipts[-1]
+        completed_at = receipt.completed_at
+        coverage = before.observations.coverage
+        if (not entry.operation_id or receipt.operation_id != entry.operation_id
+                or receipt.attempt_index != entry.attempt_count
+                or isinstance(completed_at, bool) or not isinstance(completed_at, (int, float))
+                or not math.isfinite(completed_at) or completed_at < 0
+                or (coverage is not None and (final.observations.coverage is None
+                    or not coverage <= final.observations.coverage))):
+            return None
+        if (not is_lobby(before) or not is_battle_mode_select(final)
+                or not source_id or before.frame.source_id != source_id
+                or final.timestamp <= completed_at
+                or final.sequence <= before.sequence
+                or not 0 <= self.clock() - final.timestamp <= 2.):
+            return None
+        source = getattr(self.observer, 'source', None)
+        if not callable(getattr(source, 'get_frame', None)):
+            return None
+        # Capture metadata only: no perception, native refresh, input or sleep.
+        latest = source.get_frame()
+        check_operation()
+        if (latest.source_id != source_id or latest.sequence < final.sequence
+                or latest.timestamp < final.timestamp
+                or not 0 <= self.clock() - final.timestamp <= 2.):
+            return None
+        return final
 
     def read_sapphires_after_clear(self, *, timeout=12.0):
         """Read the existing MW HUD after the verified CLEAR dismissal.
@@ -229,9 +273,10 @@ class MonsterWaveActivity:
     def leave(self, *, return_to_lobby=False):
         return self._run_phase('leave', return_to_lobby=return_to_lobby)
 
-    def run(self, *, yield_resource_board=False, return_to_lobby=False, keep_current=False):
+    def run(self, *, yield_resource_board=False, return_to_lobby=False, keep_current=False,
+            hub_entry=None):
         """Single-pass compatibility for the bare MW flow."""
-        prepared = self.prepare()
+        prepared = self.prepare(**({'hub_entry': hub_entry} if hub_entry is not None else {}))
         if not prepared.succeeded or prepared.event_count('monster_wave.no_work'):
             return prepared
         passed = self.run_pass(yield_resource_board=yield_resource_board)
@@ -259,7 +304,7 @@ class MonsterWaveActivity:
 
     def _run_phase(self, phase, *, yield_resource_board=False,
                    resume_after_relief=False, current=None, return_to_lobby=False,
-                   pressure_relief=False):
+                   pressure_relief=False, hub_entry=None):
         if type(return_to_lobby) is not bool:raise ValueError('return_to_lobby must be bool')
         if not isinstance(yield_resource_board, bool):
             raise ValueError('yield_resource_board must be bool')
@@ -431,10 +476,13 @@ class MonsterWaveActivity:
         try:
             check_cancel()
             if phase == 'prepare':
-                initial = self.observer.observe()
-                before = self.observer.wait_until(
-                    is_battle_mode_select, after_sequence=initial.sequence,
-                    timeout=6, stable_for=.25, cancel_requested=self.cancel_requested)
+                before = self._reuse_hub_entry(hub_entry)
+                check_cancel()
+                if before is None:
+                    initial = self.observer.observe()
+                    before = self.observer.wait_until(
+                        is_battle_mode_select, after_sequence=initial.sequence,
+                        timeout=6, stable_for=.25, cancel_requested=self.cancel_requested)
                 read = self.facts.read_sapphires(
                     context=SCREEN_BATTLE_MODE_SELECT, after_sequence=before.sequence,
                     timeout=6, cancel_requested=self.cancel_requested)

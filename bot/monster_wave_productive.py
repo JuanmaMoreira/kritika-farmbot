@@ -111,8 +111,8 @@ class ProductiveMonsterWaveFlow:
                 transition_outcomes=entered.transition_outcomes,
                 transition_attempts=entered.transition_attempts,
             )
-        result = (self._run_activity_l1(keep_current=True, one_pass=True) if one_pass
-                  else self._run_activity_l1(keep_current=True))
+        result = self._run_activity_l1(keep_current=True, one_pass=one_pass,
+                                      hub_entry=getattr(entered, 'hub_entry', None))
         result = replace(result,
             transition_outcomes=entered.transition_outcomes + result.transition_outcomes,
             transition_attempts=entered.transition_attempts + result.transition_attempts)
@@ -130,10 +130,12 @@ class ProductiveMonsterWaveFlow:
         passed = self.activity.run_pass(resume_after_relief=True)
         return self.activity._merge(entered, passed)
 
-    def _run_activity_l1(self, *, return_to_lobby=False, keep_current=False, one_pass=False) -> FlowResult:
+    def _run_activity_l1(self, *, return_to_lobby=False, keep_current=False, one_pass=False,
+                         hub_entry=None) -> FlowResult:
         """Prepare once; reevaluate pressure after each verified CLEAR effect."""
         try:
-            prepared = self.activity.prepare(pressure_relief=not one_pass)
+            prepared = self.activity.prepare(pressure_relief=not one_pass,
+                **({'hub_entry': hub_entry} if hub_entry is not None else {}))
         except RuntimeWaitCancelled:
             return MonsterWaveResult(FlowStatus.CANCELLED)
         except Exception as error:

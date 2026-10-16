@@ -72,7 +72,8 @@ class MonsterWaveFlow:
         if not entered.succeeded:
             return MonsterWaveResult(entered.status, error=entered.error, failure=entered.failure,
                 transition_outcomes=entered.transition_outcomes, transition_attempts=entered.transition_attempts)
-        result = self.activity.run(yield_resource_board=yield_resource_board, keep_current=True)
+        result = self.activity.run(yield_resource_board=yield_resource_board, keep_current=True,
+                                   hub_entry=getattr(entered, 'hub_entry', None))
         result = replace(result, transition_outcomes=entered.transition_outcomes+result.transition_outcomes,
                          transition_attempts=entered.transition_attempts+result.transition_attempts)
         if not result.succeeded:

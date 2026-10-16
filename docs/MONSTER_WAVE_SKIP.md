@@ -26,6 +26,29 @@ entry Lobby/hub → saldo fresco y sapphire_pressure_passes (flow productivo)
 
 Activity admite como máximo dos acknowledgements de entrada, sin suponer orden/coexistencia. Preparación (compra/activación/selección MAX) es single-attempt por personaje: no repite compra/activación/MAX por timeout. Cada pasada SKIP observa su propio resultado. Cancelación/contradicciones paran; las navegaciones externas conservan sus guards bounded.
 
+**Preparación del hub (2026-10-16):** los wrappers bare/productivo pasan por
+argumento el resultado exacto de `BattleModeZone.enter()` a la preparación inmediata.
+Sólo el éxito ready/con efecto de `battle_mode.open_battle_mode_select`, sin recovery
+posterior al input, puede sustituir el observe inicial y la segunda estabilización
+del mismo hub. Debe conservar Lobby limpio como source, hub positivo compatible,
+secuencia mayor, el mismo `source_id` no vacío y captura posterior al último receipt
+de despacho; edad 0..2s al comprobar y después de consultar el frame actual del source.
+El último receipt debe coincidir con la operación e intento del resultado y tener
+timestamp finito no negativo. La cobertura declarada del source debe conservarse
+en el destino; pérdida o metadata incompatible llevan al fallback. El wiring
+productivo usa el mismo observer global para entrada y Activity, sin cambiar scope;
+`coverage=None` no se interpreta como prueba negativa de una capacidad.
+Su secuencia/timestamp actuales no pueden retroceder ni cambiar de lifetime. La
+transición ya acreditó estabilidad .25s. El argumento es un handoff inmediato,
+sin inputs intermedios; no se almacena en flow/zone ni es un permiso de acción.
+Metadatos ausentes, caducidad o incompatibilidad conservan observe + wait originales.
+Siempre se adquiere consenso nuevo de Sapphires después de esa barrera y estabilidad
+del hub .25s en frames posteriores a **toda** la evidencia económica antes de Open MW.
+Los guards, normalización de modales, límites y cancelación de Open MW no cambian.
+`prepared(zone)` y `reenter()` conservan su camino previo: no heredan este argumento
+de Session ni de una visita anterior. Comparación offline y límites históricos:
+[validación de rendimiento](MW_HUB_PREPARATION_PERFORMANCE.md).
+
 En entrada/reentrada MW: MODAL conocido → normalizar primero (`popup.monster_wave_weekly_results` / `AcknowledgeMonsterWaveWeekly`, Previous Season Rewards; `popup.monster_wave_new_ranking` / `AcknowledgeMonsterWaveRanking`). El source verificado de `OpenMonsterWave` efectivo y el landmark fresco inequívoco del MODAL autorizan sólo su ACK aunque la BASE sea UNKNOWN; no fabrican `screen.monster_wave`. Tras cada ACK se verifica el cambio/desaparición en snapshot fresco y se reevalúa desde arriba. Sólo sin MODAL pendiente, si la BASE sigue irresuelta y falta una señal necesaria cuya ROI intersecta H&H, se intenta recovery on-demand una vez. CONFIRMED → dismiss → ABSENT fresco → reevaluar entrada completa, incluidos MODAL; no se repite Open ni se navega. Un fallo de executor, contradicción, stale o modal desconocido no autoriza ACK ni este recovery.
 
 - Si SKIP está NEEDS_TICKETS, Productive MW usa Fill All para completar 30/30 con Gold, verifica READY, activa SKIP y continúa. Faltar tickets no es condición terminal.

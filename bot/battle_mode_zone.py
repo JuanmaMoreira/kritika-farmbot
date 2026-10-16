@@ -1,6 +1,6 @@
 """Navigation-only ownership of one Battle Mode visit."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from bot.catalog import (
     SCREEN_BATTLE_MODE_SELECT, SCREEN_LOBBY,
     STATUS_WORLD_BOSS_DAILY_ACTIVE,
@@ -11,7 +11,7 @@ from bot.failure_cause import FailureCause
 from bot.runtime_observer import RuntimeWaitCancelled
 from bot.semantic_actions import OpenBattleModeSelect, ExitBattleModeSelect
 from bot.state import ResolutionStatus
-from bot.verified_transition import VerifiedTransitionPolicy
+from bot.verified_transition import VerifiedTransitionPolicy, VerifiedTransitionResult
 from bot.monster_wave_semantics import STATUS_MONSTER_WAVE_DAILY_ACTIVE
 
 
@@ -32,6 +32,7 @@ def is_lobby(snapshot):
 class BattleModeZoneResult(FlowResult):
     transition_outcomes: tuple[tuple[str, str], ...] = ()
     transition_attempts: tuple[tuple[str, int, int], ...] = ()
+    hub_entry: VerifiedTransitionResult | None = field(default=None, kw_only=True, compare=False, repr=False)
 
 
 class BattleModeZone:
@@ -149,7 +150,8 @@ class BattleModeZone:
                 before = result.final_snapshot
                 if not expected(before):
                     return finish(FlowStatus.FAILED, error="zone_postcondition_failed")
-            return finish(FlowStatus.COMPLETED)
+            return finish(FlowStatus.COMPLETED,
+                          hub_entry=transitions[-1] if not leaving else None)
         except RuntimeWaitCancelled:
             return finish(FlowStatus.CANCELLED)
         except Exception as error:
