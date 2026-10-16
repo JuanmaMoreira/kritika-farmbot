@@ -4,9 +4,10 @@
 
 Bot Python para automatizar Kritika en Android con captura scrcpy/ADB, percepción
 CV/OCR, contexto semántico, flows guardados y sesiones por personaje desde GUI/CLI.
-Baseline productivo publicado: `7f80a1841ba53eb4ea7350ec2aa720838abb7820`, rama
-`rebuild/stable-baseline` (2026-10-14). La consolidación posterior es documental;
-no cambia gameplay ni demuestra una nueva aceptación física del baseline completo.
+Checkpoint correctivo de código: `86a9a8f`, rama `rebuild/stable-baseline`
+(2026-10-16), sobre el baseline de campaña `9989fd8`. Incluye los fixes focales
+WB→Socket, SDK compacto y diagnóstico Craft; no implica aceptación física global.
+Validaciones, límites y preparación siguiente: [checkpoint del16/10](docs/CAMPAIGN_20261016_CHECKPOINT.md).
 
 Leer [AGENTS](AGENTS.md), este contexto y el apartado pertinente de
 [ROADMAP](ROADMAP.md). Después consultar sólo el contrato del subsistema:
@@ -66,6 +67,20 @@ consumo incierto. No existe recovery, planner estratégico o navegación general
 por inferencia. Aplicar AGENTS sin duplicar aquí sus reglas.
 
 ## Incidencias y validación
+
+- **Cierre campaña 16/10:** los tres Character State de Flame Striker, Eilla y
+  Blade Dancer conservaron resets tras scopes de identidad UNKNOWN; los tramos
+  registran WB/Ads y Rotation, sin asociación nominal suficiente. Reconciliados
+  exclusivamente Ads0/WB YES ciclo5 por USER_GT, con backup y procedencia; el
+  miss exacto del recognizer sigue UNKNOWN y no se cambiaron sus guards.
+  Informe reproducible en `artifacts/supervision_gold28_20261016/closure/`.
+  WB→Socket tiene fix validado física/offline; SDK compacto, tests/replay
+  sin ocurrencia natural de la rama nueva. El adapter MW/Craft ahora conserva
+  fallos técnicos posteriores al relief en vez de sustituirlos por capacidad
+  anterior; validado offline, requiere relanzar GUI. El corte de transporte USB
+  se mantiene como externo, separado del diagnóstico incompleto de Hastati.
+  No se inició otra campaña ni Arena durante el cierre. La reconciliación es
+  local y no se repite al publicar; los artifacts/SQLite no forman parte del Git.
 
 - **UNKNOWN — Arena `f5d2a828`:** USER_GT acredita Select Mode al corte de retorno,
   pero faltan los píxeles exactos/causa del recheck fallido. La captura posterior
