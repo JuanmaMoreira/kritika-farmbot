@@ -628,5 +628,35 @@
       0.922,
       0.113
     ]
+  },
+  "ad_reward_close_compact_pill": {
+    "source": "LIVE_EVIDENCE 2026-10-16; s3_after_failure.png; SDK Reward granted + X; GUI close -> Results verified",
+    "crop": [
+      0.799,
+      0.02,
+      0.954,
+      0.098
+    ],
+    "search": [
+      0.792,
+      0.01,
+      0.962,
+      0.115
+    ]
+  },
+  "ad_reward_compact_pill_x": {
+    "source": "LIVE_EVIDENCE 2026-10-16; s3_after_failure.png; SDK Reward granted + X; GUI close -> Results verified",
+    "crop": [
+      0.922,
+      0.031,
+      0.949,
+      0.088
+    ],
+    "search": [
+      0.915,
+      0.02,
+      0.958,
+      0.102
+    ]
   }
 }

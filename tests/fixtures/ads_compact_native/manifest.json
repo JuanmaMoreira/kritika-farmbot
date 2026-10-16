@@ -1,0 +1,19 @@
+{
+  "provenance": "LIVE_EVIDENCE; exact unscaled native SDK chrome. No creative retained. GUI X -> Results confirmed in recovery_s3.",
+  "source": "artifacts/supervision_gold28_20261016/s3_after_failure.png",
+  "source_sha256": "1985718bfe1c54d92b91b0b680976e4755ac0439f2735130ab76e2fd42d1dbf1",
+  "capture_source": "adb_native",
+  "shape": [
+    1220,
+    2712,
+    3
+  ],
+  "bounds": [
+    2148,
+    12,
+    2609,
+    140
+  ],
+  "file": "sdk_chrome.png",
+  "fixture_sha256": "3f47cd989f7b2b9501a4055864eca8488cfc8ae2504365d39a35aa5de8d2afc5"
+}
