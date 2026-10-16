@@ -22,12 +22,14 @@ from bot.component_contracts import ComponentRequirement, QUICK_MENU_ACCESS_REQU
 from bot.event_log import EventSink
 from bot.flow_contracts import FlowContract, FlowEvent, FlowResult, FlowScope, FlowStatus
 from bot.runtime_observer import (
+    RuntimeEvidenceRequirements,
     RuntimeObserver,
     RuntimeSnapshot,
     RuntimeWaitAborted,
     RuntimeWaitCancelled,
     RuntimeWaitTimeout,
 )
+from bot.operation_control import check_operation
 from bot.semantic_actions import (
     ClaimAllDailyQuests,
     ClaimDailyQuestsProgressReward,
@@ -497,7 +499,8 @@ class DailyQuestsFlow:
         - Daily-active-but-loading frames wait passively without tapping.
         - UNKNOWN/AMBIGUOUS: wait passively.
         - Contradictory RESOLVED context: abort.
-        - Total timeout bounded by navigation_timeout.
+        - A fresh Daily list permits one passive tail, at most 2s beyond the
+          original deadline. Progress never restarts that deadline or a tap.
         """
         if self._cancelled():
             raise RuntimeWaitCancelled("daily quests flow cancelled")
@@ -505,19 +508,42 @@ class DailyQuestsFlow:
         deadline = self._clock() + self.navigation_timeout
         current = initial_quests
         last_evaluated = current.sequence - 1
+        passive_tail = daily_seen = False
+        evidence = RuntimeEvidenceRequirements(source_id=initial_quests.frame.source_id,
+            captured_after=initial_quests.timestamp, max_age=2.0)
 
         while True:
+            check_operation()
             if self._cancelled():
                 raise RuntimeWaitCancelled("daily quests flow cancelled")
+            if evidence.source_id and current.frame.source_id != evidence.source_id:
+                raise RuntimeWaitAborted(current)
 
-            # Check timeout
+            # Inspect the last observation before discarding progress at the
+            # nominal deadline. This tail has no input authority.
             if self._clock() >= deadline:
-                self._record("daily_quests.tab_timeout")
-                raise RuntimeWaitTimeout(
-                    after_sequence=current.sequence,
-                    timeout=self.navigation_timeout,
-                    last_snapshot=current,
-                )
+                if (not passive_tail and self._clock() < deadline + 2.0
+                        and current.sequence > initial_quests.sequence
+                        and evidence.source_id and evidence.accepts(current, self._clock())
+                        and self._is_daily_quests(current)
+                        and current.observations.best(INDICATOR_DAILY_QUESTS_ROWS_POPULATED) is not None):
+                    passive_tail = True
+                    deadline += 2.0
+                    self._record('daily_quests.tab_passive_tail', sequence=current.sequence,
+                        age=self._clock() - current.timestamp,
+                        loading=current.observations.best(ACTIVITY_DAILY_QUESTS_LOADING) is not None,
+                        ready=self._is_content_ready(current), deadline=deadline)
+                else:
+                    self._record("daily_quests.tab_timeout", passive_tail=passive_tail,
+                        sequence=current.sequence,
+                        daily_visible=self._is_daily_quests(current),
+                        loading=current.observations.best(ACTIVITY_DAILY_QUESTS_LOADING) is not None,
+                        ready=self._is_content_ready(current))
+                    raise RuntimeWaitTimeout(
+                        after_sequence=current.sequence,
+                        timeout=self.navigation_timeout + (2.0 if passive_tail else 0.0),
+                        last_snapshot=current,
+                    )
 
             # observe() may deliver the latest frame again when capture stalls.
             # Each sequence may authorize at most one tap or success verdict.
@@ -527,10 +553,15 @@ class DailyQuestsFlow:
                 continue
             last_evaluated = current.sequence
 
+            if passive_tail and (current.state.status is ResolutionStatus.AMBIGUOUS
+                    or self._is_quests(current) and not self._is_daily_quests(current)):
+                raise RuntimeWaitAborted(current)
+
             # The post-tab snapshot feeds the claim/noop decision, so it
             # must be content-ready too: selecting Daily can populate the
             # list behind a loading ring exactly like a cold open.
-            if self._is_content_ready(current):
+            if (self._is_daily_quests(current) and self._is_content_ready(current)
+                    and (not passive_tail or evidence.accepts(current, self._clock()))):
                 self._record("daily_quests.tab_activated")
                 return current
 
@@ -543,7 +574,12 @@ class DailyQuestsFlow:
                 raise RuntimeWaitAborted(current)
 
             # Only tap from clean Quests state (RESOLVED, base=screen.quests, no Daily)
-            if self._is_quests(current) and not self._is_daily_quests(current):
+            daily_seen = daily_seen or self._is_daily_quests(current)
+            if (not passive_tail and not daily_seen
+                    and self._is_quests(current) and not self._is_daily_quests(current)):
+                check_operation()
+                if self._cancelled():
+                    raise RuntimeWaitCancelled("daily quests flow cancelled")
                 self._record("daily_quests.select_tab")
                 self.actions.execute(SelectDailyQuests(), current.geometry)
             else:
@@ -554,6 +590,9 @@ class DailyQuestsFlow:
             self._sleeper(min(1.0, max(0.0, deadline - self._clock())))
 
             # Get fresh frame
+            check_operation()
+            if self._cancelled():
+                raise RuntimeWaitCancelled("daily quests flow cancelled")
             current = self.observer.observe()
 
     def _append_event(self, events: list[FlowEvent], kind: str) -> None:

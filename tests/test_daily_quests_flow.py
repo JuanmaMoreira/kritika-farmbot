@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -570,3 +571,168 @@ def test_cancellation_during_claim_wait_returns_cancelled_without_close():
     assert result.status is FlowStatus.CANCELLED
     assert actions == [OpenQuests(), ClaimAllDailyQuests()]
     assert any(event == "daily_quests.cancelled" for event, _ in events)
+
+
+def tab_timeline(rows):
+    """Completion times and capture ages are independent monotonic inputs."""
+    now, cancelled = [100.], [False]
+    initial = snapshot(10, 100., base=SCREEN_QUESTS)
+    initial = replace(initial, frame=replace(initial.frame, source_id='quests-source'))
+    observer = ScriptedObserver(initial, [])
+    pending = iter(enumerate(rows, start=11))
+    last = [initial]
+
+    def observe():
+        item = next(pending, None)
+        if item is not None:
+            seq, row = item
+            now[0] = max(now[0], 100. + row['at'])
+            obs = (rows_observation(),) if row.get('rows') else ()
+            if row.get('loading'):
+                obs += (Observation('activity.daily_quests_loading', 1., ObservationSource.LOCAL_CV),)
+            overlays = (MODE_DAILY_QUESTS, STATUS_DAILY_QUESTS_CLAIMABLE) if row.get('daily') else ()
+            current = snapshot(row.get('sequence', seq), 100. + row.get('captured', row['at']),
+                base=None if row.get('status') is ResolutionStatus.AMBIGUOUS else row.get('base', SCREEN_QUESTS),
+                overlays=overlays, status=row.get('status'), observations=obs,
+                base_candidates=(SCREEN_QUESTS, SCREEN_LOBBY)
+                    if row.get('status') is ResolutionStatus.AMBIGUOUS else ())
+            last[0] = replace(current, frame=replace(current.frame,
+                source_id=row.get('source', 'quests-source')))
+            cancelled[0] = row.get('cancel', False)
+        return last[0]
+
+    observer.observe = observe
+    actions, events = Actions(), Events()
+    flow = DailyQuestsFlow(observer, actions, events,
+        clock=lambda: now[0], sleeper=lambda t: now.__setitem__(0, now[0] + t),
+        cancel_requested=lambda: cancelled[0])
+    return SimpleNamespace(flow=flow, initial=initial, observer=observer,
+        now=now, actions=actions, events=events)
+
+
+def s2_observations():
+    # S2 #882..886 offsets from first select_tab. 3005/3022 are
+    # still Medal; 3034 is Daily + rows + loading after the fourth tap.
+    # Capture ages/source are simulated: the bundle does not serialize
+    # source_id or a capture-to-UTC bridge for these observations.
+    return [dict(at=1.978239), dict(at=3.710036), dict(at=5.788249),
+        dict(at=6.676966, captured=5.788249, daily=True, rows=True, loading=True)]
+
+
+def test_s2_final_progress_gets_bounded_passive_tail_without_fifth_tap():
+    h = tab_timeline(s2_observations() + [dict(at=7.9, daily=True, rows=True)])
+    ready = h.flow._wait_for_daily_tab(h.initial)
+    assert h.flow._is_daily_quests(ready) and h.flow._is_content_ready(ready)
+    assert h.actions.items == [SelectDailyQuests()] * 4
+    assert h.now[0] == pytest.approx(107.9)
+    tail = next(f for e, f in h.events.items if e == 'daily_quests.tab_passive_tail')
+    assert tail['loading'] and not tail['ready'] and tail['deadline'] == 108.
+    assert tail['age'] == pytest.approx(.888717)
+
+
+@pytest.mark.parametrize('last', [dict(at=7.9, daily=True, rows=True, loading=True),
+    dict(at=8.1, daily=True, rows=True),
+    dict(at=7.9, captured=5.7, daily=True, rows=True),
+    dict(at=7.9, captured=9., daily=True, rows=True),
+    dict(at=7.9, captured=0., daily=True, rows=True),
+    dict(at=7.9, sequence=10, daily=True, rows=True)])
+def test_s2_loading_deadline_stale_future_and_old_sequence_never_authorize_claim(last):
+    h = tab_timeline(s2_observations() + [last])
+    with pytest.raises(RuntimeWaitTimeout):
+        h.flow._wait_for_daily_tab(h.initial)
+    assert h.actions.items == [SelectDailyQuests()] * 4
+    assert sum(e == 'daily_quests.tab_passive_tail' for e, _ in h.events.items) == 1
+    assert h.now[0] <= 108.1
+
+
+@pytest.mark.parametrize('change', [dict(base=SCREEN_LOBBY),
+    dict(status=ResolutionStatus.AMBIGUOUS), dict(daily=False), dict(source='new-source')])
+def test_s2_contradictory_tail_aborts_without_retry(change):
+    last = dict(at=7.8, daily=True, rows=True)
+    last.update(change)
+    h = tab_timeline(s2_observations() + [last])
+    with pytest.raises(RuntimeWaitAborted):
+        h.flow._wait_for_daily_tab(h.initial)
+    assert h.actions.items == [SelectDailyQuests()] * 4
+
+
+@pytest.mark.parametrize('change', [dict(rows=False), dict(daily=False),
+    dict(captured=4.), dict(captured=9.), dict(source=None)])
+def test_s2_tail_requires_positive_fresh_progress_from_same_source(change):
+    rows = s2_observations()
+    rows[-1].update(change)
+    h = tab_timeline(rows)
+    with pytest.raises(RuntimeWaitAborted if 'source' in change else RuntimeWaitTimeout):
+        h.flow._wait_for_daily_tab(h.initial)
+    assert not any(e == 'daily_quests.tab_passive_tail' for e, _ in h.events.items)
+    assert h.actions.items == [SelectDailyQuests()] * 4
+
+
+def test_s2_tab_already_visible_suppresses_taps_through_unknown_and_late_readiness():
+    h = tab_timeline([dict(at=1., daily=True, loading=True),
+        dict(at=2., base=None), dict(at=3.),
+        dict(at=6.5, daily=True, rows=True)])
+    ready = h.flow._wait_for_daily_tab(h.initial)
+    assert h.flow._is_content_ready(ready)
+    assert h.now[0] == 106.5 and h.actions.items == [SelectDailyQuests()]
+
+
+def test_s2_recent_loading_progress_can_wait_passively_across_a_repeated_frame():
+    h = tab_timeline([dict(at=5.8, daily=True, rows=True, loading=True),
+        dict(at=6.8, captured=5.8, sequence=11, daily=True, rows=True, loading=True),
+        dict(at=7.8, daily=True, rows=True)])
+    assert h.flow._is_content_ready(h.flow._wait_for_daily_tab(h.initial))
+    assert h.now[0] == pytest.approx(107.8)
+    assert h.actions.items == [SelectDailyQuests()]
+
+
+@pytest.mark.parametrize('cancel_at', [6.676966, 7.8])
+def test_s2_cancellation_precedes_recovery_and_claim(cancel_at):
+    rows = s2_observations() + [dict(at=7.8, daily=True, rows=True)]
+    next(r for r in rows if r['at'] == cancel_at)['cancel'] = True
+    h = tab_timeline(rows)
+    with pytest.raises(RuntimeWaitCancelled):
+        h.flow._wait_for_daily_tab(h.initial)
+    assert h.actions.items == [SelectDailyQuests()] * 4
+
+
+def test_s2_parent_budget_cannot_be_extended_by_progress():
+    from bot.operation_control import OperationControl, OperationBudgetExpired, control_scope
+    h = tab_timeline(s2_observations() + [dict(at=7.8, daily=True, rows=True)])
+    with control_scope(OperationControl(deadline=107., clock=lambda: h.now[0])):
+        with pytest.raises(OperationBudgetExpired):
+            h.flow._wait_for_daily_tab(h.initial)
+    assert h.actions.items == [SelectDailyQuests()] * 4
+
+
+def test_s2_fast_path_keeps_one_tap_one_observation_and_one_second():
+    h = tab_timeline([dict(at=1., daily=True, rows=True)])
+    assert h.flow._is_content_ready(h.flow._wait_for_daily_tab(h.initial))
+    assert h.actions.items == [SelectDailyQuests()] and h.now[0] == 101.
+    assert not any(e == 'daily_quests.tab_passive_tail' for e, _ in h.events.items)
+
+
+@pytest.mark.parametrize('recovers', [True, False])
+def test_s2_full_flow_claims_only_after_loading_clears(recovers):
+    h = tab_timeline(s2_observations() + [dict(at=7.9, daily=True, rows=True,
+        loading=not recovers)])
+    lobby = snapshot(1, 99., base=SCREEN_LOBBY)
+    # The existing open/claim/close waits retain their contracts. Only the
+    # selection observations and their processing times reproduce S2.
+    h.flow._initial_base = lambda seed: lobby
+    h.observer.scripts = [[snapshot(9, 99.7, base=SCREEN_QUESTS), h.initial],
+        [snapshot(20, 108., base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,)),
+         snapshot(21, 108.6, base=SCREEN_QUESTS, overlays=(MODE_DAILY_QUESTS,))],
+        [snapshot(22, 109., base=SCREEN_LOBBY), snapshot(23, 109.3, base=SCREEN_LOBBY)]]
+    dispatched = []
+    execute = h.actions.execute
+    def record(action, geometry):
+        dispatched.append((type(action), h.now[0]))
+        execute(action, geometry)
+    h.actions.execute = record
+    result = h.flow.run()
+    assert result.status is (FlowStatus.COMPLETED if recovers else FlowStatus.FAILED)
+    claims = [at for action, at in dispatched if action is ClaimAllDailyQuests]
+    assert claims == ([107.9] if recovers else [])
+    assert h.actions.items.count(SelectDailyQuests()) == 4
+    assert h.actions.items.count(CloseDailyQuests()) == int(recovers)

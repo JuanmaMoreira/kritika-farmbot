@@ -259,6 +259,17 @@ sin readiness bloquea retry. Sólo hay gracia con intentos restantes: el último
 miss nominal termina, sin `observe()` ni cola adicional. Sin `reacquire_from`,
 los consumidores conservan su política anterior.
 
+Daily Quests distingue tab activo, loading y readiness: Claim/noop requiere
+Daily con filas pobladas y sin loading. Al agotar los 6s nominales de selección,
+una observación positiva de Daily y filas, del mismo source, posterior al inicio
+y con edad 0..2s, permite una única cola **pasiva** hasta el deadline original +2s.
+Loading permite esperar, nunca Claim. Progreso no renueva el deadline y la cola
+no permite taps; una vez observado Daily tampoco se repite selección por pérdida
+perceptiva transitoria. Fuente distinta, contradicción, cancelación o presupuesto
+heredado agotado impiden continuar. `tab_passive_tail` y `tab_timeout` publican
+tab/loading/readiness por separado. El camino exitoso nominal no añade latencia
+ni detectores; la policy pertenece a `DailyQuestsFlow`, no a la transición común.
+
 Verificar el efecto con señal fiable suficiente. Identidad de contexto se separa de datos económicos; postcondiciones no se convierten en revalidación de cada hecho GT. Landmarks y oclusión siguen GAMEPLAY_GT. Ausencia ambigua de popup no prueba por sí sola éxito o retorno limpio.
 
 H&H se recupera sólo cuando bloquea una observación o un input; su mera presencia no provoca trabajo. `VerifiedTransition` entrega las ROIs de la señal necesaria fallida (también ante abort) o consulta el target real del executor. `PortalObstructionRecovery` sólo prueba si esa geometría intersecta el envelope de GAMEPLAY_GT y el contexto es compatible; nunca por timeout/UNKNOWN aislado. Un único dismiss requiere CONFIRMED fresco y una espera pasiva bounded/cancelable debe confirmar ABSENT; persistencia, evidencia inconclusa o frame stale propagan fallo técnico. El caller revalida su condición original con el snapshot fresco, conservando intención/caller. Inputs directos afectados pueden usar `VerifiedTransition.recover_input` y conservar su espera y cancelación; los no afectados no adquieren probes ni capturas adicionales.
