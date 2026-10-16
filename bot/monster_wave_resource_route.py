@@ -1043,20 +1043,24 @@ class MonsterWaveResourceRouteRuntime:
             cancel_requested=self.cancel_requested,
         )
         evidence.append("craft:equipment_relief_once")
-        try:
-            relief = self.equipment_relief.run(request)
-        except Exception as error:
-            return finish(
-                ResourceRouteExecutionStatus.EQUIPMENT_CAPACITY_BLOCKED,
-                failing_step=craft.capability,
-                capability_result=capacity,
-            )
+        # The composer already bounds/catches its operations. An unexpected
+        # exception must reach the caller, not revive the pre-relief full fact.
+        relief = self.equipment_relief.run(request)
         if relief.outcome in {
             EquipmentReliefOutcome.CANCELLED,
             EquipmentReliefOutcome.COMBINE_CANCELLED,
             EquipmentReliefOutcome.SELL_CANCELLED,
         }:
             return finish(ResourceRouteExecutionStatus.CANCELLED)
+        if relief.outcome in {
+            EquipmentReliefOutcome.CALLER_CONTEXT_FAILED,
+            EquipmentReliefOutcome.CALLER_EXECUTION_FAILED,
+        }:
+            return finish(
+                ResourceRouteExecutionStatus.STEP_FAILED,
+                failing_step=craft.capability,
+                capability_result=relief,
+            )
         if relief.outcome is EquipmentReliefOutcome.CALLER_RESULT:
             caller_result = relief.caller_result
             if is_full(caller_result):

@@ -337,14 +337,16 @@ class ProductiveMonsterWaveFlow:
                     record_best_effort(
                         getattr(self.activity, "events", None), "monster_wave.preparation.failed",
                         route_status=route_result.status.value, failing_step=failing,
-                        reason=getattr(capability, "reason", None),
+                        reason=getattr(capability, "reason", None) or getattr(capability, "error", None),
+                        relief_stage=getattr(capability, "stage", None),
                         outcome=getattr(getattr(capability, "outcome", None), "value", None),
                         inputs=getattr(capability, "inputs", ()),
                         route_evidence=getattr(route_result, "evidence", ()),
                     )
                     return MonsterWaveResult(
                         FlowStatus.FAILED,
-                        error=f"preparation_failed:{route_result.status.value}:{failing}",
+                        error=(f"preparation_failed:{route_result.status.value}:{failing}"
+                               + (f":{capability.error}" if getattr(capability, "error", None) else "")),
                         events=first.events,
                     )
                 if tuple(route_result.executed_steps) != tuple(plan.steps):
