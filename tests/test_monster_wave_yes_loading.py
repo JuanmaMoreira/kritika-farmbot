@@ -50,7 +50,12 @@ def scenario(monkeypatch, steps, *, enabled=True, coverage=True):
     original_analyze=type(engine).analyze
     def counted(self,frame):
         state.base_analyses+=1
-        return original_analyze(self,frame)
+        result = original_analyze(self,frame)
+        row = samples[int(frame.image[0,0,0])]
+        now[0] += row.get('analysis_seconds', 0.)
+        if row.get('cancel_during_analysis'):
+            cancelled[0] = True
+        return result
     monkeypatch.setattr(type(engine),'analyze',counted)
     def loading(self,image):
         state.detector_calls+=1
@@ -310,3 +315,145 @@ def test_execute_only_legacy_adapter_is_not_required_to_expose_observer(monkeypa
     sentinel=object();legacy=SimpleNamespace(execute=Mock(return_value=sentinel))
     assert execute_monster_wave_yes(legacy,'legacy-yes',h.before) is sentinel
     assert legacy.execute.call_count==1 and h.state.detector_calls==0
+
+
+def test_s1_saved_monotonic_timeline_proves_initial_age_rejection(monkeypatch):
+    # S1 #361: seq1370 age after reader .891; #364: wait elapsed
+    # 2.9412841; seq1387.timestamp - seq1370.timestamp = 1.688.
+    # Work between reader and wait can only increase this lower bound.
+    minimum_age = .891 + 2.9412841 - (118852.953 - 118851.265)
+    assert minimum_age == pytest.approx(2.1442841)
+    h = scenario(monkeypatch, [dict(kind='pending', t=14.)])
+    h.now[0] = h.before.timestamp + minimum_age
+    result = h.run()
+    assert result.termination_reason == 'runtime_evidence_rejected'
+    assert result.attempt_count == 0 and result.dispatch_receipts == ()
+    assert h.adb.tap.call_count == 0
+
+
+def _slow_yes_source(monkeypatch, after):
+    # The 2.0591021s analysis duration is S1 #363's slowest analysis.
+    return scenario(monkeypatch, [dict(kind='board', t=10.3),
+        dict(kind='board', t=10.6, analysis_seconds=2.0591021)] + after)
+
+
+def _accept_source(h):
+    from bot.monster_wave_standalone import MonsterWaveStandaloneNavigationRuntime
+    return MonsterWaveStandaloneNavigationRuntime(h.transition, None,
+        clock=lambda: h.now[0], cancel_requested=lambda: h.cancelled[0]).accept_board(
+            SimpleNamespace(context=h.before))
+
+
+def test_s1_passive_reacquisition_after_slow_perception_dispatches_one_yes(monkeypatch):
+    from bot.flow_contracts import FlowStatus
+    h = _slow_yes_source(monkeypatch, [dict(kind='board', t=12.8),
+        dict(kind='board', t=13.1), dict(kind='clear', t=13.5)])
+    status, after = _accept_source(h)
+    assert status is FlowStatus.COMPLETED and after.sequence == 6
+    assert h.adb.tap.call_count == 1
+    evidence = next(f for e, f in h.events.records if e == 'monster_wave.yes_source_evidence')
+    assert evidence['age'] > evidence['max_age'] == 2.
+    assert evidence['source_matches'] and evidence['captured_after'] and not evidence['accepted']
+    assert sum(e == 'monster_wave.yes_source_reacquire' for e, _ in h.events.records) == 1
+    assert h.now[0] == pytest.approx(13.5)
+
+
+@pytest.mark.parametrize('row', [dict(kind='clear', t=12.8),
+    dict(kind='trade', t=12.8), dict(kind='ambiguous', t=12.8)])
+def test_s1_late_effect_or_contradiction_never_authorizes_yes(monkeypatch, row):
+    from bot.runtime_observer import RuntimeWaitAborted
+    h = _slow_yes_source(monkeypatch, [row])
+    with pytest.raises(RuntimeWaitAborted):
+        _accept_source(h)
+    assert h.adb.tap.call_count == 0
+
+
+@pytest.mark.parametrize('after', [[],
+    [dict(kind='board', t=10.6, at=12.8)],
+    [dict(kind='board', t=12.8, analysis_seconds=2.1)]])
+def test_s1_passive_tail_rejects_stall_source_timestamp_and_expiry(monkeypatch, after):
+    from bot.runtime_observer import RuntimeWaitTimeout
+    h = _slow_yes_source(monkeypatch, after)
+    with pytest.raises(RuntimeWaitTimeout):
+        _accept_source(h)
+    assert h.adb.tap.call_count == 0
+    # Absolute 6s plus, at most, the synchronous analysis already in flight.
+    assert h.now[0] <= 16.0
+
+
+def test_s1_source_rotation_aborts_even_if_original_source_returns(monkeypatch):
+    from bot.runtime_observer import RuntimeWaitAborted
+    h = _slow_yes_source(monkeypatch, [dict(kind='board', t=12.8, source='rotated'),
+        dict(kind='board', t=13.1), dict(kind='board', t=13.4), dict(kind='clear', t=13.8)])
+    with pytest.raises(RuntimeWaitAborted):
+        _accept_source(h)
+    assert h.adb.tap.call_count == 0
+
+
+def test_s1_cancellation_in_reacquisition_never_dispatches(monkeypatch):
+    h = _slow_yes_source(monkeypatch, [dict(kind='board', t=12.8,
+        cancel_during_analysis=True)])
+    with pytest.raises(RuntimeWaitCancelled):
+        _accept_source(h)
+    assert h.adb.tap.call_count == 0
+
+
+def test_s1_inherited_deadline_bounds_passive_tail(monkeypatch):
+    from bot.operation_control import OperationBudgetExpired
+    h = _slow_yes_source(monkeypatch, [dict(kind='board', t=12.8)])
+    with control_scope(OperationControl(deadline=12.75, clock=lambda: h.now[0])):
+        with pytest.raises(OperationBudgetExpired):
+            _accept_source(h)
+    assert h.adb.tap.call_count == 0
+
+
+def test_s1_fast_path_has_same_inputs_observations_and_simulated_time(monkeypatch):
+    from bot.flow_contracts import FlowStatus
+    results = []
+    for patched in (False, True):
+        with monkeypatch.context() as mp:
+            h = scenario(mp, [dict(kind='board', t=10.3), dict(kind='board', t=10.6),
+                dict(kind='clear', t=11.)])
+            if patched:
+                status, _ = _accept_source(h)
+                assert status is FlowStatus.COMPLETED
+            else:
+                before = h.observer.wait_until(lambda s: s.state.overlays == (POPUP_MW_BOARD,),
+                    after_sequence=h.before.sequence, timeout=3., stable_for=.25)
+                assert execute_monster_wave_yes(h.transition, 'baseline', before).succeeded
+            results.append((h.adb.tap.call_count, h.state.source_calls, h.now[0]))
+    assert results == [(1, 4, 11.), (1, 4, 11.)]
+
+
+def test_s1_future_acquisition_is_not_an_age_recovery_permission(monkeypatch):
+    from bot.flow_contracts import FlowStatus
+    h = scenario(monkeypatch, [dict(kind='board', t=11., at=10.3),
+        dict(kind='board', t=11.3, at=10.6)])
+    status, _ = _accept_source(h)
+    assert status is FlowStatus.FAILED and h.adb.tap.call_count == 0
+    assert not any(e == 'monster_wave.yes_source_reacquire' for e, _ in h.events.records)
+
+
+def test_s1_missing_declared_coverage_is_not_repaired_as_age_only(monkeypatch):
+    from bot.flow_contracts import FlowStatus
+    h = scenario(monkeypatch, [dict(kind='board', t=10.3), dict(kind='board', t=10.6)])
+    h.before = replace(h.before, observations=replace(h.before.observations,
+        coverage=frozenset({'declared-board-context'})))
+    status, _ = _accept_source(h)
+    assert status is FlowStatus.FAILED and h.adb.tap.call_count == 0
+    assert not any(e == 'monster_wave.yes_source_reacquire' for e, _ in h.events.records)
+
+
+def test_s1_expiry_between_source_check_and_dispatch_still_rejects(monkeypatch):
+    from bot.flow_contracts import FlowStatus
+    h = scenario(monkeypatch, [dict(kind='board', t=10.3), dict(kind='board', t=10.6)])
+    record = h.events.record
+    def advance_after_source_check(name, **fields):
+        record(name, **fields)
+        if name == 'monster_wave.yes_source_evidence':
+            h.now[0] += 2.1
+    h.events.record = advance_after_source_check
+    status, _ = _accept_source(h)
+    assert status is FlowStatus.FAILED and h.adb.tap.call_count == 0
+    assert any(e == 'transition.completed' and f['termination_reason'] == 'runtime_evidence_rejected'
+        for e, f in h.events.records)

@@ -6,7 +6,7 @@ This module does not enter MW, discover resources, or repeat a route or SKIP.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 import time
 
@@ -30,7 +30,7 @@ from bot.resource_route_planner import (
     NonBoardResourceFacts, ResourcePlanningInput, ResourceRoutePlan,
     ResourceRouteStatus, plan_resource_route,
 )
-from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled, RuntimeEvidenceRequirements
+from bot.runtime_observer import RuntimeSnapshot, RuntimeWaitCancelled, RuntimeWaitTimeout, RuntimeEvidenceRequirements
 from bot.semantic_actions import AcceptSocketInventoryFull, OpenEquipmentCombine
 from bot.state import ResolutionStatus
 from bot.verified_transition import VerifiedTransitionPolicy, VerifiedTransitionResult
@@ -198,11 +198,54 @@ class MonsterWaveStandaloneNavigationRuntime:
         """Allow this clean planned SKIP; the activity polls its result."""
         if self.cancel_requested():
             return FlowStatus.CANCELLED, None
+        # One passive tail is available only if perception expired the board
+        # returned by the existing stability wait. It never retries an input.
+        deadline = self.clock() + 6.0
+        evidence = RuntimeEvidenceRequirements(
+            source_id=board.context.frame.source_id,
+            captured_after=board.context.timestamp, max_age=2.0,
+            required_coverage=board.context.observations.coverage or frozenset(),
+        )
         current = self.transition.observer.wait_until(
             _board_open, after_sequence=board.context.sequence, timeout=3.0,
-            abort_if=lambda s: not _board_open(s),
+            abort_if=lambda s: (not _board_open(s)
+                or s.frame.source_id != board.context.frame.source_id),
             cancel_requested=self.cancel_requested, stable_for=.25,
         )
+        now = self.clock()
+        age = now - current.timestamp
+        from bot.event_log import record_best_effort
+        record_best_effort(getattr(self.transition, 'events', None), 'monster_wave.yes_source_evidence',
+            sequence=current.sequence, age=age, max_age=2.0,
+            source_matches=current.frame.source_id == board.context.frame.source_id,
+            captured_after=current.timestamp > board.context.timestamp,
+            age_matches=0 <= age <= 2.0,
+            coverage_matches=(not evidence.required_coverage or (
+                current.observations.coverage is not None
+                and evidence.required_coverage <= current.observations.coverage)),
+            accepted=evidence.accepts(current, now))
+        if not evidence.accepts(current, now):
+            # A different source, future acquisition or missing coverage cannot
+            # be repaired by waiting for an age-only rejection to disappear.
+            if (not evidence.source_id or age <= 2.0
+                    or not replace(evidence, max_age=None).accepts(current, now)):
+                return FlowStatus.FAILED, None
+            remaining = min(3.0, deadline - self.clock())
+            if remaining <= 0:
+                raise RuntimeWaitTimeout(after_sequence=current.sequence,
+                    timeout=6.0, last_snapshot=current)
+            record_best_effort(getattr(self.transition, 'events', None), 'monster_wave.yes_source_reacquire',
+                after_sequence=current.sequence, timeout=remaining)
+            evidence = replace(evidence, captured_after=current.timestamp)
+            current = self.transition.observer.wait_until(
+                _board_open, after_sequence=current.sequence, timeout=remaining,
+                abort_if=lambda s: (not _board_open(s)
+                    or s.frame.source_id != evidence.source_id),
+                cancel_requested=self.cancel_requested, stable_for=.25,
+                # Let fresh source contradictions reach abort_if instead of
+                # filtering them and accepting a subsequent original source.
+                evidence=replace(evidence, source_id=None), deadline=deadline,
+            )
         from bot.monster_wave_yes import execute_monster_wave_yes
         result = execute_monster_wave_yes(self.transition,
             "monster_wave.standalone.accept_board", current,

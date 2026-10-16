@@ -67,6 +67,19 @@ En entrada/reentrada MW: MODAL conocido → normalizar primero (`popup.monster_w
 
 ## Composición real
 
+Antes de Yes, `MonsterWaveStandaloneNavigationRuntime.accept_board` conserva
+la espera de board estable (.25s, timeout nominal 3s). Si el frame retornado
+expiró durante percepción, permite **una readquisición pasiva**, de hasta 3s
+y con deadline absoluto de 6s desde la entrada al owner. Sólo la edad >2s
+habilita esa rama: source, cobertura declarada y barrera de adquisición deben
+seguir siendo válidos. La readquisición requiere secuencia y timestamp posteriores
+al frame rechazado, mismo source, edad 0..2s y estabilidad .25s; contradicción,
+cancelación o timeout terminan sin Yes. El guard de dispatch sigue revalidando
+max_age=2s. `yes_source_evidence` publica edad y predicados; `yes_source_reacquire`
+identifica la única espera adicional. El camino fresco no añade observaciones
+ni sleeps. No se repiten Yes, SKIP ni operaciones económicas; esta rama es
+anterior al dispatch y distinta de la adquisición tras cerrar el board con No.
+
 La adquisición pasiva de `MonsterWaveSnapshotRuntime` exige edad 0..2s dentro
 de `RuntimeObserver.wait_until`, también después de percepción, con estabilidad
 vigente y un deadline absoluto de 6s por defecto. Un análisis que envejece el
