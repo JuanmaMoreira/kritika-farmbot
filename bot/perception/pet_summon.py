@@ -13,7 +13,7 @@ from bot.catalog import (
     INDICATOR_PET_EPIC_UNAVAILABLE,
     SEMANTIC_CONFIDENCE_THRESHOLD,
 )
-from bot.geometry import RelativeRegion
+from bot.geometry import RelativeRegion, relative_region_to_pixels
 from bot.observations import Observation, ObservationSource
 
 from .local_cv import LocalCvDetector
@@ -90,6 +90,11 @@ class PetEpicAvailabilityDetector:
     def measure(self, frame: np.ndarray) -> PetEpicAvailabilityReading:
         _validate_frame(frame)
         summon = self._summon.measure(frame).semantic_confidence
+        return self._measure_card(frame, summon)
+
+    def _measure_card(
+        self, frame: np.ndarray, summon: float
+    ) -> PetEpicAvailabilityReading:
         blocked = max(
             detector.measure(frame).semantic_confidence
             for detector in self._blockers
@@ -117,7 +122,27 @@ class PetEpicAvailabilityDetector:
         )
 
     def detect(self, frame: np.ndarray) -> tuple[Observation, ...]:
-        reading = self.measure(frame)
+        _validate_frame(frame)
+        summon = self._summon.measure(frame).semantic_confidence
+        if summon < self.confidence_threshold:
+            # Keep the original error path when a later template or card ROI
+            # cannot be read; no blocker matching is needed on valid geometry.
+            height, width = frame.shape[:2]
+            for detector in self._blockers:
+                x1, y1, x2, y2 = relative_region_to_pixels(
+                    detector.spec.region, width, height
+                )
+                if not any(
+                    th <= y2 - y1 and tw <= x2 - x1
+                    for th, tw in detector.template_shapes
+                ):
+                    break
+            else:
+                x1, y1, x2, y2 = self.region
+                if frame[int(y1 * height):int(y2 * height),
+                         int(x1 * width):int(x2 * width)].size:
+                    return ()
+        reading = self._measure_card(frame, summon)
         emitted = []
         for name, confidence in (
             (INDICATOR_PET_EPIC_AVAILABLE, reading.available_confidence),

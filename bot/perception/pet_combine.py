@@ -15,7 +15,7 @@ from bot.catalog import (
     LANDMARK_PET_MASS_EVOLVE_CONFIRMATION,
     SEMANTIC_CONFIDENCE_THRESHOLD,
 )
-from bot.geometry import RelativeRegion
+from bot.geometry import RelativeRegion, relative_region_to_pixels
 from bot.observations import Observation, ObservationSource
 
 from .local_cv import LocalCvDetector
@@ -107,6 +107,11 @@ class PetLowTierCandidateDetector:
     def measure(self, frame: np.ndarray) -> tuple[PetLowTierSlotReading, ...]:
         _validate_frame(frame)
         combine = self._combine.measure(frame).semantic_confidence
+        return self._measure_slots(frame, combine)
+
+    def _measure_slots(
+        self, frame: np.ndarray, combine: float
+    ) -> tuple[PetLowTierSlotReading, ...]:
         prompt = self._prompt.measure(frame).semantic_confidence
         blocked = max(
             detector.measure(frame).semantic_confidence
@@ -163,6 +168,28 @@ class PetLowTierCandidateDetector:
         return tuple(readings)
 
     def detect(self, frame: np.ndarray) -> tuple[Observation, ...]:
+        _validate_frame(frame)
+        combine = self._combine.measure(frame).semantic_confidence
+        if combine < SEMANTIC_CONFIDENCE_THRESHOLD:
+            # A low gate suppresses every candidate, but must not hide the
+            # errors that measure() would raise for an incompatible frame.
+            height, width = frame.shape[:2]
+            for detector in (self._prompt, *self._blockers):
+                x1, y1, x2, y2 = relative_region_to_pixels(
+                    detector.spec.region, width, height
+                )
+                if not any(
+                    th <= y2 - y1 and tw <= x2 - x1
+                    for th, tw in detector.template_shapes
+                ):
+                    break
+            else:
+                if all(
+                    frame[int(y1 * height):int(y2 * height),
+                          int(x1 * width):int(x2 * width)].size
+                    for x1, y1, x2, y2 in PET_LOW_TIER_SLOT_REGIONS
+                ):
+                    return ()
         return tuple(
             Observation(
                 name=CANDIDATE_PET_LOW_TIER,
@@ -171,7 +198,7 @@ class PetLowTierCandidateDetector:
                 value=reading.tier,
                 region=reading.region,
             )
-            for reading in self.measure(frame)
+            for reading in self._measure_slots(frame, combine)
             if reading.tier is not None
             and reading.confidence >= SEMANTIC_CONFIDENCE_THRESHOLD
         )
